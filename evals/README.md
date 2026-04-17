@@ -9,5 +9,6 @@ Examples:
 - semantic-mapping checks
 - query-plan checks
 - end-to-end answer quality tests
+- persistent question banks for regression memory
 
 The core product should be measured here before a full web UI is prioritized.
