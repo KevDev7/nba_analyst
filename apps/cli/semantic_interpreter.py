@@ -563,36 +563,6 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
         normalized.append("Interpreted 'scoring' as total points.")
     return normalized
 
-
-def _normalize_temporary_fact_object_preference(
-    template: SemanticQueryTemplate,
-) -> SemanticQueryTemplate:
-    # Temporary semantic-grain normalization. Planner-derived capabilities still
-    # expose both PlayerGame and PlayerSeasonTeam families for some explicit
-    # season-scoped, team-filtered player average-points questions, and Gemini
-    # can occasionally pick the game-grain shape that yields obviously wrong
-    # row-level output. Long term this preference should come from richer query
-    # semantics or planner capability reasoning, not a handwritten override.
-    filter_kinds = set(_filter_kinds(template.filters))
-    should_prefer_player_season_team = (
-        template.query_kind == "metric_query"
-        and template.core_fact_object == "PlayerGame"
-        and template.metrics == ["average_points"]
-        and template.dimensions == ["player_name"]
-        and filter_kinds == {"exact_season", "season_type"}
-        and len(template.linked_filters) == 1
-        and template.linked_filters[0].target_object == "Team"
-        and template.linked_filters[0].attribute == "team_name"
-        and not template.entity_filters
-        and template.comparison is None
-    )
-    if not should_prefer_player_season_team:
-        return template
-
-    preferred = template.model_copy(update={"core_fact_object": "PlayerSeasonTeam"})
-    return preferred if _match_family(preferred) is not None else template
-
-
 @lru_cache(maxsize=256)
 def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     prompt = (
@@ -604,7 +574,6 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     interpreted = _parse_interpreter_response(raw_text)
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
-    interpreted.query = _normalize_temporary_fact_object_preference(interpreted.query)
     interpreted.query.assumptions = _normalize_assumptions(
         question, interpreted.query.assumptions
     )

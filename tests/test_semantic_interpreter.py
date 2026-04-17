@@ -93,6 +93,39 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
 
+    def test_misleading_player_game_season_team_filter_metric_family_is_not_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "metric_query"
+            and family["core_fact_object"] == "PlayerGame"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["exact_season", "season_type"]
+            and family["linked_filters"]
+            and family["linked_filters"][0]["target_object"] == "Team"
+            and family["linked_filters"][0]["attribute"] == "team_name"
+        ]
+
+        self.assertEqual(matching, [])
+
+    def test_player_season_team_season_team_filter_metric_family_remains_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "metric_query"
+            and family["core_fact_object"] == "PlayerSeasonTeam"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["exact_season", "season_type"]
+            and family["linked_filters"]
+            and family["linked_filters"][0]["target_object"] == "Team"
+            and family["linked_filters"][0]["attribute"] == "team_name"
+            and "average_points" in family["metrics"]
+        ]
+
+        self.assertTrue(matching)
+
     def test_player_entity_index_is_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()
         player_index = artifact["player_entity_index"]
@@ -345,7 +378,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("Could not resolve player name", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_explicit_season_team_player_average_query_prefers_season_grain(
+    def test_explicit_season_team_player_average_query_rejects_invalid_game_grain(
         self, mock_call_gemini
     ) -> None:
         mock_call_gemini.return_value = """
@@ -369,13 +402,12 @@ class SemanticInterpreterTests(unittest.TestCase):
         }
         """
 
-        payload = interpret_question_to_planner_query(
-            "Show me players by average points for the Lakers in the 2025-26 regular season"
-        )
+        with self.assertRaises(SemanticInterpreterError) as context:
+            interpret_question_to_planner_query(
+                "Show me players by average points for the Lakers in the 2025-26 regular season"
+            )
 
-        self.assertEqual(
-            payload["spec"]["sharedQuery"]["coreFactObject"], "PlayerSeasonTeam"
-        )
+        self.assertIn("invalid supported query template", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_linked_team_filter_normalizes_into_haskell_query_json(

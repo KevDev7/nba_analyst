@@ -22,6 +22,10 @@ import OntologyLayer.Types (Attribute (kind), AttributeKind (Dimension), MetricD
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
+data OrdinaryMetricFilterFamily
+  = RecentMetricWindow
+  | SeasonMetricWindow
+
 validateQuery :: Ontology -> Query -> Either Text ()
 validateQuery ontology query =
   case query of
@@ -40,19 +44,12 @@ validateMetricQuery ontology metricQuery = do
     Just _ | not (null (linkedFilters base)) ->
       Left "Comparison queries currently do not support linked filters."
     _ -> pure ()
-  validateLinkedFilters ontology (coreFactObject base) (linkedFilters base)
   case timeGrain base of
     Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
-    Nothing | hasSeasonFilters (filters base) -> do
-      rowObject <- requireMetricRowObject ontology factObject (dimensions base)
-      validateSeasonFilters (filters base)
-      validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
-      case comparison metricQuery of
-        Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
-        Nothing -> pure ()
     Nothing -> do
       rowObject <- requireMetricRowObject ontology factObject (dimensions base)
-      validateRankingFilters (filters base)
+      filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
+      validateOrdinaryMetricLinkedFilters ontology filterFamily (objectName factObject) (linkedFilters base)
       validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
       case comparison metricQuery of
         Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
@@ -167,8 +164,26 @@ validateMetricFilters filterValues =
     [LastNGames gamesValue] | gamesValue > 0 -> pure ()
     _ -> Left "Query requires a positive LastNGames filter."
 
-validateRankingFilters :: [Filter] -> Either Text ()
-validateRankingFilters = validateMetricFilters
+classifyOrdinaryMetricFilterFamily :: [Filter] -> Either Text OrdinaryMetricFilterFamily
+classifyOrdinaryMetricFilterFamily filterValues =
+  case filterValues of
+    [LastNGames gamesValue] | gamesValue > 0 -> Right RecentMetricWindow
+    _ ->
+      if isExactSeasonBundle filterValues
+        then Right SeasonMetricWindow
+        else Left "Metric queries currently require either a positive LastNGames filter or an exact season plus season type filter bundle."
+
+isExactSeasonBundle :: [Filter] -> Bool
+isExactSeasonBundle filterValues =
+  case seasonFilterPair filterValues of
+    Just _ -> length filterValues == 2 && all isSeasonFilter filterValues
+    Nothing -> False
+  where
+    isSeasonFilter filterValue =
+      case filterValue of
+        ExactSeason _ -> True
+        SeasonTypeFilter _ -> True
+        _ -> False
 
 hasSeasonFilters :: [Filter] -> Bool
 hasSeasonFilters filterValues =
@@ -283,6 +298,22 @@ validateLinkedFilters ontology factObjectName linkedFilterValues =
       targetObjectValue <- requireObject ontology "Team"
       requireAttributeKind targetObjectValue "team_name" Dimension
     _ -> Left "Query currently supports at most one linked filter."
+
+validateOrdinaryMetricLinkedFilters :: Ontology -> OrdinaryMetricFilterFamily -> Text -> [LinkedFilter] -> Either Text ()
+validateOrdinaryMetricLinkedFilters ontology filterFamily factObjectName linkedFilterValues = do
+  validateLinkedFilters ontology factObjectName linkedFilterValues
+  case linkedFilterValues of
+    [] -> pure ()
+    _ ->
+      case (filterFamily, factObjectName) of
+        (RecentMetricWindow, "PlayerGame") -> pure ()
+        (SeasonMetricWindow, "PlayerSeasonTeam") -> pure ()
+        -- Temporary planner restriction. Ordinary linked team filters are now
+        -- keyed to the supported fact grain rather than post-hoc interpreter
+        -- overrides, but the supported fact surfaces are still intentionally
+        -- narrow in this slice.
+        (RecentMetricWindow, _) -> Left "Linked team filters on recent metric queries currently support PlayerGame only."
+        (SeasonMetricWindow, _) -> Left "Season-scoped linked team filters currently support PlayerSeasonTeam only."
 
 validateMetricAttributes :: OT.MetricDef -> Either Text ()
 validateMetricAttributes metricDef =
