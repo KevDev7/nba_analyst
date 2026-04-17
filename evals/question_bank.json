@@ -98,6 +98,39 @@
       "filters": ["last_n_games:10"]
     },
     {
+      "id": "slice13_compare_players_generalized_family_alias",
+      "slice_introduced": 13,
+      "question": "Compare Brunson and Tatum scoring over the last 10 games",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "player_comparison_total_points",
+      "core_fact_object": "PlayerGame",
+      "metrics": ["total_points"],
+      "filters": ["last_n_games:10"],
+      "notes": "Generalized player comparison using unique family-name aliases instead of fixed comparison ids."
+    },
+    {
+      "id": "slice13_compare_players_generalized_first_name_alias",
+      "slice_introduced": 13,
+      "question": "Compare Ja and Tatum scoring over the last 10 games",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "player_comparison_total_points",
+      "core_fact_object": "PlayerGame",
+      "metrics": ["total_points"],
+      "filters": ["last_n_games:10"],
+      "notes": "Generalized player comparison using a unique first-name alias plus a unique family-name alias."
+    },
+    {
+      "id": "slice13_compare_players_ambiguous_alias_rejection",
+      "slice_introduced": 13,
+      "question": "Compare Jalen and Tatum scoring over the last 10 games",
+      "status": "unsupported",
+      "query_kind": "metric_query",
+      "capability": "player_comparison_total_points",
+      "notes": "Ambiguous player alias should fail clearly rather than guess."
+    },
+    {
       "id": "slice2_three_player_rejection",
       "slice_introduced": 2,
       "question": "Compare Brunson, Haliburton, and Tatum scoring over the last 10 games",

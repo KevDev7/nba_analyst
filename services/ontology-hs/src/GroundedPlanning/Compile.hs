@@ -212,6 +212,7 @@ compileComparisonSql resolved =
   let
       ResolvedMetricQuery
         { comparisonEntities = resolvedComparisonEntities
+        , entityId = metricEntityId
         , partitionKey = metricPartitionKey
         , rowPath = metricRowPath
         , contextPath = metricContextPath
@@ -225,10 +226,11 @@ compileComparisonSql resolved =
       entityList =
         T.intercalate
           ", "
-          (map (\entityValue -> "'" <> entityColumnValue entityValue <> "'") resolvedComparisonEntities)
+          (map (\entityValue -> T.pack (show (entityPersonId entityValue))) resolvedComparisonEntities)
    in T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS player_id,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS player_name,"
         , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS team,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
@@ -241,16 +243,17 @@ compileComparisonSql resolved =
         ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
-          <> [ "  WHERE " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " IN (" <> entityList <> ")"
+          <> [ "  WHERE " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " IN (" <> entityList <> ")"
         , ")"
         , "SELECT"
+        , "  player_id,"
         , "  player_name,"
         , "  team,"
         , "  game_date,"
         , "  points"
         , "FROM recent_rows"
         , "WHERE game_rank <= " <> T.pack (show metricWindowGames)
-        , "ORDER BY player_name ASC, game_date DESC"
+        , "ORDER BY player_id ASC, game_date DESC"
         ]
 
 compileObjectSql :: ResolvedObjectQuery -> Text

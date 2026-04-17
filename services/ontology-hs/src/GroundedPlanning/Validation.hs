@@ -244,11 +244,11 @@ validateTrendDimensions ontology factObject dimensionValues =
       pure ()
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 
-ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [EntityName] -> Either Text ()
-ensureComparisonShape ontology factObject rowObject metricValues entities = do
+ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [PlayerRef] -> Either Text ()
+ensureComparisonShape ontology factObject rowObject metricValues playerRefs = do
   _ <- requirePath ontology (objectName factObject) (objectName rowObject)
   -- Temporary slice restriction. Comparison is still hard-capped to one
-  -- prototype path instead of being driven by a general entity reference model.
+  -- planner path even though entity references are now generalized players.
   if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
     then Left "Comparison currently supports the PlayerGame -> Player path only."
     else pure ()
@@ -257,8 +257,7 @@ ensureComparisonShape ontology factObject rowObject metricValues entities = do
   if metricValues /= [TotalPoints]
     then Left "Comparison currently supports total_points only."
     else pure ()
-  -- Temporary slice restriction inherited from the prototype EntityName enum.
-  if length entities /= 2
+  if length playerRefs /= 2
     then Left "Comparison requires exactly two supported entities."
     else pure ()
 

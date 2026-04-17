@@ -18,10 +18,17 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
+import duckdb
 import yaml
+
+try:
+    from .load_gold_snapshot import load_database
+except ImportError:  # pragma: no cover - direct script execution
+    from load_gold_snapshot import load_database
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +41,11 @@ EXECUTION_CONTRACT_PATH = (
 )
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 OUTPUT_PATH = ROOT / "fixtures" / "interpreter" / "semantic-capabilities.json"
+
+
+def _normalize_player_alias(value: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+    return re.sub(r"\s+", " ", cleaned)
 
 
 def _public_dimension_names(object_entry: dict) -> list[str]:
@@ -136,6 +148,77 @@ def _build_prompt_summary(families: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _build_player_entity_index() -> dict:
+    database_path = load_database()
+    with duckdb.connect(str(database_path), read_only=True) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+              person_id,
+              player_name,
+              first_name,
+              family_name,
+              display_name
+            FROM player
+            """
+        ).fetchall()
+
+    players: list[dict] = []
+    alias_candidates: dict[str, dict[int, dict]] = {}
+
+    for person_id, player_name, first_name, family_name, display_name in rows:
+        canonical_name = player_name or display_name
+        if not canonical_name:
+            continue
+
+        player_payload = {
+            "person_id": int(person_id),
+            "player_name": str(canonical_name),
+        }
+        players.append(player_payload)
+
+        alias_forms = {
+            str(canonical_name),
+            str(display_name) if display_name else "",
+            " ".join(part for part in [first_name, family_name] if part),
+        }
+        single_token_candidates = [
+            family_name,
+            first_name,
+        ]
+
+        for alias_value in alias_forms:
+            normalized_alias = _normalize_player_alias(alias_value)
+            if not normalized_alias:
+                continue
+            alias_candidates.setdefault(normalized_alias, {})[int(person_id)] = player_payload
+
+        for alias_value in single_token_candidates:
+            normalized_alias = _normalize_player_alias(alias_value or "")
+            if not normalized_alias:
+                continue
+            alias_candidates.setdefault(normalized_alias, {})[int(person_id)] = player_payload
+
+    alias_index: dict[str, dict] = {}
+    for alias_value, matches in sorted(alias_candidates.items()):
+        ordered_matches = sorted(matches.values(), key=lambda player: player["player_name"])
+        if len(ordered_matches) == 1:
+            alias_index[alias_value] = {
+                "status": "resolved",
+                "player": ordered_matches[0],
+            }
+        else:
+            alias_index[alias_value] = {
+                "status": "ambiguous",
+                "matches": ordered_matches,
+            }
+
+    return {
+        "players": sorted(players, key=lambda player: player["player_name"]),
+        "aliases": alias_index,
+    }
+
+
 def build_capability_artifact() -> dict:
     ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
     inventory = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
@@ -197,13 +280,8 @@ def build_capability_artifact() -> dict:
             )
 
         comparison_payload = dict(family["comparison"])
-        if comparison_payload["enabled"]:
-            # Temporary exception merge. Comparison entities still live outside
-            # planner-derived capability reasoning until the IR stops using the
-            # prototype hard-coded entity enum.
-            comparison_payload["entities"] = list(contract["comparison_entities"])
-            comparison_payload["max_entities"] = len(contract["comparison_entities"])
-        else:
+        if not comparison_payload["enabled"]:
+            comparison_payload["entity_type"] = None
             comparison_payload["max_entities"] = None
 
         family_payload = {
@@ -248,6 +326,7 @@ def build_capability_artifact() -> dict:
         }
     )
     top_level_query_kinds = sorted({family["query_kind"] for family in families})
+    player_entity_index = _build_player_entity_index()
 
     artifact = {
         "version": contract["version"],
@@ -255,8 +334,8 @@ def build_capability_artifact() -> dict:
         "allowed_filter_kinds": allowed_filter_kinds,
         "allowed_time_grains": allowed_time_grains,
         "allowed_assumptions": list(contract["allowed_assumptions"]),
-        "comparison_entities": list(contract["comparison_entities"]),
         "fact_objects": fact_objects,
+        "player_entity_index": player_entity_index,
         "families": families,
     }
     artifact["prompt_summary"] = _build_prompt_summary(families)

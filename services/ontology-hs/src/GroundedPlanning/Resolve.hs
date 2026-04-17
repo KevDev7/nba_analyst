@@ -28,8 +28,8 @@ import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
 data ResolvedEntity = ResolvedEntity
-  { entityName :: EntityName
-  , entityColumnValue :: Text
+  { entityPersonId :: Int
+  , entityName :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -320,13 +320,14 @@ resolveMetricFormula metricDef =
     , resultColumn = "metric_value"
     }
 
-resolveEntity :: EntityName -> ResolvedEntity
-resolveEntity entityValue =
-  -- Temporary slice-era mapping. Long term, entity resolution should come from
-  -- ontology-backed entity references instead of a fixed comparison enum.
-  case entityValue of
-    Brunson -> ResolvedEntity Brunson "Jalen Brunson"
-    Haliburton -> ResolvedEntity Haliburton "Tyrese Haliburton"
+resolveEntity :: PlayerRef -> ResolvedEntity
+resolveEntity playerRef =
+  -- Temporary direct passthrough. Slice 13 resolves player names in the
+  -- interpreter and passes structured player refs into Haskell.
+  ResolvedEntity
+    { entityPersonId = personId playerRef
+    , entityName = playerName playerRef
+    }
 
 resolveLinkedFilter :: Ontology -> Text -> LinkedFilter -> Either Text ResolvedLinkedFilter
 resolveLinkedFilter ontology factObjectName linkedFilterValue = do

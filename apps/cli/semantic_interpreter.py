@@ -67,6 +67,11 @@ class SemanticComparison(BaseModel):
     entities: list[str]
 
 
+class ResolvedPlayerRef(BaseModel):
+    personId: int
+    playerName: str
+
+
 class SemanticLinkedFilter(BaseModel):
     target_object: str
     attribute: str
@@ -144,6 +149,11 @@ def _filter_kinds(filters: list[SemanticFilter]) -> list[str]:
     return [filter_value.kind for filter_value in filters]
 
 
+def _normalize_player_alias(value: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+    return re.sub(r"\s+", " ", cleaned)
+
+
 def _comparison_matches(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
     comparison_capability = family["comparison"]
     if not comparison_capability["enabled"]:
@@ -155,9 +165,9 @@ def _comparison_matches(template: SemanticQueryTemplate, family: dict[str, Any])
     entities = template.comparison.entities
     if len(entities) != comparison_capability["max_entities"]:
         return False
-    if set(entities) != set(comparison_capability["entities"]):
+    if comparison_capability.get("entity_type") != "player":
         return False
-    if template.entity_filters != entities:
+    if template.entity_filters and set(template.entity_filters) != set(entities):
         return False
     if template.orders:
         return False
@@ -232,6 +242,49 @@ def _match_family(template: SemanticQueryTemplate) -> Optional[dict[str, Any]]:
     return None
 
 
+def _resolve_player_name(name: str) -> ResolvedPlayerRef:
+    alias_key = _normalize_player_alias(name)
+    alias_index = _capability_artifact()["player_entity_index"]["aliases"]
+    match = alias_index.get(alias_key)
+    if match is None:
+        raise SemanticInterpreterError(
+            f"Could not resolve player name '{name}' for comparison."
+        )
+    if match["status"] == "ambiguous":
+        candidate_names = ", ".join(
+            player["player_name"] for player in match["matches"][:5]
+        )
+        raise SemanticInterpreterError(
+            f"Player name '{name}' is ambiguous for comparison. Matches: {candidate_names}."
+        )
+    player = match["player"]
+    return ResolvedPlayerRef(personId=int(player["person_id"]), playerName=player["player_name"])
+
+
+def _resolved_comparison_entities(
+    template: SemanticQueryTemplate,
+) -> tuple[list[ResolvedPlayerRef], Optional[dict[str, Any]]]:
+    if template.comparison is None:
+        return [], None
+
+    comparison_names = template.comparison.entities
+    if template.entity_filters and set(template.entity_filters) != set(comparison_names):
+        raise SemanticInterpreterError(
+            "Comparison entity_filters must match comparison.entities when provided."
+        )
+
+    resolved_players = [_resolve_player_name(name) for name in comparison_names]
+    unique_ids = {player.personId for player in resolved_players}
+    if len(unique_ids) != len(resolved_players):
+        raise SemanticInterpreterError("Comparison requires two distinct resolved players.")
+
+    comparison_payload = {
+        "kind": "compare_entities",
+        "entities": [player.model_dump() for player in resolved_players],
+    }
+    return resolved_players, comparison_payload
+
+
 @lru_cache(maxsize=1)
 def _capability_prompt_summary() -> str:
     artifact = _capability_artifact()
@@ -264,6 +317,7 @@ Rules:
 - Use only the live ontology-backed vocabulary and supported query families described below.
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
 - When the user does not explicitly request a limit, use null for limit.
+- For player comparisons, keep the compared entities as player names from the question; the system resolves those names after you return JSON.
 - The next line is a temporary ambiguity nudge, not ideal long-term semantic reasoning.
 - When a past-year monthly trend question does not explicitly mention players or teams, prefer the broad team-level aggregate path on TeamGame.
 - If the question cannot be represented safely by the current live contract, return:
@@ -294,8 +348,8 @@ JSON template for supported queries:
       {{"kind":"desc","metric":"<selected metric>"}}
     ],
     "limit": 10 | 5 | 1 | null,
-    "entity_filters": ["<supported comparison entity ids>"],
-    "comparison": {{"kind":"compare_entities","entities":["<supported comparison entity ids>"]}} | null,
+    "entity_filters": ["<player names from the question when comparing>"],
+    "comparison": {{"kind":"compare_entities","entities":["<player names from the question>"]}} | null,
     "assumptions": ["..."]
   }}
 }}
@@ -317,7 +371,10 @@ Q: Who are the top 10 scorers over the last 10 games?
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":10,"entity_filters":[],"comparison":null,"assumptions":["Interpreted 'scorers' as players ranked by total points."]}}}}
 
 Q: Compare Brunson and Haliburton pts over the last 10 games
-A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":["jalen_brunson","tyrese_haliburton"],"comparison":{{"kind":"compare_entities","entities":["jalen_brunson","tyrese_haliburton"]}},"assumptions":["Interpreted 'pts' as total points."]}}}}
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":["Brunson","Haliburton"],"comparison":{{"kind":"compare_entities","entities":["Brunson","Haliburton"]}},"assumptions":["Interpreted 'pts' as total points."]}}}}
+
+Q: Compare Ja and Tatum scoring over the last 10 games
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":["Ja","Tatum"],"comparison":{{"kind":"compare_entities","entities":["Ja","Tatum"]}},"assumptions":["Interpreted 'scoring' as total points."]}}}}
 
 Q: Show me players and their total points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
@@ -427,7 +484,11 @@ def _parse_interpreter_response(raw_text: str) -> Union[InterpreterSupported, In
     raise SemanticInterpreterError("Gemini response must include status 'ok' or 'unsupported'.")
 
 
-def _normalize_to_haskell_query(template: SemanticQueryTemplate) -> dict[str, Any]:
+def _normalize_to_haskell_query(
+    template: SemanticQueryTemplate,
+    resolved_entities: list[ResolvedPlayerRef],
+    resolved_comparison: Optional[dict[str, Any]],
+) -> dict[str, Any]:
     matched_family = _match_family(template)
     normalized_orders = (
         [SemanticOrder(kind="desc", metric=template.metrics[0])]
@@ -459,8 +520,8 @@ def _normalize_to_haskell_query(template: SemanticQueryTemplate) -> dict[str, An
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": shared_query,
-                "entityFilters": template.entity_filters,
-                "comparison": template.comparison.model_dump() if template.comparison else None,
+                "entityFilters": [entity.model_dump() for entity in resolved_entities],
+                "comparison": resolved_comparison,
             },
         }
 
@@ -499,6 +560,35 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
     return normalized
 
 
+def _normalize_temporary_fact_object_preference(
+    template: SemanticQueryTemplate,
+) -> SemanticQueryTemplate:
+    # Temporary semantic-grain normalization. Planner-derived capabilities still
+    # expose both PlayerGame and PlayerSeasonTeam families for some explicit
+    # season-scoped, team-filtered player average-points questions, and Gemini
+    # can occasionally pick the game-grain shape that yields obviously wrong
+    # row-level output. Long term this preference should come from richer query
+    # semantics or planner capability reasoning, not a handwritten override.
+    filter_kinds = set(_filter_kinds(template.filters))
+    should_prefer_player_season_team = (
+        template.query_kind == "metric_query"
+        and template.core_fact_object == "PlayerGame"
+        and template.metrics == ["average_points"]
+        and template.dimensions == ["player_name"]
+        and filter_kinds == {"exact_season", "season_type"}
+        and len(template.linked_filters) == 1
+        and template.linked_filters[0].target_object == "Team"
+        and template.linked_filters[0].attribute == "team_name"
+        and not template.entity_filters
+        and template.comparison is None
+    )
+    if not should_prefer_player_season_team:
+        return template
+
+    preferred = template.model_copy(update={"core_fact_object": "PlayerSeasonTeam"})
+    return preferred if _match_family(preferred) is not None else template
+
+
 @lru_cache(maxsize=256)
 def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     prompt = (
@@ -510,6 +600,7 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     interpreted = _parse_interpreter_response(raw_text)
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
+    interpreted.query = _normalize_temporary_fact_object_preference(interpreted.query)
     interpreted.query.assumptions = _normalize_assumptions(
         question, interpreted.query.assumptions
     )
@@ -521,4 +612,9 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
             "Gemini returned unsupported assumptions: "
             + ", ".join(sorted(unexpected_assumptions))
         )
-    return _normalize_to_haskell_query(interpreted.query)
+    resolved_entities, resolved_comparison = _resolved_comparison_entities(
+        interpreted.query
+    )
+    return _normalize_to_haskell_query(
+        interpreted.query, resolved_entities, resolved_comparison
+    )

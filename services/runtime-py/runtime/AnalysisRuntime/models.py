@@ -56,6 +56,7 @@ class ObjectRow(BaseModel):
 
 
 class ComparisonRow(BaseModel):
+    player_id: int
     player_name: str
     team: str
     game_date: str
@@ -63,6 +64,7 @@ class ComparisonRow(BaseModel):
 
 
 class PlayerComparisonStats(BaseModel):
+    player_id: int
     player_name: str
     team: str
     total_points: int

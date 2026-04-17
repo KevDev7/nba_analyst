@@ -21,24 +21,27 @@ import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-data EntityName
-  -- Temporary slice-era enum. Long term this should become an ontology-backed
-  -- entity reference or unresolved candidate model instead of hard-coding two
-  -- supported comparison people in the core IR.
-  = Brunson
-  | Haliburton
+data PlayerRef = PlayerRef
+  -- Temporary structured comparison ref. This is intentionally narrower than a
+  -- full ontology-backed entity reference model, but it removes the fixed
+  -- player-id enum and keeps comparison generic over resolved players.
+  { personId :: Int
+  , playerName :: Text
+  }
   deriving (Show, Eq, Generic)
 
-instance ToJSON EntityName where
-  toJSON Brunson = String "jalen_brunson"
-  toJSON Haliburton = String "tyrese_haliburton"
+instance ToJSON PlayerRef where
+  toJSON playerRef =
+    object
+      [ "personId" .= personId playerRef
+      , "playerName" .= playerName playerRef
+      ]
 
-instance FromJSON EntityName where
-  parseJSON = withText "EntityName" $ \value ->
-    case value of
-      "jalen_brunson" -> pure Brunson
-      "tyrese_haliburton" -> pure Haliburton
-      _ -> fail ("Unknown entity: " <> show value)
+instance FromJSON PlayerRef where
+  parseJSON = withObject "PlayerRef" $ \obj ->
+    PlayerRef
+      <$> obj .: "personId"
+      <*> obj .: "playerName"
 
 data MetricName
   = TotalPoints
@@ -169,7 +172,7 @@ data BaseQuery = BaseQuery
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data ComparisonIntent
-  = CompareEntities [EntityName]
+  = CompareEntities [PlayerRef]
   deriving (Show, Eq, Generic)
 
 instance ToJSON ComparisonIntent where
@@ -191,7 +194,7 @@ data ObjectQuerySpec = ObjectQuerySpec
 
 data MetricQuerySpec = MetricQuerySpec
   { sharedQuery :: BaseQuery
-  , entityFilters :: [EntityName]
+  , entityFilters :: [PlayerRef]
   , comparison :: Maybe ComparisonIntent
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)

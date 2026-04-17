@@ -8,10 +8,6 @@
 
 version: 1
 
-comparison_entities:
-  - jalen_brunson
-  - tyrese_haliburton
-
 allowed_assumptions:
   - "Interpreted 'pts' as total points."
   - "Interpreted 'scoring' as total points."

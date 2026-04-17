@@ -45,6 +45,7 @@ data LinkedFilterCapability = LinkedFilterCapability
 
 data DerivedComparison = DerivedComparison
   { enabled :: Bool
+  , entity_type :: Maybe Text
   , max_entities :: Maybe Int
   }
   deriving (Show, Eq, Ord, Generic, ToJSON)
@@ -229,12 +230,23 @@ linkedFilterCandidates =
   , [QI.LinkedFilter "Team" "team_name" "Lakers"]
   ]
 
-comparisonCandidates :: [([QI.EntityName], Maybe QI.ComparisonIntent)]
+comparisonCandidates :: [([QI.PlayerRef], Maybe QI.ComparisonIntent)]
 comparisonCandidates =
-  -- Temporary derivation seed set inherited from the prototype comparison enum.
-  -- This should disappear once comparison entities are no longer hard-coded.
+  -- Temporary derivation seed set. Slice 13 proves generalized player refs, but
+  -- capability derivation still probes one structural two-player comparison
+  -- shape rather than a fully generative comparison space.
   [ ([], Nothing)
-  , ([QI.Brunson, QI.Haliburton], Just (QI.CompareEntities [QI.Brunson, QI.Haliburton]))
+  ,
+      ( [ QI.PlayerRef 1 "Comparison Player A"
+        , QI.PlayerRef 2 "Comparison Player B"
+        ]
+      , Just
+          ( QI.CompareEntities
+              [ QI.PlayerRef 1 "Comparison Player A"
+              , QI.PlayerRef 2 "Comparison Player B"
+              ]
+          )
+      )
   ]
 
 metricOrderCandidates :: QI.MetricName -> Maybe QI.ComparisonIntent -> [[QI.Order]]
@@ -312,8 +324,8 @@ familySignatureFromMetric spec@QI.MetricQuerySpec {QI.sharedQuery = base} =
     , sig_comparison =
         case QI.comparison spec of
           Just (QI.CompareEntities entities) ->
-            DerivedComparison True (Just (length entities))
-          Nothing -> DerivedComparison False Nothing
+            DerivedComparison True (Just "player") (Just (length entities))
+          Nothing -> DerivedComparison False Nothing Nothing
     }
 
 familySignatureFromObject :: QI.ObjectQuerySpec -> FamilySignature
@@ -326,7 +338,7 @@ familySignatureFromObject spec@QI.ObjectQuerySpec {QI.sharedQuery = base} =
     , sig_required_filter_kinds = sort (map filterKindText (QI.filters base))
     , sig_time_grain = fmap timeGrainText (QI.timeGrain base)
     , sig_linked_filters = linkedFilterCapabilities (QI.linkedFilters base)
-    , sig_comparison = DerivedComparison False Nothing
+    , sig_comparison = DerivedComparison False Nothing Nothing
     }
 
 linkedFilterCapabilities :: [QI.LinkedFilter] -> [LinkedFilterCapability]

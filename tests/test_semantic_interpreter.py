@@ -56,6 +56,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("planner-derived", contract)
         self.assertNotIn("\nfamilies:", contract)
+        self.assertNotIn("comparison_entities", contract)
 
     def test_derived_family_for_knicks_object_query_now_allows_limit(self) -> None:
         artifact = _capability_artifact()
@@ -75,6 +76,18 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
         self.assertTrue(any(family["allow_limit"] for family in matching))
+
+    def test_player_entity_index_is_generated_from_snapshot(self) -> None:
+        artifact = _capability_artifact()
+        player_index = artifact["player_entity_index"]
+
+        self.assertIn("players", player_index)
+        self.assertIn("aliases", player_index)
+        self.assertIn("brunson", player_index["aliases"])
+        self.assertEqual(
+            player_index["aliases"]["brunson"]["player"]["player_name"], "Jalen Brunson"
+        )
+        self.assertEqual(player_index["aliases"]["jalen"]["status"], "ambiguous")
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_valid_metric_query_template_normalizes_to_haskell_query_json(
@@ -223,6 +236,130 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(payload["spec"]["sharedQuery"]["assumptions"], [])
         self.assertEqual(payload["spec"]["entityFilters"], [])
         self.assertIsNone(payload["spec"]["comparison"])
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_comparison_names_normalize_into_structured_player_refs(
+        self, mock_call_gemini
+    ) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "metric_query",
+            "core_fact_object": "PlayerGame",
+            "metrics": ["total_points"],
+            "dimensions": ["player_name"],
+            "filters": [{"kind": "last_n_games", "value": 10}],
+            "entity_filters": ["Brunson", "Tatum"],
+            "comparison": {
+              "kind": "compare_entities",
+              "entities": ["Brunson", "Tatum"]
+            },
+            "assumptions": ["Interpreted 'scoring' as total points."]
+          }
+        }
+        """
+
+        payload = interpret_question_to_planner_query(
+            "Compare Brunson and Tatum scoring over the last 10 games"
+        )
+
+        self.assertEqual(payload["kind"], "metric_query")
+        self.assertEqual(len(payload["spec"]["entityFilters"]), 2)
+        self.assertEqual(payload["spec"]["entityFilters"][0]["playerName"], "Jalen Brunson")
+        self.assertEqual(payload["spec"]["entityFilters"][1]["playerName"], "Jayson Tatum")
+        self.assertEqual(
+            payload["spec"]["comparison"]["entities"][0]["playerName"], "Jalen Brunson"
+        )
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_ambiguous_player_alias_fails_clearly(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "metric_query",
+            "core_fact_object": "PlayerGame",
+            "metrics": ["total_points"],
+            "dimensions": ["player_name"],
+            "filters": [{"kind": "last_n_games", "value": 10}],
+            "entity_filters": ["Jalen", "Tatum"],
+            "comparison": {
+              "kind": "compare_entities",
+              "entities": ["Jalen", "Tatum"]
+            },
+            "assumptions": ["Interpreted 'scoring' as total points."]
+          }
+        }
+        """
+
+        with self.assertRaises(SemanticInterpreterError) as context:
+            interpret_question_to_planner_query(
+                "Compare Jalen and Tatum scoring over the last 10 games"
+            )
+
+        self.assertIn("ambiguous", str(context.exception))
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_unknown_player_alias_fails_clearly(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "metric_query",
+            "core_fact_object": "PlayerGame",
+            "metrics": ["total_points"],
+            "dimensions": ["player_name"],
+            "filters": [{"kind": "last_n_games", "value": 10}],
+            "entity_filters": ["Jokic", "Tatum"],
+            "comparison": {
+              "kind": "compare_entities",
+              "entities": ["Jokic", "Tatum"]
+            },
+            "assumptions": ["Interpreted 'scoring' as total points."]
+          }
+        }
+        """
+
+        with self.assertRaises(SemanticInterpreterError) as context:
+            interpret_question_to_planner_query(
+                "Compare Jokic and Tatum scoring over the last 10 games"
+            )
+
+        self.assertIn("Could not resolve player name", str(context.exception))
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_explicit_season_team_player_average_query_prefers_season_grain(
+        self, mock_call_gemini
+    ) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "metric_query",
+            "core_fact_object": "PlayerGame",
+            "metrics": ["average_points"],
+            "dimensions": ["player_name"],
+            "filters": [
+              {"kind": "exact_season", "value": "2025-26"},
+              {"kind": "season_type", "value": "regular_season"}
+            ],
+            "linked_filters": [
+              {"target_object": "Team", "attribute": "team_name", "value": "Lakers"}
+            ],
+            "orders": [{"kind": "desc", "metric": "average_points"}],
+            "assumptions": []
+          }
+        }
+        """
+
+        payload = interpret_question_to_planner_query(
+            "Show me players by average points for the Lakers in the 2025-26 regular season"
+        )
+
+        self.assertEqual(
+            payload["spec"]["sharedQuery"]["coreFactObject"], "PlayerSeasonTeam"
+        )
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_linked_team_filter_normalizes_into_haskell_query_json(

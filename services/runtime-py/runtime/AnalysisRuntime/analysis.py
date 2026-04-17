@@ -25,20 +25,22 @@ def run_analysis(analysis_spec: str, runtime_state: object) -> object:
     raw_rows = runtime_state.latest_result or []
     grouped = defaultdict(list)
     for row in raw_rows:
-        grouped[row["player_name"]].append(row)
+        grouped[int(row["player_id"])].append(row)
 
     if len(grouped) != 2:
         raise ValueError("ComparePlayers expects exactly two players in runtime state.")
 
     stats = []
     comparison_rows = []
-    for player_name, rows in sorted(grouped.items()):
+    for player_id, rows in sorted(grouped.items()):
+        player_name = str(rows[0]["player_name"]) if rows else ""
         total_points = sum(int(row["points"]) for row in rows)
         games_count = len(rows)
         average_points = total_points / games_count if games_count else 0.0
         team = str(rows[0]["team"]) if rows else ""
         stats.append(
             PlayerComparisonStats(
+                player_id=player_id,
                 player_name=player_name,
                 team=team,
                 total_points=total_points,
@@ -48,6 +50,7 @@ def run_analysis(analysis_spec: str, runtime_state: object) -> object:
         )
         comparison_rows.extend(
             ComparisonRow(
+                player_id=int(row["player_id"]),
                 player_name=str(row["player_name"]),
                 team=str(row["team"]),
                 game_date=str(row["game_date"]),
