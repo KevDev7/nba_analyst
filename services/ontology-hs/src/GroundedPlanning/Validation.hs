@@ -15,6 +15,7 @@
 
 module GroundedPlanning.Validation where
 
+import Data.List (nub)
 import Data.Text (Text)
 import OntologyLayer.Graph (DiscoveredPath, findAttribute, findMetric, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
@@ -45,19 +46,17 @@ validateMetricQuery ontology metricQuery = do
   metricDef <- requireSelectedMetric factObject (metrics base)
   validateMetricAttributes metricDef
   case comparison metricQuery of
-    Just _ | not (null (linkedFilters base)) ->
-      Left "Comparison queries currently do not support linked filters."
-    _ -> pure ()
-  case timeGrain base of
-    Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
-    Nothing -> do
+    Just (CompareEntities entities) -> do
       rowObject <- requireMetricRowObject ontology factObject (dimensions base)
-      filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
-      validateOrdinaryLinkedFilters ontology MetricLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
-      validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
-      case comparison metricQuery of
-        Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
-        Nothing -> pure ()
+      validateComparisonQuery ontology factObject rowObject base entities
+    Nothing ->
+      case timeGrain base of
+        Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
+        Nothing -> do
+          filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
+          validateOrdinaryLinkedFilters ontology MetricLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
+          validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
+          pure ()
 
 validateObjectQuery :: Ontology -> ObjectQuerySpec -> Either Text ()
 validateObjectQuery ontology objectQuery = do
@@ -262,21 +261,52 @@ validateTrendDimensions ontology factObject dimensionValues =
       pure ()
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 
-ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [PlayerRef] -> Either Text ()
-ensureComparisonShape ontology factObject rowObject metricValues playerRefs = do
+validateComparisonQuery :: Ontology -> Object -> Object -> BaseQuery -> [PlayerRef] -> Either Text ()
+validateComparisonQuery ontology factObject rowObject base playerRefs = do
+  validateComparisonQueryShape base
+  validateComparisonPath ontology factObject rowObject
+  validateComparisonMetric (metrics base)
+  validateComparisonEntities playerRefs
+
+validateComparisonQueryShape :: BaseQuery -> Either Text ()
+validateComparisonQueryShape base = do
+  if null (linkedFilters base)
+    then pure ()
+    else Left "Comparison queries currently do not support linked filters."
+  if null (orders base)
+    then pure ()
+    else Left "Comparison queries should not request ranking order."
+  case timeGrain base of
+    Nothing -> pure ()
+    Just _ -> Left "Comparison queries currently do not support time-grain trends."
+  case filters base of
+    [LastNGames gamesValue] | gamesValue > 0 -> pure ()
+    _ -> Left "Comparison queries currently require a positive LastNGames filter."
+  case dimensions base of
+    [PlayerName] -> pure ()
+    _ -> Left "Comparison queries currently require the player_name dimension."
+
+validateComparisonPath :: Ontology -> Object -> Object -> Either Text ()
+validateComparisonPath ontology factObject rowObject = do
   _ <- requirePath ontology (objectName factObject) (objectName rowObject)
   -- Temporary slice restriction. Comparison is still hard-capped to one
   -- planner path even though entity references are now generalized players.
   if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
     then Left "Comparison currently supports the PlayerGame -> Player path only."
     else pure ()
-  -- Temporary slice restriction. This should broaden once comparison planning
-  -- can reason over governed metrics more generally.
+
+-- Temporary slice restriction. This should broaden once comparison planning
+-- can reason over governed metrics more generally.
+validateComparisonMetric :: [MetricName] -> Either Text ()
+validateComparisonMetric metricValues =
   if metricValues /= [TotalPoints]
     then Left "Comparison currently supports total_points only."
     else pure ()
-  if length playerRefs /= 2
-    then Left "Comparison requires exactly two supported entities."
+
+validateComparisonEntities :: [PlayerRef] -> Either Text ()
+validateComparisonEntities playerRefs =
+  if length playerRefs /= 2 || length (nub (map personId playerRefs)) /= 2
+    then Left "Comparison requires exactly two distinct supported entities."
     else pure ()
 
 validateLinkedFilters :: Ontology -> Text -> [LinkedFilter] -> Either Text ()

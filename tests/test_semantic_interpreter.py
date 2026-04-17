@@ -162,6 +162,40 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
 
+    def test_recent_player_name_total_points_comparison_family_remains_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["comparison"]["enabled"]
+            and family["core_fact_object"] == "PlayerGame"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["last_n_games"]
+            and family["metrics"] == ["total_points"]
+        ]
+
+        self.assertTrue(matching)
+
+    def test_misleading_monthly_comparison_families_are_not_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["comparison"]["enabled"] and family["time_grain"] == "month"
+        ]
+
+        self.assertEqual(matching, [])
+
+    def test_misleading_non_player_name_comparison_families_are_not_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["comparison"]["enabled"] and family["dimensions"] != ["player_name"]
+        ]
+
+        self.assertEqual(matching, [])
+
     def test_player_entity_index_is_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()
         player_index = artifact["player_entity_index"]
