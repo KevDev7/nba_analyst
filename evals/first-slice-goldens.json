@@ -1,0 +1,17 @@
+{
+  "canonical_question": "Show me the top 10 players by points over the last 10 games",
+  "expected_order": [
+    "Jalen Brunson",
+    "Tyrese Haliburton",
+    "Anthony Edwards",
+    "Jayson Tatum",
+    "De'Aaron Fox"
+  ],
+  "expected_totals": {
+    "Jalen Brunson": 303,
+    "Tyrese Haliburton": 276,
+    "Anthony Edwards": 270,
+    "Jayson Tatum": 259,
+    "De'Aaron Fox": 240
+  }
+}

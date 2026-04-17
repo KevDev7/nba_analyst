@@ -1,0 +1,29 @@
+cabal-version:      2.4
+name:               ontology-hs
+version:            0.1.0.0
+build-type:         Simple
+
+executable ontology-hs
+  main-is:          Main.hs
+  hs-source-dirs:   app, src
+  default-language: GHC2024
+  ghc-options:      -Wall
+  other-modules:
+      GroundedPlanning.Compile
+    , GroundedPlanning.Plan
+    , GroundedPlanning.Resolve
+    , GroundedPlanning.Validation
+    , OntologyLayer.Graph
+    , OntologyLayer.Load
+    , OntologyLayer.Types
+    , QueryModel.Build
+    , QueryModel.Classify
+    , QueryModel.IR
+    , QueryModel.Interpret
+    , QueryModel.Match
+  build-depends:
+      base >= 4.20 && < 5
+    , aeson
+    , bytestring
+    , text
+    , yaml

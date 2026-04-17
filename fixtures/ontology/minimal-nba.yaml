@@ -1,0 +1,78 @@
+objects:
+  - name: Player
+    backing_table: player
+    description: One player entity from the gold snapshot.
+    attributes:
+      - name: person_id
+        kind: primary_key
+        source_column: person_id
+      - name: player_name
+        kind: dimension
+        source_column: player_name
+      - name: display_name
+        kind: dimension
+        source_column: display_name
+      - name: primary_position
+        kind: dimension
+        source_column: primary_position
+    metrics: []
+  - name: PlayerGame
+    backing_table: player_game
+    description: One player in one regular-season game from the gold snapshot.
+    attributes:
+      - name: player_game_id
+        kind: primary_key
+        source_column: player_game_id
+      - name: person_id
+        kind: dimension
+        source_column: person_id
+      - name: team
+        kind: dimension
+        source_column: team
+      - name: game_date
+        kind: dimension
+        source_column: game_date
+      - name: season_year
+        kind: dimension
+        source_column: season_year
+      - name: season_type
+        kind: dimension
+        source_column: season_type
+      - name: points
+        kind: measure
+        source_column: points
+      - name: minutes_played_decimal
+        kind: measure
+        source_column: minutes_played_decimal
+    metrics:
+      - name: total_points
+        aggregation: sum
+        source_attributes:
+          - points
+        expression: SUM(points)
+        executable: true
+      - name: average_points
+        aggregation: avg
+        source_attributes:
+          - points
+        expression: AVG(points)
+        executable: true
+      - name: games_played
+        aggregation: count
+        source_attributes:
+          - player_game_id
+        expression: COUNT(*)
+        executable: false
+      - name: points_per_36
+        aggregation: ratio
+        source_attributes:
+          - points
+          - minutes_played_decimal
+        expression: 36 * SUM(points) / NULLIF(SUM(minutes_played_decimal), 0)
+        executable: false
+links:
+  - source_object: PlayerGame
+    target_object: Player
+    relation_type: many_to_one
+    source_key: person_id
+    target_key: person_id

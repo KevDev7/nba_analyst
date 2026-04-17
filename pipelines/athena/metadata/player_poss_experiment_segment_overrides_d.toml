@@ -1,0 +1,127 @@
+name = "segment-overrides-d"
+
+[[segment_overrides]]
+game_id = "0052400111"
+segment_index = 63
+mode = "event"
+note = "Drop Huerter and Collins from CHI timeout/sub swap before first shot."
+
+[[segment_overrides]]
+game_id = "0052400111"
+segment_index = 190
+mode = "any_overlap"
+note = "Credit Miami late FT/rebound segment to Jaquez and Keshad."
+
+[[segment_overrides]]
+game_id = "0052400111"
+segment_index = 73
+mode = "any_overlap"
+note = "Credit Coby and Patrick on CHI possession after defensive team rebound and admin subs."
+
+[[segment_overrides]]
+game_id = "0052400111"
+segment_index = 77
+mode = "event"
+note = "Do not credit Talen Horton-Tucker after he exits before the shot."
+
+[[segment_overrides]]
+game_id = "0052400111"
+segment_index = 173
+mode = "event"
+note = "Do not credit Kevin Huerter after he exits before the shot."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 173
+mode = "any_overlap"
+note = "Credit late GSW timeout/sub segment to Podziemski and Draymond."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 132
+mode = "any_overlap"
+note = "Credit Luke Kennard on admin-only MEM segment after multiple subs."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 161
+mode = "prior_or_event"
+note = "Carry Quinten Post through a no-change admin segment before GSW live action."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 81
+mode = "any_overlap"
+note = "Credit Podziemski on continuation-FT segment after entering before the second free throw."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 139
+mode = "any_overlap"
+note = "Credit Jimmy Butler on continuation-FT segment after entering before the second free throw."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 91
+mode = "any_overlap"
+note = "Credit Quinten Post after entering during a live-ball FT possession."
+
+[[segment_overrides]]
+game_id = "0052400121"
+segment_index = 141
+mode = "any_overlap"
+note = "Credit Podziemski on late Q3 offensive rebound and foul sequence."
+
+[[segment_overrides]]
+game_id = "0052400101"
+segment_index = 112
+mode = "event"
+note = "Do not credit both Isaac and Carter on ORL swap segment."
+
+[[segment_overrides]]
+game_id = "0052400101"
+segment_index = 138
+mode = "event"
+note = "Do not double-credit Isaac and Carter on quarter-break ORL swap segment."
+
+[[segment_overrides]]
+game_id = "0052400101"
+segment_index = 150
+mode = "start"
+note = "Do not credit Paolo after he enters post-foul and before Cole Anthony's make."
+
+[[segment_overrides]]
+game_id = "0052400131"
+segment_index = 182
+mode = "any_overlap"
+note = "Credit DAL late timeout/sub bench segment to Dwight Powell and Jaden Hardy."
+
+[[segment_overrides]]
+game_id = "0052400131"
+segment_index = 155
+mode = "any_overlap"
+note = "Credit Doug McDermott after late substitution into SAC offensive possession."
+
+[[segment_overrides]]
+game_id = "0022401191"
+segment_index = 201
+mode = "any_overlap"
+note = "Credit Isaiah Mobley after entering before the live turnover event."
+
+[[segment_overrides]]
+game_id = "0042400155"
+segment_index = 163
+mode = "event"
+note = "Do not credit Jock Landale after he exits during the timeout/sub-out sequence."
+
+[[segment_overrides]]
+game_id = "0042400173"
+segment_index = 160
+mode = "any_overlap"
+note = "Credit Patty Mills after entering during the late Clippers garbage-time possession."
+
+[[segment_overrides]]
+game_id = "0042400121"
+segment_index = 50
+mode = "none"
+note = "Do not credit Stewart on quarter-break admin-only carryover segment with no live offensive event."

@@ -1,0 +1,26 @@
+[
+  {
+    "question": "Show me the top 10 players by points over the last 10 games",
+    "supported": true
+  },
+  {
+    "question": "Who are the top 10 scorers over the last 10 games?",
+    "supported": true
+  },
+  {
+    "question": "Show me the top 10 players by pts over the last 10 games",
+    "supported": true
+  },
+  {
+    "question": "Show me the top 5 players by points over the last 10 games",
+    "supported": true
+  },
+  {
+    "question": "Compare Brunson and Haliburton scoring over the last 10 games",
+    "supported": true
+  },
+  {
+    "question": "Show me players and their total points over the last 10 games",
+    "supported": true
+  }
+]

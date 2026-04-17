@@ -1,0 +1,9 @@
+game_id,game_date,season_year,season_type,home_team_tricode,away_team_tricode,phase0_reason
+0012000001,2020-12-11,2020-21,preseason,ATL,ORL,preseason_coverage_anchor
+0022000100,2021-01-04,2020-21,regular_season,NOP,IND,early_regular_season_anchor
+0042100213,2022-05-07,2021-22,playoffs,MIL,BOS,playoff_semantics_anchor
+0052200121,2023-04-11,2022-23,play_in,LAL,MIN,play_in_semantics_anchor
+0042300113,2024-04-25,2023-24,playoffs,PHI,NYK,recent_playoff_anchor
+0062400001,2024-12-17,2024-25,nba_cup_final,OKC,MIL,special_season_type_anchor
+0052400131,2025-04-16,2024-25,play_in,SAC,DAL,recent_play_in_anchor
+0022400617,2025-04-06,2024-25,regular_season,NOP,MIL,recent_regular_season_anchor

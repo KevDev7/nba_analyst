@@ -1,0 +1,152 @@
+# Future Gold Column Candidates
+
+This note captures high-signal columns and surfaces observed in the current silver layer that could be promoted into the gold layer in a future pass.
+
+Date of review: April 7, 2026
+
+Scope:
+- This is intentionally a shortlist, not a full silver-to-gold diff.
+- The goal is to capture additions that look genuinely useful for product/querying.
+- If a concept really wants its own table at a new grain, it is noted separately rather than forced into an existing gold table.
+
+## Shortlist
+
+### 1. Player-game advanced context
+
+Why it stands out:
+- We already have strong player-season advanced surfaces in gold.
+- We do not yet have an equivalent player-game advanced surface.
+- The silver inputs are already canonical and provenance-aware.
+
+Recommended source tables:
+- `silver/player_game_possession_context`
+- `silver/player_game_defensive_shot_context`
+
+Best candidate columns:
+- `offensive_possessions`
+- `defensive_possessions`
+- `possessions_total`
+- `team_points_for_while_on_court`
+- `team_points_against_while_on_court`
+- `opponent_two_point_attempts_while_on_court`
+- `possession_source_method`
+- `shot_context_source_method`
+
+Likely gold target:
+- new table or view at player-game grain
+- likely better as a new player-game advanced surface than as extra columns directly on `fct_player_game`
+
+Why this is valuable:
+- enables game-level advanced player queries without forcing the app to reconstruct season math backwards
+- aligns well with the existing player-season advanced philosophy
+
+### 2. Additional team-game context metrics
+
+Why it stands out:
+- These are official game-summary fields already present at the same grain as `fct_team_game`.
+- They are clean additions and do not require a new grain.
+
+Recommended source table:
+- `silver/boxscore_team_game`
+
+Best candidate columns for `fct_team_game`:
+- `leadChanges`
+- `timesTied`
+- `biggestLead`
+- `biggestScoringRun`
+- `fieldGoalsEffectiveAdjusted`
+- `assistsTurnoverRatio`
+- `reboundsTeam`
+- `reboundsTeamOffensive`
+- `reboundsTeamDefensive`
+
+Suggested gold names:
+- `lead_changes`
+- `times_tied`
+- `biggest_lead`
+- `biggest_scoring_run`
+- `field_goals_effective_adjusted`
+- `assists_turnover_ratio`
+- `rebounds_team`
+- `rebounds_team_offensive`
+- `rebounds_team_defensive`
+
+Why this is valuable:
+- improves direct team-game querying
+- gives cleaner inputs for future team-game or team-season derived metrics
+
+### 3. Structured birthplace fields for players
+
+Why it stands out:
+- Gold currently exposes raw birthplace text, which is useful but not query-friendly.
+- Structured birthplace columns would make player-profile questions easier for SQL and for the app layer.
+
+Current gold state:
+- `extended_player_dim.bbr_birth_place_raw`
+- `extended_player_dim.bbr_birth_country_code`
+
+Potential future columns:
+- `birth_city`
+- `birth_state_region`
+- `birth_country`
+
+Likely gold target:
+- `extended_player_dim`
+
+Why this is valuable:
+- improves filtering and grouping for player origin questions
+- avoids repeated string parsing in app-side or query-time logic
+
+## Worth Considering Later, But Not Simple Column Promotions
+
+These are promising concepts, but they likely want their own gold surfaces rather than extra columns on an existing table.
+
+### `silver/boxscore_game_official`
+
+Why not a simple column promotion:
+- the grain is `(gameId, personId)` for officials
+- that does not fit existing supported gold tables cleanly
+
+Likely future shape:
+- a new `fct_game_official` style gold table
+
+### `silver/boxscore_team_period`
+
+Why not a simple column promotion:
+- period grain does not fit `fct_team_game`
+
+Likely future shape:
+- a new team-period gold fact
+
+### `silver/player_movement`
+
+Why not a simple column promotion:
+- transaction grain is very different from the current game/season gold surfaces
+
+Likely future shape:
+- a separate player transaction / movement gold surface
+
+## Not Recommended For Simple Promotion
+
+### Raw event and projection detail from play-by-play
+
+Examples:
+- raw `description`
+- raw `qualifiers`
+- event linkage fields
+- many event-family booleans from `silver/playbyplay` or `silver/event_projection_v2`
+
+Why not recommended:
+- these are event-grain concepts
+- adding them to current game- or season-grain gold tables would be awkward and misleading
+
+If we ever expose them in gold:
+- they should likely come through an event-grain model or a dedicated serving view
+
+## Summary Recommendation
+
+If we pick only a few future gold promotions, the best next candidates are:
+
+1. player-game advanced context columns via a new player-game advanced surface
+2. team-game context columns added to `fct_team_game`
+3. structured birthplace columns added to `extended_player_dim`

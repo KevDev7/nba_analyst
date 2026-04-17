@@ -1,0 +1,39 @@
+-- Purpose:
+-- Define the execution-plan ADTs produced by grounded planning.
+--
+-- Uses:
+-- - compiled SQL generated from resolved queries
+--
+-- Produces:
+-- - JSON-serializable execution plans for the Python runtime
+--
+-- Next:
+-- - services/runtime-py/runtime/AnalysisRuntime/models.py
+
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
+module GroundedPlanning.Plan where
+
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Text (Text)
+import GHC.Generics (Generic)
+
+data PlanStep = PlanStep
+  { kind :: Text
+  , sql :: Maybe Text
+  , analysis_spec :: Maybe Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ExecutionPlan = ExecutionPlan
+  { plan_type :: Text
+  , query_kind :: Text
+  , result_shape :: Text
+  , metric :: Text
+  , window_games :: Int
+  , limit :: Int
+  , assumptions :: [Text]
+  , steps :: [PlanStep]
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
