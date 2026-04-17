@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Dict
 
 from .response_models import FinalAnswer
-from runtime.AnalysisRuntime.models import ComparisonResult, ObjectRow, RankingRow
+from runtime.AnalysisRuntime.models import ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
 
 
 def _human_metric(metric: str) -> str:
@@ -43,9 +43,12 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
     context_label = str(payload["context_label"])
     metric = str(payload["metric"])
     window_games = int(payload["window_games"])
+    time_grain = payload.get("time_grain")
+    time_filter = payload.get("time_filter")
     limit = int(payload["limit"])
     assumptions = list(payload.get("assumptions", []))
     comparison_payload = payload.get("comparison")
+    time_series_rows = [TimeSeriesRow(**row) for row in payload.get("time_series_rows", [])]
 
     if comparison_payload is not None:
         comparison = ComparisonResult(**comparison_payload)
@@ -62,10 +65,13 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             context_label=context_label,
             metric=metric,
             window_games=window_games,
+            time_grain=time_grain,
+            time_filter=time_filter,
             limit=limit,
             assumptions=assumptions,
             rows=[],
             object_rows=[],
+            time_series_rows=[],
             comparison=comparison,
         )
 
@@ -85,10 +91,42 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             context_label=context_label,
             metric=metric,
             window_games=window_games,
+            time_grain=time_grain,
+            time_filter=time_filter,
             limit=limit,
             assumptions=assumptions,
             rows=[],
             object_rows=object_rows,
+            time_series_rows=[],
+            comparison=None,
+        )
+
+    if time_series_rows:
+        if any(row.series_name for row in time_series_rows):
+            summary = (
+                f"Monthly {_human_metric(metric)} by {entity_label_singular.lower()} over the past year "
+                f"are shown below."
+            )
+        else:
+            summary = (
+                f"Monthly {_human_metric(metric)} over the past year are shown below."
+            )
+        return FinalAnswer(
+            summary=summary,
+            query_kind=query_kind,
+            result_shape=result_shape,
+            entity_label_singular=entity_label_singular,
+            entity_label_plural=entity_label_plural,
+            context_label=context_label,
+            metric=metric,
+            window_games=window_games,
+            time_grain=time_grain,
+            time_filter=time_filter,
+            limit=limit,
+            assumptions=assumptions,
+            rows=[],
+            object_rows=[],
+            time_series_rows=time_series_rows,
             comparison=None,
         )
 
@@ -121,9 +159,12 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
         context_label=context_label,
         metric=metric,
         window_games=window_games,
+        time_grain=time_grain,
+        time_filter=time_filter,
         limit=limit,
         assumptions=assumptions,
         rows=rows,
         object_rows=[],
+        time_series_rows=[],
         comparison=None,
     )

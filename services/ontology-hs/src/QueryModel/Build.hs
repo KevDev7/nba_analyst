@@ -19,7 +19,7 @@ module QueryModel.Build where
 import Data.Text (Text)
 import QueryModel.Classify (QueryKind (..))
 import QueryModel.IR
-import QueryModel.Interpret (ParsedQuestion (..))
+import QueryModel.Interpret (ParsedQuestion (..), TimeGrainPhrase (Monthly))
 import QueryModel.Match (MatchResult (..))
 
 buildQuery :: QueryKind -> ParsedQuestion -> MatchResult -> Either Text Query
@@ -36,14 +36,15 @@ buildMetricQuery parsedQuestion matched =
           BaseQuery
             { coreFactObject = matchedFactObject matched
             , metrics = [matchedMetric matched]
-            , dimensions = [matchedDimension matched]
-            , filters = [LastNGames (extractedWindowGames parsedQuestion)]
+            , dimensions = maybe [] (\dimensionValue -> [dimensionValue]) (matchedDimension matched)
+            , timeGrain = renderTimeGrain <$> extractedTimeGrain parsedQuestion
+            , filters = metricFilters parsedQuestion
             , orders =
-                if comparisonRequested parsedQuestion
+                if comparisonRequested parsedQuestion || extractedTimeGrain parsedQuestion /= Nothing
                   then []
                   else [Desc (matchedMetric matched)]
             , limit =
-                if comparisonRequested parsedQuestion
+                if comparisonRequested parsedQuestion || extractedTimeGrain parsedQuestion /= Nothing
                   then Nothing
                   else extractedLimit parsedQuestion
             , assumptions = matchAssumptions matched
@@ -60,11 +61,29 @@ buildObjectQuery parsedQuestion matched =
           BaseQuery
             { coreFactObject = matchedFactObject matched
             , metrics = [matchedMetric matched]
-            , dimensions = [matchedDimension matched]
-            , filters = [LastNGames (extractedWindowGames parsedQuestion)]
+            , dimensions = maybe [] (\dimensionValue -> [dimensionValue]) (matchedDimension matched)
+            , timeGrain = Nothing
+            , filters = metricFilters parsedQuestion
             , orders = [Desc (matchedMetric matched)]
             , limit = extractedLimit parsedQuestion
             , assumptions = matchAssumptions matched
             }
-      , rowObject = matchedRowObject matched
+      , rowObject =
+          case matchedRowObject matched of
+            Just rowObjectValue -> rowObjectValue
+            Nothing -> error "Object queries require a matched row object."
       }
+
+metricFilters :: ParsedQuestion -> [Filter]
+metricFilters parsedQuestion =
+  if extractedPastYear parsedQuestion
+    then [PastYear]
+    else
+      case extractedWindowGames parsedQuestion of
+        Just windowValue -> [LastNGames windowValue]
+        Nothing -> []
+
+renderTimeGrain :: TimeGrainPhrase -> TimeGrain
+renderTimeGrain timeGrainPhrase =
+  case timeGrainPhrase of
+    Monthly -> Month

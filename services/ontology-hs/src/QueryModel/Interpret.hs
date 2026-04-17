@@ -22,7 +22,9 @@ data ParsedQuestion = ParsedQuestion
   { originalQuestion :: Text
   , normalizedQuestion :: Text
   , extractedLimit :: Maybe Int
-  , extractedWindowGames :: Int
+  , extractedWindowGames :: Maybe Int
+  , extractedTimeGrain :: Maybe TimeGrainPhrase
+  , extractedPastYear :: Bool
   , metricPhrase :: Text
   , playerConceptPresent :: Bool
   , teamConceptPresent :: Bool
@@ -32,25 +34,37 @@ data ParsedQuestion = ParsedQuestion
   }
   deriving (Show, Eq)
 
+data TimeGrainPhrase
+  = Monthly
+  deriving (Show, Eq)
+
 interpretQuestion :: Text -> Either Text ParsedQuestion
 interpretQuestion question = do
   let normalized = normalize question
       tokens = T.words normalized
       limitValue = extractLimit normalized tokens
       comparisonRequestedValue = "compare" `elem` tokens
+      extractedTimeGrainValue = extractTimeGrain normalized
+      extractedPastYearValue = "past year" `T.isInfixOf` normalized || "last year" `T.isInfixOf` normalized
       objectRowsRequestedValue =
         "players and their" `T.isInfixOf` normalized
           || "players with their" `T.isInfixOf` normalized
       entityPhrasesValue =
         filter (`elem` ["brunson", "haliburton", "jalen", "tyrese", "tatum", "jayson"]) tokens
-  windowValue <- extractNumberAfter "last" tokens
+      windowValue =
+        if extractedPastYearValue
+          then Right Nothing
+          else Just <$> extractNumberAfter "last" tokens
   metricToken <- extractMetricPhrase normalized tokens
+  parsedWindowValue <- windowValue
   pure
     ParsedQuestion
       { originalQuestion = question
       , normalizedQuestion = normalized
       , extractedLimit = limitValue
-      , extractedWindowGames = windowValue
+      , extractedWindowGames = parsedWindowValue
+      , extractedTimeGrain = extractedTimeGrainValue
+      , extractedPastYear = extractedPastYearValue
       , metricPhrase = metricToken
       , playerConceptPresent =
           any (`elem` ["player", "players", "scorer", "scorers"]) tokens
@@ -78,6 +92,12 @@ extractNumberAfter target tokens =
         [(numberValue, "")] -> pure numberValue
         _ -> Left ("Could not parse number after '" <> target <> "'.")
     _ -> Left ("Could not find '" <> target <> "' in the question.")
+
+extractTimeGrain :: Text -> Maybe TimeGrainPhrase
+extractTimeGrain normalized
+  | "monthly" `T.isInfixOf` normalized = Just Monthly
+  | "by month" `T.isInfixOf` normalized = Just Monthly
+  | otherwise = Nothing
 
 extractOptionalNumberAfter :: Text -> [Text] -> Maybe Int
 extractOptionalNumberAfter target tokens =

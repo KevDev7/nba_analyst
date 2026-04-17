@@ -90,6 +90,114 @@ METRICS_BY_OBJECT = {
     ],
 }
 
+DERIVED_ATTRIBUTES_BY_OBJECT = {
+    "Game": [
+        {
+            "name": "game_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%m')",
+            },
+        },
+        {
+            "name": "game_year",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y')",
+            },
+        },
+        {
+            "name": "game_year_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y-%m')",
+            },
+        },
+    ],
+    "PlayerGame": [
+        {
+            "name": "game_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%m')",
+            },
+        },
+        {
+            "name": "game_year",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y')",
+            },
+        },
+        {
+            "name": "game_year_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y-%m')",
+            },
+        },
+    ],
+    "TeamGame": [
+        {
+            "name": "game_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%m')",
+            },
+        },
+        {
+            "name": "game_year",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y')",
+            },
+        },
+        {
+            "name": "game_year_month",
+            "kind": "dimension",
+            "source_column": "game_date",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "game_date",
+                "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y-%m')",
+            },
+        },
+    ],
+}
+
 LINKS = [
     {
         "name": "player_game_player",
@@ -168,9 +276,11 @@ def build_ontology_payload() -> dict[str, object]:
                     "source_column": column["name"],
                     "link_key": column["link_key"],
                     "visibility": column["visibility"],
+                    "derivation": None,
                 }
                 for column in table["columns"]
-            ],
+            ]
+            + DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, []),
             "metrics": METRICS_BY_OBJECT.get(object_name, []),
         }
         objects.append(object_payload)

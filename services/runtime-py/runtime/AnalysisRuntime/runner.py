@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import List
 
 from .analysis import run_analysis
-from .models import ExecutionPlan, ObjectRow, RankingRow, RuntimeResult
+from .models import ExecutionPlan, ObjectRow, RankingRow, RuntimeResult, TimeSeriesRow
 from .query_engine import run_sql
 from .state import RuntimeState
 
@@ -43,10 +43,13 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
 
     rows: List[RankingRow] = []
     object_rows: List[ObjectRow] = []
+    time_series_rows: List[TimeSeriesRow] = []
     if plan.plan_type == "single_sql" and plan.result_shape == "ranking":
         rows = [RankingRow(**row) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "object_rows":
         object_rows = [ObjectRow(**row) for row in raw_rows]
+    elif plan.plan_type == "single_sql" and plan.result_shape == "time_series":
+        time_series_rows = [TimeSeriesRow(**row) for row in raw_rows]
     return RuntimeResult(
         query_kind=plan.query_kind,
         result_shape=plan.result_shape,
@@ -55,10 +58,13 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         context_label=plan.context_label,
         metric=plan.metric,
         window_games=plan.window_games,
+        time_grain=plan.time_grain,
+        time_filter=plan.time_filter,
         limit=plan.limit,
         assumptions=plan.assumptions,
         rows=rows,
         object_rows=object_rows,
+        time_series_rows=time_series_rows,
         raw_rows=raw_rows,
         comparison=comparison_result,
     )

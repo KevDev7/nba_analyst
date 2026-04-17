@@ -31,6 +31,7 @@ class SliceSixTests(unittest.TestCase):
             ontology_columns = {
                 attribute["source_column"]: attribute
                 for attribute in ontology_objects[object_name]["attributes"]
+                if attribute.get("derivation") is None
             }
             inventory_columns = {column["name"]: column for column in table_entry["columns"]}
             self.assertEqual(set(ontology_columns), set(inventory_columns))
@@ -39,6 +40,18 @@ class SliceSixTests(unittest.TestCase):
                 self.assertEqual(ontology_attribute["kind"], column["attribute_kind"])
                 self.assertEqual(ontology_attribute["link_key"], column["link_key"])
                 self.assertEqual(ontology_attribute["visibility"], column["visibility"])
+
+    def test_generated_ontology_includes_derived_time_dimensions(self) -> None:
+        ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
+        objects = {obj["name"]: obj for obj in ontology["objects"]}
+
+        for object_name in {"Game", "PlayerGame", "TeamGame"}:
+            attrs = {attr["name"]: attr for attr in objects[object_name]["attributes"]}
+            self.assertEqual(attrs["game_month"]["kind"], "dimension")
+            self.assertEqual(attrs["game_year"]["kind"], "dimension")
+            self.assertEqual(attrs["game_year_month"]["kind"], "dimension")
+            self.assertEqual(attrs["game_year_month"]["source_column"], "game_date")
+            self.assertIsNotNone(attrs["game_year_month"]["derivation"])
 
     def test_team_average_points_query_is_ontology_driven(self) -> None:
         output = run_cli("Show me teams by average points over the last 10 games")

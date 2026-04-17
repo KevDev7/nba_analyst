@@ -16,7 +16,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from runtime.AnalysisRuntime.models import ComparisonResult, ObjectRow, RankingRow
+from runtime.AnalysisRuntime.models import ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
 
 
 class FinalAnswer(BaseModel):
@@ -28,8 +28,11 @@ class FinalAnswer(BaseModel):
     context_label: str
     metric: str
     window_games: int
+    time_grain: Optional[str] = None
+    time_filter: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
     rows: List[RankingRow]
     object_rows: List[ObjectRow] = Field(default_factory=list)
+    time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

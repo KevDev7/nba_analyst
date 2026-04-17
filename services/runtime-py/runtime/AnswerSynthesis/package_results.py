@@ -26,12 +26,18 @@ def package_results(result: RuntimeResult) -> Dict[str, object]:
         "context_label": result.context_label,
         "metric": result.metric,
         "window_games": result.window_games,
+        "time_grain": result.time_grain,
+        "time_filter": result.time_filter,
         "limit": result.limit,
         "assumptions": result.assumptions,
         "rows": [row.model_dump() if hasattr(row, "model_dump") else row.dict() for row in result.rows],
         "object_rows": [
             row.model_dump() if hasattr(row, "model_dump") else row.dict()
             for row in result.object_rows
+        ],
+        "time_series_rows": [
+            row.model_dump() if hasattr(row, "model_dump") else row.dict()
+            for row in result.time_series_rows
         ],
     }
     if result.comparison is not None:

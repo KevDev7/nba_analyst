@@ -206,6 +206,33 @@
       "dimensions": ["team_name"],
       "filters": ["last_n_games:10"],
       "notes": "First non-player proof that the ontology-driven semantic core resolves a different fact object and display path."
+    },
+    {
+      "id": "slice8_monthly_average_points_canonical",
+      "slice_introduced": 8,
+      "question": "What are the monthly average points over the past year?",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "team_monthly_average_points_trend",
+      "core_fact_object": "TeamGame",
+      "metrics": ["average_points"],
+      "filters": ["past_year"],
+      "time_grain": "month",
+      "notes": "Canonical ungrouped time-series proof over TeamGame using derived month buckets."
+    },
+    {
+      "id": "slice8_monthly_average_points_by_team_canonical",
+      "slice_introduced": 8,
+      "question": "What are the monthly average points by team over the past year?",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "team_monthly_average_points_by_team_trend",
+      "core_fact_object": "TeamGame",
+      "metrics": ["average_points"],
+      "dimensions": ["team_name"],
+      "filters": ["past_year"],
+      "time_grain": "month",
+      "notes": "Grouped time-series proof over TeamGame using one business grouping dimension plus month."
     }
   ]
 }

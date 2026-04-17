@@ -41,6 +41,13 @@ data Attribute = Attribute
   , source_column :: Text
   , link_key :: Bool
   , visibility :: AttributeVisibility
+  , derivation :: Maybe AttributeDerivation
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data AttributeDerivation = AttributeDerivation
+  { source_attribute :: Text
+  , sql_expression :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 

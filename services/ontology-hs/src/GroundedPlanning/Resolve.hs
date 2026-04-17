@@ -23,7 +23,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import OntologyLayer.Graph (DiscoveredPath (steps), findAttribute, findMetric, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (Attribute (kind, source_column), AttributeKind (PrimaryKey), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
+import OntologyLayer.Types (Attribute (derivation, kind, source_column), AttributeDerivation (sql_expression), AttributeKind (PrimaryKey), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -71,6 +71,23 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data ResolvedTrendQuery = ResolvedTrendQuery
+  { factTableName :: Text
+  , seriesTableName :: Maybe Text
+  , seriesObjectName :: Maybe Text
+  , seriesPath :: Maybe DiscoveredPath
+  , seriesName :: Maybe ColumnRef
+  , timeBucketName :: Text
+  , timeBucketExpression :: Text
+  , metricSource :: ColumnRef
+  , metricFormula :: ResolvedMetricFormula
+  , filterLocation :: Text
+  , timeFilterKind :: Text
+  , timeGrain :: Text
+  , resolvedAssumptions :: [Text]
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data ResolvedObjectQuery = ResolvedObjectQuery
   { rowTableName :: Text
   , factTableName :: Text
@@ -93,11 +110,14 @@ data ResolvedObjectQuery = ResolvedObjectQuery
 
 data ResolvedQuery
   = ResolvedMetric ResolvedMetricQuery
+  | ResolvedTrend ResolvedTrendQuery
   | ResolvedObject ResolvedObjectQuery
   deriving (Show, Eq, Generic)
 
 instance ToJSON ResolvedQuery where
   toJSON (ResolvedMetric resolved) =
+    object ["kind" .= ("metric_query" :: Text), "resolved" .= resolved]
+  toJSON (ResolvedTrend resolved) =
     object ["kind" .= ("metric_query" :: Text), "resolved" .= resolved]
   toJSON (ResolvedObject resolved) =
     object ["kind" .= ("object_query" :: Text), "resolved" .= resolved]
@@ -105,7 +125,10 @@ instance ToJSON ResolvedQuery where
 resolveQuery :: Ontology -> Query -> Either Text ResolvedQuery
 resolveQuery ontology query =
   case query of
-    MetricQuery spec -> ResolvedMetric <$> resolveMetricQuery ontology spec
+    MetricQuery spec ->
+      case queryTimeGrain spec of
+        Just _ -> ResolvedTrend <$> resolveTrendQuery ontology spec
+        Nothing -> ResolvedMetric <$> resolveMetricQuery ontology spec
     ObjectQuery spec -> ResolvedObject <$> resolveObjectQuery ontology spec
 
 resolveMetricQuery :: Ontology -> MetricQuerySpec -> Either Text ResolvedMetricQuery
@@ -149,6 +172,34 @@ resolveMetricQuery ontology metricQuery = do
       , resolvedAssumptions = assumptions base
       , metricFormula = formula
       , filterLocation = "fact_table"
+      }
+
+resolveTrendQuery :: Ontology -> MetricQuerySpec -> Either Text ResolvedTrendQuery
+resolveTrendQuery ontology metricQuery = do
+  let base =
+        case metricQuery of
+          MetricQuerySpec {sharedQuery = currentBase} -> currentBase
+  factObject <- requireObject ontology (coreFactObject base)
+  selectedMetric <- requireSingleMetric (metrics base)
+  metricDef <- requireMetric factObject (metricText selectedMetric)
+  derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName base)
+  resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
+  metricSourceColumn <- metricSourceAttribute metricDef
+  pure
+    ResolvedTrendQuery
+      { factTableName = backing_table factObject
+      , seriesTableName = backing_table . fst <$> resolvedSeries
+      , seriesObjectName = objectName . fst <$> resolvedSeries
+      , seriesPath = snd <$> resolvedSeries
+      , seriesName = fmap (\(seriesObject, _) -> ColumnRef "series" (trendSeriesColumn seriesObject (dimensions base))) resolvedSeries
+      , timeBucketName = "time_bucket"
+      , timeBucketExpression = renderDerivedExpression derivedAttribute
+      , metricSource = ColumnRef "fact" metricSourceColumn
+      , metricFormula = resolveMetricFormula metricDef
+      , filterLocation = "fact_table"
+      , timeFilterKind = "past_year"
+      , timeGrain = "month"
+      , resolvedAssumptions = assumptions base
       }
 
 resolveObjectQuery :: Ontology -> ObjectQuerySpec -> Either Text ResolvedObjectQuery
@@ -327,6 +378,42 @@ requireSingleDimension dimensionValues =
     [dimensionValue] -> Right dimensionValue
     _ -> Left "Query requires exactly one selected dimension."
 
+requireDerivedTimeAttribute :: OT.Object -> Text -> Either Text OT.Attribute
+requireDerivedTimeAttribute objectValue attributeName =
+  case findAttribute objectValue attributeName of
+    Just attributeValue ->
+      case derivation attributeValue of
+        Just _ -> Right attributeValue
+        Nothing -> Left ("Attribute '" <> attributeName <> "' is not configured as a derived time attribute.")
+    Nothing -> Left ("Could not resolve derived time attribute '" <> attributeName <> "' against the ontology.")
+
+timeBucketAttributeName :: BaseQuery -> Text
+timeBucketAttributeName _ = "game_year_month"
+
+resolveTrendSeries :: Ontology -> OT.Object -> [DimensionName] -> Either Text (Maybe (OT.Object, DiscoveredPath))
+resolveTrendSeries ontology factObject dimensionValues =
+  case dimensionValues of
+    [] -> Right Nothing
+    [dimensionValue] -> do
+      seriesObject <- resolveMetricRowObject ontology (objectName factObject) [dimensionValue]
+      pure (Just seriesObject)
+    _ -> Left "Trend queries currently support at most one business grouping dimension."
+
+trendSeriesColumn :: OT.Object -> [DimensionName] -> Text
+trendSeriesColumn _ dimensionValues =
+  case dimensionValues of
+    [dimensionValue] ->
+      case dimensionKey dimensionValue of
+        Right columnNameValue -> columnNameValue
+        Left _ -> error "Unsupported trend series dimension."
+    _ -> error "Trend series columns require exactly one business grouping dimension."
+
+renderDerivedExpression :: OT.Attribute -> Text
+renderDerivedExpression attributeValue =
+  case derivation attributeValue of
+    Just derivationValue -> sql_expression derivationValue
+    Nothing -> error "Expected a derived attribute expression."
+
 requireObject :: Ontology -> Text -> Either Text OT.Object
 requireObject ontology objectNameValue =
   maybe (Left ("Could not resolve object '" <> objectNameValue <> "' against the ontology.")) Right $
@@ -357,3 +444,8 @@ objectName :: OT.Object -> Text
 objectName objectValue =
   case objectValue of
     OT.Object {OT.name = currentName} -> currentName
+
+queryTimeGrain :: MetricQuerySpec -> Maybe TimeGrain
+queryTimeGrain spec =
+  case spec of
+    MetricQuerySpec {sharedQuery = BaseQuery {timeGrain = currentTimeGrain}} -> currentTimeGrain

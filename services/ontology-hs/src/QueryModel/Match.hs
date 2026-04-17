@@ -23,9 +23,9 @@ import QueryModel.Interpret (ParsedQuestion (..))
 
 data MatchResult = MatchResult
   { matchedMetric :: MetricName
-  , matchedDimension :: DimensionName
+  , matchedDimension :: Maybe DimensionName
   , matchedFactObject :: Text
-  , matchedRowObject :: Text
+  , matchedRowObject :: Maybe Text
   , matchedEntities :: [EntityName]
   , matchedComparison :: Maybe ComparisonIntent
   , matchAssumptions :: [Text]
@@ -42,7 +42,7 @@ matchQuestion ontology parsedQuestion = do
           then Just (CompareEntities entityValues)
           else Nothing
       assumptionValues = metricAssumptions (metricPhrase parsedQuestion) metricValue
-  if playerConceptPresent parsedQuestion || teamConceptPresent parsedQuestion || metricPhrase parsedQuestion `elem` ["scorer", "scorers"]
+  if playerConceptPresent parsedQuestion || teamConceptPresent parsedQuestion || metricPhrase parsedQuestion `elem` ["scorer", "scorers"] || extractedTimeGrain parsedQuestion /= Nothing
     then
       pure
         MatchResult
@@ -79,28 +79,37 @@ matchMetric ontology factObjectName phrase = do
     Just _ -> Right metricValue
     Nothing -> Left ("Metric '" <> metricKey <> "' is not available in the ontology.")
 
-matchObjectsAndDimension :: Ontology -> ParsedQuestion -> Either Text (Text, Text, DimensionName)
+matchObjectsAndDimension :: Ontology -> ParsedQuestion -> Either Text (Text, Maybe Text, Maybe DimensionName)
 matchObjectsAndDimension ontology parsedQuestion
   | comparisonRequested parsedQuestion = do
       _ <- requireObject ontology "PlayerGame"
       _ <- requireObject ontology "Player"
       _ <- requireObjectAttribute ontology "Player" "player_name"
-      pure ("PlayerGame", "Player", PlayerName)
+      pure ("PlayerGame", Just "Player", Just PlayerName)
   | objectRowsRequested parsedQuestion = do
       _ <- requireObject ontology "PlayerGame"
       _ <- requireObject ontology "Player"
       _ <- requireObjectAttribute ontology "Player" "player_name"
-      pure ("PlayerGame", "Player", PlayerName)
+      pure ("PlayerGame", Just "Player", Just PlayerName)
+  | teamConceptPresent parsedQuestion && extractedTimeGrain parsedQuestion /= Nothing = do
+      _ <- requireObject ontology "TeamGame"
+      _ <- requireObject ontology "Team"
+      _ <- requireObjectAttribute ontology "Team" "team_name"
+      pure ("TeamGame", Just "Team", Just TeamName)
+  | extractedTimeGrain parsedQuestion /= Nothing = do
+      _ <- requireObject ontology "TeamGame"
+      _ <- requireObjectAttribute ontology "TeamGame" "game_year_month"
+      pure ("TeamGame", Nothing, Nothing)
   | teamConceptPresent parsedQuestion = do
       _ <- requireObject ontology "TeamGame"
       _ <- requireObject ontology "Team"
       _ <- requireObjectAttribute ontology "Team" "team_name"
-      pure ("TeamGame", "Team", TeamName)
+      pure ("TeamGame", Just "Team", Just TeamName)
   | otherwise = do
       _ <- requireObject ontology "PlayerGame"
       _ <- requireObject ontology "Player"
       _ <- requireObjectAttribute ontology "Player" "player_name"
-      pure ("PlayerGame", "Player", PlayerName)
+      pure ("PlayerGame", Just "Player", Just PlayerName)
 
 metricAssumptions :: Text -> MetricName -> [Text]
 metricAssumptions phrase metricValue =

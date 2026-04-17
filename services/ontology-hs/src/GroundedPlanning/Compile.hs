@@ -26,6 +26,7 @@ compileExecutionPlan :: ResolvedQuery -> ExecutionPlan
 compileExecutionPlan resolvedQuery =
   case resolvedQuery of
     ResolvedMetric resolved -> compileMetricExecutionPlan resolved
+    ResolvedTrend resolved -> compileTrendExecutionPlan resolved
     ResolvedObject resolved -> compileObjectExecutionPlan resolved
 
 compileMetricExecutionPlan :: ResolvedMetricQuery -> ExecutionPlan
@@ -50,9 +51,41 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , context_label = contextValueLabel
     , metric = metricKey formula
     , window_games = metricWindowGames
+    , time_grain = Nothing
+    , time_filter = Nothing
     , limit = maybe 0 id metricQueryLimit
     , assumptions = metricAssumptions
     , steps = compileMetricSteps resolved
+    }
+
+compileTrendExecutionPlan :: ResolvedTrendQuery -> ExecutionPlan
+compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = trendAssumptions, seriesObjectName = maybeSeriesObjectName, metricFormula = formula, timeGrain = trendTimeGrain, timeFilterKind = trendTimeFilter} =
+  let (singularLabel, pluralLabel, contextValueLabel) =
+        case maybeSeriesObjectName of
+          Just seriesObjectName ->
+            labelsForRowObject seriesObjectName
+          Nothing -> ("Series", "Series", "")
+   in
+  ExecutionPlan
+    { plan_type = "single_sql"
+    , query_kind = "metric_query"
+    , result_shape = "time_series"
+    , entity_label_singular = singularLabel
+    , entity_label_plural = pluralLabel
+    , context_label = contextValueLabel
+    , metric = metricKey formula
+    , window_games = 0
+    , time_grain = Just trendTimeGrain
+    , time_filter = Just trendTimeFilter
+    , limit = 0
+    , assumptions = trendAssumptions
+    , steps =
+        [ PlanStep
+            { kind = "run_sql"
+            , sql = Just (compileTrendSql resolved)
+            , analysis_spec = Nothing
+            }
+        ]
     }
 
 compileObjectExecutionPlan :: ResolvedObjectQuery -> ExecutionPlan
@@ -71,6 +104,8 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , context_label = contextValueLabel
     , metric = metricKey formula
     , window_games = objectWindowGames
+    , time_grain = Nothing
+    , time_filter = Nothing
     , limit = maybe 0 id objectQueryLimit
     , assumptions = objectAssumptions
     , steps =
@@ -259,6 +294,45 @@ compileObjectSql resolved =
     ]
       <> limitClause objectQueryLimit
 
+compileTrendSql :: ResolvedTrendQuery -> Text
+compileTrendSql resolved =
+  let
+    ResolvedTrendQuery
+      { factTableName = trendFactTableName
+      , seriesPath = trendSeriesPath
+      , seriesName = trendSeriesName
+      , timeBucketExpression = trendTimeBucketExpression
+      , metricSource = trendMetricSource
+      , metricFormula = trendMetricFormula
+      } = resolved
+    latestDateSubquery = "(SELECT MAX(game_date) FROM " <> trendFactTableName <> ")"
+   in
+  T.unlines $
+    [ "WITH filtered_rows AS ("
+    , "  SELECT"
+    , "    " <> renderFactExpression "f" trendTimeBucketExpression <> " AS time_bucket,"
+    , "    " <> renderMaybeColumnRef "f" "s" "c" trendSeriesName <> " AS series_name,"
+    , "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source"
+    , "  FROM " <> trendFactTableName <> " f"
+    ]
+      <> renderMaybePathJoinClauses "JOIN" "f" "s" "sp" trendSeriesPath
+      <> [ "  WHERE f.game_date >= " <> latestDateSubquery <> " - INTERVAL '1 year'"
+         , "), aggregated_series AS ("
+         , "  SELECT"
+         , "    time_bucket,"
+         , "    series_name,"
+         , "    " <> compileMetricAggregation trendMetricFormula <> " AS metric_value"
+         , "  FROM filtered_rows"
+         , "  GROUP BY time_bucket, series_name"
+         , ")"
+         , "SELECT"
+         , "  time_bucket,"
+         , "  series_name,"
+         , "  metric_value"
+         , "FROM aggregated_series"
+         , "ORDER BY time_bucket ASC, series_name ASC"
+         ]
+
 compileMetricAggregation :: ResolvedMetricFormula -> Text
 compileMetricAggregation formula =
   case aggregationKind formula of
@@ -271,6 +345,7 @@ renderColumnRefWithContext factAlias rowAlias contextAlias columnRef =
   case tableRole columnRef of
     "fact" -> factAlias <> "." <> columnName columnRef
     "row" -> rowAlias <> "." <> columnName columnRef
+    "series" -> rowAlias <> "." <> columnName columnRef
     "context" -> contextAlias <> "." <> columnName columnRef
     _ -> error "Unsupported column role."
 
@@ -279,6 +354,10 @@ renderMaybeColumnRef factAlias rowAlias contextAlias maybeColumnRef =
   case maybeColumnRef of
     Just columnRef -> renderColumnRefWithContext factAlias rowAlias contextAlias columnRef
     Nothing -> "NULL"
+
+renderFactExpression :: Text -> Text -> Text
+renderFactExpression factAlias expressionText =
+  T.replace "{fact_alias}" factAlias expressionText
 
 renderPathJoinClauses :: Text -> Text -> Text -> Text -> DiscoveredPath -> [Text]
 renderPathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix discoveredPath =

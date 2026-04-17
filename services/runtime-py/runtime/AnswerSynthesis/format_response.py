@@ -64,6 +64,23 @@ def format_response(answer: FinalAnswer) -> str:
             )
         return "\n".join(lines)
 
+    if answer.time_series_rows:
+        if any(row.series_name for row in answer.time_series_rows):
+            lines.append(f"Month | {answer.entity_label_singular} | {_metric_header(answer.metric)}")
+            lines.append("--- | --- | ---")
+            for row in answer.time_series_rows:
+                lines.append(
+                    f"{row.time_bucket} | {(row.series_name or '')} | {_metric_value(answer.metric, row.metric_value)}"
+                )
+        else:
+            lines.append(f"Month | {_metric_header(answer.metric)}")
+            lines.append("--- | ---")
+            for row in answer.time_series_rows:
+                lines.append(
+                    f"{row.time_bucket} | {_metric_value(answer.metric, row.metric_value)}"
+                )
+        return "\n".join(lines)
+
     lines.append(
         f"Rank | {answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
     )

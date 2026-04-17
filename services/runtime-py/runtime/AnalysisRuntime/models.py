@@ -26,12 +26,14 @@ class PlanStep(BaseModel):
 class ExecutionPlan(BaseModel):
     plan_type: Literal["single_sql", "multi_step"]
     query_kind: Literal["metric_query", "object_query"]
-    result_shape: Literal["ranking", "comparison", "object_rows"]
+    result_shape: Literal["ranking", "comparison", "object_rows", "time_series"]
     entity_label_singular: str
     entity_label_plural: str
     context_label: str
     metric: str
     window_games: int
+    time_grain: Optional[str] = None
+    time_filter: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
     steps: List[PlanStep]
@@ -74,6 +76,12 @@ class ComparisonResult(BaseModel):
     per_game_rows: List[ComparisonRow] = Field(default_factory=list)
 
 
+class TimeSeriesRow(BaseModel):
+    time_bucket: str
+    series_name: Optional[str] = None
+    metric_value: float
+
+
 class RuntimeResult(BaseModel):
     query_kind: str
     result_shape: str
@@ -82,9 +90,12 @@ class RuntimeResult(BaseModel):
     context_label: str
     metric: str
     window_games: int
+    time_grain: Optional[str] = None
+    time_filter: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
     rows: List[RankingRow]
     object_rows: List[ObjectRow] = Field(default_factory=list)
+    time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     raw_rows: List[Dict[str, object]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

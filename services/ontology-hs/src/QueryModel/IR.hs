@@ -84,18 +84,34 @@ instance FromJSON DimensionName where
       "primary_position" -> pure PrimaryPosition
       _ -> fail ("Unknown dimension: " <> show value)
 
+data TimeGrain
+  = Month
+  deriving (Show, Eq, Generic)
+
+instance ToJSON TimeGrain where
+  toJSON Month = String "month"
+
+instance FromJSON TimeGrain where
+  parseJSON = withText "TimeGrain" $ \value ->
+    case value of
+      "month" -> pure Month
+      _ -> fail ("Unknown time grain: " <> show value)
+
 data Filter
   = LastNGames Int
+  | PastYear
   deriving (Show, Eq, Generic)
 
 instance ToJSON Filter where
   toJSON (LastNGames n) = object ["kind" .= String "last_n_games", "value" .= n]
+  toJSON PastYear = object ["kind" .= String "past_year"]
 
 instance FromJSON Filter where
   parseJSON = withObject "Filter" $ \obj -> do
     kindValue <- obj .: "kind"
     case (kindValue :: Text) of
       "last_n_games" -> LastNGames <$> obj .: "value"
+      "past_year" -> pure PastYear
       _ -> fail ("Unknown filter kind: " <> show kindValue)
 
 data Order
@@ -116,6 +132,7 @@ data BaseQuery = BaseQuery
   { coreFactObject :: Text
   , metrics :: [MetricName]
   , dimensions :: [DimensionName]
+  , timeGrain :: Maybe TimeGrain
   , filters :: [Filter]
   , orders :: [Order]
   , limit :: Maybe Int

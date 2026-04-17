@@ -34,14 +34,17 @@ validateMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  rowObject <- requireMetricRowObject ontology factObject (dimensions base)
   metricDef <- requireSelectedMetric factObject (metrics base)
-  validateMetricFilters (filters base)
   validateMetricAttributes metricDef
-  validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
-  case comparison metricQuery of
-    Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
-    Nothing -> pure ()
+  case timeGrain base of
+    Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
+    Nothing -> do
+      rowObject <- requireMetricRowObject ontology factObject (dimensions base)
+      validateRankingFilters (filters base)
+      validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
+      case comparison metricQuery of
+        Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
+        Nothing -> pure ()
 
 validateObjectQuery :: Ontology -> ObjectQuerySpec -> Either Text ()
 validateObjectQuery ontology objectQuery = do
@@ -61,6 +64,14 @@ validateObjectQuery ontology objectQuery = do
   case orders base of
     [Desc TotalPoints] -> pure ()
     _ -> Left "ObjectQuery currently requires descending total_points ordering."
+
+validateTrendMetricQuery :: Ontology -> Object -> OT.MetricDef -> TimeGrain -> BaseQuery -> Either Text ()
+validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
+  validateTrendFilters (filters base)
+  validateTrendDimensions ontology factObject (dimensions base)
+  validateTrendOrders (orders base)
+  case timeGrainValue of
+    Month -> requireAttributeKind factObject "game_year_month" Dimension
 
 requireMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
 requireMetricRowObject ontology factObject dimensionValues = do
@@ -139,6 +150,15 @@ validateMetricFilters filterValues =
     [LastNGames gamesValue] | gamesValue > 0 -> pure ()
     _ -> Left "Query requires a positive LastNGames filter."
 
+validateRankingFilters :: [Filter] -> Either Text ()
+validateRankingFilters = validateMetricFilters
+
+validateTrendFilters :: [Filter] -> Either Text ()
+validateTrendFilters filterValues =
+  case filterValues of
+    [PastYear] -> pure ()
+    _ -> Left "Trend queries currently require a PastYear filter."
+
 validateMetricOrders :: Maybe ComparisonIntent -> [Order] -> [MetricName] -> Either Text ()
 validateMetricOrders maybeComparison orderValues metricValues =
   case maybeComparison of
@@ -150,6 +170,22 @@ validateMetricOrders maybeComparison orderValues metricValues =
       case (orderValues, metricValues) of
         ([Desc orderMetric], [selectedMetric]) | orderMetric == selectedMetric -> pure ()
         _ -> Left "Ranking queries require descending ordering by the selected metric."
+
+validateTrendOrders :: [Order] -> Either Text ()
+validateTrendOrders orderValues =
+  if null orderValues
+    then pure ()
+    else Left "Trend queries currently do not accept explicit ordering."
+
+validateTrendDimensions :: Ontology -> Object -> [DimensionName] -> Either Text ()
+validateTrendDimensions ontology factObject dimensionValues =
+  case dimensionValues of
+    [] -> pure ()
+    [dimensionValue] -> do
+      rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionValue
+      requireSelectedDimension rowObject [dimensionValue]
+      pure ()
+    _ -> Left "Trend queries currently support at most one business grouping dimension."
 
 ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [EntityName] -> Either Text ()
 ensureComparisonShape ontology factObject rowObject metricValues entities = do

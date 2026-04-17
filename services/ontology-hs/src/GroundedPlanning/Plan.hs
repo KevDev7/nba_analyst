@@ -35,6 +35,8 @@ data ExecutionPlan = ExecutionPlan
   , context_label :: Text
   , metric :: Text
   , window_games :: Int
+  , time_grain :: Maybe Text
+  , time_filter :: Maybe Text
   , limit :: Int
   , assumptions :: [Text]
   , steps :: [PlanStep]
