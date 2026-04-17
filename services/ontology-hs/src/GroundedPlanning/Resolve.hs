@@ -285,6 +285,9 @@ data ContextSelection = ContextSelection
 
 resolveContextSelection :: Ontology -> Text -> OT.Object -> Either Text ContextSelection
 resolveContextSelection ontology factObjectName rowObject
+  -- Temporary heuristic. This context selection prefers the first convenient
+  -- team_abbreviation surface rather than modeling context selection as a more
+  -- general semantic decision.
   | hasAttribute rowObject "team_abbreviation" =
       Right
         ContextSelection
@@ -319,6 +322,8 @@ resolveMetricFormula metricDef =
 
 resolveEntity :: EntityName -> ResolvedEntity
 resolveEntity entityValue =
+  -- Temporary slice-era mapping. Long term, entity resolution should come from
+  -- ontology-backed entity references instead of a fixed comparison enum.
   case entityValue of
     Brunson -> ResolvedEntity Brunson "Jalen Brunson"
     Haliburton -> ResolvedEntity Haliburton "Tyrese Haliburton"
@@ -353,6 +358,8 @@ resolveMetricRowObject ontology factObjectName dimensionValues = do
 
 firstLinkedObjectWithAttribute :: Ontology -> Text -> Text -> [Text] -> Maybe (OT.Object, DiscoveredPath)
 firstLinkedObjectWithAttribute ontology factObjectName attributeName excludedObjectNames =
+  -- Temporary planner restriction. Like validation, this helper only searches
+  -- depth-2 ontology paths for the current slices.
   case
     [ (objectValue, discoveredPath)
     | discoveredPath <- findPathsFrom ontology 2 factObjectName

@@ -9,7 +9,8 @@ executable ontology-hs
   default-language: GHC2024
   ghc-options:      -Wall
   other-modules:
-      GroundedPlanning.Compile
+      CapabilityDerivation
+    , GroundedPlanning.Compile
     , GroundedPlanning.Plan
     , GroundedPlanning.Resolve
     , GroundedPlanning.Validation
@@ -21,5 +22,6 @@ executable ontology-hs
       base >= 4.20 && < 5
     , aeson
     , bytestring
+    , containers
     , text
     , yaml

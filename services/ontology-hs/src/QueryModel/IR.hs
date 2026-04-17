@@ -22,6 +22,9 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 
 data EntityName
+  -- Temporary slice-era enum. Long term this should become an ontology-backed
+  -- entity reference or unresolved candidate model instead of hard-coding two
+  -- supported comparison people in the core IR.
   = Brunson
   | Haliburton
   deriving (Show, Eq, Generic)

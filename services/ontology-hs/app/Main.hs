@@ -17,6 +17,7 @@
 
 module Main where
 
+import CapabilityDerivation (deriveCapabilitiesIO)
 import Data.Aeson (ToJSON, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
@@ -54,11 +55,17 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["derive-capabilities-json", "--ontology", ontologyPath] -> do
+      ontology <- loadOntology ontologyPath
+      derived <- deriveCapabilitiesIO ontology
+      BL8.putStrLn (encode derived)
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       ontology <- loadOntology ontologyPath
       runPlannerFromQueryJson ontology (pack queryJson)
     _ ->
-      die "Usage: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
+      die
+        "Usage: cabal run ontology-hs -- derive-capabilities-json --ontology <path>\n\
+        \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()
 runPlannerFromQueryJson ontology queryJson =

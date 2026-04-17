@@ -38,8 +38,43 @@ class SemanticInterpreterTests(unittest.TestCase):
         summary = _capability_prompt_summary()
 
         self.assertIn(artifact["prompt_summary"], summary)
-        self.assertIn("player_recent_metric_team_filter", summary)
+        self.assertIn(
+            "Supported semantic families (generated from ontology + planner-derived capabilities):",
+            summary,
+        )
+        self.assertIn("player_game_recent_object_player_team_filter", summary)
         self.assertNotIn("Current live supported semantic shapes:", summary)
+
+    def test_execution_contract_is_now_only_an_exception_list(self) -> None:
+        contract = (
+            ROOT
+            / "pipelines"
+            / "athena"
+            / "metadata"
+            / "semantic_interpreter_execution_contract.yaml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("planner-derived", contract)
+        self.assertNotIn("\nfamilies:", contract)
+
+    def test_derived_family_for_knicks_object_query_now_allows_limit(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "object_query"
+            and family["core_fact_object"] == "PlayerGame"
+            and family["row_object"] == "Player"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["last_n_games"]
+            and family["linked_filters"]
+            and family["linked_filters"][0]["target_object"] == "Team"
+            and family["linked_filters"][0]["attribute"] == "team_name"
+            and "total_points" in family["metrics"]
+        ]
+
+        self.assertTrue(matching)
+        self.assertTrue(any(family["allow_limit"] for family in matching))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_valid_metric_query_template_normalizes_to_haskell_query_json(
@@ -220,6 +255,42 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(
             payload["spec"]["sharedQuery"]["linkedFilters"],
             [{"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}],
+        )
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_limited_linked_team_object_query_normalizes_into_haskell_query_json(
+        self, mock_call_gemini
+    ) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "object_query",
+            "core_fact_object": "PlayerGame",
+            "row_object": "Player",
+            "metrics": ["total_points"],
+            "dimensions": ["player_name"],
+            "filters": [{"kind": "last_n_games", "value": 10}],
+            "linked_filters": [
+              {"target_object": "Team", "attribute": "team_name", "value": "Knicks"}
+            ],
+            "orders": [{"kind": "desc", "metric": "total_points"}],
+            "limit": 5,
+            "assumptions": []
+          }
+        }
+        """
+
+        payload = interpret_question_to_planner_query(
+            "Show me the top 5 players and their total points for the Knicks over the last 10 games"
+        )
+
+        self.assertEqual(payload["kind"], "object_query")
+        self.assertEqual(payload["spec"]["rowObject"], "Player")
+        self.assertEqual(payload["spec"]["sharedQuery"]["limit"], 5)
+        self.assertEqual(
+            payload["spec"]["sharedQuery"]["linkedFilters"],
+            [{"targetObject": "Team", "attribute": "team_name", "value": "Knicks"}],
         )
 
     @patch("apps.cli.semantic_interpreter._call_gemini")

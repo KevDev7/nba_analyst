@@ -264,6 +264,8 @@ Rules:
 - Use only the live ontology-backed vocabulary and supported query families described below.
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
 - When the user does not explicitly request a limit, use null for limit.
+- The next line is a temporary ambiguity nudge, not ideal long-term semantic reasoning.
+- When a past-year monthly trend question does not explicitly mention players or teams, prefer the broad team-level aggregate path on TeamGame.
 - If the question cannot be represented safely by the current live contract, return:
   {{"status":"unsupported","reason":"<short reason>"}}
 - If the question is supported, return:
@@ -319,6 +321,9 @@ A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"Pla
 
 Q: Show me players and their total points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
+
+Q: Show me the top 5 players and their total points for the Knicks over the last 10 games
+A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"linked_filters":[{{"target_object":"Team","attribute":"team_name","value":"Knicks"}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":5,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
 Q: Show me players by average points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
@@ -472,6 +477,9 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
     question_text = question.lower()
     normalized: list[str] = []
 
+    # Temporary normalization shim. This keeps harmless Gemini wording drift out
+    # of the user-facing/query contract until assumption handling is modeled more
+    # semantically instead of as a fixed allow-list.
     if "pts" in question_text and "Interpreted 'pts' as total points." in assumptions:
         normalized.append("Interpreted 'pts' as total points.")
     if "average scoring" in question_text and "Interpreted 'average scoring' as average points." in assumptions:
@@ -502,6 +510,9 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     interpreted = _parse_interpreter_response(raw_text)
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
+    interpreted.query.assumptions = _normalize_assumptions(
+        question, interpreted.query.assumptions
+    )
     unexpected_assumptions = set(interpreted.query.assumptions) - set(
         _capability_artifact()["allowed_assumptions"]
     )
@@ -510,7 +521,4 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
             "Gemini returned unsupported assumptions: "
             + ", ".join(sorted(unexpected_assumptions))
         )
-    interpreted.query.assumptions = _normalize_assumptions(
-        question, interpreted.query.assumptions
-    )
     return _normalize_to_haskell_query(interpreted.query)

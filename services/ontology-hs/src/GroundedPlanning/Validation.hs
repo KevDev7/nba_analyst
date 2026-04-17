@@ -73,9 +73,13 @@ validateObjectQuery ontology objectQuery = do
   if hasSeasonFilters (filters base)
     then validateSeasonFilters (filters base)
     else validateMetricFilters (filters base)
+  -- Temporary slice restriction. This guard reflects current compiler/runtime
+  -- coverage, not the ideal long-term object-query semantics.
   case metrics base of
     [TotalPoints] -> pure ()
     _ -> Left "ObjectQuery currently supports attached total_points only."
+  -- Temporary slice restriction. Object queries currently compile through one
+  -- known ordering shape; expand or remove once planner support broadens.
   case orders base of
     [Desc TotalPoints] -> pure ()
     _ -> Left "ObjectQuery currently requires descending total_points ordering."
@@ -142,6 +146,8 @@ hasAttribute objectValue attributeName =
 
 requireSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
 requireSelectedMetric factObject metricValues =
+  -- Temporary planner restriction. The current slices still validate exactly
+  -- one selected metric instead of a broader multi-metric query model.
   case metricValues of
     [metricValue] -> do
       metricDef <- requireMetric factObject (metricKey metricValue)
@@ -158,6 +164,8 @@ requireSelectedDimension object dimensionValues = do
 
 requireSingleDimension :: [DimensionName] -> Either Text DimensionName
 requireSingleDimension dimensionValues =
+  -- Temporary planner restriction. The long-term design should allow broader
+  -- dimension combinations once validation and compilation become more general.
   case dimensionValues of
     [dimensionValue] -> Right dimensionValue
     _ -> Left "Query requires exactly one selected dimension."
@@ -239,12 +247,17 @@ validateTrendDimensions ontology factObject dimensionValues =
 ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [EntityName] -> Either Text ()
 ensureComparisonShape ontology factObject rowObject metricValues entities = do
   _ <- requirePath ontology (objectName factObject) (objectName rowObject)
+  -- Temporary slice restriction. Comparison is still hard-capped to one
+  -- prototype path instead of being driven by a general entity reference model.
   if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
     then Left "Comparison currently supports the PlayerGame -> Player path only."
     else pure ()
+  -- Temporary slice restriction. This should broaden once comparison planning
+  -- can reason over governed metrics more generally.
   if metricValues /= [TotalPoints]
     then Left "Comparison currently supports total_points only."
     else pure ()
+  -- Temporary slice restriction inherited from the prototype EntityName enum.
   if length entities /= 2
     then Left "Comparison requires exactly two supported entities."
     else pure ()
@@ -254,6 +267,9 @@ validateLinkedFilters ontology factObjectName linkedFilterValues =
   case linkedFilterValues of
     [] -> pure ()
     [linkedFilterValue] -> do
+      -- Temporary slice restriction. Linked filters are intentionally narrowed
+      -- to the first proof family rather than the long-term generic cross-
+      -- object filter model.
       if factObjectName `elem` ["PlayerGame", "PlayerSeasonTeam"]
         then pure ()
         else Left "Linked team filters currently support PlayerGame and PlayerSeasonTeam only."
@@ -281,6 +297,8 @@ requireObject ontology objectNameValue =
 
 requirePath :: Ontology -> Text -> Text -> Either Text DiscoveredPath
 requirePath ontology sourceName targetName =
+  -- Temporary planner restriction. Path search is still capped at depth 2 for
+  -- the current slices; revisit this once richer ontology traversal is needed.
   maybe
     ( Left
         ( "No valid ontology path from '"

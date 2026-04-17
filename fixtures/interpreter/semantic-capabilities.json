@@ -506,17 +506,326 @@
     {
       "allow_limit": true,
       "comparison": {
-        "enabled": false
+        "enabled": false,
+        "max_entities": null
       },
       "core_fact_object": "PlayerGame",
       "dimensions": [
         "player_name"
       ],
-      "family_key": "player_recent_metric",
+      "family_key": "player_game_season_metric",
       "linked_filters": [],
       "metrics": [
-        "total_points",
-        "average_points"
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_season_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_season_metric_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_season_metric_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_season_metric_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_season_metric_display_name_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_season_metric_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_season_metric_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_season_metric_primary_position_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_season_metric_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_season_metric_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_recent_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
       ],
       "query_kind": "metric_query",
       "require_order_by_metric": true,
@@ -529,13 +838,38 @@
     {
       "allow_limit": true,
       "comparison": {
-        "enabled": false
+        "enabled": false,
+        "max_entities": null
       },
       "core_fact_object": "PlayerGame",
       "dimensions": [
-        "player_name"
+        "team_name"
       ],
-      "family_key": "player_recent_metric_team_filter",
+      "family_key": "player_game_recent_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_recent_metric_by_team_team_filter",
       "linked_filters": [
         {
           "attribute": "team_name",
@@ -544,8 +878,8 @@
         }
       ],
       "metrics": [
-        "total_points",
-        "average_points"
+        "average_points",
+        "total_points"
       ],
       "query_kind": "metric_query",
       "require_order_by_metric": true,
@@ -569,7 +903,7 @@
       "dimensions": [
         "player_name"
       ],
-      "family_key": "player_recent_comparison",
+      "family_key": "player_game_recent_metric_comparison",
       "linked_filters": [],
       "metrics": [
         "total_points"
@@ -583,68 +917,20 @@
       "time_grain": null
     },
     {
-      "allow_limit": false,
-      "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerGame",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_recent_object",
-      "linked_filters": [],
-      "metrics": [
-        "total_points"
-      ],
-      "query_kind": "object_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "last_n_games"
-      ],
-      "row_object": "Player",
-      "time_grain": null
-    },
-    {
-      "allow_limit": false,
-      "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerGame",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_recent_object_team_filter",
-      "linked_filters": [
-        {
-          "attribute": "team_name",
-          "required": true,
-          "target_object": "Team"
-        }
-      ],
-      "metrics": [
-        "total_points"
-      ],
-      "query_kind": "object_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "last_n_games"
-      ],
-      "row_object": "Player",
-      "time_grain": null
-    },
-    {
       "allow_limit": true,
       "comparison": {
-        "enabled": false
+        "enabled": false,
+        "max_entities": null
       },
-      "core_fact_object": "TeamGame",
+      "core_fact_object": "PlayerGame",
       "dimensions": [
-        "team_name"
+        "display_name"
       ],
-      "family_key": "team_recent_metric",
+      "family_key": "player_game_recent_metric_display_name",
       "linked_filters": [],
       "metrics": [
-        "average_points"
+        "average_points",
+        "total_points"
       ],
       "query_kind": "metric_query",
       "require_order_by_metric": true,
@@ -657,14 +943,799 @@
     {
       "allow_limit": false,
       "comparison": {
-        "enabled": false
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_recent_metric_display_name_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_recent_metric_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_recent_metric_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_recent_metric_primary_position_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_recent_metric_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_recent_metric_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [],
+      "family_key": "player_game_monthly_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_monthly_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_monthly_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_monthly_metric_by_team_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [],
+      "family_key": "player_game_monthly_metric_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_monthly_metric_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_monthly_metric_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_monthly_metric_display_name_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_monthly_metric_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_monthly_metric_primary_position_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_season_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_season_metric_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_season_metric_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_metric_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_team_season_metric_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_team_season_metric_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_team_season_metric_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_team_season_metric_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_metric_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_season_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_recent_metric_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
       },
       "core_fact_object": "TeamGame",
       "dimensions": [],
-      "family_key": "team_monthly_trend",
+      "family_key": "team_game_monthly_metric",
       "linked_filters": [],
       "metrics": [
-        "average_points"
+        "average_points",
+        "total_points"
       ],
       "query_kind": "metric_query",
       "require_order_by_metric": false,
@@ -675,18 +1746,74 @@
       "time_grain": "month"
     },
     {
-      "allow_limit": false,
+      "allow_limit": true,
       "comparison": {
-        "enabled": false
+        "enabled": false,
+        "max_entities": null
       },
       "core_fact_object": "TeamGame",
       "dimensions": [
         "team_name"
       ],
-      "family_key": "team_monthly_trend_by_team",
+      "family_key": "team_game_monthly_metric_by_team",
       "linked_filters": [],
       "metrics": [
-        "average_points"
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_monthly_metric_by_team_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [],
+      "family_key": "team_game_monthly_metric_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "total_points"
       ],
       "query_kind": "metric_query",
       "require_order_by_metric": false,
@@ -699,119 +1826,20 @@
     {
       "allow_limit": true,
       "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerSeason",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_season_metric",
-      "linked_filters": [],
-      "metrics": [
-        "average_points"
-      ],
-      "query_kind": "metric_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "exact_season",
-        "season_type"
-      ],
-      "row_object": null,
-      "time_grain": null
-    },
-    {
-      "allow_limit": false,
-      "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerSeason",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_season_object",
-      "linked_filters": [],
-      "metrics": [
-        "total_points"
-      ],
-      "query_kind": "object_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "exact_season",
-        "season_type"
-      ],
-      "row_object": "Player",
-      "time_grain": null
-    },
-    {
-      "allow_limit": true,
-      "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerSeasonTeam",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_season_team_metric",
-      "linked_filters": [
-        {
-          "attribute": "team_name",
-          "required": true,
-          "target_object": "Team"
-        }
-      ],
-      "metrics": [
-        "average_points"
-      ],
-      "query_kind": "metric_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "exact_season",
-        "season_type"
-      ],
-      "row_object": null,
-      "time_grain": null
-    },
-    {
-      "allow_limit": false,
-      "comparison": {
-        "enabled": false
-      },
-      "core_fact_object": "PlayerSeasonTeam",
-      "dimensions": [
-        "player_name"
-      ],
-      "family_key": "player_season_team_object",
-      "linked_filters": [
-        {
-          "attribute": "team_name",
-          "required": true,
-          "target_object": "Team"
-        }
-      ],
-      "metrics": [
-        "total_points"
-      ],
-      "query_kind": "object_query",
-      "require_order_by_metric": true,
-      "required_filter_kinds": [
-        "exact_season",
-        "season_type"
-      ],
-      "row_object": "Player",
-      "time_grain": null
-    },
-    {
-      "allow_limit": true,
-      "comparison": {
-        "enabled": false
+        "enabled": false,
+        "max_entities": null
       },
       "core_fact_object": "TeamSeason",
       "dimensions": [
         "team_name"
       ],
-      "family_key": "team_season_metric",
+      "family_key": "team_season_season_metric_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
+        "losses",
+        "win_percentage",
         "wins"
       ],
       "query_kind": "metric_query",
@@ -822,9 +1850,947 @@
       ],
       "row_object": null,
       "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_season_object_player",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_season_object_player_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_season_object_player_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_season_object_player_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_season_object_player_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_season_object_player_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_recent_object_player",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_recent_object_player_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_game_recent_object_player_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_recent_object_player_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_game_recent_object_player_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_game_recent_object_player_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_season_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_season_object_team_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_recent_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_game_recent_object_team_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_season_object_player",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_season_object_player_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_season_object_player_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_season_object_player_season",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "PlayerSeason",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_object_player",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_team_season_object_player_display_name",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "display_name"
+      ],
+      "family_key": "player_season_team_season_object_player_display_name_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_team_season_object_player_primary_position",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "primary_position"
+      ],
+      "family_key": "player_season_team_season_object_player_primary_position_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_object_player_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_object_player_season_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "PlayerSeasonTeam",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_object_player_season_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "PlayerSeasonTeam",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_object_player_season_team_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "PlayerSeasonTeam",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_season_object_player_season_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "PlayerSeasonTeam",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "player_season_team_season_object_team_by_team_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_season_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_recent_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_season_object_team_game_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "TeamGame",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_game_recent_object_team_game_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "TeamGame",
+      "time_grain": null
     }
   ],
-  "prompt_summary": "Supported semantic families (generated from ontology + execution contract):\n- player_recent_metric: metric_query on PlayerGame with metrics [total_points, average_points], dimensions [player_name], required filters [last_n_games]\n- player_recent_metric_team_filter: metric_query on PlayerGame with metrics [total_points, average_points], dimensions [player_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_recent_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; comparison enabled\n- player_recent_object: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player\n- player_recent_object_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- team_recent_metric: metric_query on TeamGame with metrics [average_points], dimensions [team_name], required filters [last_n_games]\n- team_monthly_trend: metric_query on TeamGame with metrics [average_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- team_monthly_trend_by_team: metric_query on TeamGame with metrics [average_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- player_season_metric: metric_query on PlayerSeason with metrics [average_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_object: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_metric: metric_query on PlayerSeasonTeam with metrics [average_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_object: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- team_season_metric: metric_query on TeamSeason with metrics [wins], dimensions [team_name], required filters [exact_season, season_type]",
+  "prompt_summary": "Supported semantic families (generated from ontology + planner-derived capabilities):\n- player_game_season_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_game_season_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_game_season_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_recent_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]\n- player_game_recent_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- player_game_recent_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]\n- player_game_recent_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]\n- player_game_recent_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_display_name_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_primary_position_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month; comparison enabled\n- player_season_season_metric: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_season_metric_display_name: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_season_metric_primary_position: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_display_name: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_display_name_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_primary_position: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric_primary_position_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- team_game_season_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- team_game_recent_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- team_game_monthly_metric: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- team_game_monthly_metric_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- team_season_season_metric_by_team: metric_query on TeamSeason with metrics [average_points, games_played, losses, win_percentage, wins], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_object_player: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_primary_position: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_primary_position: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_team_by_team: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_game_season_object_team_by_team_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- player_game_recent_object_team_by_team: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- player_game_recent_object_team_by_team_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team; linked filters: Team.team_name\n- player_season_season_object_player: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_display_name: object_query on PlayerSeason with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_primary_position: object_query on PlayerSeason with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_season: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeason\n- player_season_team_season_object_player: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_primary_position: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_primary_position_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_team_by_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_season_team_season_object_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- team_game_season_object_team_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- team_game_recent_object_team_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- team_game_season_object_team_game_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: TeamGame\n- team_game_recent_object_team_game_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: TeamGame",
   "top_level_query_kinds": [
     "metric_query",
     "object_query"
