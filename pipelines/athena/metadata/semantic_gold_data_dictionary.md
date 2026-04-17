@@ -8,6 +8,9 @@ The explicit column classification inventory lives at:
 The explicit live ontology graph artifact lives at:
 - `docs/supported-ontology-graph.md`
 
+The explicit next-object roadmap artifact lives at:
+- `docs/semantic-object-roadmap.md`
+
 Design rules:
 - silver-first inputs only
 - current-state business objects
@@ -66,3 +69,6 @@ V1 does not include:
 - provenance sidecars
 - advanced metric views
 - a semantic `date` object
+
+The planned sequence for these later objects is documented in:
+- `docs/semantic-object-roadmap.md`

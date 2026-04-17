@@ -1304,6 +1304,299 @@ objects:
     - game_id
     expression: COUNT(*)
     executable: false
+- name: PlayerSeason
+  backing_table: player_season
+  description: One player across one season and season type from the semantic_gold
+    surface.
+  attributes:
+  - name: person_id
+    kind: primary_key
+    source_column: person_id
+    link_key: true
+    visibility: public
+    derivation: null
+  - name: player_name
+    kind: dimension
+    source_column: player_name
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_year
+    kind: primary_key
+    source_column: season_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_type
+    kind: primary_key
+    source_column: season_type
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_count
+    kind: dimension
+    source_column: team_count
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: is_multi_team_season
+    kind: dimension
+    source_column: is_multi_team_season
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: games_played
+    kind: measure
+    source_column: games_played
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: total_points
+    kind: measure
+    source_column: total_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: average_points
+    kind: measure
+    source_column: average_points
+    link_key: false
+    visibility: public
+    derivation: null
+  metrics:
+  - name: games_played
+    aggregation: identity
+    source_attributes:
+    - games_played
+    expression: games_played
+    executable: true
+  - name: total_points
+    aggregation: identity
+    source_attributes:
+    - total_points
+    expression: total_points
+    executable: true
+  - name: average_points
+    aggregation: identity
+    source_attributes:
+    - average_points
+    expression: average_points
+    executable: true
+- name: PlayerSeasonTeam
+  backing_table: player_season_team
+  description: One player with one team across one season and season type from the
+    semantic_gold surface.
+  attributes:
+  - name: person_id
+    kind: primary_key
+    source_column: person_id
+    link_key: true
+    visibility: public
+    derivation: null
+  - name: player_name
+    kind: dimension
+    source_column: player_name
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_id
+    kind: primary_key
+    source_column: team_id
+    link_key: true
+    visibility: public
+    derivation: null
+  - name: team_name
+    kind: dimension
+    source_column: team_name
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_abbreviation
+    kind: dimension
+    source_column: team_abbreviation
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_year
+    kind: primary_key
+    source_column: season_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_type
+    kind: primary_key
+    source_column: season_type
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: games_played
+    kind: measure
+    source_column: games_played
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: total_points
+    kind: measure
+    source_column: total_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: average_points
+    kind: measure
+    source_column: average_points
+    link_key: false
+    visibility: public
+    derivation: null
+  metrics:
+  - name: games_played
+    aggregation: identity
+    source_attributes:
+    - games_played
+    expression: games_played
+    executable: true
+  - name: total_points
+    aggregation: identity
+    source_attributes:
+    - total_points
+    expression: total_points
+    executable: true
+  - name: average_points
+    aggregation: identity
+    source_attributes:
+    - average_points
+    expression: average_points
+    executable: true
+- name: TeamSeason
+  backing_table: team_season
+  description: One team across one season and season type from the semantic_gold surface.
+  attributes:
+  - name: team_id
+    kind: primary_key
+    source_column: team_id
+    link_key: true
+    visibility: public
+    derivation: null
+  - name: team_name
+    kind: dimension
+    source_column: team_name
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_abbreviation
+    kind: dimension
+    source_column: team_abbreviation
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_year
+    kind: primary_key
+    source_column: season_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_type
+    kind: primary_key
+    source_column: season_type
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: games_played
+    kind: measure
+    source_column: games_played
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: wins
+    kind: measure
+    source_column: wins
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: losses
+    kind: measure
+    source_column: losses
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: win_percentage
+    kind: measure
+    source_column: win_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: average_points
+    kind: measure
+    source_column: average_points
+    link_key: false
+    visibility: public
+    derivation: null
+  metrics:
+  - name: games_played
+    aggregation: identity
+    source_attributes:
+    - games_played
+    expression: games_played
+    executable: true
+  - name: wins
+    aggregation: identity
+    source_attributes:
+    - wins
+    expression: wins
+    executable: true
+  - name: losses
+    aggregation: identity
+    source_attributes:
+    - losses
+    expression: losses
+    executable: true
+  - name: win_percentage
+    aggregation: identity
+    source_attributes:
+    - win_percentage
+    expression: win_percentage
+    executable: true
+  - name: average_points
+    aggregation: identity
+    source_attributes:
+    - average_points
+    expression: average_points
+    executable: true
 links:
 - name: player_game_player
   source_object: PlayerGame
@@ -1340,4 +1633,28 @@ links:
   target_object: Team
   relation_type: many_to_one
   source_key: opponent_team_id
+  target_key: team_id
+- name: player_season_player
+  source_object: PlayerSeason
+  target_object: Player
+  relation_type: many_to_one
+  source_key: person_id
+  target_key: person_id
+- name: player_season_team_player
+  source_object: PlayerSeasonTeam
+  target_object: Player
+  relation_type: many_to_one
+  source_key: person_id
+  target_key: person_id
+- name: player_season_team_team
+  source_object: PlayerSeasonTeam
+  target_object: Team
+  relation_type: many_to_one
+  source_key: team_id
+  target_key: team_id
+- name: team_season_team
+  source_object: TeamSeason
+  target_object: Team
+  relation_type: many_to_one
+  source_key: team_id
   target_key: team_id

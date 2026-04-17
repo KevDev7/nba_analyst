@@ -38,6 +38,13 @@ validateMetricQuery ontology metricQuery = do
   validateMetricAttributes metricDef
   case timeGrain base of
     Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
+    Nothing | hasSeasonFilters (filters base) -> do
+      rowObject <- requireMetricRowObject ontology factObject (dimensions base)
+      validateSeasonFilters (filters base)
+      validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
+      case comparison metricQuery of
+        Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
+        Nothing -> pure ()
     Nothing -> do
       rowObject <- requireMetricRowObject ontology factObject (dimensions base)
       validateRankingFilters (filters base)
@@ -57,7 +64,9 @@ validateObjectQuery ontology objectQuery = do
   _ <- requireSelectedMetric factObject (metrics base)
   rowObjectValue <- requireObject ontology rowObjectNameValue
   requireSelectedDimension rowObjectValue (dimensions base)
-  validateMetricFilters (filters base)
+  if hasSeasonFilters (filters base)
+    then validateSeasonFilters (filters base)
+    else validateMetricFilters (filters base)
   case metrics base of
     [TotalPoints] -> pure ()
     _ -> Left "ObjectQuery currently supports attached total_points only."
@@ -153,11 +162,42 @@ validateMetricFilters filterValues =
 validateRankingFilters :: [Filter] -> Either Text ()
 validateRankingFilters = validateMetricFilters
 
+hasSeasonFilters :: [Filter] -> Bool
+hasSeasonFilters filterValues =
+  any isSeasonFilter filterValues
+  where
+    isSeasonFilter filterValue =
+      case filterValue of
+        ExactSeason _ -> True
+        SeasonTypeFilter _ -> True
+        _ -> False
+
 validateTrendFilters :: [Filter] -> Either Text ()
 validateTrendFilters filterValues =
   case filterValues of
     [PastYear] -> pure ()
     _ -> Left "Trend queries currently require a PastYear filter."
+
+validateSeasonFilters :: [Filter] -> Either Text ()
+validateSeasonFilters filterValues =
+  case seasonFilterPair filterValues of
+    Just _ -> pure ()
+    Nothing -> Left "Season queries currently require both an exact season label and an explicit season type."
+
+seasonFilterPair :: [Filter] -> Maybe (Text, Text)
+seasonFilterPair filterValues = do
+  seasonLabel <- foldr exactSeasonFilter Nothing filterValues
+  seasonTypeLabel <- foldr seasonTypeFilter Nothing filterValues
+  pure (seasonLabel, seasonTypeLabel)
+  where
+    exactSeasonFilter filterValue currentValue =
+      case filterValue of
+        ExactSeason seasonLabel -> Just seasonLabel
+        _ -> currentValue
+    seasonTypeFilter filterValue currentValue =
+      case filterValue of
+        SeasonTypeFilter seasonTypeLabel -> Just seasonTypeLabel
+        _ -> currentValue
 
 validateMetricOrders :: Maybe ComparisonIntent -> [Order] -> [MetricName] -> Either Text ()
 validateMetricOrders maybeComparison orderValues metricValues =
@@ -245,6 +285,9 @@ metricKey metricValue =
     AveragePoints -> "average_points"
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
+    Wins -> "wins"
+    Losses -> "losses"
+    WinPercentage -> "win_percentage"
 
 dimensionKey :: DimensionName -> Either Text Text
 dimensionKey dimensionValue =

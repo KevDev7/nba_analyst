@@ -240,6 +240,56 @@ TEAM_GAME_SCHEMA = pa.schema(
     ]
 )
 
+PLAYER_SEASON_SCHEMA = pa.schema(
+    [
+        pa.field("person_id", pa.int64()),
+        pa.field("player_name", pa.string()),
+        pa.field("season_year", pa.string()),
+        pa.field("season_type", pa.string()),
+        pa.field("season_start_year", pa.int64()),
+        pa.field("raw_season_type_code", pa.string()),
+        pa.field("team_count", pa.int64()),
+        pa.field("is_multi_team_season", pa.int64()),
+        pa.field("games_played", pa.int64()),
+        pa.field("total_points", pa.int64()),
+        pa.field("average_points", pa.float64()),
+    ]
+)
+
+PLAYER_SEASON_TEAM_SCHEMA = pa.schema(
+    [
+        pa.field("person_id", pa.int64()),
+        pa.field("player_name", pa.string()),
+        pa.field("team_id", pa.int64()),
+        pa.field("team_name", pa.string()),
+        pa.field("team_abbreviation", pa.string()),
+        pa.field("season_year", pa.string()),
+        pa.field("season_type", pa.string()),
+        pa.field("season_start_year", pa.int64()),
+        pa.field("raw_season_type_code", pa.string()),
+        pa.field("games_played", pa.int64()),
+        pa.field("total_points", pa.int64()),
+        pa.field("average_points", pa.float64()),
+    ]
+)
+
+TEAM_SEASON_SCHEMA = pa.schema(
+    [
+        pa.field("team_id", pa.int64()),
+        pa.field("team_name", pa.string()),
+        pa.field("team_abbreviation", pa.string()),
+        pa.field("season_year", pa.string()),
+        pa.field("season_type", pa.string()),
+        pa.field("season_start_year", pa.int64()),
+        pa.field("raw_season_type_code", pa.string()),
+        pa.field("games_played", pa.int64()),
+        pa.field("wins", pa.int64()),
+        pa.field("losses", pa.int64()),
+        pa.field("win_percentage", pa.float64()),
+        pa.field("average_points", pa.float64()),
+    ]
+)
+
 
 SEMANTIC_GOLD_TABLE_SPECS = [
     SemanticGoldTableSpec(
@@ -271,5 +321,23 @@ SEMANTIC_GOLD_TABLE_SPECS = [
         data_key="semantic_gold/team_game/team_game.parquet",
         table_location=f"s3://{S3_BUCKET}/semantic_gold/team_game/",
         schema=TEAM_GAME_SCHEMA,
+    ),
+    SemanticGoldTableSpec(
+        table_name="player_season",
+        data_key="semantic_gold/player_season/player_season.parquet",
+        table_location=f"s3://{S3_BUCKET}/semantic_gold/player_season/",
+        schema=PLAYER_SEASON_SCHEMA,
+    ),
+    SemanticGoldTableSpec(
+        table_name="player_season_team",
+        data_key="semantic_gold/player_season_team/player_season_team.parquet",
+        table_location=f"s3://{S3_BUCKET}/semantic_gold/player_season_team/",
+        schema=PLAYER_SEASON_TEAM_SCHEMA,
+    ),
+    SemanticGoldTableSpec(
+        table_name="team_season",
+        data_key="semantic_gold/team_season/team_season.parquet",
+        table_location=f"s3://{S3_BUCKET}/semantic_gold/team_season/",
+        schema=TEAM_SEASON_SCHEMA,
     ),
 ]

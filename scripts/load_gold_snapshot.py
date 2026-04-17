@@ -25,7 +25,17 @@ except ImportError:  # pragma: no cover - direct script execution
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_TABLES = {"player", "team", "game", "player_game", "team_game", "snapshot_meta"}
+REQUIRED_TABLES = {
+    "player",
+    "team",
+    "game",
+    "player_game",
+    "team_game",
+    "player_season",
+    "player_season_team",
+    "team_season",
+    "snapshot_meta",
+}
 REQUIRED_PLAYER_GAME_COLUMNS = {
     "game_id",
     "person_id",
@@ -46,6 +56,36 @@ REQUIRED_TEAM_GAME_COLUMNS = {
     "team_abbreviation",
     "score",
 }
+REQUIRED_PLAYER_SEASON_COLUMNS = {
+    "person_id",
+    "player_name",
+    "season_year",
+    "season_type",
+    "games_played",
+    "total_points",
+    "average_points",
+}
+REQUIRED_PLAYER_SEASON_TEAM_COLUMNS = {
+    "person_id",
+    "team_id",
+    "player_name",
+    "team_name",
+    "season_year",
+    "season_type",
+    "games_played",
+    "total_points",
+}
+REQUIRED_TEAM_SEASON_COLUMNS = {
+    "team_id",
+    "team_name",
+    "season_year",
+    "season_type",
+    "games_played",
+    "wins",
+    "losses",
+    "win_percentage",
+    "average_points",
+}
 
 
 def _snapshot_is_current(db_path: Path) -> bool:
@@ -63,7 +103,22 @@ def _snapshot_is_current(db_path: Path) -> bool:
             team_game_columns = {
                 row[0] for row in conn.execute("DESCRIBE team_game").fetchall()
             }
-            return REQUIRED_PLAYER_GAME_COLUMNS.issubset(player_game_columns) and REQUIRED_TEAM_GAME_COLUMNS.issubset(team_game_columns)
+            player_season_columns = {
+                row[0] for row in conn.execute("DESCRIBE player_season").fetchall()
+            }
+            player_season_team_columns = {
+                row[0] for row in conn.execute("DESCRIBE player_season_team").fetchall()
+            }
+            team_season_columns = {
+                row[0] for row in conn.execute("DESCRIBE team_season").fetchall()
+            }
+            return (
+                REQUIRED_PLAYER_GAME_COLUMNS.issubset(player_game_columns)
+                and REQUIRED_TEAM_GAME_COLUMNS.issubset(team_game_columns)
+                and REQUIRED_PLAYER_SEASON_COLUMNS.issubset(player_season_columns)
+                and REQUIRED_PLAYER_SEASON_TEAM_COLUMNS.issubset(player_season_team_columns)
+                and REQUIRED_TEAM_SEASON_COLUMNS.issubset(team_season_columns)
+            )
         finally:
             conn.close()
     except duckdb.Error:

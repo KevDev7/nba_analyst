@@ -30,7 +30,7 @@ compileExecutionPlan resolvedQuery =
     ResolvedObject resolved -> compileObjectExecutionPlan resolved
 
 compileMetricExecutionPlan :: ResolvedMetricQuery -> ExecutionPlan
-compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName} =
+compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName, seasonLabel = metricSeasonLabel, seasonType = metricSeasonType} =
   let formula =
         case resolved of
           ResolvedMetricQuery {metricFormula = currentFormula} -> currentFormula
@@ -53,6 +53,8 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , window_games = metricWindowGames
     , time_grain = Nothing
     , time_filter = Nothing
+    , season_label = metricSeasonLabel
+    , season_type = metricSeasonType
     , limit = maybe 0 id metricQueryLimit
     , assumptions = metricAssumptions
     , steps = compileMetricSteps resolved
@@ -77,6 +79,8 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     , window_games = 0
     , time_grain = Just trendTimeGrain
     , time_filter = Just trendTimeFilter
+    , season_label = Nothing
+    , season_type = Nothing
     , limit = 0
     , assumptions = trendAssumptions
     , steps =
@@ -89,7 +93,7 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     }
 
 compileObjectExecutionPlan :: ResolvedObjectQuery -> ExecutionPlan
-compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions, rowObjectName = objectRowObjectName} =
+compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions, rowObjectName = objectRowObjectName, seasonLabel = objectSeasonLabel, seasonType = objectSeasonType} =
   let formula =
         case resolved of
           ResolvedObjectQuery {metricFormula = currentFormula} -> currentFormula
@@ -106,6 +110,8 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , window_games = objectWindowGames
     , time_grain = Nothing
     , time_filter = Nothing
+    , season_label = objectSeasonLabel
+    , season_type = objectSeasonType
     , limit = maybe 0 id objectQueryLimit
     , assumptions = objectAssumptions
     , steps =
@@ -141,58 +147,62 @@ compileMetricSteps resolved =
       ]
 
 compileRankingSql :: ResolvedMetricQuery -> Text
-compileRankingSql resolved =
-  let
-    ResolvedMetricQuery
-      { partitionKey = metricPartitionKey
-      , entityId = metricEntityId
-      , rowPath = metricRowPath
-      , contextPath = metricContextPath
-      , displayName = metricDisplayName
-      , contextValue = metricContextValue
-      , gameDate = metricGameDate
-      , metricSource = metricMetricSource
-      , factTableName = metricFactTableName
-      , metricFormula = resolvedMetricFormulaValue
-      , windowGames = metricWindowGames
-      , queryLimit = metricQueryLimit
-      } = resolved
-   in
-  T.unlines $
-    [ "WITH recent_rows AS ("
-    , "  SELECT"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
-    , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
-    , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
-    , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
-    , "    ) AS game_rank"
-    , "  FROM " <> metricFactTableName <> " f"
-    ]
-      <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
-      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
-      <> [ "), ranked_entities AS ("
-    , "  SELECT"
-    , "    entity_id,"
-    , "    arg_max(entity_name, game_date) AS entity_name,"
-    , "    arg_max(context_value, game_date) AS context_value,"
-    , "    " <> compileMetricAggregation resolvedMetricFormulaValue <> " AS metric_value"
-    , "  FROM recent_rows"
-    , "  WHERE game_rank <= " <> T.pack (show metricWindowGames)
-    , "  GROUP BY entity_id"
-    , ")"
-    , "SELECT"
-    , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, entity_name ASC) AS rank,"
-    , "  entity_name,"
-    , "  context_value,"
-    , "  metric_value"
-    , "FROM ranked_entities"
-    , "ORDER BY metric_value DESC, entity_name ASC"
-    ]
-      <> limitClause metricQueryLimit
+compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, seasonType = maybeSeasonType} =
+  case (maybeSeasonLabel, maybeSeasonType) of
+    (Just seasonLabelValue, Just seasonTypeValue) ->
+      compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue
+    _ ->
+      let
+        ResolvedMetricQuery
+          { partitionKey = metricPartitionKey
+          , entityId = metricEntityId
+          , rowPath = metricRowPath
+          , contextPath = metricContextPath
+          , displayName = metricDisplayName
+          , contextValue = metricContextValue
+          , gameDate = metricGameDate
+          , metricSource = metricMetricSource
+          , factTableName = metricFactTableName
+          , metricFormula = resolvedMetricFormulaValue
+          , windowGames = metricWindowGames
+          , queryLimit = metricQueryLimit
+          } = resolved
+       in
+      T.unlines $
+        [ "WITH recent_rows AS ("
+        , "  SELECT"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
+        , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
+        , "    ROW_NUMBER() OVER ("
+        , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
+        , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
+        , "    ) AS game_rank"
+        , "  FROM " <> metricFactTableName <> " f"
+        ]
+          <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+          <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
+          <> [ "), ranked_entities AS ("
+        , "  SELECT"
+        , "    entity_id,"
+        , "    arg_max(entity_name, game_date) AS entity_name,"
+        , "    arg_max(context_value, game_date) AS context_value,"
+        , "    " <> compileMetricAggregation resolvedMetricFormulaValue <> " AS metric_value"
+        , "  FROM recent_rows"
+        , "  WHERE game_rank <= " <> T.pack (show metricWindowGames)
+        , "  GROUP BY entity_id"
+        , ")"
+        , "SELECT"
+        , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, entity_name ASC) AS rank,"
+        , "  entity_name,"
+        , "  context_value,"
+        , "  metric_value"
+        , "FROM ranked_entities"
+        , "ORDER BY metric_value DESC, entity_name ASC"
+        ]
+          <> limitClause metricQueryLimit
 
 compileComparisonSql :: ResolvedMetricQuery -> Text
 compileComparisonSql resolved =
@@ -241,58 +251,62 @@ compileComparisonSql resolved =
         ]
 
 compileObjectSql :: ResolvedObjectQuery -> Text
-compileObjectSql resolved =
-  let
-    ResolvedObjectQuery
-      { partitionKey = objectPartitionKey
-      , entityId = objectEntityId
-      , rowPath = objectRowPath
-      , contextPath = objectContextPath
-      , displayName = objectDisplayName
-      , contextValue = objectContextValue
-      , gameDate = objectGameDate
-      , metricSource = objectMetricSource
-      , factTableName = objectFactTableName
-      , metricFormula = objectMetricFormula
-      , windowGames = objectWindowGames
-      , queryLimit = objectQueryLimit
-      } = resolved
-   in
-  T.unlines $
-    [ "WITH recent_rows AS ("
-    , "  SELECT"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
-    , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " AS game_date,"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" objectMetricSource <> " AS metric_source,"
-    , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" objectPartitionKey
-    , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " DESC"
-    , "    ) AS game_rank"
-    , "  FROM " <> objectFactTableName <> " f"
-    ]
-      <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
-      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
-      <> [ "), entity_values AS ("
-    , "  SELECT"
-    , "    entity_id,"
-    , "    arg_max(entity_name, game_date) AS entity_name,"
-    , "    arg_max(context_value, game_date) AS context_value,"
-    , "    " <> compileMetricAggregation objectMetricFormula <> " AS metric_value"
-    , "  FROM recent_rows"
-    , "  WHERE game_rank <= " <> T.pack (show objectWindowGames)
-    , "  GROUP BY entity_id"
-    , ")"
-    , "SELECT"
-    , "  entity_id,"
-    , "  entity_name,"
-    , "  context_value,"
-    , "  metric_value"
-    , "FROM entity_values"
-    , "ORDER BY metric_value DESC, entity_name ASC"
-    ]
-      <> limitClause objectQueryLimit
+compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, seasonType = maybeSeasonType} =
+  case (maybeSeasonLabel, maybeSeasonType) of
+    (Just seasonLabelValue, Just seasonTypeValue) ->
+      compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue
+    _ ->
+      let
+        ResolvedObjectQuery
+          { partitionKey = objectPartitionKey
+          , entityId = objectEntityId
+          , rowPath = objectRowPath
+          , contextPath = objectContextPath
+          , displayName = objectDisplayName
+          , contextValue = objectContextValue
+          , gameDate = objectGameDate
+          , metricSource = objectMetricSource
+          , factTableName = objectFactTableName
+          , metricFormula = objectMetricFormula
+          , windowGames = objectWindowGames
+          , queryLimit = objectQueryLimit
+          } = resolved
+       in
+      T.unlines $
+        [ "WITH recent_rows AS ("
+        , "  SELECT"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
+        , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " AS game_date,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" objectMetricSource <> " AS metric_source,"
+        , "    ROW_NUMBER() OVER ("
+        , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" objectPartitionKey
+        , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " DESC"
+        , "    ) AS game_rank"
+        , "  FROM " <> objectFactTableName <> " f"
+        ]
+          <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
+          <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
+          <> [ "), entity_values AS ("
+        , "  SELECT"
+        , "    entity_id,"
+        , "    arg_max(entity_name, game_date) AS entity_name,"
+        , "    arg_max(context_value, game_date) AS context_value,"
+        , "    " <> compileMetricAggregation objectMetricFormula <> " AS metric_value"
+        , "  FROM recent_rows"
+        , "  WHERE game_rank <= " <> T.pack (show objectWindowGames)
+        , "  GROUP BY entity_id"
+        , ")"
+        , "SELECT"
+        , "  entity_id,"
+        , "  entity_name,"
+        , "  context_value,"
+        , "  metric_value"
+        , "FROM entity_values"
+        , "ORDER BY metric_value DESC, entity_name ASC"
+        ]
+          <> limitClause objectQueryLimit
 
 compileTrendSql :: ResolvedTrendQuery -> Text
 compileTrendSql resolved =
@@ -333,12 +347,90 @@ compileTrendSql resolved =
          , "ORDER BY time_bucket ASC, series_name ASC"
          ]
 
+compileSeasonRankingSql :: ResolvedMetricQuery -> Text -> Text -> Text
+compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
+  let
+    ResolvedMetricQuery
+      { displayName = metricDisplayName
+      , contextValue = metricContextValue
+      , metricSource = metricMetricSource
+      , factTableName = metricFactTableName
+      , rowPath = metricRowPath
+      , contextPath = metricContextPath
+      , queryLimit = metricQueryLimit
+      } = resolved
+   in
+  T.unlines $
+    [ "WITH season_ranked_entities AS ("
+    , "  SELECT"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
+    , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
+    , "    " <> renderMetricValue metricMetricSource <> " AS metric_value"
+    , "  FROM " <> metricFactTableName <> " f"
+    ]
+      <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
+      <> [ "  WHERE " <> seasonWhereClause seasonLabelValue seasonTypeValue
+         , "    AND " <> renderMetricValue metricMetricSource <> " IS NOT NULL"
+         , ")"
+         , "SELECT"
+         , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, entity_name ASC) AS rank,"
+         , "  entity_name,"
+         , "  context_value,"
+         , "  metric_value"
+         , "FROM season_ranked_entities"
+         , "ORDER BY metric_value DESC, entity_name ASC"
+         ]
+      <> limitClause metricQueryLimit
+
+compileSeasonObjectSql :: ResolvedObjectQuery -> Text -> Text -> Text
+compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
+  let
+    ResolvedObjectQuery
+      { entityId = objectEntityId
+      , displayName = objectDisplayName
+      , contextValue = objectContextValue
+      , metricSource = objectMetricSource
+      , factTableName = objectFactTableName
+      , rowPath = objectRowPath
+      , contextPath = objectContextPath
+      , queryLimit = objectQueryLimit
+      } = resolved
+   in
+  T.unlines $
+    [ "SELECT"
+    , "  " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
+    , "  " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
+    , "  " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
+    , "  " <> renderMetricValue objectMetricSource <> " AS metric_value"
+    , "FROM " <> objectFactTableName <> " f"
+    ]
+      <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
+      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
+      <> [ "WHERE " <> seasonWhereClause seasonLabelValue seasonTypeValue
+         , "ORDER BY metric_value DESC, entity_name ASC"
+         ]
+      <> limitClause objectQueryLimit
+
 compileMetricAggregation :: ResolvedMetricFormula -> Text
 compileMetricAggregation formula =
   case aggregationKind formula of
     "sum" -> "SUM(metric_source)"
     "avg" -> "ROUND(AVG(metric_source), 1)"
     _ -> error "Unsupported executable metric aggregation."
+
+renderMetricValue :: ColumnRef -> Text
+renderMetricValue columnRef =
+  case tableRole columnRef of
+    "fact" -> "f." <> columnName columnRef
+    "row" -> "r." <> columnName columnRef
+    "series" -> "r." <> columnName columnRef
+    "context" -> "c." <> columnName columnRef
+    _ -> error "Unsupported metric column role."
+
+seasonWhereClause :: Text -> Text -> Text
+seasonWhereClause seasonLabelValue seasonTypeValue =
+  "f.season_year = '" <> seasonLabelValue <> "' AND f.season_type = '" <> seasonTypeValue <> "'"
 
 renderColumnRefWithContext :: Text -> Text -> Text -> ColumnRef -> Text
 renderColumnRefWithContext factAlias rowAlias contextAlias columnRef =
@@ -405,5 +497,7 @@ labelsForRowObject :: Text -> (Text, Text, Text)
 labelsForRowObject rowObjectNameValue =
   case rowObjectNameValue of
     "Player" -> ("Player", "Players", "Team")
+    "PlayerSeason" -> ("Player", "Players", "")
     "Team" -> ("Team", "Teams", "Abbrev")
+    "TeamSeason" -> ("Team", "Teams", "Abbrev")
     _ -> ("Entity", "Entities", "Context")

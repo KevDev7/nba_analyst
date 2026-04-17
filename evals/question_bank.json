@@ -233,6 +233,45 @@
       "filters": ["past_year"],
       "time_grain": "month",
       "notes": "Grouped time-series proof over TeamGame using one business grouping dimension plus month."
+    },
+    {
+      "id": "slice9_player_season_average_points_canonical",
+      "slice_introduced": 9,
+      "question": "Show me players by average points in the 2025-26 regular season",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "player_season_average_points_ranking",
+      "core_fact_object": "PlayerSeason",
+      "metrics": ["average_points"],
+      "dimensions": ["player_name"],
+      "filters": ["exact_season:2025-26", "season_type:regular_season"],
+      "notes": "Canonical season-grain player ranking proof over the new PlayerSeason object."
+    },
+    {
+      "id": "slice9_team_season_wins_canonical",
+      "slice_introduced": 9,
+      "question": "Show me teams by wins in the 2025-26 regular season",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "team_season_wins_ranking",
+      "core_fact_object": "TeamSeason",
+      "metrics": ["wins"],
+      "dimensions": ["team_name"],
+      "filters": ["exact_season:2025-26", "season_type:regular_season"],
+      "notes": "Canonical season-grain team ranking proof over the new TeamSeason object."
+    },
+    {
+      "id": "slice9_player_season_object_totals_canonical",
+      "slice_introduced": 9,
+      "question": "Show me players and their total points in the 2025-26 regular season",
+      "status": "supported",
+      "query_kind": "object_query",
+      "capability": "player_season_object_totals",
+      "core_fact_object": "PlayerSeason",
+      "row_object": "Player",
+      "metrics": ["total_points"],
+      "filters": ["exact_season:2025-26", "season_type:regular_season"],
+      "notes": "Canonical season-grain object query proof over PlayerSeason with attached total points."
     }
   ]
 }

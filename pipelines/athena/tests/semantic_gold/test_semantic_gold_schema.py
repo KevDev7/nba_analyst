@@ -7,14 +7,20 @@ from pipelines.athena.transform.semantic_gold.contracts import (
     GAME_SCHEMA,
     PLAYER_GAME_SCHEMA,
     PLAYER_SCHEMA,
+    PLAYER_SEASON_SCHEMA,
+    PLAYER_SEASON_TEAM_SCHEMA,
     SEMANTIC_GOLD_TABLE_SPECS,
     TEAM_GAME_SCHEMA,
     TEAM_SCHEMA,
+    TEAM_SEASON_SCHEMA,
 )
 from pipelines.athena.transform.semantic_gold import (
     transform_to_game_parquet as game_transform,
     transform_to_player_game_parquet as player_game_transform,
     transform_to_player_parquet as player_transform,
+    transform_to_player_season_parquet as player_season_transform,
+    transform_to_player_season_team_parquet as player_season_team_transform,
+    transform_to_team_season_parquet as team_season_transform,
     transform_to_team_game_parquet as team_game_transform,
     transform_to_team_parquet as team_transform,
 )
@@ -62,9 +68,15 @@ def test_game_schema_keeps_business_context_without_internal_meta() -> None:
 def test_fact_like_schemas_keep_link_keys_and_business_grain_fields() -> None:
     player_game_names = set(PLAYER_GAME_SCHEMA.names)
     team_game_names = set(TEAM_GAME_SCHEMA.names)
+    player_season_names = set(PLAYER_SEASON_SCHEMA.names)
+    player_season_team_names = set(PLAYER_SEASON_TEAM_SCHEMA.names)
+    team_season_names = set(TEAM_SEASON_SCHEMA.names)
 
     assert {"game_id", "person_id", "team_id", "points", "minutes_played_decimal"}.issubset(player_game_names)
     assert {"game_id", "team_id", "opponent_team_id", "score", "opponent_score"}.issubset(team_game_names)
+    assert {"person_id", "season_year", "season_type", "games_played", "total_points", "average_points"}.issubset(player_season_names)
+    assert {"person_id", "team_id", "season_year", "season_type", "games_played", "total_points"}.issubset(player_season_team_names)
+    assert {"team_id", "season_year", "season_type", "wins", "losses", "win_percentage"}.issubset(team_season_names)
 
 
 def test_semantic_transforms_read_from_silver_only() -> None:
@@ -88,6 +100,17 @@ def test_semantic_transforms_read_from_silver_only() -> None:
         team_game_transform.TEAM_GAME_SOURCE_KEY,
         team_game_transform.BOXSCORE_SOURCE_KEY,
         team_game_transform.SCHEDULE_SOURCE_KEY,
+        player_season_transform.PLAYER_SOURCE_KEY,
+        player_season_transform.BOXSCORE_SOURCE_KEY,
+        player_season_transform.SCHEDULE_SOURCE_KEY,
+        player_season_transform.TEAM_GAME_SOURCE_KEY,
+        player_season_team_transform.PLAYER_SOURCE_KEY,
+        player_season_team_transform.BOXSCORE_SOURCE_KEY,
+        player_season_team_transform.SCHEDULE_SOURCE_KEY,
+        player_season_team_transform.TEAM_GAME_SOURCE_KEY,
+        team_season_transform.TEAM_GAME_SOURCE_KEY,
+        team_season_transform.BOXSCORE_SOURCE_KEY,
+        team_season_transform.SCHEDULE_SOURCE_KEY,
     ]
     assert all(key.startswith("silver/") for key in source_keys)
 
@@ -101,6 +124,9 @@ def test_attribute_inventory_covers_current_semantic_contract() -> None:
         "game": GAME_SCHEMA,
         "player_game": PLAYER_GAME_SCHEMA,
         "team_game": TEAM_GAME_SCHEMA,
+        "player_season": PLAYER_SEASON_SCHEMA,
+        "player_season_team": PLAYER_SEASON_TEAM_SCHEMA,
+        "team_season": TEAM_SEASON_SCHEMA,
     }
 
     assert set(inventory_by_table) == set(schema_by_table)
@@ -133,3 +159,9 @@ def test_attribute_inventory_has_expected_key_classifications() -> None:
     assert inventory[("player_game", "person_id")]["link_key"] is True
     assert inventory[("team_game", "opponent_team_id")]["link_key"] is True
     assert inventory[("team_game", "is_win")]["attribute_kind"] == "measure"
+    assert inventory[("player_season", "person_id")]["attribute_kind"] == "primary_key"
+    assert inventory[("player_season", "person_id")]["link_key"] is True
+    assert inventory[("player_season_team", "team_id")]["link_key"] is True
+    assert inventory[("player_season_team", "average_points")]["attribute_kind"] == "measure"
+    assert inventory[("team_season", "wins")]["attribute_kind"] == "measure"
+    assert inventory[("team_season", "team_id")]["link_key"] is True

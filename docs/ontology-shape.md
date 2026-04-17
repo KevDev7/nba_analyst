@@ -69,3 +69,8 @@ It is now the live semantic contract for:
 - real gold-derived local data
 - real object/link validation
 - governed metric resolution in grounded planning
+
+For the explicit next semantic object roadmap beyond the current live surface,
+see:
+
+- `docs/semantic-object-roadmap.md`

@@ -42,7 +42,12 @@ matchQuestion ontology parsedQuestion = do
           then Just (CompareEntities entityValues)
           else Nothing
       assumptionValues = metricAssumptions (metricPhrase parsedQuestion) metricValue
-  if playerConceptPresent parsedQuestion || teamConceptPresent parsedQuestion || metricPhrase parsedQuestion `elem` ["scorer", "scorers"] || extractedTimeGrain parsedQuestion /= Nothing
+  if playerConceptPresent parsedQuestion
+      || teamConceptPresent parsedQuestion
+      || metricPhrase parsedQuestion `elem` ["scorer", "scorers"]
+      || extractedTimeGrain parsedQuestion /= Nothing
+      || extractedSeasonLabel parsedQuestion /= Nothing
+      || extractedSeasonType parsedQuestion /= Nothing
     then
       pure
         MatchResult
@@ -69,10 +74,13 @@ matchMetric ontology factObjectName phrase = do
           "points" -> Right TotalPoints
           "total points" -> Right TotalPoints
           "pts" -> Right TotalPoints
+          "wins" -> Right Wins
+          "losses" -> Right Losses
+          "win percentage" -> Right WinPercentage
           "scoring" -> Right TotalPoints
           "scorer" -> Right TotalPoints
           "scorers" -> Right TotalPoints
-          _ -> Left "The supported slices only handle points-based metrics right now."
+          _ -> Left "The supported slices only handle the currently governed metrics right now."
   metricValue <- candidateMetric
   let metricKey = renderMetricName metricValue
   case findMetric factObject metricKey of
@@ -86,6 +94,18 @@ matchObjectsAndDimension ontology parsedQuestion
       _ <- requireObject ontology "Player"
       _ <- requireObjectAttribute ontology "Player" "player_name"
       pure ("PlayerGame", Just "Player", Just PlayerName)
+  | extractedSeasonLabel parsedQuestion /= Nothing || extractedSeasonType parsedQuestion /= Nothing =
+      if teamConceptPresent parsedQuestion
+        then do
+          _ <- requireObject ontology "TeamSeason"
+          _ <- requireObject ontology "Team"
+          _ <- requireObjectAttribute ontology "Team" "team_name"
+          pure ("TeamSeason", Just "Team", Just TeamName)
+        else do
+          _ <- requireObject ontology "PlayerSeason"
+          _ <- requireObject ontology "Player"
+          _ <- requireObjectAttribute ontology "Player" "player_name"
+          pure ("PlayerSeason", Just "Player", Just PlayerName)
   | objectRowsRequested parsedQuestion = do
       _ <- requireObject ontology "PlayerGame"
       _ <- requireObject ontology "Player"
@@ -121,6 +141,7 @@ metricAssumptions phrase metricValue =
     ("avg points", AveragePoints) -> ["Interpreted 'avg points' as average points."]
     ("average scoring", AveragePoints) -> ["Interpreted 'average scoring' as average points."]
     ("scoring average", AveragePoints) -> ["Interpreted 'scoring average' as average points."]
+    ("win percentage", WinPercentage) -> ["Interpreted 'win percentage' as win percentage."]
     _ -> []
 
 matchEntities :: [Text] -> Either Text [EntityName]
@@ -165,3 +186,6 @@ renderMetricName metricValue =
     AveragePoints -> "average_points"
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
+    Wins -> "wins"
+    Losses -> "losses"
+    WinPercentage -> "win_percentage"

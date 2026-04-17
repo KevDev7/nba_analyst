@@ -44,6 +44,9 @@ RETAINED_QUESTIONS = {
     "Show me teams by average points over the last 10 games",
     "What are the monthly average points over the past year?",
     "What are the monthly average points by team over the past year?",
+    "Show me players by average points in the 2025-26 regular season",
+    "Show me teams by wins in the 2025-26 regular season",
+    "Show me players and their total points in the 2025-26 regular season",
 }
 
 

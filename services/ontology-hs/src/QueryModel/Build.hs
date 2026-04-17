@@ -19,7 +19,11 @@ module QueryModel.Build where
 import Data.Text (Text)
 import QueryModel.Classify (QueryKind (..))
 import QueryModel.IR
-import QueryModel.Interpret (ParsedQuestion (..), TimeGrainPhrase (Monthly))
+import QueryModel.Interpret (
+  ParsedQuestion (..),
+  SeasonTypePhrase (PlayoffsPhrase, RegularSeasonPhrase),
+  TimeGrainPhrase (Monthly),
+ )
 import QueryModel.Match (MatchResult (..))
 
 buildQuery :: QueryKind -> ParsedQuestion -> MatchResult -> Either Text Query
@@ -79,11 +83,25 @@ metricFilters parsedQuestion =
   if extractedPastYear parsedQuestion
     then [PastYear]
     else
-      case extractedWindowGames parsedQuestion of
-        Just windowValue -> [LastNGames windowValue]
-        Nothing -> []
+      case (extractedSeasonLabel parsedQuestion, extractedSeasonType parsedQuestion) of
+        (Just seasonLabel, Just seasonTypePhrase) ->
+          [ExactSeason seasonLabel, SeasonTypeFilter (renderSeasonType seasonTypePhrase)]
+        (Just seasonLabel, Nothing) ->
+          [ExactSeason seasonLabel]
+        (Nothing, Just seasonTypePhrase) ->
+          [SeasonTypeFilter (renderSeasonType seasonTypePhrase)]
+        (Nothing, Nothing) ->
+          case extractedWindowGames parsedQuestion of
+            Just windowValue -> [LastNGames windowValue]
+            Nothing -> []
 
 renderTimeGrain :: TimeGrainPhrase -> TimeGrain
 renderTimeGrain timeGrainPhrase =
   case timeGrainPhrase of
     Monthly -> Month
+
+renderSeasonType :: SeasonTypePhrase -> Text
+renderSeasonType seasonTypePhrase =
+  case seasonTypePhrase of
+    RegularSeasonPhrase -> "regular_season"
+    PlayoffsPhrase -> "playoffs"

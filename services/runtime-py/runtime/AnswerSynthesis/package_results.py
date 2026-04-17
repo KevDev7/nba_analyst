@@ -28,6 +28,8 @@ def package_results(result: RuntimeResult) -> Dict[str, object]:
         "window_games": result.window_games,
         "time_grain": result.time_grain,
         "time_filter": result.time_filter,
+        "season_label": result.season_label,
+        "season_type": result.season_type,
         "limit": result.limit,
         "assumptions": result.assumptions,
         "rows": [row.model_dump() if hasattr(row, "model_dump") else row.dict() for row in result.rows],

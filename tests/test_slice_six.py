@@ -23,7 +23,16 @@ class SliceSixTests(unittest.TestCase):
         ontology_objects = {obj["name"]: obj for obj in ontology["objects"]}
         self.assertEqual(
             set(ontology_objects),
-            {"Player", "Team", "Game", "PlayerGame", "TeamGame"},
+            {
+                "Player",
+                "Team",
+                "Game",
+                "PlayerGame",
+                "TeamGame",
+                "PlayerSeason",
+                "PlayerSeasonTeam",
+                "TeamSeason",
+            },
         )
 
         for table_entry in inventory["tables"]:

@@ -30,6 +30,8 @@ class FinalAnswer(BaseModel):
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
+    season_label: Optional[str] = None
+    season_type: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
     rows: List[RankingRow]

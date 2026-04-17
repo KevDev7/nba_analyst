@@ -24,6 +24,9 @@ def _human_metric(metric: str) -> str:
         "average_points": "average points",
         "games_played": "games played",
         "points_per_36": "points per 36",
+        "wins": "wins",
+        "losses": "losses",
+        "win_percentage": "win percentage",
     }.get(metric, metric)
 
 
@@ -45,6 +48,8 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
     window_games = int(payload["window_games"])
     time_grain = payload.get("time_grain")
     time_filter = payload.get("time_filter")
+    season_label = payload.get("season_label")
+    season_type = payload.get("season_type")
     limit = int(payload["limit"])
     assumptions = list(payload.get("assumptions", []))
     comparison_payload = payload.get("comparison")
@@ -67,6 +72,8 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             window_games=window_games,
             time_grain=time_grain,
             time_filter=time_filter,
+            season_label=season_label,
+            season_type=season_type,
             limit=limit,
             assumptions=assumptions,
             rows=[],
@@ -77,11 +84,18 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
 
     if object_rows:
         leader = object_rows[0]
-        summary = (
-            f"{entity_label_plural} ordered by {_human_metric(metric)} over the last "
-            f"{window_games} games: {leader.entity_name} leads with "
-            f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
-        )
+        if season_label and season_type:
+            summary = (
+                f"{entity_label_plural} ordered by {_human_metric(metric)} in the "
+                f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
+                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+            )
+        else:
+            summary = (
+                f"{entity_label_plural} ordered by {_human_metric(metric)} over the last "
+                f"{window_games} games: {leader.entity_name} leads with "
+                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+            )
         return FinalAnswer(
             summary=summary,
             query_kind=query_kind,
@@ -93,6 +107,8 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             window_games=window_games,
             time_grain=time_grain,
             time_filter=time_filter,
+            season_label=season_label,
+            season_type=season_type,
             limit=limit,
             assumptions=assumptions,
             rows=[],
@@ -122,6 +138,8 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             window_games=window_games,
             time_grain=time_grain,
             time_filter=time_filter,
+            season_label=season_label,
+            season_type=season_type,
             limit=limit,
             assumptions=assumptions,
             rows=[],
@@ -132,7 +150,20 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
 
     if rows:
         leader = rows[0]
-        if limit > 0:
+        if season_label and season_type:
+            if limit > 0:
+                summary = (
+                    f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} in the "
+                    f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
+                    f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+                )
+            else:
+                summary = (
+                    f"{entity_label_plural} ranked by {_human_metric(metric)} in the "
+                    f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
+                    f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+                )
+        elif limit > 0:
             summary = (
                 f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} over the last "
                 f"{window_games} games: {leader.entity_name} leads with "
@@ -146,8 +177,7 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             )
     else:
         summary = (
-            f"No {entity_label_plural.lower()} were returned for the requested {_human_metric(metric)} ranking "
-            f"over the last {window_games} games."
+            f"No {entity_label_plural.lower()} were returned for the requested {_human_metric(metric)} ranking."
         )
 
     return FinalAnswer(
@@ -161,6 +191,8 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
         window_games=window_games,
         time_grain=time_grain,
         time_filter=time_filter,
+        season_label=season_label,
+        season_type=season_type,
         limit=limit,
         assumptions=assumptions,
         rows=rows,

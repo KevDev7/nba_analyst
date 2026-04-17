@@ -26,8 +26,11 @@ data QueryKind
 
 classifyQuestion :: ParsedQuestion -> MatchResult -> Either Text QueryKind
 classifyQuestion parsedQuestion _matched
-  | extractedTimeGrain parsedQuestion == Nothing && extractedWindowGames parsedQuestion == Nothing =
-      Left "The query requires either a positive last-N-games window or a supported time filter."
+  | extractedTimeGrain parsedQuestion == Nothing
+      && extractedWindowGames parsedQuestion == Nothing
+      && extractedSeasonLabel parsedQuestion == Nothing
+      && extractedSeasonType parsedQuestion == Nothing =
+      Left "The query requires either a positive last-N-games window, supported time filter, or supported season filters."
   | maybe False (<= 0) (extractedWindowGames parsedQuestion) =
       Left "The query requires a positive last-N-games window."
   | comparisonRequested parsedQuestion = Right MetricQueryKind

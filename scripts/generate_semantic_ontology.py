@@ -32,6 +32,9 @@ OBJECT_DESCRIPTIONS = {
     "Game": "One NBA game entity from the semantic_gold surface.",
     "PlayerGame": "One player in one NBA game from the semantic_gold surface.",
     "TeamGame": "One team in one NBA game from the semantic_gold surface.",
+    "PlayerSeason": "One player across one season and season type from the semantic_gold surface.",
+    "PlayerSeasonTeam": "One player with one team across one season and season type from the semantic_gold surface.",
+    "TeamSeason": "One team across one season and season type from the semantic_gold surface.",
 }
 
 METRICS_BY_OBJECT = {
@@ -86,6 +89,89 @@ METRICS_BY_OBJECT = {
             "source_attributes": ["game_id"],
             "expression": "COUNT(*)",
             "executable": False,
+        },
+    ],
+    "PlayerSeason": [
+        {
+            "name": "games_played",
+            "aggregation": "identity",
+            "source_attributes": ["games_played"],
+            "expression": "games_played",
+            "executable": True,
+        },
+        {
+            "name": "total_points",
+            "aggregation": "identity",
+            "source_attributes": ["total_points"],
+            "expression": "total_points",
+            "executable": True,
+        },
+        {
+            "name": "average_points",
+            "aggregation": "identity",
+            "source_attributes": ["average_points"],
+            "expression": "average_points",
+            "executable": True,
+        },
+    ],
+    "PlayerSeasonTeam": [
+        {
+            "name": "games_played",
+            "aggregation": "identity",
+            "source_attributes": ["games_played"],
+            "expression": "games_played",
+            "executable": True,
+        },
+        {
+            "name": "total_points",
+            "aggregation": "identity",
+            "source_attributes": ["total_points"],
+            "expression": "total_points",
+            "executable": True,
+        },
+        {
+            "name": "average_points",
+            "aggregation": "identity",
+            "source_attributes": ["average_points"],
+            "expression": "average_points",
+            "executable": True,
+        },
+    ],
+    "TeamSeason": [
+        {
+            "name": "games_played",
+            "aggregation": "identity",
+            "source_attributes": ["games_played"],
+            "expression": "games_played",
+            "executable": True,
+        },
+        {
+            "name": "wins",
+            "aggregation": "identity",
+            "source_attributes": ["wins"],
+            "expression": "wins",
+            "executable": True,
+        },
+        {
+            "name": "losses",
+            "aggregation": "identity",
+            "source_attributes": ["losses"],
+            "expression": "losses",
+            "executable": True,
+        },
+        {
+            "name": "win_percentage",
+            "aggregation": "identity",
+            "source_attributes": ["win_percentage"],
+            "expression": "win_percentage",
+            "executable": True,
+        },
+        {
+            "name": "average_points",
+            "aggregation": "identity",
+            "source_attributes": ["average_points"],
+            "expression": "average_points",
+            "executable": True,
         },
     ],
 }
@@ -247,6 +333,38 @@ LINKS = [
         "source_key": "opponent_team_id",
         "target_key": "team_id",
     },
+    {
+        "name": "player_season_player",
+        "source_object": "PlayerSeason",
+        "target_object": "Player",
+        "relation_type": "many_to_one",
+        "source_key": "person_id",
+        "target_key": "person_id",
+    },
+    {
+        "name": "player_season_team_player",
+        "source_object": "PlayerSeasonTeam",
+        "target_object": "Player",
+        "relation_type": "many_to_one",
+        "source_key": "person_id",
+        "target_key": "person_id",
+    },
+    {
+        "name": "player_season_team_team",
+        "source_object": "PlayerSeasonTeam",
+        "target_object": "Team",
+        "relation_type": "many_to_one",
+        "source_key": "team_id",
+        "target_key": "team_id",
+    },
+    {
+        "name": "team_season_team",
+        "source_object": "TeamSeason",
+        "target_object": "Team",
+        "relation_type": "many_to_one",
+        "source_key": "team_id",
+        "target_key": "team_id",
+    },
 ]
 
 
@@ -257,6 +375,9 @@ def object_name_for_table(table_name: str) -> str:
         "game": "Game",
         "player_game": "PlayerGame",
         "team_game": "TeamGame",
+        "player_season": "PlayerSeason",
+        "player_season_team": "PlayerSeasonTeam",
+        "team_season": "TeamSeason",
     }[table_name]
 
 

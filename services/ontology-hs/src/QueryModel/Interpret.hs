@@ -25,6 +25,8 @@ data ParsedQuestion = ParsedQuestion
   , extractedWindowGames :: Maybe Int
   , extractedTimeGrain :: Maybe TimeGrainPhrase
   , extractedPastYear :: Bool
+  , extractedSeasonLabel :: Maybe Text
+  , extractedSeasonType :: Maybe SeasonTypePhrase
   , metricPhrase :: Text
   , playerConceptPresent :: Bool
   , teamConceptPresent :: Bool
@@ -38,6 +40,11 @@ data TimeGrainPhrase
   = Monthly
   deriving (Show, Eq)
 
+data SeasonTypePhrase
+  = RegularSeasonPhrase
+  | PlayoffsPhrase
+  deriving (Show, Eq)
+
 interpretQuestion :: Text -> Either Text ParsedQuestion
 interpretQuestion question = do
   let normalized = normalize question
@@ -46,6 +53,8 @@ interpretQuestion question = do
       comparisonRequestedValue = "compare" `elem` tokens
       extractedTimeGrainValue = extractTimeGrain normalized
       extractedPastYearValue = "past year" `T.isInfixOf` normalized || "last year" `T.isInfixOf` normalized
+      extractedSeasonLabelValue = extractSeasonLabel tokens
+      extractedSeasonTypeValue = extractSeasonType normalized
       objectRowsRequestedValue =
         "players and their" `T.isInfixOf` normalized
           || "players with their" `T.isInfixOf` normalized
@@ -53,6 +62,8 @@ interpretQuestion question = do
         filter (`elem` ["brunson", "haliburton", "jalen", "tyrese", "tatum", "jayson"]) tokens
       windowValue =
         if extractedPastYearValue
+          || extractedSeasonLabelValue /= Nothing
+          || extractedSeasonTypeValue /= Nothing
           then Right Nothing
           else Just <$> extractNumberAfter "last" tokens
   metricToken <- extractMetricPhrase normalized tokens
@@ -65,6 +76,8 @@ interpretQuestion question = do
       , extractedWindowGames = parsedWindowValue
       , extractedTimeGrain = extractedTimeGrainValue
       , extractedPastYear = extractedPastYearValue
+      , extractedSeasonLabel = extractedSeasonLabelValue
+      , extractedSeasonType = extractedSeasonTypeValue
       , metricPhrase = metricToken
       , playerConceptPresent =
           any (`elem` ["player", "players", "scorer", "scorers"]) tokens
@@ -99,6 +112,26 @@ extractTimeGrain normalized
   | "by month" `T.isInfixOf` normalized = Just Monthly
   | otherwise = Nothing
 
+extractSeasonLabel :: [Text] -> Maybe Text
+extractSeasonLabel tokens =
+  go tokens
+  where
+    go (yearToken : suffixToken : rest)
+      | T.length yearToken == 4
+          && T.length suffixToken == 2
+          && T.all (`elem` ['0' .. '9']) yearToken
+          && T.all (`elem` ['0' .. '9']) suffixToken =
+          Just (yearToken <> "-" <> suffixToken)
+      | otherwise = go (suffixToken : rest)
+    go _ = Nothing
+
+extractSeasonType :: Text -> Maybe SeasonTypePhrase
+extractSeasonType normalized
+  | "regular season" `T.isInfixOf` normalized = Just RegularSeasonPhrase
+  | "playoffs" `T.isInfixOf` normalized = Just PlayoffsPhrase
+  | "playoff" `T.isInfixOf` normalized = Just PlayoffsPhrase
+  | otherwise = Nothing
+
 extractOptionalNumberAfter :: Text -> [Text] -> Maybe Int
 extractOptionalNumberAfter target tokens =
   case dropWhile (/= target) tokens of
@@ -118,12 +151,15 @@ extractLimit normalized tokens =
 
 extractMetricPhrase :: Text -> [Text] -> Either Text Text
 extractMetricPhrase normalized tokens
+  | "win percentage" `T.isInfixOf` normalized = Right "win percentage"
   | "average points" `T.isInfixOf` normalized = Right "average points"
   | "avg points" `T.isInfixOf` normalized = Right "avg points"
   | "average scoring" `T.isInfixOf` normalized = Right "average scoring"
   | "scoring average" `T.isInfixOf` normalized = Right "scoring average"
   | "total points" `T.isInfixOf` normalized = Right "total points"
+  | "wins" `T.isInfixOf` normalized = Right "wins"
+  | "losses" `T.isInfixOf` normalized = Right "losses"
   | otherwise =
-      case filter (`elem` ["points", "pts", "scoring", "scorer", "scorers"]) tokens of
+      case filter (`elem` ["points", "pts", "scoring", "scorer", "scorers", "wins", "losses"]) tokens of
         metricToken : _ -> Right metricToken
-        [] -> Left "The current slices only support points-based questions."
+        [] -> Left "The current slices only support the currently governed metrics."

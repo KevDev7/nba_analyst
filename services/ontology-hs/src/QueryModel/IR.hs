@@ -42,6 +42,9 @@ data MetricName
   | AveragePoints
   | GamesPlayed
   | PointsPer36
+  | Wins
+  | Losses
+  | WinPercentage
   deriving (Show, Eq, Generic)
 
 instance ToJSON MetricName where
@@ -49,6 +52,9 @@ instance ToJSON MetricName where
   toJSON AveragePoints = String "average_points"
   toJSON GamesPlayed = String "games_played"
   toJSON PointsPer36 = String "points_per_36"
+  toJSON Wins = String "wins"
+  toJSON Losses = String "losses"
+  toJSON WinPercentage = String "win_percentage"
 
 instance FromJSON MetricName where
   parseJSON = withText "MetricName" $ \value ->
@@ -57,6 +63,9 @@ instance FromJSON MetricName where
       "average_points" -> pure AveragePoints
       "games_played" -> pure GamesPlayed
       "points_per_36" -> pure PointsPer36
+      "wins" -> pure Wins
+      "losses" -> pure Losses
+      "win_percentage" -> pure WinPercentage
       _ -> fail ("Unknown metric: " <> show value)
 
 data DimensionName
@@ -100,11 +109,17 @@ instance FromJSON TimeGrain where
 data Filter
   = LastNGames Int
   | PastYear
+  | ExactSeason Text
+  | SeasonTypeFilter Text
   deriving (Show, Eq, Generic)
 
 instance ToJSON Filter where
   toJSON (LastNGames n) = object ["kind" .= String "last_n_games", "value" .= n]
   toJSON PastYear = object ["kind" .= String "past_year"]
+  toJSON (ExactSeason seasonLabel) =
+    object ["kind" .= String "exact_season", "value" .= seasonLabel]
+  toJSON (SeasonTypeFilter seasonTypeLabel) =
+    object ["kind" .= String "season_type", "value" .= seasonTypeLabel]
 
 instance FromJSON Filter where
   parseJSON = withObject "Filter" $ \obj -> do
@@ -112,6 +127,8 @@ instance FromJSON Filter where
     case (kindValue :: Text) of
       "last_n_games" -> LastNGames <$> obj .: "value"
       "past_year" -> pure PastYear
+      "exact_season" -> ExactSeason <$> obj .: "value"
+      "season_type" -> SeasonTypeFilter <$> obj .: "value"
       _ -> fail ("Unknown filter kind: " <> show kindValue)
 
 data Order

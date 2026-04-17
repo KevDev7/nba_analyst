@@ -5,7 +5,16 @@ import pyarrow as pa
 from pipelines.athena.transform.semantic_gold.transform_to_game_parquet import build_game_rows_from_tables
 from pipelines.athena.transform.semantic_gold.transform_to_player_game_parquet import build_player_game_rows_from_tables
 from pipelines.athena.transform.semantic_gold.transform_to_player_parquet import build_player_rows_from_tables
+from pipelines.athena.transform.semantic_gold.transform_to_player_season_parquet import (
+    build_player_season_rows_from_tables,
+)
+from pipelines.athena.transform.semantic_gold.transform_to_player_season_team_parquet import (
+    build_player_season_team_rows_from_tables,
+)
 from pipelines.athena.transform.semantic_gold.transform_to_team_game_parquet import build_team_game_rows_from_tables
+from pipelines.athena.transform.semantic_gold.transform_to_team_season_parquet import (
+    build_team_season_rows_from_tables,
+)
 from pipelines.athena.transform.semantic_gold.transform_to_team_parquet import build_team_rows_from_tables
 
 
@@ -623,3 +632,75 @@ def test_build_team_game_rows_drop_non_semantic_team_pairs() -> None:
         ("0022400001", 1610612744),
         ("0022400001", 1610612747),
     }
+
+
+def test_build_player_season_rows_aggregate_one_row_per_player_season() -> None:
+    rows = build_player_season_rows_from_tables(
+        sample_player_game_table(),
+        sample_boxscore_game_table(),
+        sample_schedule_table(),
+        sample_team_game_table(),
+    )
+
+    by_key = {(row["person_id"], row["season_year"], row["season_type"]): row for row in rows}
+    assert set(by_key) == {
+        (2544, "2024-25", "regular_season"),
+        (201939, "2024-25", "regular_season"),
+    }
+    curry = by_key[(201939, "2024-25", "regular_season")]
+    assert curry["player_name"] == "Stephen Curry"
+    assert curry["games_played"] == 1
+    assert curry["total_points"] == 33
+    assert curry["average_points"] == 33.0
+    assert curry["team_count"] == 1
+    assert curry["is_multi_team_season"] == 0
+
+
+def test_build_player_season_team_rows_keep_team_stint_grain() -> None:
+    rows = build_player_season_team_rows_from_tables(
+        sample_player_game_table(),
+        sample_boxscore_game_table(),
+        sample_schedule_table(),
+        sample_team_game_table(),
+    )
+
+    by_key = {
+        (row["person_id"], row["team_id"], row["season_year"], row["season_type"]): row
+        for row in rows
+    }
+    assert set(by_key) == {
+        (2544, 1610612747, "2024-25", "regular_season"),
+        (201939, 1610612744, "2024-25", "regular_season"),
+    }
+    lebron = by_key[(2544, 1610612747, "2024-25", "regular_season")]
+    assert lebron["player_name"] == "LeBron James"
+    assert lebron["team_name"] == "Lakers"
+    assert lebron["team_abbreviation"] == "LAL"
+    assert lebron["games_played"] == 1
+    assert lebron["total_points"] == 30
+    assert lebron["average_points"] == 30.0
+
+
+def test_build_team_season_rows_aggregate_team_results() -> None:
+    rows = build_team_season_rows_from_tables(
+        sample_team_game_table(),
+        sample_boxscore_game_table(),
+        sample_schedule_table(),
+    )
+
+    by_key = {(row["team_id"], row["season_year"], row["season_type"]): row for row in rows}
+    warriors = by_key[(1610612744, "2024-25", "regular_season")]
+    lakers = by_key[(1610612747, "2024-25", "regular_season")]
+
+    assert warriors["team_name"] == "Warriors"
+    assert warriors["games_played"] == 1
+    assert warriors["wins"] == 1
+    assert warriors["losses"] == 0
+    assert warriors["win_percentage"] == 1.0
+    assert warriors["average_points"] == 120.0
+
+    assert lakers["team_abbreviation"] == "LAL"
+    assert lakers["wins"] == 0
+    assert lakers["losses"] == 1
+    assert lakers["win_percentage"] == 0.0
+    assert lakers["average_points"] == 115.0

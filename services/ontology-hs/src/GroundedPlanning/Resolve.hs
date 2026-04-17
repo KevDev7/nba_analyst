@@ -62,6 +62,8 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , gameDate :: ColumnRef
   , metricSource :: ColumnRef
   , windowGames :: Int
+  , seasonLabel :: Maybe Text
+  , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
   , comparisonEntities :: [ResolvedEntity]
   , comparisonRequestedValue :: Bool
@@ -101,6 +103,8 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , gameDate :: ColumnRef
   , metricSource :: ColumnRef
   , windowGames :: Int
+  , seasonLabel :: Maybe Text
+  , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
@@ -140,11 +144,18 @@ resolveMetricQuery ontology metricQuery = do
   (rowObject, discoveredRowPath) <- resolveMetricRowObject ontology (coreFactObject base) (dimensions base)
   selectedMetric <- requireSingleMetric (metrics base)
   metricDef <- requireMetric factObject (metricText selectedMetric)
-  gamesValue <- requireLastNGames (filters base)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObject
+  let maybeSeasonPair = seasonFilterPair (filters base)
+      gamesValue =
+        case maybeSeasonPair of
+          Just _ -> 0
+          Nothing ->
+            case requireLastNGames (filters base) of
+              Right value -> value
+              Left _ -> 0
   let limitValue = limit base
       entityValues = map resolveEntity (entityFilters metricQuery)
       comparisonRequestedFlag =
@@ -166,6 +177,8 @@ resolveMetricQuery ontology metricQuery = do
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
+      , seasonLabel = fst <$> maybeSeasonPair
+      , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limitValue
       , comparisonEntities = entityValues
       , comparisonRequestedValue = comparisonRequestedFlag
@@ -214,11 +227,18 @@ resolveObjectQuery ontology objectQuery = do
   rowObjectValue <- requireObject ontology rowObjectNameValue
   discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
   metricDef <- requireMetric factObject "total_points"
-  gamesValue <- requireLastNGames (filters base)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObjectValue
+  let maybeSeasonPair = seasonFilterPair (filters base)
+      gamesValue =
+        case maybeSeasonPair of
+          Just _ -> 0
+          Nothing ->
+            case requireLastNGames (filters base) of
+              Right value -> value
+              Left _ -> 0
   pure
     ResolvedObjectQuery
       { rowTableName = backing_table rowObjectValue
@@ -233,6 +253,8 @@ resolveObjectQuery ontology objectQuery = do
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
+      , seasonLabel = fst <$> maybeSeasonPair
+      , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limit base
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
@@ -348,6 +370,9 @@ metricText metricValue =
     AveragePoints -> "average_points"
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
+    Wins -> "wins"
+    Losses -> "losses"
+    WinPercentage -> "win_percentage"
 
 metricDisplayColumn :: [DimensionName] -> Either Text Text
 metricDisplayColumn dimensionValues = do
@@ -371,6 +396,21 @@ requireLastNGames filterValues =
   case filterValues of
     [LastNGames n] -> Right n
     _ -> Left "Only a single LastNGames filter is supported."
+
+seasonFilterPair :: [Filter] -> Maybe (Text, Text)
+seasonFilterPair filterValues = do
+  seasonLabelValue <- foldr exactSeasonFilter Nothing filterValues
+  seasonTypeValue <- foldr seasonTypeFilter Nothing filterValues
+  pure (seasonLabelValue, seasonTypeValue)
+  where
+    exactSeasonFilter filterValue currentValue =
+      case filterValue of
+        ExactSeason seasonLabelValue -> Just seasonLabelValue
+        _ -> currentValue
+    seasonTypeFilter filterValue currentValue =
+      case filterValue of
+        SeasonTypeFilter seasonTypeValue -> Just seasonTypeValue
+        _ -> currentValue
 
 requireSingleDimension :: [DimensionName] -> Either Text DimensionName
 requireSingleDimension dimensionValues =

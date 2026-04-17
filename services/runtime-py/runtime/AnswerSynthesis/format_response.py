@@ -19,12 +19,18 @@ def _metric_header(metric: str) -> str:
     return {
         "total_points": "Total Points",
         "average_points": "Average Points",
+        "games_played": "Games Played",
+        "wins": "Wins",
+        "losses": "Losses",
+        "win_percentage": "Win Percentage",
     }.get(metric, metric.replace("_", " ").title())
 
 
 def _metric_value(metric: str, value: float) -> str:
     if metric == "average_points":
         return f"{value:.1f}"
+    if metric == "win_percentage":
+        return f"{value:.3f}"
     return str(int(round(value)))
 
 
@@ -54,14 +60,27 @@ def format_response(answer: FinalAnswer) -> str:
         return "\n".join(lines)
 
     if answer.object_rows:
-        lines.append(
-            f"{answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
+        show_context = bool(answer.context_label) and any(
+            row.context_value for row in answer.object_rows
         )
-        lines.append("--- | --- | ---")
-        for row in answer.object_rows:
+        if show_context:
             lines.append(
-                f"{row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
+                f"{answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
             )
+            lines.append("--- | --- | ---")
+            for row in answer.object_rows:
+                lines.append(
+                    f"{row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
+                )
+        else:
+            lines.append(
+                f"{answer.entity_label_singular} | {_metric_header(answer.metric)}"
+            )
+            lines.append("--- | ---")
+            for row in answer.object_rows:
+                lines.append(
+                    f"{row.entity_name} | {_metric_value(answer.metric, row.metric_value)}"
+                )
         return "\n".join(lines)
 
     if answer.time_series_rows:
@@ -81,12 +100,23 @@ def format_response(answer: FinalAnswer) -> str:
                 )
         return "\n".join(lines)
 
-    lines.append(
-        f"Rank | {answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
-    )
-    lines.append("--- | --- | --- | ---")
-    for row in answer.rows:
+    show_context = bool(answer.context_label) and any(row.context_value for row in answer.rows)
+    if show_context:
         lines.append(
-            f"{row.rank} | {row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
+            f"Rank | {answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
         )
+        lines.append("--- | --- | --- | ---")
+        for row in answer.rows:
+            lines.append(
+                f"{row.rank} | {row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
+            )
+    else:
+        lines.append(
+            f"Rank | {answer.entity_label_singular} | {_metric_header(answer.metric)}"
+        )
+        lines.append("--- | --- | ---")
+        for row in answer.rows:
+            lines.append(
+                f"{row.rank} | {row.entity_name} | {_metric_value(answer.metric, row.metric_value)}"
+            )
     return "\n".join(lines)

@@ -33,4 +33,13 @@ def test_build_create_table_ddl_uses_semantic_gold_location() -> None:
 
 def test_table_specs_use_clean_object_names() -> None:
     table_names = {spec.table_name for spec in tables.SEMANTIC_GOLD_TABLE_SPECS}
-    assert table_names == {"player", "team", "game", "player_game", "team_game"}
+    assert table_names == {
+        "player",
+        "team",
+        "game",
+        "player_game",
+        "team_game",
+        "player_season",
+        "player_season_team",
+        "team_season",
+    }

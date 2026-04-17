@@ -60,6 +60,8 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         window_games=plan.window_games,
         time_grain=plan.time_grain,
         time_filter=plan.time_filter,
+        season_label=plan.season_label,
+        season_type=plan.season_type,
         limit=plan.limit,
         assumptions=plan.assumptions,
         rows=rows,
