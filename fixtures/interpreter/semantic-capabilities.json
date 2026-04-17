@@ -1859,10 +1859,11 @@
       "family_key": "player_game_season_object_player",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -1884,10 +1885,11 @@
       "family_key": "player_game_season_object_player_display_name",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -1915,10 +1917,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -1940,10 +1943,11 @@
       "family_key": "player_game_season_object_player_primary_position",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -1971,10 +1975,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2002,10 +2007,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2027,10 +2033,11 @@
       "family_key": "player_game_recent_object_player",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2051,10 +2058,11 @@
       "family_key": "player_game_recent_object_player_display_name",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2081,10 +2089,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2105,10 +2114,11 @@
       "family_key": "player_game_recent_object_player_primary_position",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2135,10 +2145,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2165,10 +2176,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2189,10 +2201,11 @@
       "family_key": "player_game_season_object_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2220,10 +2233,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2245,10 +2259,11 @@
       "family_key": "player_game_recent_object_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2275,10 +2290,11 @@
         }
       ],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2299,10 +2315,12 @@
       "family_key": "player_season_season_object_player",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2324,10 +2342,12 @@
       "family_key": "player_season_season_object_player_display_name",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2349,10 +2369,12 @@
       "family_key": "player_season_season_object_player_primary_position",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2374,10 +2396,12 @@
       "family_key": "player_season_season_object_player_season",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2399,10 +2423,12 @@
       "family_key": "player_season_team_season_object_player",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2424,10 +2450,12 @@
       "family_key": "player_season_team_season_object_player_display_name",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2455,10 +2483,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2480,10 +2510,12 @@
       "family_key": "player_season_team_season_object_player_primary_position",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2511,10 +2543,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2542,10 +2576,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2567,10 +2603,12 @@
       "family_key": "player_season_team_season_object_player_season_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2592,10 +2630,12 @@
       "family_key": "player_season_team_season_object_player_season_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2623,10 +2663,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2654,10 +2696,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2679,10 +2723,12 @@
       "family_key": "player_season_team_season_object_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2710,10 +2756,12 @@
         }
       ],
       "metrics": [
+        "average_points",
+        "games_played",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2735,10 +2783,11 @@
       "family_key": "team_game_season_object_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2760,10 +2809,11 @@
       "family_key": "team_game_recent_object_team_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
@@ -2784,10 +2834,11 @@
       "family_key": "team_game_season_object_team_game_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "exact_season",
         "season_type"
@@ -2809,14 +2860,73 @@
       "family_key": "team_game_recent_object_team_game_by_team",
       "linked_filters": [],
       "metrics": [
+        "average_points",
         "total_points"
       ],
       "query_kind": "object_query",
-      "require_order_by_metric": true,
+      "require_order_by_metric": false,
       "required_filter_kinds": [
         "last_n_games"
       ],
       "row_object": "TeamGame",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "entity_type": null,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamSeason",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_season_season_object_team_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "losses",
+        "win_percentage",
+        "wins"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Team",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false,
+        "entity_type": null,
+        "max_entities": null
+      },
+      "core_fact_object": "TeamSeason",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_season_season_object_team_season_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points",
+        "games_played",
+        "losses",
+        "win_percentage",
+        "wins"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "TeamSeason",
       "time_grain": null
     }
   ],
@@ -34336,7 +34446,7 @@
       }
     ]
   },
-  "prompt_summary": "Supported semantic families (generated from ontology + planner-derived capabilities):\n- player_game_season_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_game_season_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_game_season_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_recent_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]\n- player_game_recent_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- player_game_recent_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]\n- player_game_recent_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]\n- player_game_recent_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_display_name_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_primary_position_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month; comparison enabled\n- player_season_season_metric: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_season_metric_display_name: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_season_metric_primary_position: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_display_name: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_display_name_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_primary_position: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric_primary_position_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- team_game_season_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- team_game_recent_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- team_game_monthly_metric: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- team_game_monthly_metric_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- team_season_season_metric_by_team: metric_query on TeamSeason with metrics [average_points, games_played, losses, win_percentage, wins], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_object_player: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_primary_position: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_primary_position: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_team_by_team: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_game_season_object_team_by_team_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- player_game_recent_object_team_by_team: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- player_game_recent_object_team_by_team_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team; linked filters: Team.team_name\n- player_season_season_object_player: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_display_name: object_query on PlayerSeason with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_primary_position: object_query on PlayerSeason with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_season: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeason\n- player_season_team_season_object_player: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_primary_position: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_primary_position_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_team_by_team: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_season_team_season_object_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- team_game_season_object_team_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- team_game_recent_object_team_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- team_game_season_object_team_game_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: TeamGame\n- team_game_recent_object_team_game_by_team: object_query on TeamGame with metrics [total_points], dimensions [team_name], required filters [last_n_games]; row_object: TeamGame",
+  "prompt_summary": "Supported semantic families (generated from ontology + planner-derived capabilities):\n- player_game_season_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_game_season_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_game_season_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [exact_season, season_type]; comparison enabled\n- player_game_season_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_season_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_game_recent_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]\n- player_game_recent_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- player_game_recent_metric_by_team_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]\n- player_game_recent_metric_display_name_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [display_name], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_display_name_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]\n- player_game_recent_metric_primary_position_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [primary_position], required filters [last_n_games]; comparison enabled\n- player_game_recent_metric_primary_position_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_recent_metric_team_filter: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- player_game_monthly_metric: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_by_team_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_display_name: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_display_name_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [past_year]; time_grain: month; comparison enabled\n- player_game_monthly_metric_primary_position: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month\n- player_game_monthly_metric_primary_position_comparison: metric_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [past_year]; time_grain: month; comparison enabled\n- player_season_season_metric: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_season_metric_display_name: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_season_metric_primary_position: metric_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_by_team_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_display_name: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]\n- player_season_team_season_metric_display_name_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_primary_position: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]\n- player_season_team_season_metric_primary_position_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_season_metric_team_filter: metric_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- team_game_season_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]\n- team_game_recent_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]\n- team_game_monthly_metric: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- team_game_monthly_metric_by_team_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [past_year]; time_grain: month; comparison enabled\n- team_game_monthly_metric_comparison: metric_query on TeamGame with metrics [average_points, total_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month; comparison enabled\n- team_season_season_metric_by_team: metric_query on TeamSeason with metrics [average_points, games_played, losses, win_percentage, wins], dimensions [team_name], required filters [exact_season, season_type]\n- player_game_season_object_player: object_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name: object_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_display_name_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_primary_position: object_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_game_season_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_player_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player: object_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name: object_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_display_name_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [display_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_primary_position: object_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player\n- player_game_recent_object_player_primary_position_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [primary_position], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_recent_object_player_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- player_game_season_object_team_by_team: object_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_game_season_object_team_by_team_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- player_game_recent_object_team_by_team: object_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- player_game_recent_object_team_by_team_team_filter: object_query on PlayerGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team; linked filters: Team.team_name\n- player_season_season_object_player: object_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_display_name: object_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_primary_position: object_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_season_object_player_season: object_query on PlayerSeason with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeason\n- player_season_team_season_object_player: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_display_name_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [display_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_primary_position: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_season_object_player_primary_position_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [primary_position], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam\n- player_season_team_season_object_player_season_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_player_season_team_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: PlayerSeasonTeam; linked filters: Team.team_name\n- player_season_team_season_object_team_by_team: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- player_season_team_season_object_team_by_team_team_filter: object_query on PlayerSeasonTeam with metrics [average_points, games_played, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team; linked filters: Team.team_name\n- team_game_season_object_team_by_team: object_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- team_game_recent_object_team_by_team: object_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; row_object: Team\n- team_game_season_object_team_game_by_team: object_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [exact_season, season_type]; row_object: TeamGame\n- team_game_recent_object_team_game_by_team: object_query on TeamGame with metrics [average_points, total_points], dimensions [team_name], required filters [last_n_games]; row_object: TeamGame\n- team_season_season_object_team_by_team: object_query on TeamSeason with metrics [average_points, games_played, losses, win_percentage, wins], dimensions [team_name], required filters [exact_season, season_type]; row_object: Team\n- team_season_season_object_team_season_by_team: object_query on TeamSeason with metrics [average_points, games_played, losses, win_percentage, wins], dimensions [team_name], required filters [exact_season, season_type]; row_object: TeamSeason",
   "top_level_query_kinds": [
     "metric_query",
     "object_query"

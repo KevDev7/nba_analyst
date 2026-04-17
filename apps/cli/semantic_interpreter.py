@@ -197,8 +197,6 @@ def _linked_filters_match(template: SemanticQueryTemplate, family: dict[str, Any
 def _orders_match(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
     if not template.orders:
         return True
-    if not family["require_order_by_metric"]:
-        return False
     if len(template.orders) != 1:
         return False
     order = template.orders[0]
@@ -379,8 +377,14 @@ A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"Pla
 Q: Show me players and their total points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
+Q: Show me players and their average points over the last 10 games
+A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
+
 Q: Show me the top 5 players and their total points for the Knicks over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"linked_filters":[{{"target_object":"Team","attribute":"team_name","value":"Knicks"}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":5,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
+
+Q: Show me players and their average points for the Lakers over the last 10 games
+A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"linked_filters":[{{"target_object":"Team","attribute":"team_name","value":"Lakers"}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
 Q: Show me players by average points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}

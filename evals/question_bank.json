@@ -173,6 +173,32 @@
       "filters": ["last_n_games:10"]
     },
     {
+      "id": "slice14_object_query_average_points_canonical",
+      "slice_introduced": 14,
+      "question": "Show me players and their average points over the last 10 games",
+      "status": "supported",
+      "query_kind": "object_query",
+      "capability": "player_object_average_points",
+      "core_fact_object": "PlayerGame",
+      "row_object": "Player",
+      "metrics": ["average_points"],
+      "filters": ["last_n_games:10"],
+      "notes": "First proof that object-query legality composes over a governed metric other than total_points."
+    },
+    {
+      "id": "slice14_object_query_average_points_team_filter",
+      "slice_introduced": 14,
+      "question": "Show me players and their average points for the Lakers over the last 10 games",
+      "status": "supported",
+      "query_kind": "object_query",
+      "capability": "player_object_average_points_team_filter",
+      "core_fact_object": "PlayerGame",
+      "row_object": "Player",
+      "metrics": ["average_points"],
+      "filters": ["last_n_games:10"],
+      "notes": "Compositional object-query proof combined with the existing linked team-filter family."
+    },
+    {
       "id": "slice3_assists_rejection",
       "slice_introduced": 3,
       "question": "Show me players and their assists over the last 10 games",

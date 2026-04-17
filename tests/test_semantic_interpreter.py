@@ -77,6 +77,22 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertTrue(matching)
         self.assertTrue(any(family["allow_limit"] for family in matching))
 
+    def test_derived_family_for_average_points_object_query_is_discovered(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "object_query"
+            and family["core_fact_object"] == "PlayerGame"
+            and family["row_object"] == "Player"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["last_n_games"]
+            and not family["linked_filters"]
+            and "average_points" in family["metrics"]
+        ]
+
+        self.assertTrue(matching)
+
     def test_player_entity_index_is_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()
         player_index = artifact["player_entity_index"]

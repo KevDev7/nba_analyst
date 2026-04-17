@@ -241,7 +241,8 @@ resolveObjectQuery ontology objectQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   rowObjectValue <- requireObject ontology rowObjectNameValue
   discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
-  metricDef <- requireMetric factObject "total_points"
+  selectedMetric <- requireSingleMetric (metrics base)
+  metricDef <- requireMetric factObject (metricText selectedMetric)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef

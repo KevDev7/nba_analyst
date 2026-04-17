@@ -73,16 +73,7 @@ validateObjectQuery ontology objectQuery = do
   if hasSeasonFilters (filters base)
     then validateSeasonFilters (filters base)
     else validateMetricFilters (filters base)
-  -- Temporary slice restriction. This guard reflects current compiler/runtime
-  -- coverage, not the ideal long-term object-query semantics.
-  case metrics base of
-    [TotalPoints] -> pure ()
-    _ -> Left "ObjectQuery currently supports attached total_points only."
-  -- Temporary slice restriction. Object queries currently compile through one
-  -- known ordering shape; expand or remove once planner support broadens.
-  case orders base of
-    [Desc TotalPoints] -> pure ()
-    _ -> Left "ObjectQuery currently requires descending total_points ordering."
+  validateOptionalMetricOrder (orders base) (metrics base)
 
 validateTrendMetricQuery :: Ontology -> Object -> OT.MetricDef -> TimeGrain -> BaseQuery -> Either Text ()
 validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
@@ -227,6 +218,16 @@ validateMetricOrders maybeComparison orderValues metricValues =
       case (orderValues, metricValues) of
         ([Desc orderMetric], [selectedMetric]) | orderMetric == selectedMetric -> pure ()
         _ -> Left "Ranking queries require descending ordering by the selected metric."
+
+validateOptionalMetricOrder :: [Order] -> [MetricName] -> Either Text ()
+validateOptionalMetricOrder orderValues metricValues =
+  case orderValues of
+    [] -> pure ()
+    [Desc orderMetric] ->
+      case metricValues of
+        [selectedMetric] | orderMetric == selectedMetric -> pure ()
+        _ -> Left "Object queries require descending ordering on the selected metric when order is present."
+    _ -> Left "Object queries support at most one descending order on the selected metric."
 
 validateTrendOrders :: [Order] -> Either Text ()
 validateTrendOrders orderValues =

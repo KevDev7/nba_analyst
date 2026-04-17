@@ -39,6 +39,8 @@ RETAINED_QUESTIONS = {
     "Show me all information about Brunson",
     "Show me players and their total points over the last 10 games",
     "Show me players with their scoring totals over the last 10 games",
+    "Show me players and their average points over the last 10 games",
+    "Show me players and their average points for the Lakers over the last 10 games",
     "Show me players and their assists over the last 10 games",
     "Show me games and their players",
     "Show me players by average points over the last 10 games",
