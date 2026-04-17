@@ -49,6 +49,14 @@ data ResolvedMetricFormula = ResolvedMetricFormula
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data ResolvedLinkedFilter = ResolvedLinkedFilter
+  { targetObjectName :: Text
+  , filterPath :: DiscoveredPath
+  , filterColumn :: Text
+  , filterValue :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data ResolvedMetricQuery = ResolvedMetricQuery
   { factTableName :: Text
   , rowTableName :: Text
@@ -65,6 +73,7 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , seasonLabel :: Maybe Text
   , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
+  , linkedFiltersResolved :: [ResolvedLinkedFilter]
   , comparisonEntities :: [ResolvedEntity]
   , comparisonRequestedValue :: Bool
   , resolvedAssumptions :: [Text]
@@ -86,6 +95,7 @@ data ResolvedTrendQuery = ResolvedTrendQuery
   , filterLocation :: Text
   , timeFilterKind :: Text
   , timeGrain :: Text
+  , linkedFiltersResolved :: [ResolvedLinkedFilter]
   , resolvedAssumptions :: [Text]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -106,6 +116,7 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , seasonLabel :: Maybe Text
   , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
+  , linkedFiltersResolved :: [ResolvedLinkedFilter]
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
   , filterLocation :: Text
@@ -148,6 +159,7 @@ resolveMetricQuery ontology metricQuery = do
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObject
+  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
   let maybeSeasonPair = seasonFilterPair (filters base)
       gamesValue =
         case maybeSeasonPair of
@@ -180,6 +192,7 @@ resolveMetricQuery ontology metricQuery = do
       , seasonLabel = fst <$> maybeSeasonPair
       , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limitValue
+      , linkedFiltersResolved = resolvedLinkedFilters
       , comparisonEntities = entityValues
       , comparisonRequestedValue = comparisonRequestedFlag
       , resolvedAssumptions = assumptions base
@@ -198,6 +211,7 @@ resolveTrendQuery ontology metricQuery = do
   derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName base)
   resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
   metricSourceColumn <- metricSourceAttribute metricDef
+  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
   pure
     ResolvedTrendQuery
       { factTableName = backing_table factObject
@@ -212,6 +226,7 @@ resolveTrendQuery ontology metricQuery = do
       , filterLocation = "fact_table"
       , timeFilterKind = "past_year"
       , timeGrain = "month"
+      , linkedFiltersResolved = resolvedLinkedFilters
       , resolvedAssumptions = assumptions base
       }
 
@@ -231,6 +246,7 @@ resolveObjectQuery ontology objectQuery = do
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObjectValue
+  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
   let maybeSeasonPair = seasonFilterPair (filters base)
       gamesValue =
         case maybeSeasonPair of
@@ -256,6 +272,7 @@ resolveObjectQuery ontology objectQuery = do
       , seasonLabel = fst <$> maybeSeasonPair
       , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limit base
+      , linkedFiltersResolved = resolvedLinkedFilters
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
@@ -305,6 +322,22 @@ resolveEntity entityValue =
   case entityValue of
     Brunson -> ResolvedEntity Brunson "Jalen Brunson"
     Haliburton -> ResolvedEntity Haliburton "Tyrese Haliburton"
+
+resolveLinkedFilter :: Ontology -> Text -> LinkedFilter -> Either Text ResolvedLinkedFilter
+resolveLinkedFilter ontology factObjectName linkedFilterValue = do
+  discoveredFilterPath <- requirePath ontology factObjectName (targetObject linkedFilterValue)
+  targetObjectValue <- requireObject ontology (targetObject linkedFilterValue)
+  _ <- maybe
+    (Left ("Could not resolve linked filter attribute '" <> attribute linkedFilterValue <> "' against the ontology."))
+    Right
+    (findAttribute targetObjectValue (attribute linkedFilterValue))
+  pure
+    ResolvedLinkedFilter
+      { targetObjectName = targetObject linkedFilterValue
+      , filterPath = discoveredFilterPath
+      , filterColumn = attribute linkedFilterValue
+      , filterValue = value linkedFilterValue
+      }
 
 resolveMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
 resolveMetricRowObject ontology factObjectName dimensionValues = do

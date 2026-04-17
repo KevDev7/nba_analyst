@@ -272,6 +272,49 @@
       "metrics": ["total_points"],
       "filters": ["exact_season:2025-26", "season_type:regular_season"],
       "notes": "Canonical season-grain object query proof over PlayerSeason with attached total points."
+    },
+    {
+      "id": "slice11_player_recent_average_points_team_filter_canonical",
+      "slice_introduced": 11,
+      "question": "Show me players by average points for the Lakers over the last 10 games",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "player_average_points_team_filter_ranking",
+      "core_fact_object": "PlayerGame",
+      "metrics": ["average_points"],
+      "dimensions": ["player_name"],
+      "filters": ["last_n_games:10", "linked_team:team_name=Lakers"],
+      "notes": "First linked-filter proof over PlayerGame using a team filter applied through the ontology path to Team."
+    },
+    {
+      "id": "slice11_player_recent_object_totals_team_filter_canonical",
+      "slice_introduced": 11,
+      "question": "Show me players and their total points for the Knicks over the last 10 games",
+      "status": "supported",
+      "query_kind": "object_query",
+      "capability": "player_object_totals_team_filter",
+      "core_fact_object": "PlayerGame",
+      "row_object": "Player",
+      "metrics": ["total_points"],
+      "filters": ["last_n_games:10", "linked_team:team_name=Knicks"],
+      "notes": "First linked-filter object query proof over PlayerGame using a team filter applied through Team."
+    },
+    {
+      "id": "slice11_player_season_team_average_points_team_filter_canonical",
+      "slice_introduced": 11,
+      "question": "Show me players by average points for the Lakers in the 2025-26 regular season",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "player_season_team_average_points_team_filter_ranking",
+      "core_fact_object": "PlayerSeasonTeam",
+      "metrics": ["average_points"],
+      "dimensions": ["player_name"],
+      "filters": [
+        "exact_season:2025-26",
+        "season_type:regular_season",
+        "linked_team:team_name=Lakers"
+      ],
+      "notes": "Season-grain linked-filter proof over PlayerSeasonTeam using the public season team-stint surface."
     }
   ]
 }

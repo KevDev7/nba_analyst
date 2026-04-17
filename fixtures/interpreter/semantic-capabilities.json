@@ -1,0 +1,833 @@
+{
+  "allowed_assumptions": [
+    "Interpreted 'pts' as total points.",
+    "Interpreted 'scoring' as total points.",
+    "Interpreted 'scorers' as players ranked by total points.",
+    "Interpreted 'scorer' as players ranked by total points.",
+    "Interpreted 'avg points' as average points.",
+    "Interpreted 'average scoring' as average points."
+  ],
+  "allowed_filter_kinds": [
+    "exact_season",
+    "last_n_games",
+    "past_year",
+    "season_type"
+  ],
+  "allowed_time_grains": [
+    "month"
+  ],
+  "comparison_entities": [
+    "jalen_brunson",
+    "tyrese_haliburton"
+  ],
+  "fact_objects": {
+    "Game": {
+      "backing_table": "game",
+      "description": "One NBA game entity from the semantic_gold surface.",
+      "executable_metrics": [],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "arena_city",
+        "arena_country",
+        "arena_id",
+        "arena_name",
+        "arena_state",
+        "arena_timezone",
+        "attendance",
+        "away_market_game_datetime_utc",
+        "away_team_abbreviation",
+        "away_team_city",
+        "away_team_id",
+        "away_team_name",
+        "away_team_slug",
+        "current_period",
+        "duration_minutes",
+        "eastern_time_game_datetime_utc",
+        "game_clock",
+        "game_code",
+        "game_date",
+        "game_datetime_utc",
+        "game_id",
+        "game_label",
+        "game_month",
+        "game_sequence",
+        "game_status_code",
+        "game_status_text",
+        "game_sublabel",
+        "game_subtype",
+        "game_year",
+        "game_year_month",
+        "home_market_game_datetime_utc",
+        "home_team_abbreviation",
+        "home_team_city",
+        "home_team_id",
+        "home_team_name",
+        "home_team_slug",
+        "is_if_necessary",
+        "is_neutral_site",
+        "is_sellout",
+        "league_id",
+        "local_market_game_datetime_utc",
+        "postponed_status",
+        "raw_season_type_code",
+        "regulation_periods",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "series_game_number",
+        "series_text"
+      ],
+      "public_dimensions": [
+        "arena_city",
+        "arena_country",
+        "arena_id",
+        "arena_name",
+        "arena_state",
+        "arena_timezone",
+        "away_market_game_datetime_utc",
+        "away_team_abbreviation",
+        "away_team_city",
+        "away_team_id",
+        "away_team_name",
+        "away_team_slug",
+        "current_period",
+        "eastern_time_game_datetime_utc",
+        "game_clock",
+        "game_code",
+        "game_date",
+        "game_datetime_utc",
+        "game_label",
+        "game_month",
+        "game_sequence",
+        "game_status_code",
+        "game_status_text",
+        "game_sublabel",
+        "game_subtype",
+        "game_year",
+        "game_year_month",
+        "home_market_game_datetime_utc",
+        "home_team_abbreviation",
+        "home_team_city",
+        "home_team_id",
+        "home_team_name",
+        "home_team_slug",
+        "is_if_necessary",
+        "is_neutral_site",
+        "is_sellout",
+        "league_id",
+        "local_market_game_datetime_utc",
+        "postponed_status",
+        "raw_season_type_code",
+        "regulation_periods",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "series_game_number",
+        "series_text"
+      ]
+    },
+    "Player": {
+      "backing_table": "player",
+      "description": "One player entity from the semantic_gold surface.",
+      "executable_metrics": [],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "basketball_reference_player_id",
+        "bbr_birth_country_code",
+        "bbr_college_raw",
+        "bbr_formal_name",
+        "bbr_hall_of_fame_flag",
+        "bbr_headshot_url",
+        "bbr_height_cm",
+        "bbr_match_confidence",
+        "bbr_match_method",
+        "bbr_position_raw",
+        "bbr_profile_url",
+        "bbr_shoots",
+        "bbr_weight_kg",
+        "birth_date",
+        "country",
+        "display_name",
+        "draft_number",
+        "draft_round",
+        "draft_year",
+        "family_name",
+        "first_name",
+        "first_season_played",
+        "first_seen_game_date",
+        "height_inches",
+        "is_center",
+        "is_forward",
+        "is_guard",
+        "last_season_played",
+        "last_seen_game_date",
+        "latest_jersey_number",
+        "latest_status",
+        "latest_team_id",
+        "person_id",
+        "player_name",
+        "position_group",
+        "primary_position",
+        "school",
+        "weight_lbs"
+      ],
+      "public_dimensions": [
+        "basketball_reference_player_id",
+        "bbr_birth_country_code",
+        "bbr_college_raw",
+        "bbr_formal_name",
+        "bbr_hall_of_fame_flag",
+        "bbr_headshot_url",
+        "bbr_height_cm",
+        "bbr_match_confidence",
+        "bbr_match_method",
+        "bbr_position_raw",
+        "bbr_profile_url",
+        "bbr_shoots",
+        "bbr_weight_kg",
+        "birth_date",
+        "country",
+        "display_name",
+        "draft_number",
+        "draft_round",
+        "draft_year",
+        "family_name",
+        "first_name",
+        "first_season_played",
+        "first_seen_game_date",
+        "height_inches",
+        "is_center",
+        "is_forward",
+        "is_guard",
+        "last_season_played",
+        "last_seen_game_date",
+        "latest_jersey_number",
+        "latest_status",
+        "latest_team_id",
+        "player_name",
+        "position_group",
+        "primary_position",
+        "school",
+        "weight_lbs"
+      ]
+    },
+    "PlayerGame": {
+      "backing_table": "player_game",
+      "description": "One player in one NBA game from the semantic_gold surface.",
+      "executable_metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "assists",
+        "blocks",
+        "blocks_received",
+        "did_play",
+        "field_goals_attempted",
+        "field_goals_made",
+        "field_goals_percentage",
+        "fouls_drawn",
+        "fouls_offensive",
+        "fouls_personal",
+        "fouls_technical",
+        "free_throws_attempted",
+        "free_throws_made",
+        "free_throws_percentage",
+        "game_date",
+        "game_datetime_utc",
+        "game_id",
+        "game_month",
+        "game_year",
+        "game_year_month",
+        "is_on_court",
+        "is_starter",
+        "minutes_played_decimal",
+        "person_id",
+        "player_order",
+        "player_position",
+        "player_status",
+        "plus_minus_points",
+        "points",
+        "points_fast_break",
+        "points_in_the_paint",
+        "points_second_chance",
+        "raw_season_type_code",
+        "rebounds_defensive",
+        "rebounds_offensive",
+        "rebounds_total",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "seconds_played_total",
+        "steals",
+        "team_id",
+        "team_side",
+        "three_pointers_attempted",
+        "three_pointers_made",
+        "three_pointers_percentage",
+        "turnovers",
+        "two_pointers_attempted",
+        "two_pointers_made",
+        "two_pointers_percentage"
+      ],
+      "public_dimensions": [
+        "did_play",
+        "game_date",
+        "game_datetime_utc",
+        "game_month",
+        "game_year",
+        "game_year_month",
+        "is_on_court",
+        "is_starter",
+        "player_order",
+        "player_position",
+        "player_status",
+        "raw_season_type_code",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "team_id",
+        "team_side"
+      ]
+    },
+    "PlayerSeason": {
+      "backing_table": "player_season",
+      "description": "One player across one season and season type from the semantic_gold surface.",
+      "executable_metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "average_points",
+        "games_played",
+        "is_multi_team_season",
+        "person_id",
+        "player_name",
+        "raw_season_type_code",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "team_count",
+        "total_points"
+      ],
+      "public_dimensions": [
+        "is_multi_team_season",
+        "player_name",
+        "raw_season_type_code",
+        "season_start_year",
+        "team_count"
+      ]
+    },
+    "PlayerSeasonTeam": {
+      "backing_table": "player_season_team",
+      "description": "One player with one team across one season and season type from the semantic_gold surface.",
+      "executable_metrics": [
+        "average_points",
+        "games_played",
+        "total_points"
+      ],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "average_points",
+        "games_played",
+        "person_id",
+        "player_name",
+        "raw_season_type_code",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "team_abbreviation",
+        "team_id",
+        "team_name",
+        "total_points"
+      ],
+      "public_dimensions": [
+        "player_name",
+        "raw_season_type_code",
+        "season_start_year",
+        "team_abbreviation",
+        "team_name"
+      ]
+    },
+    "Team": {
+      "backing_table": "team",
+      "description": "One team entity from the semantic_gold surface.",
+      "executable_metrics": [],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "conference",
+        "division",
+        "first_seen_game_date",
+        "last_seen_game_date",
+        "team_abbreviation",
+        "team_city",
+        "team_id",
+        "team_name",
+        "team_slug"
+      ],
+      "public_dimensions": [
+        "conference",
+        "division",
+        "first_seen_game_date",
+        "last_seen_game_date",
+        "team_abbreviation",
+        "team_city",
+        "team_name",
+        "team_slug"
+      ]
+    },
+    "TeamGame": {
+      "backing_table": "team_game",
+      "description": "One team in one NBA game from the semantic_gold surface.",
+      "executable_metrics": [
+        "average_points",
+        "total_points"
+      ],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "assists",
+        "blocks",
+        "blocks_received",
+        "field_goals_attempted",
+        "field_goals_made",
+        "field_goals_percentage",
+        "fouls_drawn",
+        "fouls_offensive",
+        "fouls_personal",
+        "fouls_technical",
+        "free_throws_attempted",
+        "free_throws_made",
+        "free_throws_percentage",
+        "game_date",
+        "game_datetime_utc",
+        "game_id",
+        "game_month",
+        "game_year",
+        "game_year_month",
+        "is_home_team",
+        "is_in_bonus",
+        "is_loss",
+        "is_tie",
+        "is_win",
+        "minutes_played_decimal",
+        "opponent_score",
+        "opponent_team_abbreviation",
+        "opponent_team_city",
+        "opponent_team_id",
+        "opponent_team_name",
+        "point_diff",
+        "points_fast_break",
+        "points_in_the_paint",
+        "points_second_chance",
+        "raw_season_type_code",
+        "rebounds_defensive",
+        "rebounds_offensive",
+        "rebounds_total",
+        "score",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "seconds_played_total",
+        "steals",
+        "team_abbreviation",
+        "team_city",
+        "team_id",
+        "team_name",
+        "team_side",
+        "three_pointers_attempted",
+        "three_pointers_made",
+        "three_pointers_percentage",
+        "timeouts_remaining",
+        "turnovers",
+        "two_pointers_attempted",
+        "two_pointers_made",
+        "two_pointers_percentage"
+      ],
+      "public_dimensions": [
+        "game_date",
+        "game_datetime_utc",
+        "game_month",
+        "game_year",
+        "game_year_month",
+        "is_home_team",
+        "is_in_bonus",
+        "opponent_team_abbreviation",
+        "opponent_team_city",
+        "opponent_team_id",
+        "opponent_team_name",
+        "raw_season_type_code",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "team_abbreviation",
+        "team_city",
+        "team_name",
+        "team_side",
+        "timeouts_remaining"
+      ]
+    },
+    "TeamSeason": {
+      "backing_table": "team_season",
+      "description": "One team across one season and season type from the semantic_gold surface.",
+      "executable_metrics": [
+        "average_points",
+        "games_played",
+        "losses",
+        "win_percentage",
+        "wins"
+      ],
+      "in_attribute_inventory": true,
+      "public_attributes": [
+        "average_points",
+        "games_played",
+        "losses",
+        "raw_season_type_code",
+        "season_start_year",
+        "season_type",
+        "season_year",
+        "team_abbreviation",
+        "team_id",
+        "team_name",
+        "win_percentage",
+        "wins"
+      ],
+      "public_dimensions": [
+        "raw_season_type_code",
+        "season_start_year",
+        "team_abbreviation",
+        "team_name"
+      ]
+    }
+  },
+  "families": [
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_recent_metric",
+      "linked_filters": [],
+      "metrics": [
+        "total_points",
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_recent_metric_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points",
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": true,
+        "entities": [
+          "jalen_brunson",
+          "tyrese_haliburton"
+        ],
+        "max_entities": 2
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_recent_comparison",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_recent_object",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerGame",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_recent_object_team_filter",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_recent_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "last_n_games"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [],
+      "family_key": "team_monthly_trend",
+      "linked_filters": [],
+      "metrics": [
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "TeamGame",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_monthly_trend_by_team",
+      "linked_filters": [],
+      "metrics": [
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": false,
+      "required_filter_kinds": [
+        "past_year"
+      ],
+      "row_object": null,
+      "time_grain": "month"
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_metric",
+      "linked_filters": [],
+      "metrics": [
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerSeason",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_object",
+      "linked_filters": [],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_metric",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "average_points"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    },
+    {
+      "allow_limit": false,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "PlayerSeasonTeam",
+      "dimensions": [
+        "player_name"
+      ],
+      "family_key": "player_season_team_object",
+      "linked_filters": [
+        {
+          "attribute": "team_name",
+          "required": true,
+          "target_object": "Team"
+        }
+      ],
+      "metrics": [
+        "total_points"
+      ],
+      "query_kind": "object_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": "Player",
+      "time_grain": null
+    },
+    {
+      "allow_limit": true,
+      "comparison": {
+        "enabled": false
+      },
+      "core_fact_object": "TeamSeason",
+      "dimensions": [
+        "team_name"
+      ],
+      "family_key": "team_season_metric",
+      "linked_filters": [],
+      "metrics": [
+        "wins"
+      ],
+      "query_kind": "metric_query",
+      "require_order_by_metric": true,
+      "required_filter_kinds": [
+        "exact_season",
+        "season_type"
+      ],
+      "row_object": null,
+      "time_grain": null
+    }
+  ],
+  "prompt_summary": "Supported semantic families (generated from ontology + execution contract):\n- player_recent_metric: metric_query on PlayerGame with metrics [total_points, average_points], dimensions [player_name], required filters [last_n_games]\n- player_recent_metric_team_filter: metric_query on PlayerGame with metrics [total_points, average_points], dimensions [player_name], required filters [last_n_games]; linked filters: Team.team_name\n- player_recent_comparison: metric_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; comparison enabled\n- player_recent_object: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player\n- player_recent_object_team_filter: object_query on PlayerGame with metrics [total_points], dimensions [player_name], required filters [last_n_games]; row_object: Player; linked filters: Team.team_name\n- team_recent_metric: metric_query on TeamGame with metrics [average_points], dimensions [team_name], required filters [last_n_games]\n- team_monthly_trend: metric_query on TeamGame with metrics [average_points], dimensions [no business grouping dimension], required filters [past_year]; time_grain: month\n- team_monthly_trend_by_team: metric_query on TeamGame with metrics [average_points], dimensions [team_name], required filters [past_year]; time_grain: month\n- player_season_metric: metric_query on PlayerSeason with metrics [average_points], dimensions [player_name], required filters [exact_season, season_type]\n- player_season_object: object_query on PlayerSeason with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player\n- player_season_team_metric: metric_query on PlayerSeasonTeam with metrics [average_points], dimensions [player_name], required filters [exact_season, season_type]; linked filters: Team.team_name\n- player_season_team_object: object_query on PlayerSeasonTeam with metrics [total_points], dimensions [player_name], required filters [exact_season, season_type]; row_object: Player; linked filters: Team.team_name\n- team_season_metric: metric_query on TeamSeason with metrics [wins], dimensions [team_name], required filters [exact_season, season_type]",
+  "top_level_query_kinds": [
+    "metric_query",
+    "object_query"
+  ],
+  "version": 1
+}

@@ -36,6 +36,11 @@ validateMetricQuery ontology metricQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   metricDef <- requireSelectedMetric factObject (metrics base)
   validateMetricAttributes metricDef
+  case comparison metricQuery of
+    Just _ | not (null (linkedFilters base)) ->
+      Left "Comparison queries currently do not support linked filters."
+    _ -> pure ()
+  validateLinkedFilters ontology (coreFactObject base) (linkedFilters base)
   case timeGrain base of
     Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
     Nothing | hasSeasonFilters (filters base) -> do
@@ -64,6 +69,7 @@ validateObjectQuery ontology objectQuery = do
   _ <- requireSelectedMetric factObject (metrics base)
   rowObjectValue <- requireObject ontology rowObjectNameValue
   requireSelectedDimension rowObjectValue (dimensions base)
+  validateLinkedFilters ontology (coreFactObject base) (linkedFilters base)
   if hasSeasonFilters (filters base)
     then validateSeasonFilters (filters base)
     else validateMetricFilters (filters base)
@@ -77,6 +83,9 @@ validateObjectQuery ontology objectQuery = do
 validateTrendMetricQuery :: Ontology -> Object -> OT.MetricDef -> TimeGrain -> BaseQuery -> Either Text ()
 validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
   validateTrendFilters (filters base)
+  if null (linkedFilters base)
+    then pure ()
+    else Left "Trend queries currently do not support linked filters."
   validateTrendDimensions ontology factObject (dimensions base)
   validateTrendOrders (orders base)
   case timeGrainValue of
@@ -239,6 +248,25 @@ ensureComparisonShape ontology factObject rowObject metricValues entities = do
   if length entities /= 2
     then Left "Comparison requires exactly two supported entities."
     else pure ()
+
+validateLinkedFilters :: Ontology -> Text -> [LinkedFilter] -> Either Text ()
+validateLinkedFilters ontology factObjectName linkedFilterValues =
+  case linkedFilterValues of
+    [] -> pure ()
+    [linkedFilterValue] -> do
+      if factObjectName `elem` ["PlayerGame", "PlayerSeasonTeam"]
+        then pure ()
+        else Left "Linked team filters currently support PlayerGame and PlayerSeasonTeam only."
+      if targetObject linkedFilterValue /= "Team"
+        then Left "Linked filters currently support Team only."
+        else pure ()
+      if attribute linkedFilterValue /= "team_name"
+        then Left "Linked filters currently support Team.team_name only."
+        else pure ()
+      _ <- requirePath ontology factObjectName "Team"
+      targetObjectValue <- requireObject ontology "Team"
+      requireAttributeKind targetObjectValue "team_name" Dimension
+    _ -> Left "Query currently supports at most one linked filter."
 
 validateMetricAttributes :: OT.MetricDef -> Either Text ()
 validateMetricAttributes metricDef =

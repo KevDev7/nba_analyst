@@ -22,13 +22,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
 
-import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 
 ROOT = Path(__file__).resolve().parents[2]
-ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
+CAPABILITY_PATH = ROOT / "fixtures" / "interpreter" / "semantic-capabilities.json"
 
 load_dotenv(ROOT / ".env", override=False)
 
@@ -38,7 +37,7 @@ class SemanticInterpreterError(RuntimeError):
 
 
 class SemanticFilter(BaseModel):
-    kind: Literal["last_n_games", "past_year", "exact_season", "season_type"]
+    kind: str
     value: Optional[Union[int, str]] = None
 
     @model_validator(mode="after")
@@ -60,45 +59,42 @@ class SemanticFilter(BaseModel):
 
 class SemanticOrder(BaseModel):
     kind: Literal["desc"]
-    metric: Literal[
-        "total_points",
-        "average_points",
-        "games_played",
-        "points_per_36",
-        "wins",
-        "losses",
-        "win_percentage",
-    ]
+    metric: str
 
 
 class SemanticComparison(BaseModel):
     kind: Literal["compare_entities"]
-    entities: list[Literal["jalen_brunson", "tyrese_haliburton"]]
+    entities: list[str]
+
+
+class SemanticLinkedFilter(BaseModel):
+    target_object: str
+    attribute: str
+    value: str
+
+    @model_validator(mode="after")
+    def validate_linked_filter_shape(self) -> "SemanticLinkedFilter":
+        if not self.target_object:
+            raise ValueError("linked filters require a target_object.")
+        if not self.attribute:
+            raise ValueError("linked filters require an attribute.")
+        if not self.value:
+            raise ValueError("linked filters require a non-empty string value.")
+        return self
 
 
 class SemanticQueryTemplate(BaseModel):
     query_kind: Literal["metric_query", "object_query"]
-    core_fact_object: Literal["PlayerGame", "TeamGame", "PlayerSeason", "TeamSeason"]
-    row_object: Optional[Literal["Player", "Team"]] = None
-    metrics: list[
-        Literal[
-            "total_points",
-            "average_points",
-            "games_played",
-            "points_per_36",
-            "wins",
-            "losses",
-            "win_percentage",
-        ]
-    ] = Field(default_factory=list)
-    dimensions: list[Literal["player_name", "team_name"]] = Field(default_factory=list)
-    time_grain: Optional[Literal["month"]] = None
+    core_fact_object: str
+    row_object: Optional[str] = None
+    metrics: list[str] = Field(default_factory=list)
+    dimensions: list[str] = Field(default_factory=list)
+    time_grain: Optional[str] = None
     filters: list[SemanticFilter] = Field(default_factory=list)
+    linked_filters: list[SemanticLinkedFilter] = Field(default_factory=list)
     orders: list[SemanticOrder] = Field(default_factory=list)
     limit: Optional[int] = None
-    entity_filters: list[Literal["jalen_brunson", "tyrese_haliburton"]] = Field(
-        default_factory=list
-    )
+    entity_filters: list[str] = Field(default_factory=list)
     comparison: Optional[SemanticComparison] = None
     assumptions: list[str] = Field(default_factory=list)
 
@@ -108,79 +104,16 @@ class SemanticQueryTemplate(BaseModel):
             raise ValueError("The live contract requires exactly one selected metric.")
         if len(self.dimensions) > 1:
             raise ValueError("The live contract allows at most one selected dimension.")
+        if self.query_kind == "metric_query" and self.row_object is not None:
+            raise ValueError("Metric queries must not set row_object.")
 
-        if self.query_kind == "object_query":
-            if self.row_object != "Player":
-                raise ValueError("Object queries currently require row_object = Player.")
-            if self.core_fact_object not in {"PlayerGame", "PlayerSeason"}:
-                raise ValueError("Object queries currently require PlayerGame or PlayerSeason.")
-            if self.metrics != ["total_points"]:
-                raise ValueError("Object queries currently support total_points only.")
-            if self.orders != [SemanticOrder(kind="desc", metric="total_points")]:
-                raise ValueError("Object queries currently require descending total_points ordering.")
-
-        if self.time_grain is not None:
-            if self.query_kind != "metric_query":
-                raise ValueError("Only metric queries may request a time grain.")
-            if self.time_grain != "month":
-                raise ValueError("The live contract only supports month time grain.")
-            if self.core_fact_object != "TeamGame":
-                raise ValueError("Trend queries currently use TeamGame only.")
-            if self.metrics != ["average_points"]:
-                raise ValueError("Trend queries currently support average_points only.")
-            if [flt.kind for flt in self.filters] != ["past_year"]:
-                raise ValueError("Trend queries currently require a single past_year filter.")
-            if self.dimensions not in ([], ["team_name"]):
-                raise ValueError("Trend queries currently allow zero or one team_name dimension.")
-
-        if self.comparison is not None:
-            if self.query_kind != "metric_query":
-                raise ValueError("Comparison is only supported on metric queries.")
-            if self.core_fact_object != "PlayerGame":
-                raise ValueError("Comparison currently uses PlayerGame only.")
-            if self.metrics != ["total_points"]:
-                raise ValueError("Comparison currently supports total_points only.")
-            if self.dimensions != ["player_name"]:
-                raise ValueError("Comparison currently requires player_name dimension.")
-            if self.entity_filters != list(self.comparison.entities):
-                raise ValueError("entity_filters must match comparison.entities exactly.")
-            if len(self.comparison.entities) != 2:
-                raise ValueError("Comparison currently requires exactly two entities.")
-            if self.orders:
-                raise ValueError("Comparison queries must not request ranking order.")
-
-        if self.core_fact_object == "PlayerSeason":
-            filter_kinds = {flt.kind for flt in self.filters}
-            if filter_kinds:
-                required = {"exact_season", "season_type"}
-                if filter_kinds != required:
-                    raise ValueError(
-                        "PlayerSeason queries currently require exact_season and season_type filters."
-                    )
-            if self.query_kind == "metric_query" and self.dimensions != ["player_name"]:
-                raise ValueError("PlayerSeason metric queries currently require player_name.")
-
-        if self.core_fact_object == "TeamSeason":
-            filter_kinds = {flt.kind for flt in self.filters}
-            required = {"exact_season", "season_type"}
-            if filter_kinds != required:
-                raise ValueError(
-                    "TeamSeason queries currently require exact_season and season_type filters."
-                )
-            if self.query_kind != "metric_query" or self.dimensions != ["team_name"]:
-                raise ValueError("TeamSeason queries currently require metric_query with team_name.")
+        matched_family = _match_family(self)
+        if matched_family is None:
+            raise ValueError(
+                "The query template does not match any supported interpreter capability family."
+            )
 
         return self
-
-
-ALLOWED_ASSUMPTIONS = {
-    "Interpreted 'pts' as total points.",
-    "Interpreted 'scoring' as total points.",
-    "Interpreted 'scorers' as players ranked by total points.",
-    "Interpreted 'scorer' as players ranked by total points.",
-    "Interpreted 'avg points' as average points.",
-    "Interpreted 'average scoring' as average points.",
-}
 
 
 class InterpreterUnsupported(BaseModel):
@@ -203,64 +136,120 @@ def _strip_json_fences(raw_text: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def _ontology_contract_summary() -> str:
-    ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
-    objects = {obj["name"]: obj for obj in ontology["objects"]}
-    executable_metrics = {
-        object_name: [metric["name"] for metric in objects[object_name].get("metrics", []) if metric.get("executable")]
-        for object_name in ["PlayerGame", "TeamGame", "PlayerSeason", "PlayerSeasonTeam", "TeamSeason"]
-        if object_name in objects
-    }
-    return "\n".join(
-        [
-            "Live ontology-backed objects:",
-            "- PlayerGame",
-            "- TeamGame",
-            "- PlayerSeason",
-            "- PlayerSeasonTeam",
-            "- TeamSeason",
-            "",
-            "Executable metrics by fact object:",
-            *[
-                f"- {object_name}: {', '.join(metrics)}"
-                for object_name, metrics in executable_metrics.items()
-                if metrics
-            ],
-            "",
-            "Allowed dimensions in the current live query model:",
-            "- player_name",
-            "- team_name",
-            "",
-            "Allowed filters:",
-            "- last_n_games",
-            "- past_year",
-            "- exact_season",
-            "- season_type",
-            "",
-            "Allowed time_grain:",
-            "- month",
-            "",
-            "Allowed top-level query kinds:",
-            "- metric_query",
-            "- object_query",
-            "",
-            "Current live supported semantic shapes:",
-            "- PlayerGame metric rankings over last_n_games by player_name using total_points or average_points",
-            "- PlayerGame comparison over last_n_games for exactly jalen_brunson and tyrese_haliburton using total_points",
-            "- TeamGame metric rankings over last_n_games by team_name using average_points",
-            "- TeamGame monthly trends over past_year using average_points, optionally grouped by team_name",
-            "- PlayerGame object queries for Player rows with total_points over last_n_games",
-            "- PlayerSeason metric rankings for player_name with exact_season + season_type using average_points",
-            "- PlayerSeason object queries for Player rows with exact_season + season_type using total_points",
-            "- TeamSeason metric rankings for team_name with exact_season + season_type using wins",
-            "",
-            "Unsupported requests must return:",
-            '{"status":"unsupported","reason":"<short reason>"}',
-            "",
-            "Supported requests must return:",
-            '{"status":"ok","query":{...}}',
-        ]
-    )
+def _capability_artifact() -> dict[str, Any]:
+    return json.loads(CAPABILITY_PATH.read_text(encoding="utf-8"))
+
+
+def _filter_kinds(filters: list[SemanticFilter]) -> list[str]:
+    return [filter_value.kind for filter_value in filters]
+
+
+def _comparison_matches(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
+    comparison_capability = family["comparison"]
+    if not comparison_capability["enabled"]:
+        return template.comparison is None and not template.entity_filters
+    if template.comparison is None:
+        return False
+    if template.comparison.kind != "compare_entities":
+        return False
+    entities = template.comparison.entities
+    if len(entities) != comparison_capability["max_entities"]:
+        return False
+    if set(entities) != set(comparison_capability["entities"]):
+        return False
+    if template.entity_filters != entities:
+        return False
+    if template.orders:
+        return False
+    if template.linked_filters:
+        return False
+    return True
+
+
+def _linked_filters_match(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
+    linked_filter_capabilities = family["linked_filters"]
+    if not linked_filter_capabilities:
+        return not template.linked_filters
+    if len(template.linked_filters) != len(linked_filter_capabilities):
+        return False
+    for template_filter, capability_filter in zip(
+        template.linked_filters, linked_filter_capabilities
+    ):
+        if template_filter.target_object != capability_filter["target_object"]:
+            return False
+        if template_filter.attribute != capability_filter["attribute"]:
+            return False
+        if not template_filter.value:
+            return False
+    return True
+
+
+def _orders_match(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
+    if not template.orders:
+        return True
+    if not family["require_order_by_metric"]:
+        return False
+    if len(template.orders) != 1:
+        return False
+    order = template.orders[0]
+    return order.kind == "desc" and order.metric == template.metrics[0]
+
+
+def _limit_matches(template: SemanticQueryTemplate, family: dict[str, Any]) -> bool:
+    if family["allow_limit"]:
+        return template.limit is None or template.limit > 0
+    return template.limit is None
+
+
+def _match_family(template: SemanticQueryTemplate) -> Optional[dict[str, Any]]:
+    artifact = _capability_artifact()
+    for family in artifact["families"]:
+        if family["query_kind"] != template.query_kind:
+            continue
+        if family["core_fact_object"] != template.core_fact_object:
+            continue
+        if family.get("row_object") != template.row_object:
+            continue
+        if template.metrics[0] not in family["metrics"]:
+            continue
+        if template.dimensions != family["dimensions"]:
+            continue
+        if template.time_grain != family["time_grain"]:
+            continue
+        if sorted(_filter_kinds(template.filters)) != sorted(
+            family["required_filter_kinds"]
+        ):
+            continue
+        if not _linked_filters_match(template, family):
+            continue
+        if not _orders_match(template, family):
+            continue
+        if not _limit_matches(template, family):
+            continue
+        if not _comparison_matches(template, family):
+            continue
+        return family
+    return None
+
+
+@lru_cache(maxsize=1)
+def _capability_prompt_summary() -> str:
+    artifact = _capability_artifact()
+    fact_object_lines = [
+        "Live ontology-backed fact objects:",
+        *[
+            f"- {object_name}: metrics [{', '.join(object_capability['executable_metrics'])}]"
+            for object_name, object_capability in artifact["fact_objects"].items()
+            if object_capability["executable_metrics"]
+        ],
+        "",
+        f"Allowed top-level query kinds: {', '.join(artifact['top_level_query_kinds'])}",
+        f"Allowed filter kinds: {', '.join(artifact['allowed_filter_kinds'])}",
+        f"Allowed time grains: {', '.join(artifact['allowed_time_grains']) or 'none'}",
+        "",
+        artifact["prompt_summary"],
+    ]
+    return "\n".join(fact_object_lines)
 
 
 @lru_cache(maxsize=1)
@@ -272,7 +261,7 @@ Rules:
 - Output JSON only.
 - Never write SQL.
 - Never write prose outside the JSON.
-- Use only the live ontology-backed vocabulary and supported query shapes described below.
+- Use only the live ontology-backed vocabulary and supported query families described below.
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
 - When the user does not explicitly request a limit, use null for limit.
 - If the question cannot be represented safely by the current live contract, return:
@@ -285,23 +274,26 @@ JSON template for supported queries:
   "status": "ok",
   "query": {{
     "query_kind": "metric_query" | "object_query",
-    "core_fact_object": "PlayerGame" | "TeamGame" | "PlayerSeason" | "TeamSeason",
-    "row_object": "Player" | "Team" | null,
-    "metrics": ["total_points" | "average_points" | "games_played" | "points_per_36" | "wins" | "losses" | "win_percentage"],
-    "dimensions": ["player_name" | "team_name"],
-    "time_grain": "month" | null,
+    "core_fact_object": "<supported fact object from capability summary>",
+    "row_object": "<supported row object or null>",
+    "metrics": ["<exactly one supported metric>"],
+    "dimensions": ["<zero or one supported dimension>"],
+    "time_grain": "<supported time grain or null>",
     "filters": [
       {{"kind":"last_n_games","value":10}}
       | {{"kind":"past_year"}}
       | {{"kind":"exact_season","value":"2025-26"}}
       | {{"kind":"season_type","value":"regular_season" | "playoffs"}}
     ],
+    "linked_filters": [
+      {{"target_object":"Team","attribute":"team_name","value":"Lakers"}}
+    ],
     "orders": [
-      {{"kind":"desc","metric":"total_points" | "average_points" | "games_played" | "points_per_36" | "wins" | "losses" | "win_percentage"}}
+      {{"kind":"desc","metric":"<selected metric>"}}
     ],
     "limit": 10 | 5 | 1 | null,
-    "entity_filters": ["jalen_brunson","tyrese_haliburton"],
-    "comparison": {{"kind":"compare_entities","entities":["jalen_brunson","tyrese_haliburton"]}} | null,
+    "entity_filters": ["<supported comparison entity ids>"],
+    "comparison": {{"kind":"compare_entities","entities":["<supported comparison entity ids>"]}} | null,
     "assumptions": ["..."]
   }}
 }}
@@ -331,6 +323,9 @@ A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"Pla
 Q: Show me players by average points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
+Q: Show me players by average points for the Lakers over the last 10 games
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"linked_filters":[{{"target_object":"Team","attribute":"team_name","value":"Lakers"}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
+
 Q: Show me teams by average points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"TeamGame","row_object":null,"metrics":["average_points"],"dimensions":["team_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
@@ -343,14 +338,17 @@ A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"Pla
 Q: Show me teams by wins in the 2025-26 regular season
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"TeamSeason","row_object":null,"metrics":["wins"],"dimensions":["team_name"],"time_grain":null,"filters":[{{"kind":"exact_season","value":"2025-26"}},{{"kind":"season_type","value":"regular_season"}}],"orders":[{{"kind":"desc","metric":"wins"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
 
+Q: Show me players by average points for the Lakers in the 2025-26 regular season
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerSeasonTeam","row_object":null,"metrics":["average_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"exact_season","value":"2025-26"}},{{"kind":"season_type","value":"regular_season"}}],"linked_filters":[{{"target_object":"Team","attribute":"team_name","value":"Lakers"}}],"orders":[{{"kind":"desc","metric":"average_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
+
 Q: What is the trend in points over the last month?
 A: {{"status":"unsupported","reason":"last month trend is not supported by the current live contract"}}
 
 Q: Show me all information about Brunson
 A: {{"status":"unsupported","reason":"object hydration is not supported by the current live contract"}}
 
-Live contract summary:
-{_ontology_contract_summary()}
+Capability summary:
+{_capability_prompt_summary()}
 """.strip()
 
 
@@ -425,13 +423,29 @@ def _parse_interpreter_response(raw_text: str) -> Union[InterpreterSupported, In
 
 
 def _normalize_to_haskell_query(template: SemanticQueryTemplate) -> dict[str, Any]:
+    matched_family = _match_family(template)
+    normalized_orders = (
+        [SemanticOrder(kind="desc", metric=template.metrics[0])]
+        if not template.orders
+        and matched_family is not None
+        and matched_family["require_order_by_metric"]
+        else template.orders
+    )
     shared_query = {
         "coreFactObject": template.core_fact_object,
         "metrics": template.metrics,
         "dimensions": template.dimensions,
         "timeGrain": template.time_grain,
         "filters": [flt.model_dump(exclude_none=True) for flt in template.filters],
-        "orders": [order.model_dump() for order in template.orders],
+        "linkedFilters": [
+            {
+                "targetObject": linked_filter.target_object,
+                "attribute": linked_filter.attribute,
+                "value": linked_filter.value,
+            }
+            for linked_filter in template.linked_filters
+        ],
+        "orders": [order.model_dump() for order in normalized_orders],
         "limit": template.limit,
         "assumptions": template.assumptions,
     }
@@ -488,7 +502,9 @@ def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
     interpreted = _parse_interpreter_response(raw_text)
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
-    unexpected_assumptions = set(interpreted.query.assumptions) - ALLOWED_ASSUMPTIONS
+    unexpected_assumptions = set(interpreted.query.assumptions) - set(
+        _capability_artifact()["allowed_assumptions"]
+    )
     if unexpected_assumptions:
         raise SemanticInterpreterError(
             "Gemini returned unsupported assumptions: "

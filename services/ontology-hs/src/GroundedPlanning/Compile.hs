@@ -166,6 +166,7 @@ compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, 
           , metricFormula = resolvedMetricFormulaValue
           , windowGames = metricWindowGames
           , queryLimit = metricQueryLimit
+          , linkedFiltersResolved = metricLinkedFilters
           } = resolved
        in
       T.unlines $
@@ -184,6 +185,8 @@ compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, 
         ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
+          <> renderLinkedFilterJoinClauses "f" metricLinkedFilters
+          <> renderLinkedFilterWhereClause "f" metricLinkedFilters
           <> [ "), ranked_entities AS ("
         , "  SELECT"
         , "    entity_id,"
@@ -270,6 +273,7 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
           , metricFormula = objectMetricFormula
           , windowGames = objectWindowGames
           , queryLimit = objectQueryLimit
+          , linkedFiltersResolved = objectLinkedFilters
           } = resolved
        in
       T.unlines $
@@ -288,6 +292,8 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
+          <> renderLinkedFilterJoinClauses "f" objectLinkedFilters
+          <> renderLinkedFilterWhereClause "f" objectLinkedFilters
           <> [ "), entity_values AS ("
         , "  SELECT"
         , "    entity_id,"
@@ -358,6 +364,7 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
       , rowPath = metricRowPath
       , contextPath = metricContextPath
       , queryLimit = metricQueryLimit
+      , linkedFiltersResolved = metricLinkedFilters
       } = resolved
    in
   T.unlines $
@@ -370,7 +377,8 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
       <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
-      <> [ "  WHERE " <> seasonWhereClause seasonLabelValue seasonTypeValue
+      <> renderLinkedFilterJoinClauses "f" metricLinkedFilters
+      <> [ "  WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderLinkedFilterConditions "f" metricLinkedFilters)
          , "    AND " <> renderMetricValue metricMetricSource <> " IS NOT NULL"
          , ")"
          , "SELECT"
@@ -395,6 +403,7 @@ compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
       , rowPath = objectRowPath
       , contextPath = objectContextPath
       , queryLimit = objectQueryLimit
+      , linkedFiltersResolved = objectLinkedFilters
       } = resolved
    in
   T.unlines $
@@ -407,7 +416,8 @@ compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
       <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
-      <> [ "WHERE " <> seasonWhereClause seasonLabelValue seasonTypeValue
+      <> renderLinkedFilterJoinClauses "f" objectLinkedFilters
+      <> [ "WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderLinkedFilterConditions "f" objectLinkedFilters)
          , "ORDER BY metric_value DESC, entity_name ASC"
          ]
       <> limitClause objectQueryLimit
@@ -431,6 +441,10 @@ renderMetricValue columnRef =
 seasonWhereClause :: Text -> Text -> Text
 seasonWhereClause seasonLabelValue seasonTypeValue =
   "f.season_year = '" <> seasonLabelValue <> "' AND f.season_type = '" <> seasonTypeValue <> "'"
+
+combineWhereClauses :: [Text] -> Text
+combineWhereClauses clauseValues =
+  T.intercalate " AND " clauseValues
 
 renderColumnRefWithContext :: Text -> Text -> Text -> ColumnRef -> Text
 renderColumnRefWithContext factAlias rowAlias contextAlias columnRef =
@@ -486,6 +500,47 @@ renderMaybePathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix m
   case maybeDiscoveredPath of
     Just discoveredPath -> renderPathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix discoveredPath
     Nothing -> []
+
+renderLinkedFilterJoinClauses :: Text -> [ResolvedLinkedFilter] -> [Text]
+renderLinkedFilterJoinClauses baseAlias linkedFilterValues =
+  concatMap renderIndexedFilter (zip [1 :: Int ..] linkedFilterValues)
+  where
+    renderIndexedFilter :: (Int, ResolvedLinkedFilter) -> [Text]
+    renderIndexedFilter (indexValue, linkedFilterValue) =
+      renderPathJoinClauses
+        "JOIN"
+        baseAlias
+        (linkedFilterAlias indexValue linkedFilterValue)
+        ("lf" <> T.pack (show indexValue) <> "p")
+        (filterPath linkedFilterValue)
+
+renderLinkedFilterWhereClause :: Text -> [ResolvedLinkedFilter] -> [Text]
+renderLinkedFilterWhereClause baseAlias linkedFilterValues =
+  case renderLinkedFilterConditions baseAlias linkedFilterValues of
+    [] -> []
+    conditions -> ["  WHERE " <> combineWhereClauses conditions]
+
+renderLinkedFilterConditions :: Text -> [ResolvedLinkedFilter] -> [Text]
+renderLinkedFilterConditions baseAlias linkedFilterValues =
+  map renderIndexedCondition (zip [1 :: Int ..] linkedFilterValues)
+  where
+    renderIndexedCondition :: (Int, ResolvedLinkedFilter) -> Text
+    renderIndexedCondition (indexValue, linkedFilterValue) =
+      linkedFilterAlias indexValue linkedFilterValue
+        <> "."
+        <> filterColumn linkedFilterValue
+        <> " = '"
+        <> escapeSqlLiteral (filterValue linkedFilterValue)
+        <> "'"
+
+linkedFilterAlias :: Int -> ResolvedLinkedFilter -> Text
+linkedFilterAlias indexValue linkedFilterValue =
+  if null (OG.steps (filterPath linkedFilterValue))
+    then "f"
+    else "lf" <> T.pack (show indexValue)
+
+escapeSqlLiteral :: Text -> Text
+escapeSqlLiteral = T.replace "'" "''"
 
 limitClause :: Maybe Int -> [Text]
 limitClause maybeLimit =

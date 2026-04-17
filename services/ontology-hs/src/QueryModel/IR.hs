@@ -145,12 +145,20 @@ instance FromJSON Order where
       "desc" -> Desc <$> obj .: "metric"
       _ -> fail ("Unknown order kind: " <> show kindValue)
 
+data LinkedFilter = LinkedFilter
+  { targetObject :: Text
+  , attribute :: Text
+  , value :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data BaseQuery = BaseQuery
   { coreFactObject :: Text
   , metrics :: [MetricName]
   , dimensions :: [DimensionName]
   , timeGrain :: Maybe TimeGrain
   , filters :: [Filter]
+  , linkedFilters :: [LinkedFilter]
   , orders :: [Order]
   , limit :: Maybe Int
   , assumptions :: [Text]
