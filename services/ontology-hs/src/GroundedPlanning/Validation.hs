@@ -16,8 +16,9 @@
 module GroundedPlanning.Validation where
 
 import Data.Text (Text)
-import OntologyLayer.Graph (findAttribute, findLink, findMetric, findObject)
-import OntologyLayer.Types (Attribute (kind), AttributeKind (Dimension), Link, MetricDef (executable, name, source_attributes), Object, Ontology)
+import OntologyLayer.Graph (DiscoveredPath, findAttribute, findMetric, findObject, findPath, findPathsFrom)
+import qualified OntologyLayer.Graph as OG
+import OntologyLayer.Types (Attribute (kind), AttributeKind (Dimension), MetricDef (executable, name, source_attributes), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -39,9 +40,7 @@ validateMetricQuery ontology metricQuery = do
   validateMetricAttributes metricDef
   validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
   case comparison metricQuery of
-    Just (CompareEntities entities) -> do
-      ensureComparisonShape factObject rowObject (metrics base) entities
-      pure ()
+    Just (CompareEntities entities) -> ensureComparisonShape ontology factObject rowObject (metrics base) entities
     Nothing -> pure ()
 
 validateObjectQuery :: Ontology -> ObjectQuerySpec -> Either Text ()
@@ -50,11 +49,10 @@ validateObjectQuery ontology objectQuery = do
         case objectQuery of
           ObjectQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  let rowObjectName = rowObject objectQuery
-  _ <- requireObject ontology rowObjectName
-  _ <- requireLink ontology (coreFactObject base) rowObjectName
+  let rowObjectNameValue = rowObject objectQuery
+  _ <- requirePath ontology (objectName factObject) rowObjectNameValue
   _ <- requireSelectedMetric factObject (metrics base)
-  rowObjectValue <- requireObject ontology rowObjectName
+  rowObjectValue <- requireObject ontology rowObjectNameValue
   requireSelectedDimension rowObjectValue (dimensions base)
   validateMetricFilters (filters base)
   case metrics base of
@@ -67,18 +65,51 @@ validateObjectQuery ontology objectQuery = do
 requireMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
 requireMetricRowObject ontology factObject dimensionValues = do
   dimensionName <- requireSingleDimension dimensionValues
-  rowObjectName <- metricRowObjectName dimensionName
-  rowObject <- requireObject ontology rowObjectName
-  _ <- requireLink ontology (objectName factObject) rowObjectName
+  rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionName
   requireSelectedDimension rowObject [dimensionName]
   pure rowObject
 
-metricRowObjectName :: DimensionName -> Either Text Text
-metricRowObjectName dimensionName =
-  case dimensionName of
-    PlayerName -> Right "Player"
-    TeamName -> Right "Team"
-    _ -> Left "MetricQuery currently supports player_name or team_name as the displayed dimension."
+requireReachableDimensionObject :: Ontology -> Text -> DimensionName -> Either Text Object
+requireReachableDimensionObject ontology factObjectName dimensionName = do
+  attributeName <- dimensionKey dimensionName
+  case firstLinkedObjectWithAttribute ontology factObjectName attributeName of
+    Just objectValue -> Right objectValue
+    Nothing ->
+      case objectWithAttribute ontology factObjectName attributeName of
+        Just objectValue -> Right objectValue
+        Nothing ->
+          Left
+            ( "No valid ontology path from '"
+                <> factObjectName
+                <> "' reaches a displayed dimension attribute '"
+                <> attributeName
+                <> "'."
+            )
+
+firstLinkedObjectWithAttribute :: Ontology -> Text -> Text -> Maybe Object
+firstLinkedObjectWithAttribute ontology factObjectName attributeName =
+  case
+    [ objectValue
+    | discoveredPath <- findPathsFrom ontology 2 factObjectName
+    , Just objectValue <- [findObject ontology (OG.targetObjectName discoveredPath)]
+    , hasAttribute objectValue attributeName
+    ]
+    of
+    objectValue : _ -> Just objectValue
+    [] -> Nothing
+
+objectWithAttribute :: Ontology -> Text -> Text -> Maybe Object
+objectWithAttribute ontology objectNameValue attributeName = do
+  objectValue <- findObject ontology objectNameValue
+  if hasAttribute objectValue attributeName
+    then Just objectValue
+    else Nothing
+
+hasAttribute :: Object -> Text -> Bool
+hasAttribute objectValue attributeName =
+  case findAttribute objectValue attributeName of
+    Just _ -> True
+    Nothing -> False
 
 requireSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
 requireSelectedMetric factObject metricValues =
@@ -93,7 +124,8 @@ requireSelectedMetric factObject metricValues =
 requireSelectedDimension :: Object -> [DimensionName] -> Either Text ()
 requireSelectedDimension object dimensionValues = do
   dimensionName <- requireSingleDimension dimensionValues
-  requireAttributeKind object (dimensionKey dimensionName) Dimension
+  attributeName <- dimensionKey dimensionName
+  requireAttributeKind object attributeName Dimension
 
 requireSingleDimension :: [DimensionName] -> Either Text DimensionName
 requireSingleDimension dimensionValues =
@@ -119,8 +151,9 @@ validateMetricOrders maybeComparison orderValues metricValues =
         ([Desc orderMetric], [selectedMetric]) | orderMetric == selectedMetric -> pure ()
         _ -> Left "Ranking queries require descending ordering by the selected metric."
 
-ensureComparisonShape :: Object -> Object -> [MetricName] -> [EntityName] -> Either Text ()
-ensureComparisonShape factObject rowObject metricValues entities = do
+ensureComparisonShape :: Ontology -> Object -> Object -> [MetricName] -> [EntityName] -> Either Text ()
+ensureComparisonShape ontology factObject rowObject metricValues entities = do
+  _ <- requirePath ontology (objectName factObject) (objectName rowObject)
   if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
     then Left "Comparison currently supports the PlayerGame -> Player path only."
     else pure ()
@@ -138,14 +171,23 @@ validateMetricAttributes metricDef =
     else Right ()
 
 requireObject :: Ontology -> Text -> Either Text Object
-requireObject ontology objectName =
-  maybe (Left ("Object '" <> objectName <> "' not found in ontology.")) Right $
-    findObject ontology objectName
+requireObject ontology objectNameValue =
+  maybe (Left ("Object '" <> objectNameValue <> "' not found in ontology.")) Right $
+    findObject ontology objectNameValue
 
-requireLink :: Ontology -> Text -> Text -> Either Text Link
-requireLink ontology sourceName targetName =
-  maybe (Left ("Link '" <> sourceName <> " -> " <> targetName <> "' not found in ontology.")) Right $
-    findLink ontology sourceName targetName
+requirePath :: Ontology -> Text -> Text -> Either Text DiscoveredPath
+requirePath ontology sourceName targetName =
+  maybe
+    ( Left
+        ( "No valid ontology path from '"
+            <> sourceName
+            <> "' to '"
+            <> targetName
+            <> "'."
+        )
+    )
+    Right
+    (findPath ontology 2 sourceName targetName)
 
 requireMetric :: Object -> Text -> Either Text OT.MetricDef
 requireMetric object metricNameValue =
@@ -168,14 +210,14 @@ metricKey metricValue =
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
 
-dimensionKey :: DimensionName -> Text
+dimensionKey :: DimensionName -> Either Text Text
 dimensionKey dimensionValue =
   case dimensionValue of
-    PlayerName -> "player_name"
-    TeamName -> "team_name"
-    DisplayName -> "display_name"
-    Team -> "team"
-    PrimaryPosition -> "primary_position"
+    PlayerName -> Right "player_name"
+    TeamName -> Right "team_name"
+    DisplayName -> Right "display_name"
+    Team -> Right "team"
+    PrimaryPosition -> Right "primary_position"
 
 objectName :: OT.Object -> Text
 objectName objectValue =

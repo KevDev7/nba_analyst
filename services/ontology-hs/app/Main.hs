@@ -17,9 +17,10 @@
 
 module Main where
 
-import Data.Aeson (ToJSON, encode)
+import Data.Aeson (FromJSON, ToJSON, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
+import Data.Text.Encoding (encodeUtf8)
 import GHC.Generics (Generic)
 import GroundedPlanning.Compile (compileExecutionPlan)
 import GroundedPlanning.Plan (ExecutionPlan)
@@ -29,7 +30,7 @@ import OntologyLayer.Load (loadOntology)
 import OntologyLayer.Types (Ontology)
 import QueryModel.Build (buildQuery)
 import QueryModel.Classify (QueryKind (MetricQueryKind, ObjectQueryKind), classifyQuestion)
-import QueryModel.IR (Query)
+import QueryModel.IR (Query (MetricQuery, ObjectQuery))
 import QueryModel.Interpret (interpretQuestion)
 import QueryModel.Match (matchQuestion)
 import System.Environment (getArgs)
@@ -60,6 +61,9 @@ main = do
     ["plan", "--ontology", ontologyPath, "--question", question] -> do
       ontology <- loadOntology ontologyPath
       runPlanner ontology (pack question)
+    ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
+      ontology <- loadOntology ontologyPath
+      runPlannerFromQueryJson ontology (pack queryJson)
     _ ->
       die "Usage: cabal run ontology-hs -- plan --ontology <path> --question <text>"
 
@@ -93,6 +97,30 @@ runPlanner ontology question =
                                   }
                           BL8.putStrLn (encode output)
 
+runPlannerFromQueryJson :: Ontology -> Text -> IO ()
+runPlannerFromQueryJson ontology queryJson =
+  case eitherDecodeStrict' (encodeUtf8 queryJson) of
+    Left err -> emitError "Planner.Decode" (pack err)
+    Right plannedQuery -> emitPlannedQuery ontology plannedQuery
+
+emitPlannedQuery :: Ontology -> Query -> IO ()
+emitPlannedQuery ontology plannedQuery =
+  case validateQuery ontology plannedQuery of
+    Left err -> emitError "GroundedPlanning.Validation" err
+    Right () ->
+      case resolveQuery ontology plannedQuery of
+        Left err -> emitError "GroundedPlanning.Resolve" err
+        Right resolved -> do
+          let executionPlan = compileExecutionPlan resolved
+              output =
+                PlannerOutput
+                  { query_type = renderQueryKindFromQuery plannedQuery
+                  , query = plannedQuery
+                  , resolved_query = resolved
+                  , execution_plan = executionPlan
+                  }
+          BL8.putStrLn (encode output)
+
 emitError :: Text -> Text -> IO ()
 emitError stageName err = do
   BL8.putStrLn (encode (PlannerError stageName err))
@@ -103,3 +131,9 @@ renderQueryKind queryKind =
   case queryKind of
     MetricQueryKind -> "MetricQuery"
     ObjectQueryKind -> "ObjectQuery"
+
+renderQueryKindFromQuery :: Query -> Text
+renderQueryKindFromQuery query =
+  case query of
+    MetricQuery _ -> "MetricQuery"
+    ObjectQuery _ -> "ObjectQuery"

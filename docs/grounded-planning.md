@@ -1,6 +1,11 @@
 # Grounded Planning
 
-This doc pins down the live grounded-planning behavior after slice 4.
+This doc pins down the live grounded-planning behavior after slice 7.
+
+For the explicit supported ontology graph that current path resolution is
+expected to use, see:
+
+- [supported-ontology-graph.md](/Users/HungNguyen/Desktop/Projects/nba_analyst/docs/supported-ontology-graph.md)
 
 ## Inputs
 
@@ -15,7 +20,8 @@ Validation now checks the ontology contract directly:
 
 - required objects exist
 - required attributes exist with the right kinds
-- required link exists
+- a valid ontology path exists from the fact object to the requested row object
+- a valid context path exists when the selected output needs linked context
 - requested metric exists in the ontology
 - metric is executable in this slice
 - filter placement is valid on the fact side
@@ -27,7 +33,8 @@ Resolution now produces:
 
 - final fact table
 - row/display table
-- join path
+- discovered row path
+- optional discovered context path
 - governed metric formula
 - filter location
 - required columns for execution
@@ -36,8 +43,10 @@ Example for `average_points`:
 
 - fact table: `player_game`
 - row table: `player`
-- join path:
-  - `player_game.person_id -> player.person_id`
+- discovered row path:
+  - `PlayerGame -> Player`
+- discovered context path:
+  - `PlayerGame -> Team`
 - filter:
   - `LastNGames` on recent `PlayerGame` rows
 - formula:
@@ -52,4 +61,4 @@ The runtime plan contract now distinguishes:
 - object rows with attached `total_points`
 - comparison over `total_points`
 
-The important change is that grounded planning now resolves governed metric formulas, not just table paths.
+The important change is that grounded planning now resolves governed metric formulas and graph-derived paths, not just a small set of hand-picked joins.

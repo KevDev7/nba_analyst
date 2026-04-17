@@ -34,8 +34,11 @@ class SliceThreeTests(unittest.TestCase):
         resolved = planner_output["resolved_query"]["resolved"]
         self.assertEqual(resolved["rowTableName"], "player")
         self.assertEqual(resolved["factTableName"], "player_game")
-        self.assertEqual(resolved["joinPath"]["factJoinKey"], "person_id")
-        self.assertEqual(resolved["joinPath"]["rowJoinKey"], "person_id")
+        self.assertEqual(resolved["rowPath"]["sourceObjectName"], "PlayerGame")
+        self.assertEqual(resolved["rowPath"]["targetObjectName"], "Player")
+        self.assertEqual(resolved["rowPath"]["steps"][0]["linkName"], "player_game_player")
+        self.assertEqual(resolved["rowPath"]["steps"][0]["sourceKey"], "person_id")
+        self.assertEqual(resolved["rowPath"]["steps"][0]["targetKey"], "person_id")
 
     def test_object_query_output(self) -> None:
         output = run_cli("Show me players and their total points over the last 10 games")

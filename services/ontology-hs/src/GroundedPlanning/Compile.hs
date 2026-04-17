@@ -19,6 +19,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Plan
 import GroundedPlanning.Resolve
+import OntologyLayer.Graph (DiscoveredPath)
+import qualified OntologyLayer.Graph as OG
 
 compileExecutionPlan :: ResolvedQuery -> ExecutionPlan
 compileExecutionPlan resolvedQuery =
@@ -107,15 +109,15 @@ compileRankingSql :: ResolvedMetricQuery -> Text
 compileRankingSql resolved =
   let
     ResolvedMetricQuery
-      { factIdColumn = metricFactIdColumn
-      , contextJoin = metricContextJoin
+      { partitionKey = metricPartitionKey
+      , entityId = metricEntityId
+      , rowPath = metricRowPath
+      , contextPath = metricContextPath
       , displayName = metricDisplayName
       , contextValue = metricContextValue
       , gameDate = metricGameDate
       , metricSource = metricMetricSource
       , factTableName = metricFactTableName
-      , rowTableName = metricRowTableName
-      , rowIdColumn = metricRowIdColumn
       , metricFormula = resolvedMetricFormulaValue
       , windowGames = metricWindowGames
       , queryLimit = metricQueryLimit
@@ -124,28 +126,28 @@ compileRankingSql resolved =
   T.unlines $
     [ "WITH recent_rows AS ("
     , "  SELECT"
-    , "    f." <> metricFactIdColumn <> " AS entity_id,"
-    , "    " <> renderColumnRef "f" "r" metricDisplayName <> " AS entity_name,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
-    , "    " <> renderColumnRef "f" "r" metricGameDate <> " AS game_date,"
-    , "    " <> renderColumnRef "f" "r" metricMetricSource <> " AS metric_source,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
     , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY f." <> metricFactIdColumn
-    , "      ORDER BY " <> renderColumnRef "f" "r" metricGameDate <> " DESC"
+    , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
+    , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
     , "    ) AS game_rank"
     , "  FROM " <> metricFactTableName <> " f"
-    , "  JOIN " <> metricRowTableName <> " r"
-    , "    ON f." <> metricFactIdColumn <> " = r." <> metricRowIdColumn
     ]
-      <> contextJoinClause metricContextJoin
+      <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
       <> [ "), ranked_entities AS ("
     , "  SELECT"
-    , "    entity_name,"
+    , "    entity_id,"
+    , "    arg_max(entity_name, game_date) AS entity_name,"
     , "    arg_max(context_value, game_date) AS context_value,"
     , "    " <> compileMetricAggregation resolvedMetricFormulaValue <> " AS metric_value"
     , "  FROM recent_rows"
     , "  WHERE game_rank <= " <> T.pack (show metricWindowGames)
-    , "  GROUP BY entity_name"
+    , "  GROUP BY entity_id"
     , ")"
     , "SELECT"
     , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, entity_name ASC) AS rank,"
@@ -162,15 +164,14 @@ compileComparisonSql resolved =
   let
       ResolvedMetricQuery
         { comparisonEntities = resolvedComparisonEntities
-        , contextJoin = metricContextJoin
+        , partitionKey = metricPartitionKey
+        , rowPath = metricRowPath
+        , contextPath = metricContextPath
         , displayName = metricDisplayName
         , contextValue = metricContextValue
         , gameDate = metricGameDate
         , metricSource = metricMetricSource
-        , factIdColumn = metricFactIdColumn
         , factTableName = metricFactTableName
-        , rowTableName = metricRowTableName
-        , rowIdColumn = metricRowIdColumn
         , windowGames = metricWindowGames
         } = resolved
       entityList =
@@ -180,20 +181,19 @@ compileComparisonSql resolved =
    in T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
-        , "    " <> renderColumnRef "f" "r" metricDisplayName <> " AS player_name,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS player_name,"
         , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS team,"
-        , "    " <> renderColumnRef "f" "r" metricGameDate <> " AS game_date,"
-        , "    " <> renderColumnRef "f" "r" metricMetricSource <> " AS points,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS points,"
         , "    ROW_NUMBER() OVER ("
-        , "      PARTITION BY f." <> metricFactIdColumn
-        , "      ORDER BY " <> renderColumnRef "f" "r" metricGameDate <> " DESC"
+        , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
+        , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
         , "    ) AS game_rank"
         , "  FROM " <> metricFactTableName <> " f"
-        , "  JOIN " <> metricRowTableName <> " r"
-        , "    ON f." <> metricFactIdColumn <> " = r." <> metricRowIdColumn
         ]
-          <> contextJoinClause metricContextJoin
-          <> [ "  WHERE " <> renderColumnRef "f" "r" metricDisplayName <> " IN (" <> entityList <> ")"
+          <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+          <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
+          <> [ "  WHERE " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " IN (" <> entityList <> ")"
         , ")"
         , "SELECT"
         , "  player_name,"
@@ -209,15 +209,15 @@ compileObjectSql :: ResolvedObjectQuery -> Text
 compileObjectSql resolved =
   let
     ResolvedObjectQuery
-      { factIdColumn = objectFactIdColumn
-      , contextJoin = objectContextJoin
+      { partitionKey = objectPartitionKey
+      , entityId = objectEntityId
+      , rowPath = objectRowPath
+      , contextPath = objectContextPath
       , displayName = objectDisplayName
       , contextValue = objectContextValue
       , gameDate = objectGameDate
       , metricSource = objectMetricSource
       , factTableName = objectFactTableName
-      , rowTableName = objectRowTableName
-      , rowIdColumn = objectRowIdColumn
       , metricFormula = objectMetricFormula
       , windowGames = objectWindowGames
       , queryLimit = objectQueryLimit
@@ -226,20 +226,19 @@ compileObjectSql resolved =
   T.unlines $
     [ "WITH recent_rows AS ("
     , "  SELECT"
-    , "    f." <> objectFactIdColumn <> " AS entity_id,"
-    , "    " <> renderColumnRef "f" "r" objectDisplayName <> " AS entity_name,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
-    , "    " <> renderColumnRef "f" "r" objectGameDate <> " AS game_date,"
-    , "    " <> renderColumnRef "f" "r" objectMetricSource <> " AS metric_source,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " AS game_date,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectMetricSource <> " AS metric_source,"
     , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY f." <> objectFactIdColumn
-    , "      ORDER BY " <> renderColumnRef "f" "r" objectGameDate <> " DESC"
+    , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" objectPartitionKey
+    , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " DESC"
     , "    ) AS game_rank"
     , "  FROM " <> objectFactTableName <> " f"
-    , "  JOIN " <> objectRowTableName <> " r"
-    , "    ON f." <> objectFactIdColumn <> " = r." <> objectRowIdColumn
     ]
-      <> contextJoinClause objectContextJoin
+      <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
+      <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
       <> [ "), entity_values AS ("
     , "  SELECT"
     , "    entity_id,"
@@ -267,13 +266,6 @@ compileMetricAggregation formula =
     "avg" -> "ROUND(AVG(metric_source), 1)"
     _ -> error "Unsupported executable metric aggregation."
 
-renderColumnRef :: Text -> Text -> ColumnRef -> Text
-renderColumnRef factAlias rowAlias columnRef =
-  case tableRole columnRef of
-    "fact" -> factAlias <> "." <> columnName columnRef
-    "row" -> rowAlias <> "." <> columnName columnRef
-    _ -> error "Unsupported column role."
-
 renderColumnRefWithContext :: Text -> Text -> Text -> ColumnRef -> Text
 renderColumnRefWithContext factAlias rowAlias contextAlias columnRef =
   case tableRole columnRef of
@@ -288,13 +280,40 @@ renderMaybeColumnRef factAlias rowAlias contextAlias maybeColumnRef =
     Just columnRef -> renderColumnRefWithContext factAlias rowAlias contextAlias columnRef
     Nothing -> "NULL"
 
-contextJoinClause :: Maybe ContextJoin -> [Text]
-contextJoinClause maybeContextJoin =
-  case maybeContextJoin of
-    Just contextJoin ->
-      [ "  LEFT JOIN " <> contextTableName contextJoin <> " c"
-      , "    ON f." <> factContextKey contextJoin <> " = c." <> contextRowKey contextJoin
-      ]
+renderPathJoinClauses :: Text -> Text -> Text -> Text -> DiscoveredPath -> [Text]
+renderPathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix discoveredPath =
+  case OG.steps discoveredPath of
+    [] -> []
+    discoveredSteps ->
+      concatMap renderIndexedStep (zip [0 :: Int ..] discoveredSteps)
+      where
+        finalIndex = length discoveredSteps - 1
+
+        aliasAt :: Int -> Text
+        aliasAt indexValue =
+          if indexValue == finalIndex
+            then finalAlias
+            else intermediatePrefix <> T.pack (show (indexValue + 1))
+
+        sourceAliasAt :: Int -> Text
+        sourceAliasAt indexValue =
+          if indexValue == 0
+            then baseAlias
+            else aliasAt (indexValue - 1)
+
+        renderIndexedStep :: (Int, OG.PathStep) -> [Text]
+        renderIndexedStep (indexValue, discoveredStep) =
+          let targetAlias = aliasAt indexValue
+              sourceAlias = sourceAliasAt indexValue
+           in
+          [ "  " <> joinKeyword <> " " <> OG.stepTargetTableName discoveredStep <> " " <> targetAlias
+          , "    ON " <> sourceAlias <> "." <> OG.sourceKey discoveredStep <> " = " <> targetAlias <> "." <> OG.targetKey discoveredStep
+          ]
+
+renderMaybePathJoinClauses :: Text -> Text -> Text -> Text -> Maybe DiscoveredPath -> [Text]
+renderMaybePathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix maybeDiscoveredPath =
+  case maybeDiscoveredPath of
+    Just discoveredPath -> renderPathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix discoveredPath
     Nothing -> []
 
 limitClause :: Maybe Int -> [Text]

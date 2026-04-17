@@ -59,7 +59,8 @@ class SliceSixTests(unittest.TestCase):
         self.assertEqual(resolved["rowTableName"], "team")
         self.assertEqual(resolved["metricFormula"]["metricKey"], "average_points")
         self.assertEqual(resolved["metricFormula"]["aggregationKind"], "avg")
-        self.assertIsNone(resolved["contextJoin"])
+        self.assertIsNone(resolved["contextPath"])
+        self.assertEqual(resolved["rowPath"]["steps"][0]["linkName"], "team_game_team")
 
     def test_player_object_query_uses_team_context_link(self) -> None:
         planner_output = call_haskell_planner(
@@ -70,10 +71,11 @@ class SliceSixTests(unittest.TestCase):
         self.assertEqual(resolved["rowObjectName"], "Player")
         self.assertEqual(resolved["factTableName"], "player_game")
         self.assertEqual(resolved["rowTableName"], "player")
-        self.assertEqual(resolved["joinPath"]["factJoinKey"], "person_id")
-        self.assertEqual(resolved["joinPath"]["rowJoinKey"], "person_id")
-        self.assertEqual(resolved["contextJoin"]["contextTableName"], "team")
-        self.assertEqual(resolved["contextJoin"]["factContextKey"], "team_id")
+        self.assertEqual(resolved["rowPath"]["steps"][0]["sourceKey"], "person_id")
+        self.assertEqual(resolved["rowPath"]["steps"][0]["targetKey"], "person_id")
+        self.assertEqual(resolved["contextPath"]["targetObjectName"], "Team")
+        self.assertEqual(resolved["contextPath"]["steps"][0]["linkName"], "player_game_team")
+        self.assertEqual(resolved["contextPath"]["steps"][0]["sourceKey"], "team_id")
         self.assertEqual(resolved["contextValue"]["tableRole"], "context")
         self.assertEqual(resolved["contextValue"]["columnName"], "team_abbreviation")
 

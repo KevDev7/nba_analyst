@@ -69,6 +69,35 @@ def call_haskell_planner(question: str) -> dict:
     return payload
 
 
+def call_haskell_planner_for_query(query_payload: dict) -> dict:
+    command = [
+        "cabal",
+        "run",
+        "-v0",
+        "ontology-hs",
+        "--",
+        "plan-query-json",
+        "--ontology",
+        str(ONTOLOGY_PATH),
+        "--query-json",
+        json.dumps(query_payload),
+    ]
+    result = subprocess.run(
+        command,
+        cwd=HASKELL_SERVICE_DIR,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload_text = result.stdout.strip() or result.stderr.strip()
+    if not payload_text:
+        raise RuntimeError("Haskell planner returned no output.")
+    payload = json.loads(payload_text)
+    if result.returncode != 0:
+        raise RuntimeError(payload.get("message", payload_text))
+    return payload
+
+
 def run_cli(question: str, debug: bool = False) -> str:
     load_database()
     planner_output = call_haskell_planner(question)

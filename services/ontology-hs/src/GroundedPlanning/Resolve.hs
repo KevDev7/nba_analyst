@@ -21,8 +21,10 @@ module GroundedPlanning.Resolve where
 import Data.Aeson (FromJSON, ToJSON (toJSON), object, (.=))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import OntologyLayer.Graph (findLink, findMetric, findObject)
-import OntologyLayer.Types (Link (source_key, target_key), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
+import OntologyLayer.Graph (DiscoveredPath (steps), findAttribute, findMetric, findObject, findPath, findPathsFrom)
+import qualified OntologyLayer.Graph as OG
+import OntologyLayer.Types (Attribute (kind, source_column), AttributeKind (PrimaryKey), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
+import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
 data ResolvedEntity = ResolvedEntity
@@ -31,24 +33,9 @@ data ResolvedEntity = ResolvedEntity
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-data JoinPath = JoinPath
-  { factTable :: Text
-  , factJoinKey :: Text
-  , rowTable :: Text
-  , rowJoinKey :: Text
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
 data ColumnRef = ColumnRef
   { tableRole :: Text
   , columnName :: Text
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
-data ContextJoin = ContextJoin
-  { contextTableName :: Text
-  , factContextKey :: Text
-  , contextRowKey :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -66,9 +53,10 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   { factTableName :: Text
   , rowTableName :: Text
   , rowObjectName :: Text
-  , factIdColumn :: Text
-  , rowIdColumn :: Text
-  , contextJoin :: Maybe ContextJoin
+  , rowPath :: DiscoveredPath
+  , contextPath :: Maybe DiscoveredPath
+  , partitionKey :: ColumnRef
+  , entityId :: ColumnRef
   , displayName :: ColumnRef
   , contextValue :: Maybe ColumnRef
   , gameDate :: ColumnRef
@@ -78,7 +66,6 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , comparisonEntities :: [ResolvedEntity]
   , comparisonRequestedValue :: Bool
   , resolvedAssumptions :: [Text]
-  , joinPath :: JoinPath
   , metricFormula :: ResolvedMetricFormula
   , filterLocation :: Text
   }
@@ -88,9 +75,10 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   { rowTableName :: Text
   , factTableName :: Text
   , rowObjectName :: Text
-  , factIdColumn :: Text
-  , rowIdColumn :: Text
-  , contextJoin :: Maybe ContextJoin
+  , rowPath :: DiscoveredPath
+  , contextPath :: Maybe DiscoveredPath
+  , partitionKey :: ColumnRef
+  , entityId :: ColumnRef
   , displayName :: ColumnRef
   , contextValue :: Maybe ColumnRef
   , gameDate :: ColumnRef
@@ -98,7 +86,6 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , windowGames :: Int
   , queryLimit :: Maybe Int
   , resolvedAssumptions :: [Text]
-  , joinPath :: JoinPath
   , metricFormula :: ResolvedMetricFormula
   , filterLocation :: Text
   }
@@ -126,44 +113,33 @@ resolveMetricQuery ontology metricQuery = do
   let base =
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
-  factObject <- maybe (Left "Could not resolve the fact object against the ontology.") Right $
-    findObject ontology (coreFactObject base)
-  rowObjectNameValue <- metricRowObjectName (dimensions base)
-  rowObject <- maybe (Left "Could not resolve the row object against the ontology.") Right $
-    findObject ontology rowObjectNameValue
-  link <- maybe (Left "Could not resolve the fact-to-row link.") Right $
-    findLink ontology (coreFactObject base) rowObjectNameValue
+  factObject <- requireObject ontology (coreFactObject base)
+  (rowObject, discoveredRowPath) <- resolveMetricRowObject ontology (coreFactObject base) (dimensions base)
   selectedMetric <- requireSingleMetric (metrics base)
-  metricDef <- maybe (Left "Could not resolve the selected metric against the ontology.") Right $
-    findMetric factObject (metricText selectedMetric)
+  metricDef <- requireMetric factObject (metricText selectedMetric)
   gamesValue <- requireLastNGames (filters base)
   displayColumn <- metricDisplayColumn (dimensions base)
-  (contextJoinValue, contextColumn) <- metricContextSelection ontology (coreFactObject base)
+  contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
+  rowPrimaryKey <- objectPrimaryKey rowObject
   let limitValue = limit base
       entityValues = map resolveEntity (entityFilters metricQuery)
       comparisonRequestedFlag =
         case comparison metricQuery of
           Just _ -> True
           Nothing -> False
-      joinPathValue =
-        JoinPath
-          { factTable = backing_table factObject
-          , factJoinKey = source_key link
-          , rowTable = backing_table rowObject
-          , rowJoinKey = target_key link
-          }
       formula = resolveMetricFormula metricDef
   pure
     ResolvedMetricQuery
       { factTableName = backing_table factObject
       , rowTableName = backing_table rowObject
-      , rowObjectName = rowObjectNameValue
-      , factIdColumn = source_key link
-      , rowIdColumn = target_key link
-      , contextJoin = contextJoinValue
+      , rowObjectName = objectName rowObject
+      , rowPath = discoveredRowPath
+      , contextPath = selectedContextPath contextSelection
+      , partitionKey = pathPartitionKey rowPrimaryKey discoveredRowPath
+      , entityId = ColumnRef "row" rowPrimaryKey
       , displayName = ColumnRef "row" displayColumn
-      , contextValue = contextColumn
+      , contextValue = selectedContextColumn contextSelection
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
@@ -171,7 +147,6 @@ resolveMetricQuery ontology metricQuery = do
       , comparisonEntities = entityValues
       , comparisonRequestedValue = comparisonRequestedFlag
       , resolvedAssumptions = assumptions base
-      , joinPath = joinPathValue
       , metricFormula = formula
       , filterLocation = "fact_table"
       }
@@ -184,43 +159,62 @@ resolveObjectQuery ontology objectQuery = do
       rowObjectNameValue =
         case objectQuery of
           ObjectQuerySpec {rowObject = currentRowObject} -> currentRowObject
-  factObject <- maybe (Left "Could not resolve the fact object against the ontology.") Right $
-    findObject ontology (coreFactObject base)
-  rowObjectValue <- maybe (Left "Could not resolve the row object against the ontology.") Right $
-    findObject ontology rowObjectNameValue
-  link <- maybe (Left "Could not resolve the fact-to-row link.") Right $
-    findLink ontology (coreFactObject base) rowObjectNameValue
-  metricDef <- maybe (Left "Could not resolve total_points against the ontology.") Right $
-    findMetric factObject "total_points"
+  factObject <- requireObject ontology (coreFactObject base)
+  rowObjectValue <- requireObject ontology rowObjectNameValue
+  discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
+  metricDef <- requireMetric factObject "total_points"
   gamesValue <- requireLastNGames (filters base)
   displayColumn <- metricDisplayColumn (dimensions base)
-  (contextJoinValue, contextColumn) <- metricContextSelection ontology (coreFactObject base)
+  contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef
+  rowPrimaryKey <- objectPrimaryKey rowObjectValue
   pure
     ResolvedObjectQuery
       { rowTableName = backing_table rowObjectValue
       , factTableName = backing_table factObject
       , rowObjectName = rowObjectNameValue
-      , factIdColumn = source_key link
-      , rowIdColumn = target_key link
-      , contextJoin = contextJoinValue
+      , rowPath = discoveredRowPath
+      , contextPath = selectedContextPath contextSelection
+      , partitionKey = pathPartitionKey rowPrimaryKey discoveredRowPath
+      , entityId = ColumnRef "row" rowPrimaryKey
       , displayName = ColumnRef "row" displayColumn
-      , contextValue = contextColumn
+      , contextValue = selectedContextColumn contextSelection
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
       , queryLimit = limit base
       , resolvedAssumptions = assumptions base
-      , joinPath =
-          JoinPath
-            { factTable = backing_table factObject
-            , factJoinKey = source_key link
-            , rowTable = backing_table rowObjectValue
-            , rowJoinKey = target_key link
-            }
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
       }
+
+data ContextSelection = ContextSelection
+  { selectedContextPath :: Maybe DiscoveredPath
+  , selectedContextColumn :: Maybe ColumnRef
+  }
+
+resolveContextSelection :: Ontology -> Text -> OT.Object -> Either Text ContextSelection
+resolveContextSelection ontology factObjectName rowObject
+  | hasAttribute rowObject "team_abbreviation" =
+      Right
+        ContextSelection
+          { selectedContextPath = Nothing
+          , selectedContextColumn = Just (ColumnRef "row" "team_abbreviation")
+          }
+  | otherwise =
+      case firstLinkedObjectWithAttribute ontology factObjectName "team_abbreviation" [objectName rowObject] of
+        Just (_contextObject, discoveredContextPath) ->
+          Right
+            ContextSelection
+              { selectedContextPath = Just discoveredContextPath
+              , selectedContextColumn = Just (ColumnRef "context" "team_abbreviation")
+              }
+        Nothing ->
+          Right
+            ContextSelection
+              { selectedContextPath = Nothing
+              , selectedContextColumn = Nothing
+              }
 
 resolveMetricFormula :: MetricDef -> ResolvedMetricFormula
 resolveMetricFormula metricDef =
@@ -239,6 +233,63 @@ resolveEntity entityValue =
     Brunson -> ResolvedEntity Brunson "Jalen Brunson"
     Haliburton -> ResolvedEntity Haliburton "Tyrese Haliburton"
 
+resolveMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
+resolveMetricRowObject ontology factObjectName dimensionValues = do
+  dimensionName <- requireSingleDimension dimensionValues
+  attributeName <- dimensionKey dimensionName
+  case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
+    Just resolvedValue -> Right resolvedValue
+    Nothing -> do
+      factObject <- requireObject ontology factObjectName
+      if hasAttribute factObject attributeName
+        then Right (factObject, emptyPath factObjectName)
+        else Left ("Could not resolve a reachable row object for dimension '" <> attributeName <> "'.")
+
+firstLinkedObjectWithAttribute :: Ontology -> Text -> Text -> [Text] -> Maybe (OT.Object, DiscoveredPath)
+firstLinkedObjectWithAttribute ontology factObjectName attributeName excludedObjectNames =
+  case
+    [ (objectValue, discoveredPath)
+    | discoveredPath <- findPathsFrom ontology 2 factObjectName
+    , let targetObjectNameValue = OG.targetObjectName discoveredPath
+    , targetObjectNameValue `notElem` excludedObjectNames
+    , Just objectValue <- [findObject ontology targetObjectNameValue]
+    , hasAttribute objectValue attributeName
+    ]
+    of
+    resolvedValue : _ -> Just resolvedValue
+    [] -> Nothing
+
+emptyPath :: Text -> DiscoveredPath
+emptyPath objectNameValue =
+  OG.DiscoveredPath
+    { OG.sourceObjectName = objectNameValue
+    , OG.targetObjectName = objectNameValue
+    , OG.steps = []
+    }
+
+pathPartitionKey :: Text -> DiscoveredPath -> ColumnRef
+pathPartitionKey fallbackColumn discoveredPath =
+  case steps discoveredPath of
+    firstStep : _ -> ColumnRef "fact" (OG.sourceKey firstStep)
+    [] -> ColumnRef "fact" fallbackColumn
+
+hasAttribute :: OT.Object -> Text -> Bool
+hasAttribute objectValue attributeName =
+  case findAttribute objectValue attributeName of
+    Just _ -> True
+    Nothing -> False
+
+objectPrimaryKey :: OT.Object -> Either Text Text
+objectPrimaryKey objectValue =
+  case
+    [ source_column attribute
+    | attribute <- OT.attributes objectValue
+    , kind attribute == PrimaryKey
+    ]
+    of
+    primaryKeyColumn : _ -> Right primaryKeyColumn
+    [] -> Left ("Object '" <> objectName objectValue <> "' does not expose a primary key in the ontology.")
+
 metricText :: MetricName -> Text
 metricText metricValue =
   case metricValue of
@@ -247,39 +298,10 @@ metricText metricValue =
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
 
-metricRowObjectName :: [DimensionName] -> Either Text Text
-metricRowObjectName dimensionValues =
-  case dimensionValues of
-    [PlayerName] -> Right "Player"
-    [TeamName] -> Right "Team"
-    _ -> Left "Only player_name or team_name metric dimensions are supported in this slice."
-
 metricDisplayColumn :: [DimensionName] -> Either Text Text
-metricDisplayColumn dimensionValues =
-  case dimensionValues of
-    [PlayerName] -> Right "player_name"
-    [TeamName] -> Right "team_name"
-    _ -> Left "Only player_name or team_name metric dimensions are supported in this slice."
-
-metricContextSelection :: Ontology -> Text -> Either Text (Maybe ContextJoin, Maybe ColumnRef)
-metricContextSelection ontology factObjectName =
-  case factObjectName of
-    "PlayerGame" -> do
-      teamObject <- maybe (Left "Could not resolve Team against the ontology.") Right $
-        findObject ontology "Team"
-      link <- maybe (Left "Could not resolve the PlayerGame -> Team link.") Right $
-        findLink ontology "PlayerGame" "Team"
-      Right
-        ( Just
-            ContextJoin
-              { contextTableName = backing_table teamObject
-              , factContextKey = source_key link
-              , contextRowKey = target_key link
-              }
-        , Just (ColumnRef "context" "team_abbreviation")
-        )
-    "TeamGame" -> Right (Nothing, Just (ColumnRef "fact" "team_abbreviation"))
-    _ -> Left "Unsupported fact object for ranking context."
+metricDisplayColumn dimensionValues = do
+  dimensionName <- requireSingleDimension dimensionValues
+  dimensionKey dimensionName
 
 metricSourceAttribute :: MetricDef -> Either Text Text
 metricSourceAttribute metricDef =
@@ -298,3 +320,40 @@ requireLastNGames filterValues =
   case filterValues of
     [LastNGames n] -> Right n
     _ -> Left "Only a single LastNGames filter is supported."
+
+requireSingleDimension :: [DimensionName] -> Either Text DimensionName
+requireSingleDimension dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Query requires exactly one selected dimension."
+
+requireObject :: Ontology -> Text -> Either Text OT.Object
+requireObject ontology objectNameValue =
+  maybe (Left ("Could not resolve object '" <> objectNameValue <> "' against the ontology.")) Right $
+    findObject ontology objectNameValue
+
+requireMetric :: OT.Object -> Text -> Either Text MetricDef
+requireMetric objectValue metricNameValue =
+  maybe (Left ("Could not resolve metric '" <> metricNameValue <> "' against the ontology.")) Right $
+    findMetric objectValue metricNameValue
+
+requirePath :: Ontology -> Text -> Text -> Either Text DiscoveredPath
+requirePath ontology sourceName targetName =
+  maybe
+    (Left ("Could not resolve an ontology path from '" <> sourceName <> "' to '" <> targetName <> "'."))
+    Right
+    (findPath ontology 2 sourceName targetName)
+
+dimensionKey :: DimensionName -> Either Text Text
+dimensionKey dimensionValue =
+  case dimensionValue of
+    PlayerName -> Right "player_name"
+    TeamName -> Right "team_name"
+    DisplayName -> Right "display_name"
+    Team -> Right "team"
+    PrimaryPosition -> Right "primary_position"
+
+objectName :: OT.Object -> Text
+objectName objectValue =
+  case objectValue of
+    OT.Object {OT.name = currentName} -> currentName

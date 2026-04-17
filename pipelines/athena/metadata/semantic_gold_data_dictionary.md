@@ -5,6 +5,9 @@ This document defines the `semantic_gold` v1 surface for `nba_analyst`.
 The explicit column classification inventory lives at:
 - `pipelines/athena/metadata/semantic_gold_attribute_inventory.json`
 
+The explicit live ontology graph artifact lives at:
+- `docs/supported-ontology-graph.md`
+
 Design rules:
 - silver-first inputs only
 - current-state business objects
