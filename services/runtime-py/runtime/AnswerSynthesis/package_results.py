@@ -21,6 +21,9 @@ def package_results(result: RuntimeResult) -> Dict[str, object]:
     payload = {
         "query_kind": result.query_kind,
         "result_shape": result.result_shape,
+        "entity_label_singular": result.entity_label_singular,
+        "entity_label_plural": result.entity_label_plural,
+        "context_label": result.context_label,
         "metric": result.metric,
         "window_games": result.window_games,
         "limit": result.limit,

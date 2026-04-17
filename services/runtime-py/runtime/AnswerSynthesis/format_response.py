@@ -54,18 +54,22 @@ def format_response(answer: FinalAnswer) -> str:
         return "\n".join(lines)
 
     if answer.object_rows:
-        lines.append(f"Player | Team | {_metric_header(answer.metric)}")
+        lines.append(
+            f"{answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
+        )
         lines.append("--- | --- | ---")
         for row in answer.object_rows:
             lines.append(
-                f"{row.player_name} | {row.team} | {_metric_value(answer.metric, row.metric_value)}"
+                f"{row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
             )
         return "\n".join(lines)
 
-    lines.append(f"Rank | Player | Team | {_metric_header(answer.metric)}")
+    lines.append(
+        f"Rank | {answer.entity_label_singular} | {answer.context_label} | {_metric_header(answer.metric)}"
+    )
     lines.append("--- | --- | --- | ---")
     for row in answer.rows:
         lines.append(
-            f"{row.rank} | {row.player_name} | {row.team} | {_metric_value(answer.metric, row.metric_value)}"
+            f"{row.rank} | {row.entity_name} | {(row.context_value or '')} | {_metric_value(answer.metric, row.metric_value)}"
         )
     return "\n".join(lines)

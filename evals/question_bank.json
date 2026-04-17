@@ -193,6 +193,19 @@
       "dimensions": ["player_name"],
       "filters": ["last_n_games:10"],
       "notes": "Top-1 lexical variant retained to protect governed-metric matching."
+    },
+    {
+      "id": "slice6_team_average_points_canonical",
+      "slice_introduced": 6,
+      "question": "Show me teams by average points over the last 10 games",
+      "status": "supported",
+      "query_kind": "metric_query",
+      "capability": "team_average_points_ranking",
+      "core_fact_object": "TeamGame",
+      "metrics": ["average_points"],
+      "dimensions": ["team_name"],
+      "filters": ["last_n_games:10"],
+      "notes": "First non-player proof that the ontology-driven semantic core resolves a different fact object and display path."
     }
   ]
 }

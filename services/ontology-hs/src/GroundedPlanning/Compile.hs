@@ -27,10 +27,11 @@ compileExecutionPlan resolvedQuery =
     ResolvedObject resolved -> compileObjectExecutionPlan resolved
 
 compileMetricExecutionPlan :: ResolvedMetricQuery -> ExecutionPlan
-compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions} =
+compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName} =
   let formula =
         case resolved of
           ResolvedMetricQuery {metricFormula = currentFormula} -> currentFormula
+      (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject metricRowObjectName
    in
   ExecutionPlan
     { plan_type =
@@ -42,6 +43,9 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
         if comparisonRequestedValue resolved
           then "comparison"
           else "ranking"
+    , entity_label_singular = singularLabel
+    , entity_label_plural = pluralLabel
+    , context_label = contextValueLabel
     , metric = metricKey formula
     , window_games = metricWindowGames
     , limit = maybe 0 id metricQueryLimit
@@ -50,15 +54,19 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     }
 
 compileObjectExecutionPlan :: ResolvedObjectQuery -> ExecutionPlan
-compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions} =
+compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions, rowObjectName = objectRowObjectName} =
   let formula =
         case resolved of
           ResolvedObjectQuery {metricFormula = currentFormula} -> currentFormula
+      (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject objectRowObjectName
    in
   ExecutionPlan
     { plan_type = "single_sql"
     , query_kind = "object_query"
     , result_shape = "object_rows"
+    , entity_label_singular = singularLabel
+    , entity_label_plural = pluralLabel
+    , context_label = contextValueLabel
     , metric = metricKey formula
     , window_games = objectWindowGames
     , limit = maybe 0 id objectQueryLimit
@@ -96,118 +104,208 @@ compileMetricSteps resolved =
       ]
 
 compileRankingSql :: ResolvedMetricQuery -> Text
-compileRankingSql ResolvedMetricQuery {factIdColumn = metricFactId, rowIdColumn = metricRowId, playerNameColumn = displayPlayerName, teamColumn = displayTeam, gameDateColumn = factGameDate, pointsColumn = factPoints, factTableName = metricFactTable, rowTableName = metricRowTable, windowGames = metricWindowGames, queryLimit = metricQueryLimit, metricFormula = resolvedMetricFormula} =
+compileRankingSql resolved =
+  let
+    ResolvedMetricQuery
+      { factIdColumn = metricFactIdColumn
+      , contextJoin = metricContextJoin
+      , displayName = metricDisplayName
+      , contextValue = metricContextValue
+      , gameDate = metricGameDate
+      , metricSource = metricMetricSource
+      , factTableName = metricFactTableName
+      , rowTableName = metricRowTableName
+      , rowIdColumn = metricRowIdColumn
+      , metricFormula = resolvedMetricFormulaValue
+      , windowGames = metricWindowGames
+      , queryLimit = metricQueryLimit
+      } = resolved
+   in
   T.unlines $
-    [ "WITH recent_games AS ("
+    [ "WITH recent_rows AS ("
     , "  SELECT"
-    , "    pg." <> metricFactId <> " AS player_id,"
-    , "    p." <> displayPlayerName <> " AS player_name,"
-    , "    pg." <> displayTeam <> " AS team,"
-    , "    pg." <> factGameDate <> " AS game_date,"
-    , "    pg." <> factPoints <> " AS points,"
+    , "    f." <> metricFactIdColumn <> " AS entity_id,"
+    , "    " <> renderColumnRef "f" "r" metricDisplayName <> " AS entity_name,"
+    , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
+    , "    " <> renderColumnRef "f" "r" metricGameDate <> " AS game_date,"
+    , "    " <> renderColumnRef "f" "r" metricMetricSource <> " AS metric_source,"
     , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY pg." <> metricFactId
-    , "      ORDER BY pg." <> factGameDate <> " DESC"
+    , "      PARTITION BY f." <> metricFactIdColumn
+    , "      ORDER BY " <> renderColumnRef "f" "r" metricGameDate <> " DESC"
     , "    ) AS game_rank"
-    , "  FROM " <> metricFactTable <> " pg"
-    , "  JOIN " <> metricRowTable <> " p"
-    , "    ON pg." <> metricFactId <> " = p." <> metricRowId
-    , "), ranked_players AS ("
+    , "  FROM " <> metricFactTableName <> " f"
+    , "  JOIN " <> metricRowTableName <> " r"
+    , "    ON f." <> metricFactIdColumn <> " = r." <> metricRowIdColumn
+    ]
+      <> contextJoinClause metricContextJoin
+      <> [ "), ranked_entities AS ("
     , "  SELECT"
-    , "    player_name,"
-    , "    arg_max(team, game_date) AS team,"
-    , "    " <> compileMetricAggregation resolvedMetricFormula <> " AS metric_value"
-    , "  FROM recent_games"
+    , "    entity_name,"
+    , "    arg_max(context_value, game_date) AS context_value,"
+    , "    " <> compileMetricAggregation resolvedMetricFormulaValue <> " AS metric_value"
+    , "  FROM recent_rows"
     , "  WHERE game_rank <= " <> T.pack (show metricWindowGames)
-    , "  GROUP BY player_name"
+    , "  GROUP BY entity_name"
     , ")"
     , "SELECT"
-    , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, player_name ASC) AS rank,"
-    , "  player_name,"
-    , "  team,"
+    , "  ROW_NUMBER() OVER (ORDER BY metric_value DESC, entity_name ASC) AS rank,"
+    , "  entity_name,"
+    , "  context_value,"
     , "  metric_value"
-    , "FROM ranked_players"
-    , "ORDER BY metric_value DESC, player_name ASC"
+    , "FROM ranked_entities"
+    , "ORDER BY metric_value DESC, entity_name ASC"
     ]
       <> limitClause metricQueryLimit
 
 compileComparisonSql :: ResolvedMetricQuery -> Text
-compileComparisonSql ResolvedMetricQuery {factIdColumn = metricFactId, rowIdColumn = metricRowId, playerNameColumn = displayPlayerName, teamColumn = displayTeam, gameDateColumn = factGameDate, pointsColumn = factPoints, factTableName = metricFactTable, rowTableName = metricRowTable, windowGames = metricWindowGames, comparisonEntities = resolvedComparisonEntities} =
+compileComparisonSql resolved =
   let
+      ResolvedMetricQuery
+        { comparisonEntities = resolvedComparisonEntities
+        , contextJoin = metricContextJoin
+        , displayName = metricDisplayName
+        , contextValue = metricContextValue
+        , gameDate = metricGameDate
+        , metricSource = metricMetricSource
+        , factIdColumn = metricFactIdColumn
+        , factTableName = metricFactTableName
+        , rowTableName = metricRowTableName
+        , rowIdColumn = metricRowIdColumn
+        , windowGames = metricWindowGames
+        } = resolved
       entityList =
         T.intercalate
           ", "
           (map (\entityValue -> "'" <> entityColumnValue entityValue <> "'") resolvedComparisonEntities)
-   in T.unlines
-        [ "WITH recent_games AS ("
+   in T.unlines $
+        [ "WITH recent_rows AS ("
         , "  SELECT"
-        , "    p." <> displayPlayerName <> " AS player_name,"
-        , "    pg." <> displayTeam <> " AS team,"
-        , "    pg." <> factGameDate <> " AS game_date,"
-        , "    pg." <> factPoints <> " AS points,"
+        , "    " <> renderColumnRef "f" "r" metricDisplayName <> " AS player_name,"
+        , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS team,"
+        , "    " <> renderColumnRef "f" "r" metricGameDate <> " AS game_date,"
+        , "    " <> renderColumnRef "f" "r" metricMetricSource <> " AS points,"
         , "    ROW_NUMBER() OVER ("
-        , "      PARTITION BY pg." <> metricFactId
-        , "      ORDER BY pg." <> factGameDate <> " DESC"
+        , "      PARTITION BY f." <> metricFactIdColumn
+        , "      ORDER BY " <> renderColumnRef "f" "r" metricGameDate <> " DESC"
         , "    ) AS game_rank"
-        , "  FROM " <> metricFactTable <> " pg"
-        , "  JOIN " <> metricRowTable <> " p"
-        , "    ON pg." <> metricFactId <> " = p." <> metricRowId
-        , "  WHERE p." <> displayPlayerName <> " IN (" <> entityList <> ")"
+        , "  FROM " <> metricFactTableName <> " f"
+        , "  JOIN " <> metricRowTableName <> " r"
+        , "    ON f." <> metricFactIdColumn <> " = r." <> metricRowIdColumn
+        ]
+          <> contextJoinClause metricContextJoin
+          <> [ "  WHERE " <> renderColumnRef "f" "r" metricDisplayName <> " IN (" <> entityList <> ")"
         , ")"
         , "SELECT"
         , "  player_name,"
         , "  team,"
         , "  game_date,"
         , "  points"
-        , "FROM recent_games"
+        , "FROM recent_rows"
         , "WHERE game_rank <= " <> T.pack (show metricWindowGames)
         , "ORDER BY player_name ASC, game_date DESC"
         ]
 
 compileObjectSql :: ResolvedObjectQuery -> Text
-compileObjectSql ResolvedObjectQuery {factIdColumn = objectFactId, rowIdColumn = objectRowId, playerNameColumn = displayPlayerName, teamColumn = displayTeam, gameDateColumn = factGameDate, pointsColumn = factPoints, factTableName = objectFactTable, rowTableName = objectRowTable, windowGames = objectWindowGames, queryLimit = objectQueryLimit, metricFormula = resolvedMetricFormula} =
+compileObjectSql resolved =
+  let
+    ResolvedObjectQuery
+      { factIdColumn = objectFactIdColumn
+      , contextJoin = objectContextJoin
+      , displayName = objectDisplayName
+      , contextValue = objectContextValue
+      , gameDate = objectGameDate
+      , metricSource = objectMetricSource
+      , factTableName = objectFactTableName
+      , rowTableName = objectRowTableName
+      , rowIdColumn = objectRowIdColumn
+      , metricFormula = objectMetricFormula
+      , windowGames = objectWindowGames
+      , queryLimit = objectQueryLimit
+      } = resolved
+   in
   T.unlines $
-    [ "WITH recent_games AS ("
+    [ "WITH recent_rows AS ("
     , "  SELECT"
-    , "    pg." <> objectFactId <> " AS player_id,"
-    , "    pg." <> factPoints <> " AS points,"
-    , "    pg." <> displayTeam <> " AS team,"
-    , "    pg." <> factGameDate <> " AS game_date,"
+    , "    f." <> objectFactIdColumn <> " AS entity_id,"
+    , "    " <> renderColumnRef "f" "r" objectDisplayName <> " AS entity_name,"
+    , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
+    , "    " <> renderColumnRef "f" "r" objectGameDate <> " AS game_date,"
+    , "    " <> renderColumnRef "f" "r" objectMetricSource <> " AS metric_source,"
     , "    ROW_NUMBER() OVER ("
-    , "      PARTITION BY pg." <> objectFactId
-    , "      ORDER BY pg." <> factGameDate <> " DESC"
+    , "      PARTITION BY f." <> objectFactIdColumn
+    , "      ORDER BY " <> renderColumnRef "f" "r" objectGameDate <> " DESC"
     , "    ) AS game_rank"
-    , "  FROM " <> objectFactTable <> " pg"
-    , "), player_values AS ("
+    , "  FROM " <> objectFactTableName <> " f"
+    , "  JOIN " <> objectRowTableName <> " r"
+    , "    ON f." <> objectFactIdColumn <> " = r." <> objectRowIdColumn
+    ]
+      <> contextJoinClause objectContextJoin
+      <> [ "), entity_values AS ("
     , "  SELECT"
-    , "    player_id,"
-    , "    arg_max(team, game_date) AS team,"
-    , "    " <> compileMetricAggregation resolvedMetricFormula <> " AS metric_value"
-    , "  FROM recent_games"
+    , "    entity_id,"
+    , "    arg_max(entity_name, game_date) AS entity_name,"
+    , "    arg_max(context_value, game_date) AS context_value,"
+    , "    " <> compileMetricAggregation objectMetricFormula <> " AS metric_value"
+    , "  FROM recent_rows"
     , "  WHERE game_rank <= " <> T.pack (show objectWindowGames)
-    , "  GROUP BY player_id"
+    , "  GROUP BY entity_id"
     , ")"
     , "SELECT"
-    , "  p." <> objectRowId <> " AS entity_id,"
-    , "  p." <> displayPlayerName <> " AS player_name,"
-    , "  pv.team AS team,"
-    , "  pv.metric_value"
-    , "FROM " <> objectRowTable <> " p"
-    , "JOIN player_values pv"
-    , "  ON p." <> objectRowId <> " = pv.player_id"
-    , "ORDER BY pv.metric_value DESC, p." <> displayPlayerName <> " ASC"
+    , "  entity_id,"
+    , "  entity_name,"
+    , "  context_value,"
+    , "  metric_value"
+    , "FROM entity_values"
+    , "ORDER BY metric_value DESC, entity_name ASC"
     ]
       <> limitClause objectQueryLimit
 
 compileMetricAggregation :: ResolvedMetricFormula -> Text
-compileMetricAggregation ResolvedMetricFormula {metricKey = formulaMetricKey} =
-  case formulaMetricKey of
-    "total_points" -> "SUM(points)"
-    "average_points" -> "ROUND(AVG(points), 1)"
-    _ -> error "Unsupported executable metric formula."
+compileMetricAggregation formula =
+  case aggregationKind formula of
+    "sum" -> "SUM(metric_source)"
+    "avg" -> "ROUND(AVG(metric_source), 1)"
+    _ -> error "Unsupported executable metric aggregation."
+
+renderColumnRef :: Text -> Text -> ColumnRef -> Text
+renderColumnRef factAlias rowAlias columnRef =
+  case tableRole columnRef of
+    "fact" -> factAlias <> "." <> columnName columnRef
+    "row" -> rowAlias <> "." <> columnName columnRef
+    _ -> error "Unsupported column role."
+
+renderColumnRefWithContext :: Text -> Text -> Text -> ColumnRef -> Text
+renderColumnRefWithContext factAlias rowAlias contextAlias columnRef =
+  case tableRole columnRef of
+    "fact" -> factAlias <> "." <> columnName columnRef
+    "row" -> rowAlias <> "." <> columnName columnRef
+    "context" -> contextAlias <> "." <> columnName columnRef
+    _ -> error "Unsupported column role."
+
+renderMaybeColumnRef :: Text -> Text -> Text -> Maybe ColumnRef -> Text
+renderMaybeColumnRef factAlias rowAlias contextAlias maybeColumnRef =
+  case maybeColumnRef of
+    Just columnRef -> renderColumnRefWithContext factAlias rowAlias contextAlias columnRef
+    Nothing -> "NULL"
+
+contextJoinClause :: Maybe ContextJoin -> [Text]
+contextJoinClause maybeContextJoin =
+  case maybeContextJoin of
+    Just contextJoin ->
+      [ "  LEFT JOIN " <> contextTableName contextJoin <> " c"
+      , "    ON f." <> factContextKey contextJoin <> " = c." <> contextRowKey contextJoin
+      ]
+    Nothing -> []
 
 limitClause :: Maybe Int -> [Text]
 limitClause maybeLimit =
   case maybeLimit of
     Just limitValue -> ["LIMIT " <> T.pack (show limitValue)]
     Nothing -> []
+
+labelsForRowObject :: Text -> (Text, Text, Text)
+labelsForRowObject rowObjectNameValue =
+  case rowObjectNameValue of
+    "Player" -> ("Player", "Players", "Team")
+    "Team" -> ("Team", "Teams", "Abbrev")
+    _ -> ("Entity", "Entities", "Context")

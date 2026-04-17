@@ -22,6 +22,7 @@ from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     build_dim_game_rows,
     build_schedule_map,
     build_team_side_map,
+    season_type_label_from_code,
 )
 
 from .contracts import GAME_SCHEMA
@@ -29,6 +30,17 @@ from .contracts import GAME_SCHEMA
 load_dotenv(override=True)
 
 DESTINATION_KEY = "semantic_gold/game/game.parquet"
+
+
+def is_semantic_game_row(row: dict[str, object]) -> bool:
+    return (
+        row.get("game_id") is not None
+        and row.get("game_date") is not None
+        and row.get("season_year") is not None
+        and row.get("season_type") is not None
+        and row.get("home_team_id") is not None
+        and row.get("away_team_id") is not None
+    )
 
 
 def finalize_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -41,13 +53,18 @@ def build_game_rows_from_tables(
     schedule_table: pa.Table,
     team_game_table: pa.Table,
 ) -> list[dict[str, object]]:
-    return finalize_rows(
-        build_dim_game_rows(
-            build_boxscore_map(box_table),
-            build_schedule_map(schedule_table),
-            build_team_side_map(team_game_table),
-        )
+    raw_rows = build_dim_game_rows(
+        build_boxscore_map(box_table),
+        build_schedule_map(schedule_table),
+        build_team_side_map(team_game_table),
     )
+    semantic_rows = [
+        row
+        for row in raw_rows
+        if is_semantic_game_row(row)
+        and season_type_label_from_code(str(row.get("game_id"))[:3]) is not None
+    ]
+    return finalize_rows(semantic_rows)
 
 
 def main() -> None:

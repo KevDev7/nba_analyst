@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # Purpose:
-# Build the gold-first DuckDB snapshot used by the live semantic-layer slices.
+# Build the semantic_gold DuckDB snapshot used by the live semantic-layer slices.
 #
 # Uses:
-# - Athena gold tables from the nba_analytics database
+# - Athena semantic_gold tables
 # - local DuckDB as the development snapshot target
 #
 # Produces:
-# - fixtures/duckdb/gold_slice.duckdb with the live player/player-game snapshot
+# - fixtures/duckdb/gold_slice.duckdb with the live semantic_gold snapshot
 #
 # Next:
-# - future ontology/query/planning slices can point at this snapshot intentionally
+# - load_gold_snapshot.py
 
 from __future__ import annotations
 
 import argparse
 import csv
 import os
+import sys
 import tempfile
 import time
 import uuid
@@ -25,119 +26,32 @@ from urllib.parse import urlparse
 
 import boto3
 import duckdb
-
+import pyarrow.types as patypes
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pipelines.athena.transform.semantic_gold.contracts import SEMANTIC_GOLD_TABLE_SPECS
+
 DUCKDB_DIR = ROOT / "fixtures" / "duckdb"
 DUCKDB_PATH = DUCKDB_DIR / "gold_slice.duckdb"
 
 DEFAULT_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
-DEFAULT_DATABASE = os.getenv("ATHENA_DATABASE", "nba_analytics")
+DEFAULT_DATABASE = os.getenv("ATHENA_DATABASE", "semantic_gold")
 DEFAULT_OUTPUT = os.getenv("ATHENA_OUTPUT_LOCATION", "s3://nba-analytics-lakehouse-dev/athena-results/")
 DEFAULT_WORKGROUP = os.getenv("ATHENA_WORKGROUP", "primary")
 DEFAULT_CATALOG = os.getenv("ATHENA_CATALOG", "AwsDataCatalog")
-DEFAULT_SEASON_YEARS = ("2025-26", "2024-25")
 
+SOURCE_QUERIES = {
+    "player": "SELECT * FROM player ORDER BY player_name ASC",
+    "team": "SELECT * FROM team ORDER BY team_name ASC",
+    "game": "SELECT * FROM game ORDER BY game_date DESC, game_id ASC",
+    "player_game": "SELECT * FROM player_game ORDER BY game_date DESC, person_id ASC",
+    "team_game": "SELECT * FROM team_game ORDER BY game_date DESC, team_id ASC",
+}
 
-PLAYER_QUERY_TEMPLATE = """
-WITH current_players AS (
-  SELECT DISTINCT person_id
-  FROM dim_player
-  WHERE is_current = 1
-)
-SELECT
-  p.person_id,
-  p.player_name,
-  p.display_name,
-  p.primary_position,
-  p.latest_team_id,
-  p.latest_nba_team_id
-FROM dim_player p
-JOIN current_players cp
-  ON p.person_id = cp.person_id
-WHERE p.is_current = 1
-ORDER BY p.player_name ASC
-"""
-
-EXTENDED_PLAYER_QUERY_TEMPLATE = """
-WITH current_players AS (
-  SELECT DISTINCT person_id
-  FROM dim_player
-  WHERE is_current = 1
-)
-SELECT
-  ep.person_id,
-  ep.player_name_short,
-  ep.latest_status,
-  ep.position_group
-FROM extended_player_dim ep
-JOIN current_players cp
-  ON ep.person_id = cp.person_id
-ORDER BY ep.person_id ASC
-"""
-
-PLAYER_GAME_QUERY_TEMPLATE = """
-WITH current_players AS (
-  SELECT DISTINCT person_id
-  FROM dim_player
-  WHERE is_current = 1
-)
-SELECT
-  CAST(game_id AS VARCHAR) || ':' || CAST(person_id AS VARCHAR) AS player_game_id,
-  game_id,
-  person_id,
-  team_id,
-  team,
-  game_date,
-  season_year,
-  season_type,
-  player_status,
-  is_starter,
-  minutes_played_decimal,
-  points,
-  assists,
-  rebounds_total,
-  steals,
-  blocks,
-  turnovers,
-  field_goals_attempted,
-  field_goals_made,
-  three_pointers_attempted,
-  three_pointers_made,
-  free_throws_attempted,
-  free_throws_made
-FROM fct_player_game
-WHERE person_id IN (SELECT person_id FROM current_players)
-  AND season_year IN ({season_years})
-  AND season_type = 'regular_season'
-  AND did_play = 1
-ORDER BY game_date DESC, person_id ASC
-"""
-
-PLAYER_SEASON_QUERY_TEMPLATE = """
-WITH current_players AS (
-  SELECT DISTINCT person_id
-  FROM dim_player
-  WHERE is_current = 1
-)
-SELECT
-  person_id,
-  season_year,
-  season_type,
-  games_played,
-  minutes_per_game,
-  points_per_game,
-  assists_per_game,
-  rebounds_per_game,
-  points_total,
-  assists_total,
-  rebounds_total
-FROM agg_player_season
-WHERE person_id IN (SELECT person_id FROM current_players)
-  AND season_year IN ({season_years})
-  AND season_type = 'regular_season'
-ORDER BY person_id ASC
-"""
+TABLE_SCHEMAS = {spec.table_name: spec.schema for spec in SEMANTIC_GOLD_TABLE_SPECS}
 
 
 def run_athena_query(
@@ -186,7 +100,6 @@ def count_csv_rows(path: Path) -> int:
 
 def build_snapshot(
     *,
-    season_years: tuple[str, ...],
     region: str,
     database: str,
     output_location: str,
@@ -198,22 +111,12 @@ def build_snapshot(
     if DUCKDB_PATH.exists() and not force:
         return DUCKDB_PATH
 
-    with tempfile.TemporaryDirectory(prefix="gold-slice-") as temp_dir_name:
+    with tempfile.TemporaryDirectory(prefix="semantic-gold-slice-") as temp_dir_name:
         temp_dir = Path(temp_dir_name)
-        sources = {
-            "player": PLAYER_QUERY_TEMPLATE,
-            "extended_player": EXTENDED_PLAYER_QUERY_TEMPLATE,
-            "player_game": PLAYER_GAME_QUERY_TEMPLATE.format(
-                season_years=", ".join(f"'{season_year}'" for season_year in season_years)
-            ),
-            "player_season": PLAYER_SEASON_QUERY_TEMPLATE.format(
-                season_years=", ".join(f"'{season_year}'" for season_year in season_years)
-            ),
-        }
-
         csv_paths: dict[str, Path] = {}
         row_counts: dict[str, int] = {}
-        for table_name, sql in sources.items():
+
+        for table_name, sql in SOURCE_QUERIES.items():
             csv_text = run_athena_query(
                 sql=sql,
                 region=region,
@@ -234,9 +137,14 @@ def build_snapshot(
         try:
             for table_name, csv_path in csv_paths.items():
                 conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+                raw_table_name = f"_raw_{table_name}"
+                conn.execute(f'DROP TABLE IF EXISTS "{raw_table_name}"')
                 conn.execute(
-                    f'CREATE TABLE "{table_name}" AS SELECT * FROM read_csv_auto(?, HEADER=TRUE)',
+                    f'CREATE TEMP TABLE "{raw_table_name}" AS SELECT * FROM read_csv_auto(?, HEADER=TRUE, ALL_VARCHAR=TRUE)',
                     [str(csv_path)],
+                )
+                conn.execute(
+                    f'CREATE TABLE "{table_name}" AS SELECT {typed_projection(table_name)} FROM "{raw_table_name}"'
                 )
             conn.execute("DROP TABLE IF EXISTS snapshot_meta")
             conn.execute(
@@ -245,11 +153,10 @@ def build_snapshot(
                 SELECT
                   ? AS snapshot_id,
                   ? AS source_database,
-                  ? AS source_season_years,
                   ? AS source_backend,
                   CURRENT_TIMESTAMP AS built_at_utc
                 """,
-                [uuid.uuid4().hex, database, ", ".join(season_years), "athena"],
+                [uuid.uuid4().hex, database, "athena"],
             )
         finally:
             conn.close()
@@ -260,9 +167,38 @@ def build_snapshot(
         return db_path
 
 
+def typed_projection(table_name: str) -> str:
+    schema = TABLE_SCHEMAS[table_name]
+    projection = []
+    for field in schema:
+        quoted_name = f'"{field.name}"'
+        duckdb_type = duckdb_type_for_field(field)
+        if duckdb_type == "VARCHAR":
+            projection.append(f"{quoted_name} AS {quoted_name}")
+        else:
+            projection.append(
+                f"TRY_CAST({quoted_name} AS {duckdb_type}) AS {quoted_name}"
+            )
+    return ", ".join(projection)
+
+
+def duckdb_type_for_field(field) -> str:
+    field_type = field.type
+    if patypes.is_int64(field_type):
+        return "BIGINT"
+    if patypes.is_float64(field_type):
+        return "DOUBLE"
+    if patypes.is_date32(field_type):
+        return "DATE"
+    if patypes.is_timestamp(field_type):
+        return "TIMESTAMP"
+    if patypes.is_boolean(field_type):
+        return "BOOLEAN"
+    return "VARCHAR"
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build a compact gold-derived DuckDB snapshot from Athena.")
-    parser.add_argument("--season-year", action="append", dest="season_years")
+    parser = argparse.ArgumentParser(description="Build a semantic_gold DuckDB snapshot from Athena.")
     parser.add_argument("--region", default=DEFAULT_REGION)
     parser.add_argument("--database", default=DEFAULT_DATABASE)
     parser.add_argument("--output-location", default=DEFAULT_OUTPUT)
@@ -272,7 +208,6 @@ def main() -> None:
     args = parser.parse_args()
 
     build_snapshot(
-        season_years=tuple(args.season_years or DEFAULT_SEASON_YEARS),
         region=args.region,
         database=args.database,
         output_location=args.output_location,

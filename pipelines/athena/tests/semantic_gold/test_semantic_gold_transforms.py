@@ -313,6 +313,20 @@ def sample_player_bio_table() -> pa.Table:
     )
 
 
+def test_semantic_source_contracts_include_live_measure_columns() -> None:
+    from pipelines.athena.transform.semantic_gold.transform_to_player_game_parquet import (
+        PLAYER_REQUIRED_COLUMNS,
+    )
+    from pipelines.athena.transform.semantic_gold.transform_to_team_game_parquet import (
+        TEAM_GAME_REQUIRED_COLUMNS,
+    )
+
+    assert "points" in PLAYER_REQUIRED_COLUMNS
+    assert "minutesCalculated" in PLAYER_REQUIRED_COLUMNS
+    assert "score" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "timeoutsRemaining" in TEAM_GAME_REQUIRED_COLUMNS
+
+
 def sample_bridge_table() -> pa.Table:
     return _table(
         [
@@ -429,6 +443,31 @@ def test_build_game_rows_preserves_expected_business_grain() -> None:
     assert len(rows) == 1
     assert rows[0]["game_id"] == "0022400001"
     assert "game_sk" not in rows[0]
+
+
+def test_build_game_rows_excludes_malformed_non_semantic_games() -> None:
+    rows = build_game_rows_from_tables(
+        _table(
+            sample_boxscore_game_table().to_pylist()
+            + [
+                {
+                    "gameId": "12200069",
+                    "gameCode": None,
+                    "gameTimeUTC": "0001-01-01T00:00:00Z",
+                    "gameTimeLocal": "0001-01-01T00:00:00Z",
+                    "gameTimeHome": "0001-01-01T00:00:00Z",
+                    "gameTimeAway": "0001-01-01T00:00:00Z",
+                    "gameEt": "0001-01-01T00:00:00Z",
+                    "gameStatus": 0,
+                    "regulationPeriods": 0,
+                    "period": 0,
+                }
+            ]
+        ),
+        sample_schedule_table(),
+        sample_team_game_table(),
+    )
+    assert {row["game_id"] for row in rows} == {"0022400001"}
 
 
 def test_build_player_rows_combines_core_and_enrichment() -> None:

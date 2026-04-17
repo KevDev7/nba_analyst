@@ -36,3 +36,14 @@ findLink ontology sourceName targetName = find matchesLink (links ontology)
   where
     matchesLink Link {source_object = currentSource, target_object = currentTarget} =
       currentSource == sourceName && currentTarget == targetName
+
+findLinkByName :: Ontology -> Text -> Maybe Link
+findLinkByName ontology linkName = find matchesLinkName (links ontology)
+  where
+    matchesLinkName Link {name = currentName} = currentName == linkName
+
+findLinksFrom :: Ontology -> Text -> [Link]
+findLinksFrom ontology sourceName =
+  filter matchesLink (links ontology)
+  where
+    matchesLink Link {source_object = currentSource} = currentSource == sourceName

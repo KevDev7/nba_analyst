@@ -2,6 +2,9 @@
 
 This document defines the `semantic_gold` v1 surface for `nba_analyst`.
 
+The explicit column classification inventory lives at:
+- `pipelines/athena/metadata/semantic_gold_attribute_inventory.json`
+
 Design rules:
 - silver-first inputs only
 - current-state business objects

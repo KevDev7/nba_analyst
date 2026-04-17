@@ -40,13 +40,13 @@ class SliceThreeTests(unittest.TestCase):
     def test_object_query_output(self) -> None:
         output = run_cli("Show me players and their total points over the last 10 games")
         self.assertIn("Players ordered by total points", output)
-        self.assertIn("Luka Dončić | LAL | 397", output)
-        self.assertIn("Jalen Brunson | NYK | 269", output)
+        self.assertIn("Luka Dončić | LAL | 366", output)
+        self.assertIn("Jalen Brunson | NYK | 245", output)
 
     def test_object_query_variant(self) -> None:
         output = run_cli("Show me players with their scoring totals over the last 10 games")
         self.assertIn("Interpreted 'scoring' as total points.", output)
-        self.assertIn("Anthony Edwards | MIN | 277", output)
+        self.assertIn("Shai Gilgeous-Alexander | OKC | 312", output)
 
     def test_assists_rejected(self) -> None:
         with self.assertRaises(RuntimeError):

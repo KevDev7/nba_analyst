@@ -38,6 +38,9 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
     result_shape = str(payload["result_shape"])
     rows = [RankingRow(**row) for row in payload["rows"]]
     object_rows = [ObjectRow(**row) for row in payload.get("object_rows", [])]
+    entity_label_singular = str(payload["entity_label_singular"])
+    entity_label_plural = str(payload["entity_label_plural"])
+    context_label = str(payload["context_label"])
     metric = str(payload["metric"])
     window_games = int(payload["window_games"])
     limit = int(payload["limit"])
@@ -54,6 +57,9 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
             summary=summary,
             query_kind=query_kind,
             result_shape=result_shape,
+            entity_label_singular=entity_label_singular,
+            entity_label_plural=entity_label_plural,
+            context_label=context_label,
             metric=metric,
             window_games=window_games,
             limit=limit,
@@ -66,14 +72,17 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
     if object_rows:
         leader = object_rows[0]
         summary = (
-            f"Players ordered by {_human_metric(metric)} over the last "
-            f"{window_games} games: {leader.player_name} leads with "
+            f"{entity_label_plural} ordered by {_human_metric(metric)} over the last "
+            f"{window_games} games: {leader.entity_name} leads with "
             f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
         )
         return FinalAnswer(
             summary=summary,
             query_kind=query_kind,
             result_shape=result_shape,
+            entity_label_singular=entity_label_singular,
+            entity_label_plural=entity_label_plural,
+            context_label=context_label,
             metric=metric,
             window_games=window_games,
             limit=limit,
@@ -87,19 +96,19 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
         leader = rows[0]
         if limit > 0:
             summary = (
-                f"Top {limit} players by {_human_metric(metric)} over the last "
-                f"{window_games} games: {leader.player_name} leads with "
+                f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} over the last "
+                f"{window_games} games: {leader.entity_name} leads with "
                 f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
             )
         else:
             summary = (
-                f"Players ranked by {_human_metric(metric)} over the last "
-                f"{window_games} games: {leader.player_name} leads with "
+                f"{entity_label_plural} ranked by {_human_metric(metric)} over the last "
+                f"{window_games} games: {leader.entity_name} leads with "
                 f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
             )
     else:
         summary = (
-            f"No players were returned for the requested {_human_metric(metric)} ranking "
+            f"No {entity_label_plural.lower()} were returned for the requested {_human_metric(metric)} ranking "
             f"over the last {window_games} games."
         )
 
@@ -107,6 +116,9 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
         summary=summary,
         query_kind=query_kind,
         result_shape=result_shape,
+        entity_label_singular=entity_label_singular,
+        entity_label_plural=entity_label_plural,
+        context_label=context_label,
         metric=metric,
         window_games=window_games,
         limit=limit,

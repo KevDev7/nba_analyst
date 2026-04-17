@@ -25,17 +25,26 @@ except ImportError:  # pragma: no cover - direct script execution
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_TABLES = {"player", "extended_player", "player_game", "player_season", "snapshot_meta"}
+REQUIRED_TABLES = {"player", "team", "game", "player_game", "team_game", "snapshot_meta"}
 REQUIRED_PLAYER_GAME_COLUMNS = {
-    "player_game_id",
     "game_id",
     "person_id",
-    "team",
+    "team_id",
     "game_date",
     "season_year",
     "season_type",
     "minutes_played_decimal",
     "points",
+}
+REQUIRED_TEAM_GAME_COLUMNS = {
+    "game_id",
+    "team_id",
+    "opponent_team_id",
+    "game_date",
+    "season_year",
+    "season_type",
+    "team_abbreviation",
+    "score",
 }
 
 
@@ -51,7 +60,10 @@ def _snapshot_is_current(db_path: Path) -> bool:
             player_game_columns = {
                 row[0] for row in conn.execute("DESCRIBE player_game").fetchall()
             }
-            return REQUIRED_PLAYER_GAME_COLUMNS.issubset(player_game_columns)
+            team_game_columns = {
+                row[0] for row in conn.execute("DESCRIBE team_game").fetchall()
+            }
+            return REQUIRED_PLAYER_GAME_COLUMNS.issubset(player_game_columns) and REQUIRED_TEAM_GAME_COLUMNS.issubset(team_game_columns)
         finally:
             conn.close()
     except duckdb.Error:
@@ -62,9 +74,8 @@ def load_database(force: bool = False) -> Path:
     DUCKDB_DIR.mkdir(parents=True, exist_ok=True)
     if force or not _snapshot_is_current(DUCKDB_PATH):
         build_snapshot(
-            season_years=("2025-26", "2024-25"),
             region="us-east-1",
-            database="nba_analytics",
+            database="semantic_gold",
             output_location="s3://nba-analytics-lakehouse-dev/athena-results/",
             workgroup="primary",
             catalog="AwsDataCatalog",

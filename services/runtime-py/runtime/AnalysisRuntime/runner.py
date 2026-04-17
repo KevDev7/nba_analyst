@@ -50,6 +50,9 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
     return RuntimeResult(
         query_kind=plan.query_kind,
         result_shape=plan.result_shape,
+        entity_label_singular=plan.entity_label_singular,
+        entity_label_plural=plan.entity_label_plural,
+        context_label=plan.context_label,
         metric=plan.metric,
         window_games=plan.window_games,
         limit=plan.limit,

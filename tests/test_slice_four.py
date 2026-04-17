@@ -22,15 +22,15 @@ import yaml
 from apps.cli.main import ROOT, call_haskell_planner, run_cli
 
 
-ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "minimal-nba.yaml"
+ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 
 
 class SliceFourTests(unittest.TestCase):
     def test_average_points_canonical(self) -> None:
         output = run_cli("Show me players by average points over the last 10 games")
         self.assertIn("Players ranked by average points", output)
-        self.assertIn("Luka Dončić | LAL | 39.7", output)
-        self.assertIn("Tyrese Haliburton | IND | 19.8", output)
+        self.assertIn("Luka Dončić | LAL | 36.6", output)
+        self.assertIn("Jalen Brunson | NYK | 24.5", output)
 
     def test_average_points_variant(self) -> None:
         output = run_cli("Show me players by avg points over the last 10 games")
@@ -41,7 +41,7 @@ class SliceFourTests(unittest.TestCase):
         output = run_cli("Who has the highest average scoring over the last 10 games?")
         self.assertIn("Top 1 players by average points", output)
         self.assertIn("Interpreted 'average scoring' as average points.", output)
-        self.assertIn("Luka Dončić | LAL | 39.7", output)
+        self.assertIn("Luka Dončić | LAL | 36.6", output)
 
     def test_planner_resolves_governed_metric_formula(self) -> None:
         planner_output = call_haskell_planner(
@@ -64,17 +64,23 @@ class SliceFourTests(unittest.TestCase):
         objects = {obj["name"]: obj for obj in ontology["objects"]}
         player = objects["Player"]
         player_game = objects["PlayerGame"]
+        team = objects["Team"]
+        team_game = objects["TeamGame"]
 
         self.assertEqual(player["backing_table"], "player")
         self.assertEqual(player_game["backing_table"], "player_game")
+        self.assertEqual(team["backing_table"], "team")
+        self.assertEqual(team_game["backing_table"], "team_game")
 
         player_attrs = {attr["name"]: attr for attr in player["attributes"]}
         player_game_attrs = {attr["name"]: attr for attr in player_game["attributes"]}
         metrics = {metric["name"]: metric for metric in player_game["metrics"]}
 
         self.assertEqual(player_attrs["person_id"]["kind"], "primary_key")
+        self.assertTrue(player_attrs["latest_team_id"]["link_key"])
         self.assertEqual(player_attrs["player_name"]["kind"], "dimension")
-        self.assertEqual(player_game_attrs["player_game_id"]["kind"], "primary_key")
+        self.assertEqual(player_game_attrs["game_id"]["kind"], "primary_key")
+        self.assertEqual(player_game_attrs["person_id"]["kind"], "primary_key")
         self.assertEqual(player_game_attrs["points"]["kind"], "measure")
         self.assertEqual(player_game_attrs["minutes_played_decimal"]["kind"], "measure")
 
@@ -84,9 +90,11 @@ class SliceFourTests(unittest.TestCase):
         self.assertFalse(metrics["games_played"]["executable"])
         self.assertFalse(metrics["points_per_36"]["executable"])
 
-        link = ontology["links"][0]
-        self.assertEqual(link["source_key"], "person_id")
-        self.assertEqual(link["target_key"], "person_id")
+        links = {link["name"]: link for link in ontology["links"]}
+        self.assertEqual(links["player_game_player"]["source_key"], "person_id")
+        self.assertEqual(links["player_game_player"]["target_key"], "person_id")
+        self.assertEqual(links["team_game_team"]["source_key"], "team_id")
+        self.assertEqual(links["team_game_opponent_team"]["source_key"], "opponent_team_id")
 
     def test_stale_synthetic_loader_is_removed(self) -> None:
         self.assertFalse((ROOT / "scripts" / "load_first_slice.py").exists())

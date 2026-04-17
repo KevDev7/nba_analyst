@@ -36,7 +36,7 @@ from runtime.AnswerSynthesis.synthesize import synthesize_answer
 from scripts.load_gold_snapshot import load_database
 
 
-ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "minimal-nba.yaml"
+ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 
 

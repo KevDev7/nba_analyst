@@ -39,8 +39,22 @@ data Attribute = Attribute
   { name :: Text
   , kind :: AttributeKind
   , source_column :: Text
+  , link_key :: Bool
+  , visibility :: AttributeVisibility
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data AttributeVisibility
+  = Public
+  | Internal
+  deriving (Show, Eq, Generic, ToJSON)
+
+instance FromJSON AttributeVisibility where
+  parseJSON = withText "AttributeVisibility" $ \value ->
+    case value of
+      "public" -> pure Public
+      "internal" -> pure Internal
+      _ -> fail ("Unknown attribute visibility: " <> show value)
 
 data MetricDef = MetricDef
   { name :: Text
@@ -77,7 +91,8 @@ data Object = Object
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data Link = Link
-  { source_object :: Text
+  { name :: Text
+  , source_object :: Text
   , target_object :: Text
   , relation_type :: LinkRelation
   , source_key :: Text

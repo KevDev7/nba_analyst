@@ -23,7 +23,10 @@ from pipelines.athena.transform.gold.gold_transform_helpers import (
     to_str_or_none,
     write_parquet_to_s3,
 )
-from pipelines.athena.transform.gold.player_surface.sources import PLAYER_REQUIRED_COLUMNS, PLAYER_SOURCE_KEY
+from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import (
+    PLAYER_REQUIRED_COLUMNS,
+    PLAYER_SOURCE_KEY,
+)
 from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     BOXSCORE_REQUIRED_COLUMNS,
     BOXSCORE_SOURCE_KEY,

@@ -23,8 +23,8 @@ class SliceOneTests(unittest.TestCase):
     def test_canonical_question(self) -> None:
         output = run_cli("Show me the top 10 players by points over the last 10 games")
         self.assertIn("Luka Dončić", output)
-        self.assertIn("Joel Embiid", output)
-        self.assertIn("397", output)
+        self.assertIn("Shai Gilgeous-Alexander", output)
+        self.assertIn("366", output)
         self.assertIn("312", output)
 
     def test_scorers_variant(self) -> None:
@@ -40,8 +40,8 @@ class SliceOneTests(unittest.TestCase):
     def test_limit_variant(self) -> None:
         output = run_cli("Show me the top 5 players by points over the last 10 games")
         self.assertIn("Top 5 players", output)
-        self.assertIn("Devin Booker", output)
-        self.assertNotIn("Tyrese Maxey | PHI | 285", output)
+        self.assertIn("Kevin Durant", output)
+        self.assertNotIn("6 | Jalen Brunson | NYK | 245", output)
 
     def test_unsupported_shape(self) -> None:
         with self.assertRaises(RuntimeError):

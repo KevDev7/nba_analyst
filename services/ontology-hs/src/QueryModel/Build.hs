@@ -34,7 +34,7 @@ buildMetricQuery parsedQuestion matched =
     MetricQuerySpec
       { sharedQuery =
           BaseQuery
-            { coreFactObject = "PlayerGame"
+            { coreFactObject = matchedFactObject matched
             , metrics = [matchedMetric matched]
             , dimensions = [matchedDimension matched]
             , filters = [LastNGames (extractedWindowGames parsedQuestion)]
@@ -58,13 +58,13 @@ buildObjectQuery parsedQuestion matched =
     ObjectQuerySpec
       { sharedQuery =
           BaseQuery
-            { coreFactObject = "PlayerGame"
+            { coreFactObject = matchedFactObject matched
             , metrics = [matchedMetric matched]
-            , dimensions = [PlayerName]
+            , dimensions = [matchedDimension matched]
             , filters = [LastNGames (extractedWindowGames parsedQuestion)]
             , orders = [Desc (matchedMetric matched)]
             , limit = extractedLimit parsedQuestion
             , assumptions = matchAssumptions matched
             }
-      , rowObject = "Player"
+      , rowObject = matchedRowObject matched
       }

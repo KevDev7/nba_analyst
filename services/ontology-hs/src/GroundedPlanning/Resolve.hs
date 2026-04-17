@@ -39,6 +39,19 @@ data JoinPath = JoinPath
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data ColumnRef = ColumnRef
+  { tableRole :: Text
+  , columnName :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ContextJoin = ContextJoin
+  { contextTableName :: Text
+  , factContextKey :: Text
+  , contextRowKey :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data ResolvedMetricFormula = ResolvedMetricFormula
   { metricKey :: Text
   , aggregationKind :: Text
@@ -52,13 +65,14 @@ data ResolvedMetricFormula = ResolvedMetricFormula
 data ResolvedMetricQuery = ResolvedMetricQuery
   { factTableName :: Text
   , rowTableName :: Text
+  , rowObjectName :: Text
   , factIdColumn :: Text
   , rowIdColumn :: Text
-  , playerNameColumn :: Text
-  , teamColumn :: Text
-  , gameDateColumn :: Text
-  , pointsColumn :: Text
-  , minutesColumn :: Text
+  , contextJoin :: Maybe ContextJoin
+  , displayName :: ColumnRef
+  , contextValue :: Maybe ColumnRef
+  , gameDate :: ColumnRef
+  , metricSource :: ColumnRef
   , windowGames :: Int
   , queryLimit :: Maybe Int
   , comparisonEntities :: [ResolvedEntity]
@@ -76,11 +90,11 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , rowObjectName :: Text
   , factIdColumn :: Text
   , rowIdColumn :: Text
-  , playerNameColumn :: Text
-  , teamColumn :: Text
-  , gameDateColumn :: Text
-  , pointsColumn :: Text
-  , minutesColumn :: Text
+  , contextJoin :: Maybe ContextJoin
+  , displayName :: ColumnRef
+  , contextValue :: Maybe ColumnRef
+  , gameDate :: ColumnRef
+  , metricSource :: ColumnRef
   , windowGames :: Int
   , queryLimit :: Maybe Int
   , resolvedAssumptions :: [Text]
@@ -111,23 +125,21 @@ resolveMetricQuery :: Ontology -> MetricQuerySpec -> Either Text ResolvedMetricQ
 resolveMetricQuery ontology metricQuery = do
   let base =
         case metricQuery of
-          MetricQuerySpec currentBase _ _ -> currentBase
-  playerGameObject <- maybe (Left "Could not resolve PlayerGame against the ontology.") Right $
+          MetricQuerySpec {sharedQuery = currentBase} -> currentBase
+  factObject <- maybe (Left "Could not resolve the fact object against the ontology.") Right $
     findObject ontology (coreFactObject base)
-  playerObject <- maybe (Left "Could not resolve Player against the ontology.") Right $
-    findObject ontology "Player"
-  link <- maybe (Left "Could not resolve the PlayerGame -> Player link.") Right $
-    findLink ontology "PlayerGame" "Player"
-  selectedMetric <-
-    case metrics base of
-      [metricValue] -> Right metricValue
-      _ -> Left "MetricQuery requires exactly one selected metric."
+  rowObjectNameValue <- metricRowObjectName (dimensions base)
+  rowObject <- maybe (Left "Could not resolve the row object against the ontology.") Right $
+    findObject ontology rowObjectNameValue
+  link <- maybe (Left "Could not resolve the fact-to-row link.") Right $
+    findLink ontology (coreFactObject base) rowObjectNameValue
+  selectedMetric <- requireSingleMetric (metrics base)
   metricDef <- maybe (Left "Could not resolve the selected metric against the ontology.") Right $
-    findMetric playerGameObject (metricText selectedMetric)
-  gamesValue <-
-    case filters base of
-      [LastNGames n] -> Right n
-      _ -> Left "Only a single LastNGames filter is supported."
+    findMetric factObject (metricText selectedMetric)
+  gamesValue <- requireLastNGames (filters base)
+  displayColumn <- metricDisplayColumn (dimensions base)
+  (contextJoinValue, contextColumn) <- metricContextSelection ontology (coreFactObject base)
+  metricSourceColumn <- metricSourceAttribute metricDef
   let limitValue = limit base
       entityValues = map resolveEntity (entityFilters metricQuery)
       comparisonRequestedFlag =
@@ -136,23 +148,24 @@ resolveMetricQuery ontology metricQuery = do
           Nothing -> False
       joinPathValue =
         JoinPath
-          { factTable = backing_table playerGameObject
+          { factTable = backing_table factObject
           , factJoinKey = source_key link
-          , rowTable = backing_table playerObject
+          , rowTable = backing_table rowObject
           , rowJoinKey = target_key link
           }
       formula = resolveMetricFormula metricDef
   pure
     ResolvedMetricQuery
-      { factTableName = backing_table playerGameObject
-      , rowTableName = backing_table playerObject
+      { factTableName = backing_table factObject
+      , rowTableName = backing_table rowObject
+      , rowObjectName = rowObjectNameValue
       , factIdColumn = source_key link
       , rowIdColumn = target_key link
-      , playerNameColumn = "player_name"
-      , teamColumn = "team"
-      , gameDateColumn = "game_date"
-      , pointsColumn = "points"
-      , minutesColumn = "minutes_played_decimal"
+      , contextJoin = contextJoinValue
+      , displayName = ColumnRef "row" displayColumn
+      , contextValue = contextColumn
+      , gameDate = ColumnRef "fact" "game_date"
+      , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
       , queryLimit = limitValue
       , comparisonEntities = entityValues
@@ -167,42 +180,44 @@ resolveObjectQuery :: Ontology -> ObjectQuerySpec -> Either Text ResolvedObjectQ
 resolveObjectQuery ontology objectQuery = do
   let base =
         case objectQuery of
-          ObjectQuerySpec currentBase _ -> currentBase
-  playerGameObject <- maybe (Left "Could not resolve PlayerGame against the ontology.") Right $
+          ObjectQuerySpec {sharedQuery = currentBase} -> currentBase
+      rowObjectNameValue =
+        case objectQuery of
+          ObjectQuerySpec {rowObject = currentRowObject} -> currentRowObject
+  factObject <- maybe (Left "Could not resolve the fact object against the ontology.") Right $
     findObject ontology (coreFactObject base)
-  playerObject <- maybe (Left "Could not resolve Player against the ontology.") Right $
-    findObject ontology (rowObject objectQuery)
-  link <- maybe (Left "Could not resolve the PlayerGame -> Player link.") Right $
-    findLink ontology "PlayerGame" "Player"
+  rowObjectValue <- maybe (Left "Could not resolve the row object against the ontology.") Right $
+    findObject ontology rowObjectNameValue
+  link <- maybe (Left "Could not resolve the fact-to-row link.") Right $
+    findLink ontology (coreFactObject base) rowObjectNameValue
   metricDef <- maybe (Left "Could not resolve total_points against the ontology.") Right $
-    findMetric playerGameObject "total_points"
-  gamesValue <-
-    case filters base of
-      [LastNGames n] -> Right n
-      _ -> Left "Only a single LastNGames filter is supported."
-  let joinPathValue =
-        JoinPath
-          { factTable = backing_table playerGameObject
-          , factJoinKey = source_key link
-          , rowTable = backing_table playerObject
-          , rowJoinKey = target_key link
-          }
+    findMetric factObject "total_points"
+  gamesValue <- requireLastNGames (filters base)
+  displayColumn <- metricDisplayColumn (dimensions base)
+  (contextJoinValue, contextColumn) <- metricContextSelection ontology (coreFactObject base)
+  metricSourceColumn <- metricSourceAttribute metricDef
   pure
     ResolvedObjectQuery
-      { rowTableName = backing_table playerObject
-      , factTableName = backing_table playerGameObject
-      , rowObjectName = rowObject objectQuery
+      { rowTableName = backing_table rowObjectValue
+      , factTableName = backing_table factObject
+      , rowObjectName = rowObjectNameValue
       , factIdColumn = source_key link
       , rowIdColumn = target_key link
-      , playerNameColumn = "player_name"
-      , teamColumn = "team"
-      , gameDateColumn = "game_date"
-      , pointsColumn = "points"
-      , minutesColumn = "minutes_played_decimal"
+      , contextJoin = contextJoinValue
+      , displayName = ColumnRef "row" displayColumn
+      , contextValue = contextColumn
+      , gameDate = ColumnRef "fact" "game_date"
+      , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
       , queryLimit = limit base
       , resolvedAssumptions = assumptions base
-      , joinPath = joinPathValue
+      , joinPath =
+          JoinPath
+            { factTable = backing_table factObject
+            , factJoinKey = source_key link
+            , rowTable = backing_table rowObjectValue
+            , rowJoinKey = target_key link
+            }
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
       }
@@ -231,3 +246,55 @@ metricText metricValue =
     AveragePoints -> "average_points"
     GamesPlayed -> "games_played"
     PointsPer36 -> "points_per_36"
+
+metricRowObjectName :: [DimensionName] -> Either Text Text
+metricRowObjectName dimensionValues =
+  case dimensionValues of
+    [PlayerName] -> Right "Player"
+    [TeamName] -> Right "Team"
+    _ -> Left "Only player_name or team_name metric dimensions are supported in this slice."
+
+metricDisplayColumn :: [DimensionName] -> Either Text Text
+metricDisplayColumn dimensionValues =
+  case dimensionValues of
+    [PlayerName] -> Right "player_name"
+    [TeamName] -> Right "team_name"
+    _ -> Left "Only player_name or team_name metric dimensions are supported in this slice."
+
+metricContextSelection :: Ontology -> Text -> Either Text (Maybe ContextJoin, Maybe ColumnRef)
+metricContextSelection ontology factObjectName =
+  case factObjectName of
+    "PlayerGame" -> do
+      teamObject <- maybe (Left "Could not resolve Team against the ontology.") Right $
+        findObject ontology "Team"
+      link <- maybe (Left "Could not resolve the PlayerGame -> Team link.") Right $
+        findLink ontology "PlayerGame" "Team"
+      Right
+        ( Just
+            ContextJoin
+              { contextTableName = backing_table teamObject
+              , factContextKey = source_key link
+              , contextRowKey = target_key link
+              }
+        , Just (ColumnRef "context" "team_abbreviation")
+        )
+    "TeamGame" -> Right (Nothing, Just (ColumnRef "fact" "team_abbreviation"))
+    _ -> Left "Unsupported fact object for ranking context."
+
+metricSourceAttribute :: MetricDef -> Either Text Text
+metricSourceAttribute metricDef =
+  case source_attributes metricDef of
+    sourceAttribute : _ -> Right sourceAttribute
+    [] -> Left "Selected metric must reference at least one source attribute."
+
+requireSingleMetric :: [MetricName] -> Either Text MetricName
+requireSingleMetric metricValues =
+  case metricValues of
+    [metricValue] -> Right metricValue
+    _ -> Left "Query requires exactly one selected metric."
+
+requireLastNGames :: [Filter] -> Either Text Int
+requireLastNGames filterValues =
+  case filterValues of
+    [LastNGames n] -> Right n
+    _ -> Left "Only a single LastNGames filter is supported."

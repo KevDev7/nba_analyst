@@ -27,6 +27,9 @@ class ExecutionPlan(BaseModel):
     plan_type: Literal["single_sql", "multi_step"]
     query_kind: Literal["metric_query", "object_query"]
     result_shape: Literal["ranking", "comparison", "object_rows"]
+    entity_label_singular: str
+    entity_label_plural: str
+    context_label: str
     metric: str
     window_games: int
     limit: int
@@ -36,15 +39,15 @@ class ExecutionPlan(BaseModel):
 
 class RankingRow(BaseModel):
     rank: int
-    player_name: str
-    team: str
+    entity_name: str
+    context_value: Optional[str] = None
     metric_value: float
 
 
 class ObjectRow(BaseModel):
     entity_id: int
-    player_name: str
-    team: str
+    entity_name: str
+    context_value: Optional[str] = None
     metric_value: float
 
 
@@ -74,6 +77,9 @@ class ComparisonResult(BaseModel):
 class RuntimeResult(BaseModel):
     query_kind: str
     result_shape: str
+    entity_label_singular: str
+    entity_label_plural: str
+    context_label: str
     metric: str
     window_games: int
     limit: int

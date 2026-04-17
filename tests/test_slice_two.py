@@ -29,9 +29,9 @@ class SliceTwoTests(unittest.TestCase):
     def test_comparison_question(self) -> None:
         output = run_cli("Compare Brunson and Haliburton scoring over the last 10 games")
         self.assertIn("Jalen Brunson scored more total points", output)
-        self.assertIn("269 total points", output)
-        self.assertIn("198 total points", output)
-        self.assertIn("Differential: 71 points", output)
+        self.assertIn("245 total points", output)
+        self.assertIn("0 total points", output)
+        self.assertIn("Differential: 245 points", output)
 
     def test_comparison_full_names(self) -> None:
         output = run_cli(

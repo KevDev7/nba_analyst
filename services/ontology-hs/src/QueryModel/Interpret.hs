@@ -25,6 +25,7 @@ data ParsedQuestion = ParsedQuestion
   , extractedWindowGames :: Int
   , metricPhrase :: Text
   , playerConceptPresent :: Bool
+  , teamConceptPresent :: Bool
   , objectRowsRequested :: Bool
   , entityPhrases :: [Text]
   , comparisonRequested :: Bool
@@ -55,6 +56,7 @@ interpretQuestion question = do
           any (`elem` ["player", "players", "scorer", "scorers"]) tokens
             || comparisonRequestedValue
             || "highest" `elem` tokens
+      , teamConceptPresent = any (`elem` ["team", "teams"]) tokens
       , objectRowsRequested = objectRowsRequestedValue
       , entityPhrases = entityPhrasesValue
       , comparisonRequested = comparisonRequestedValue

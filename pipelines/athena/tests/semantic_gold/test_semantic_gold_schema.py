@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from pipelines.athena.transform.semantic_gold.contracts import (
     GAME_SCHEMA,
     PLAYER_GAME_SCHEMA,
@@ -14,6 +17,11 @@ from pipelines.athena.transform.semantic_gold import (
     transform_to_player_parquet as player_transform,
     transform_to_team_game_parquet as team_game_transform,
     transform_to_team_parquet as team_transform,
+)
+
+ROOT = Path(__file__).resolve().parents[4]
+ATTRIBUTE_INVENTORY_PATH = (
+    ROOT / "pipelines" / "athena" / "metadata" / "semantic_gold_attribute_inventory.json"
 )
 
 
@@ -82,3 +90,46 @@ def test_semantic_transforms_read_from_silver_only() -> None:
         team_game_transform.SCHEDULE_SOURCE_KEY,
     ]
     assert all(key.startswith("silver/") for key in source_keys)
+
+
+def test_attribute_inventory_covers_current_semantic_contract() -> None:
+    payload = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
+    inventory_by_table = {table["table_name"]: table for table in payload["tables"]}
+    schema_by_table = {
+        "player": PLAYER_SCHEMA,
+        "team": TEAM_SCHEMA,
+        "game": GAME_SCHEMA,
+        "player_game": PLAYER_GAME_SCHEMA,
+        "team_game": TEAM_GAME_SCHEMA,
+    }
+
+    assert set(inventory_by_table) == set(schema_by_table)
+
+    allowed_kinds = {"primary_key", "dimension", "measure"}
+    allowed_visibility = {"public", "internal"}
+
+    for table_name, schema in schema_by_table.items():
+        table_inventory = inventory_by_table[table_name]["columns"]
+        inventory_names = [column["name"] for column in table_inventory]
+        assert inventory_names == schema.names
+        for column in table_inventory:
+            assert column["attribute_kind"] in allowed_kinds
+            assert isinstance(column["link_key"], bool)
+            assert column["visibility"] in allowed_visibility
+
+
+def test_attribute_inventory_has_expected_key_classifications() -> None:
+    payload = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
+    inventory = {
+        (table["table_name"], column["name"]): column
+        for table in payload["tables"]
+        for column in table["columns"]
+    }
+
+    assert inventory[("player", "person_id")]["attribute_kind"] == "primary_key"
+    assert inventory[("player", "latest_team_id")]["link_key"] is True
+    assert inventory[("game", "home_team_id")]["link_key"] is True
+    assert inventory[("player_game", "points")]["attribute_kind"] == "measure"
+    assert inventory[("player_game", "person_id")]["link_key"] is True
+    assert inventory[("team_game", "opponent_team_id")]["link_key"] is True
+    assert inventory[("team_game", "is_win")]["attribute_kind"] == "measure"

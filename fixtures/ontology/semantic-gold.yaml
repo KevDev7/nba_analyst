@@ -1,0 +1,1077 @@
+# This file is generated from semantic_gold metadata. Do not hand edit.
+objects:
+- name: Player
+  backing_table: player
+  description: One player entity from the semantic_gold surface.
+  attributes:
+  - name: person_id
+    kind: primary_key
+    source_column: person_id
+    link_key: false
+    visibility: public
+  - name: player_name
+    kind: dimension
+    source_column: player_name
+    link_key: false
+    visibility: public
+  - name: first_name
+    kind: dimension
+    source_column: first_name
+    link_key: false
+    visibility: public
+  - name: family_name
+    kind: dimension
+    source_column: family_name
+    link_key: false
+    visibility: public
+  - name: display_name
+    kind: dimension
+    source_column: display_name
+    link_key: false
+    visibility: public
+  - name: primary_position
+    kind: dimension
+    source_column: primary_position
+    link_key: false
+    visibility: public
+  - name: position_group
+    kind: dimension
+    source_column: position_group
+    link_key: false
+    visibility: public
+  - name: latest_team_id
+    kind: dimension
+    source_column: latest_team_id
+    link_key: true
+    visibility: public
+  - name: latest_jersey_number
+    kind: dimension
+    source_column: latest_jersey_number
+    link_key: false
+    visibility: public
+  - name: latest_status
+    kind: dimension
+    source_column: latest_status
+    link_key: false
+    visibility: public
+  - name: first_seen_game_date
+    kind: dimension
+    source_column: first_seen_game_date
+    link_key: false
+    visibility: public
+  - name: last_seen_game_date
+    kind: dimension
+    source_column: last_seen_game_date
+    link_key: false
+    visibility: public
+  - name: first_season_played
+    kind: dimension
+    source_column: first_season_played
+    link_key: false
+    visibility: public
+  - name: last_season_played
+    kind: dimension
+    source_column: last_season_played
+    link_key: false
+    visibility: public
+  - name: birth_date
+    kind: dimension
+    source_column: birth_date
+    link_key: false
+    visibility: public
+  - name: school
+    kind: dimension
+    source_column: school
+    link_key: false
+    visibility: public
+  - name: country
+    kind: dimension
+    source_column: country
+    link_key: false
+    visibility: public
+  - name: height_inches
+    kind: dimension
+    source_column: height_inches
+    link_key: false
+    visibility: public
+  - name: weight_lbs
+    kind: dimension
+    source_column: weight_lbs
+    link_key: false
+    visibility: public
+  - name: draft_year
+    kind: dimension
+    source_column: draft_year
+    link_key: false
+    visibility: public
+  - name: draft_round
+    kind: dimension
+    source_column: draft_round
+    link_key: false
+    visibility: public
+  - name: draft_number
+    kind: dimension
+    source_column: draft_number
+    link_key: false
+    visibility: public
+  - name: is_guard
+    kind: dimension
+    source_column: is_guard
+    link_key: false
+    visibility: public
+  - name: is_forward
+    kind: dimension
+    source_column: is_forward
+    link_key: false
+    visibility: public
+  - name: is_center
+    kind: dimension
+    source_column: is_center
+    link_key: false
+    visibility: public
+  - name: basketball_reference_player_id
+    kind: dimension
+    source_column: basketball_reference_player_id
+    link_key: false
+    visibility: public
+  - name: bbr_match_method
+    kind: dimension
+    source_column: bbr_match_method
+    link_key: false
+    visibility: public
+  - name: bbr_match_confidence
+    kind: dimension
+    source_column: bbr_match_confidence
+    link_key: false
+    visibility: public
+  - name: bbr_profile_url
+    kind: dimension
+    source_column: bbr_profile_url
+    link_key: false
+    visibility: public
+  - name: bbr_formal_name
+    kind: dimension
+    source_column: bbr_formal_name
+    link_key: false
+    visibility: public
+  - name: bbr_position_raw
+    kind: dimension
+    source_column: bbr_position_raw
+    link_key: false
+    visibility: public
+  - name: bbr_shoots
+    kind: dimension
+    source_column: bbr_shoots
+    link_key: false
+    visibility: public
+  - name: bbr_height_cm
+    kind: dimension
+    source_column: bbr_height_cm
+    link_key: false
+    visibility: public
+  - name: bbr_weight_kg
+    kind: dimension
+    source_column: bbr_weight_kg
+    link_key: false
+    visibility: public
+  - name: bbr_college_raw
+    kind: dimension
+    source_column: bbr_college_raw
+    link_key: false
+    visibility: public
+  - name: bbr_birth_country_code
+    kind: dimension
+    source_column: bbr_birth_country_code
+    link_key: false
+    visibility: public
+  - name: bbr_headshot_url
+    kind: dimension
+    source_column: bbr_headshot_url
+    link_key: false
+    visibility: public
+  - name: bbr_hall_of_fame_flag
+    kind: dimension
+    source_column: bbr_hall_of_fame_flag
+    link_key: false
+    visibility: public
+  metrics: []
+- name: Team
+  backing_table: team
+  description: One team entity from the semantic_gold surface.
+  attributes:
+  - name: team_id
+    kind: primary_key
+    source_column: team_id
+    link_key: false
+    visibility: public
+  - name: team_name
+    kind: dimension
+    source_column: team_name
+    link_key: false
+    visibility: public
+  - name: team_city
+    kind: dimension
+    source_column: team_city
+    link_key: false
+    visibility: public
+  - name: team_abbreviation
+    kind: dimension
+    source_column: team_abbreviation
+    link_key: false
+    visibility: public
+  - name: team_slug
+    kind: dimension
+    source_column: team_slug
+    link_key: false
+    visibility: public
+  - name: conference
+    kind: dimension
+    source_column: conference
+    link_key: false
+    visibility: public
+  - name: division
+    kind: dimension
+    source_column: division
+    link_key: false
+    visibility: public
+  - name: first_seen_game_date
+    kind: dimension
+    source_column: first_seen_game_date
+    link_key: false
+    visibility: public
+  - name: last_seen_game_date
+    kind: dimension
+    source_column: last_seen_game_date
+    link_key: false
+    visibility: public
+  metrics: []
+- name: Game
+  backing_table: game
+  description: One NBA game entity from the semantic_gold surface.
+  attributes:
+  - name: game_id
+    kind: primary_key
+    source_column: game_id
+    link_key: false
+    visibility: public
+  - name: season_year
+    kind: dimension
+    source_column: season_year
+    link_key: false
+    visibility: public
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+  - name: season_type
+    kind: dimension
+    source_column: season_type
+    link_key: false
+    visibility: public
+  - name: league_id
+    kind: dimension
+    source_column: league_id
+    link_key: false
+    visibility: public
+  - name: game_code
+    kind: dimension
+    source_column: game_code
+    link_key: false
+    visibility: public
+  - name: game_sequence
+    kind: dimension
+    source_column: game_sequence
+    link_key: false
+    visibility: public
+  - name: game_date
+    kind: dimension
+    source_column: game_date
+    link_key: false
+    visibility: public
+  - name: game_datetime_utc
+    kind: dimension
+    source_column: game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: local_market_game_datetime_utc
+    kind: dimension
+    source_column: local_market_game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: home_market_game_datetime_utc
+    kind: dimension
+    source_column: home_market_game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: away_market_game_datetime_utc
+    kind: dimension
+    source_column: away_market_game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: eastern_time_game_datetime_utc
+    kind: dimension
+    source_column: eastern_time_game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: game_status_code
+    kind: dimension
+    source_column: game_status_code
+    link_key: false
+    visibility: public
+  - name: game_status_text
+    kind: dimension
+    source_column: game_status_text
+    link_key: false
+    visibility: public
+  - name: postponed_status
+    kind: dimension
+    source_column: postponed_status
+    link_key: false
+    visibility: public
+  - name: is_if_necessary
+    kind: dimension
+    source_column: is_if_necessary
+    link_key: false
+    visibility: public
+  - name: game_label
+    kind: dimension
+    source_column: game_label
+    link_key: false
+    visibility: public
+  - name: game_sublabel
+    kind: dimension
+    source_column: game_sublabel
+    link_key: false
+    visibility: public
+  - name: game_subtype
+    kind: dimension
+    source_column: game_subtype
+    link_key: false
+    visibility: public
+  - name: series_game_number
+    kind: dimension
+    source_column: series_game_number
+    link_key: false
+    visibility: public
+  - name: series_text
+    kind: dimension
+    source_column: series_text
+    link_key: false
+    visibility: public
+  - name: is_neutral_site
+    kind: dimension
+    source_column: is_neutral_site
+    link_key: false
+    visibility: public
+  - name: duration_minutes
+    kind: measure
+    source_column: duration_minutes
+    link_key: false
+    visibility: public
+  - name: attendance
+    kind: measure
+    source_column: attendance
+    link_key: false
+    visibility: public
+  - name: is_sellout
+    kind: dimension
+    source_column: is_sellout
+    link_key: false
+    visibility: public
+  - name: regulation_periods
+    kind: dimension
+    source_column: regulation_periods
+    link_key: false
+    visibility: public
+  - name: current_period
+    kind: dimension
+    source_column: current_period
+    link_key: false
+    visibility: public
+  - name: game_clock
+    kind: dimension
+    source_column: game_clock
+    link_key: false
+    visibility: public
+  - name: arena_id
+    kind: dimension
+    source_column: arena_id
+    link_key: false
+    visibility: public
+  - name: arena_name
+    kind: dimension
+    source_column: arena_name
+    link_key: false
+    visibility: public
+  - name: arena_city
+    kind: dimension
+    source_column: arena_city
+    link_key: false
+    visibility: public
+  - name: arena_state
+    kind: dimension
+    source_column: arena_state
+    link_key: false
+    visibility: public
+  - name: arena_country
+    kind: dimension
+    source_column: arena_country
+    link_key: false
+    visibility: public
+  - name: arena_timezone
+    kind: dimension
+    source_column: arena_timezone
+    link_key: false
+    visibility: public
+  - name: home_team_id
+    kind: dimension
+    source_column: home_team_id
+    link_key: true
+    visibility: public
+  - name: away_team_id
+    kind: dimension
+    source_column: away_team_id
+    link_key: true
+    visibility: public
+  - name: home_team_name
+    kind: dimension
+    source_column: home_team_name
+    link_key: false
+    visibility: public
+  - name: away_team_name
+    kind: dimension
+    source_column: away_team_name
+    link_key: false
+    visibility: public
+  - name: home_team_city
+    kind: dimension
+    source_column: home_team_city
+    link_key: false
+    visibility: public
+  - name: away_team_city
+    kind: dimension
+    source_column: away_team_city
+    link_key: false
+    visibility: public
+  - name: home_team_abbreviation
+    kind: dimension
+    source_column: home_team_abbreviation
+    link_key: false
+    visibility: public
+  - name: away_team_abbreviation
+    kind: dimension
+    source_column: away_team_abbreviation
+    link_key: false
+    visibility: public
+  - name: home_team_slug
+    kind: dimension
+    source_column: home_team_slug
+    link_key: false
+    visibility: public
+  - name: away_team_slug
+    kind: dimension
+    source_column: away_team_slug
+    link_key: false
+    visibility: public
+  metrics: []
+- name: PlayerGame
+  backing_table: player_game
+  description: One player in one NBA game from the semantic_gold surface.
+  attributes:
+  - name: game_id
+    kind: primary_key
+    source_column: game_id
+    link_key: true
+    visibility: public
+  - name: person_id
+    kind: primary_key
+    source_column: person_id
+    link_key: true
+    visibility: public
+  - name: team_id
+    kind: dimension
+    source_column: team_id
+    link_key: true
+    visibility: public
+  - name: team_side
+    kind: dimension
+    source_column: team_side
+    link_key: false
+    visibility: public
+  - name: game_datetime_utc
+    kind: dimension
+    source_column: game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: game_date
+    kind: dimension
+    source_column: game_date
+    link_key: false
+    visibility: public
+  - name: season_year
+    kind: dimension
+    source_column: season_year
+    link_key: false
+    visibility: public
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+  - name: season_type
+    kind: dimension
+    source_column: season_type
+    link_key: false
+    visibility: public
+  - name: player_position
+    kind: dimension
+    source_column: player_position
+    link_key: false
+    visibility: public
+  - name: player_status
+    kind: dimension
+    source_column: player_status
+    link_key: false
+    visibility: public
+  - name: player_order
+    kind: dimension
+    source_column: player_order
+    link_key: false
+    visibility: public
+  - name: is_starter
+    kind: dimension
+    source_column: is_starter
+    link_key: false
+    visibility: public
+  - name: is_on_court
+    kind: dimension
+    source_column: is_on_court
+    link_key: false
+    visibility: public
+  - name: did_play
+    kind: dimension
+    source_column: did_play
+    link_key: false
+    visibility: public
+  - name: seconds_played_total
+    kind: measure
+    source_column: seconds_played_total
+    link_key: false
+    visibility: public
+  - name: minutes_played_decimal
+    kind: measure
+    source_column: minutes_played_decimal
+    link_key: false
+    visibility: public
+  - name: plus_minus_points
+    kind: measure
+    source_column: plus_minus_points
+    link_key: false
+    visibility: public
+  - name: assists
+    kind: measure
+    source_column: assists
+    link_key: false
+    visibility: public
+  - name: blocks
+    kind: measure
+    source_column: blocks
+    link_key: false
+    visibility: public
+  - name: blocks_received
+    kind: measure
+    source_column: blocks_received
+    link_key: false
+    visibility: public
+  - name: field_goals_attempted
+    kind: measure
+    source_column: field_goals_attempted
+    link_key: false
+    visibility: public
+  - name: field_goals_made
+    kind: measure
+    source_column: field_goals_made
+    link_key: false
+    visibility: public
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+  - name: fouls_offensive
+    kind: measure
+    source_column: fouls_offensive
+    link_key: false
+    visibility: public
+  - name: fouls_drawn
+    kind: measure
+    source_column: fouls_drawn
+    link_key: false
+    visibility: public
+  - name: fouls_personal
+    kind: measure
+    source_column: fouls_personal
+    link_key: false
+    visibility: public
+  - name: fouls_technical
+    kind: measure
+    source_column: fouls_technical
+    link_key: false
+    visibility: public
+  - name: free_throws_attempted
+    kind: measure
+    source_column: free_throws_attempted
+    link_key: false
+    visibility: public
+  - name: free_throws_made
+    kind: measure
+    source_column: free_throws_made
+    link_key: false
+    visibility: public
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+  - name: rebounds_defensive
+    kind: measure
+    source_column: rebounds_defensive
+    link_key: false
+    visibility: public
+  - name: rebounds_offensive
+    kind: measure
+    source_column: rebounds_offensive
+    link_key: false
+    visibility: public
+  - name: rebounds_total
+    kind: measure
+    source_column: rebounds_total
+    link_key: false
+    visibility: public
+  - name: steals
+    kind: measure
+    source_column: steals
+    link_key: false
+    visibility: public
+  - name: turnovers
+    kind: measure
+    source_column: turnovers
+    link_key: false
+    visibility: public
+  - name: points
+    kind: measure
+    source_column: points
+    link_key: false
+    visibility: public
+  - name: three_pointers_attempted
+    kind: measure
+    source_column: three_pointers_attempted
+    link_key: false
+    visibility: public
+  - name: three_pointers_made
+    kind: measure
+    source_column: three_pointers_made
+    link_key: false
+    visibility: public
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+  - name: two_pointers_attempted
+    kind: measure
+    source_column: two_pointers_attempted
+    link_key: false
+    visibility: public
+  - name: two_pointers_made
+    kind: measure
+    source_column: two_pointers_made
+    link_key: false
+    visibility: public
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+  - name: points_fast_break
+    kind: measure
+    source_column: points_fast_break
+    link_key: false
+    visibility: public
+  - name: points_in_the_paint
+    kind: measure
+    source_column: points_in_the_paint
+    link_key: false
+    visibility: public
+  - name: points_second_chance
+    kind: measure
+    source_column: points_second_chance
+    link_key: false
+    visibility: public
+  metrics:
+  - name: total_points
+    aggregation: sum
+    source_attributes:
+    - points
+    expression: SUM(points)
+    executable: true
+  - name: average_points
+    aggregation: avg
+    source_attributes:
+    - points
+    expression: AVG(points)
+    executable: true
+  - name: games_played
+    aggregation: count
+    source_attributes:
+    - game_id
+    expression: COUNT(*)
+    executable: false
+  - name: points_per_36
+    aggregation: ratio
+    source_attributes:
+    - points
+    - minutes_played_decimal
+    expression: 36 * SUM(points) / NULLIF(SUM(minutes_played_decimal), 0)
+    executable: false
+- name: TeamGame
+  backing_table: team_game
+  description: One team in one NBA game from the semantic_gold surface.
+  attributes:
+  - name: game_id
+    kind: primary_key
+    source_column: game_id
+    link_key: true
+    visibility: public
+  - name: team_id
+    kind: primary_key
+    source_column: team_id
+    link_key: true
+    visibility: public
+  - name: opponent_team_id
+    kind: dimension
+    source_column: opponent_team_id
+    link_key: true
+    visibility: public
+  - name: game_datetime_utc
+    kind: dimension
+    source_column: game_datetime_utc
+    link_key: false
+    visibility: public
+  - name: game_date
+    kind: dimension
+    source_column: game_date
+    link_key: false
+    visibility: public
+  - name: season_year
+    kind: dimension
+    source_column: season_year
+    link_key: false
+    visibility: public
+  - name: season_start_year
+    kind: dimension
+    source_column: season_start_year
+    link_key: false
+    visibility: public
+  - name: raw_season_type_code
+    kind: dimension
+    source_column: raw_season_type_code
+    link_key: false
+    visibility: public
+  - name: season_type
+    kind: dimension
+    source_column: season_type
+    link_key: false
+    visibility: public
+  - name: team_side
+    kind: dimension
+    source_column: team_side
+    link_key: false
+    visibility: public
+  - name: is_home_team
+    kind: dimension
+    source_column: is_home_team
+    link_key: false
+    visibility: public
+  - name: team_name
+    kind: dimension
+    source_column: team_name
+    link_key: false
+    visibility: public
+  - name: team_city
+    kind: dimension
+    source_column: team_city
+    link_key: false
+    visibility: public
+  - name: team_abbreviation
+    kind: dimension
+    source_column: team_abbreviation
+    link_key: false
+    visibility: public
+  - name: opponent_team_name
+    kind: dimension
+    source_column: opponent_team_name
+    link_key: false
+    visibility: public
+  - name: opponent_team_city
+    kind: dimension
+    source_column: opponent_team_city
+    link_key: false
+    visibility: public
+  - name: opponent_team_abbreviation
+    kind: dimension
+    source_column: opponent_team_abbreviation
+    link_key: false
+    visibility: public
+  - name: score
+    kind: measure
+    source_column: score
+    link_key: false
+    visibility: public
+  - name: opponent_score
+    kind: measure
+    source_column: opponent_score
+    link_key: false
+    visibility: public
+  - name: point_diff
+    kind: measure
+    source_column: point_diff
+    link_key: false
+    visibility: public
+  - name: is_in_bonus
+    kind: dimension
+    source_column: is_in_bonus
+    link_key: false
+    visibility: public
+  - name: timeouts_remaining
+    kind: dimension
+    source_column: timeouts_remaining
+    link_key: false
+    visibility: public
+  - name: seconds_played_total
+    kind: measure
+    source_column: seconds_played_total
+    link_key: false
+    visibility: public
+  - name: minutes_played_decimal
+    kind: measure
+    source_column: minutes_played_decimal
+    link_key: false
+    visibility: public
+  - name: assists
+    kind: measure
+    source_column: assists
+    link_key: false
+    visibility: public
+  - name: blocks
+    kind: measure
+    source_column: blocks
+    link_key: false
+    visibility: public
+  - name: blocks_received
+    kind: measure
+    source_column: blocks_received
+    link_key: false
+    visibility: public
+  - name: field_goals_attempted
+    kind: measure
+    source_column: field_goals_attempted
+    link_key: false
+    visibility: public
+  - name: field_goals_made
+    kind: measure
+    source_column: field_goals_made
+    link_key: false
+    visibility: public
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+  - name: fouls_offensive
+    kind: measure
+    source_column: fouls_offensive
+    link_key: false
+    visibility: public
+  - name: fouls_drawn
+    kind: measure
+    source_column: fouls_drawn
+    link_key: false
+    visibility: public
+  - name: fouls_personal
+    kind: measure
+    source_column: fouls_personal
+    link_key: false
+    visibility: public
+  - name: fouls_technical
+    kind: measure
+    source_column: fouls_technical
+    link_key: false
+    visibility: public
+  - name: free_throws_attempted
+    kind: measure
+    source_column: free_throws_attempted
+    link_key: false
+    visibility: public
+  - name: free_throws_made
+    kind: measure
+    source_column: free_throws_made
+    link_key: false
+    visibility: public
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+  - name: rebounds_defensive
+    kind: measure
+    source_column: rebounds_defensive
+    link_key: false
+    visibility: public
+  - name: rebounds_offensive
+    kind: measure
+    source_column: rebounds_offensive
+    link_key: false
+    visibility: public
+  - name: rebounds_total
+    kind: measure
+    source_column: rebounds_total
+    link_key: false
+    visibility: public
+  - name: steals
+    kind: measure
+    source_column: steals
+    link_key: false
+    visibility: public
+  - name: turnovers
+    kind: measure
+    source_column: turnovers
+    link_key: false
+    visibility: public
+  - name: three_pointers_attempted
+    kind: measure
+    source_column: three_pointers_attempted
+    link_key: false
+    visibility: public
+  - name: three_pointers_made
+    kind: measure
+    source_column: three_pointers_made
+    link_key: false
+    visibility: public
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+  - name: two_pointers_attempted
+    kind: measure
+    source_column: two_pointers_attempted
+    link_key: false
+    visibility: public
+  - name: two_pointers_made
+    kind: measure
+    source_column: two_pointers_made
+    link_key: false
+    visibility: public
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+  - name: points_fast_break
+    kind: measure
+    source_column: points_fast_break
+    link_key: false
+    visibility: public
+  - name: points_in_the_paint
+    kind: measure
+    source_column: points_in_the_paint
+    link_key: false
+    visibility: public
+  - name: points_second_chance
+    kind: measure
+    source_column: points_second_chance
+    link_key: false
+    visibility: public
+  - name: is_win
+    kind: measure
+    source_column: is_win
+    link_key: false
+    visibility: public
+  - name: is_loss
+    kind: measure
+    source_column: is_loss
+    link_key: false
+    visibility: public
+  - name: is_tie
+    kind: measure
+    source_column: is_tie
+    link_key: false
+    visibility: public
+  metrics:
+  - name: total_points
+    aggregation: sum
+    source_attributes:
+    - score
+    expression: SUM(score)
+    executable: true
+  - name: average_points
+    aggregation: avg
+    source_attributes:
+    - score
+    expression: AVG(score)
+    executable: true
+  - name: games_played
+    aggregation: count
+    source_attributes:
+    - game_id
+    expression: COUNT(*)
+    executable: false
+links:
+- name: player_game_player
+  source_object: PlayerGame
+  target_object: Player
+  relation_type: many_to_one
+  source_key: person_id
+  target_key: person_id
+- name: player_game_game
+  source_object: PlayerGame
+  target_object: Game
+  relation_type: many_to_one
+  source_key: game_id
+  target_key: game_id
+- name: player_game_team
+  source_object: PlayerGame
+  target_object: Team
+  relation_type: many_to_one
+  source_key: team_id
+  target_key: team_id
+- name: team_game_game
+  source_object: TeamGame
+  target_object: Game
+  relation_type: many_to_one
+  source_key: game_id
+  target_key: game_id
+- name: team_game_team
+  source_object: TeamGame
+  target_object: Team
+  relation_type: many_to_one
+  source_key: team_id
+  target_key: team_id
+- name: team_game_opponent_team
+  source_object: TeamGame
+  target_object: Team
+  relation_type: many_to_one
+  source_key: opponent_team_id
+  target_key: team_id

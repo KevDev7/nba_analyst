@@ -30,6 +30,9 @@ data ExecutionPlan = ExecutionPlan
   { plan_type :: Text
   , query_kind :: Text
   , result_shape :: Text
+  , entity_label_singular :: Text
+  , entity_label_plural :: Text
+  , context_label :: Text
   , metric :: Text
   , window_games :: Int
   , limit :: Int

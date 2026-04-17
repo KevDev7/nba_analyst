@@ -40,7 +40,8 @@ RETAINED_QUESTIONS = {
     "Show me games and their players",
     "Show me players by average points over the last 10 games",
     "Show me players by avg points over the last 10 games",
-    "Who has the highest average scoring over the last 10 games?"
+    "Who has the highest average scoring over the last 10 games?",
+    "Show me teams by average points over the last 10 games",
 }
 
 

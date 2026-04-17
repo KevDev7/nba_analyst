@@ -23,13 +23,15 @@ from pipelines.athena.transform.gold.gold_transform_helpers import (
     to_str_or_none,
     write_parquet_to_s3,
 )
+from pipelines.athena.transform.gold.transform_to_fct_team_game_parquet import (
+    TEAM_GAME_REQUIRED_COLUMNS,
+    TEAM_GAME_SOURCE_KEY,
+)
 from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     BOXSCORE_REQUIRED_COLUMNS,
     BOXSCORE_SOURCE_KEY,
     SCHEDULE_REQUIRED_COLUMNS,
     SCHEDULE_SOURCE_KEY,
-    TEAM_GAME_REQUIRED_COLUMNS,
-    TEAM_GAME_SOURCE_KEY,
 )
 
 from .contracts import TEAM_GAME_SCHEMA

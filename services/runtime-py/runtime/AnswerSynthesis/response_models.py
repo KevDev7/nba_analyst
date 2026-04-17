@@ -23,6 +23,9 @@ class FinalAnswer(BaseModel):
     summary: str
     query_kind: str
     result_shape: str
+    entity_label_singular: str
+    entity_label_plural: str
+    context_label: str
     metric: str
     window_games: int
     limit: int
