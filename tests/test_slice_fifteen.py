@@ -67,7 +67,7 @@ class SliceFifteenTests(unittest.TestCase):
             call_haskell_planner_for_query(payload)
 
         self.assertIn(
-            "Season-scoped linked team filters currently support PlayerSeasonTeam only.",
+            "Season-scoped linked team filters currently support PlayerSeasonTeam only for metric queries.",
             str(context.exception),
         )
 

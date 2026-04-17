@@ -126,6 +126,42 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
 
+    def test_player_game_season_object_team_filter_family_remains_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "object_query"
+            and family["core_fact_object"] == "PlayerGame"
+            and family["row_object"] == "Player"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["exact_season", "season_type"]
+            and family["linked_filters"]
+            and family["linked_filters"][0]["target_object"] == "Team"
+            and family["linked_filters"][0]["attribute"] == "team_name"
+            and "total_points" in family["metrics"]
+        ]
+
+        self.assertTrue(matching)
+
+    def test_player_season_team_season_object_team_filter_family_remains_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "object_query"
+            and family["core_fact_object"] == "PlayerSeasonTeam"
+            and family["row_object"] == "Player"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["exact_season", "season_type"]
+            and family["linked_filters"]
+            and family["linked_filters"][0]["target_object"] == "Team"
+            and family["linked_filters"][0]["attribute"] == "team_name"
+            and "total_points" in family["metrics"]
+        ]
+
+        self.assertTrue(matching)
+
     def test_player_entity_index_is_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()
         player_index = artifact["player_entity_index"]
