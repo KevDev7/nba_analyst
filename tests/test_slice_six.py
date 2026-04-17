@@ -6,7 +6,7 @@ import unittest
 
 import yaml
 
-from apps.cli.main import ROOT, call_haskell_planner, run_cli
+from apps.cli.main import ROOT, plan_question, run_cli
 
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
@@ -67,7 +67,7 @@ class SliceSixTests(unittest.TestCase):
         self.assertIn("Teams ranked by average points", output)
         self.assertIn("Nuggets | DEN | 127.0", output)
 
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me teams by average points over the last 10 games"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
@@ -85,7 +85,7 @@ class SliceSixTests(unittest.TestCase):
         self.assertEqual(resolved["rowPath"]["steps"][0]["linkName"], "team_game_team")
 
     def test_player_object_query_uses_team_context_link(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players and their total points over the last 10 games"
         )
         self.assertEqual(planner_output["query"]["kind"], "object_query")

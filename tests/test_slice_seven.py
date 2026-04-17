@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner, call_haskell_planner_for_query
+from apps.cli.main import call_haskell_planner_for_query, plan_question
 
 
 class SliceSevenTests(unittest.TestCase):
     def test_player_metric_query_discovers_row_and_context_paths(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players by average points over the last 10 games"
         )
         resolved = planner_output["resolved_query"]["resolved"]
@@ -35,7 +35,7 @@ class SliceSevenTests(unittest.TestCase):
         self.assertNotIn("contextJoin", resolved)
 
     def test_team_metric_query_discovers_team_path(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me teams by average points over the last 10 games"
         )
         resolved = planner_output["resolved_query"]["resolved"]
@@ -49,7 +49,7 @@ class SliceSevenTests(unittest.TestCase):
         self.assertEqual(resolved["contextValue"]["columnName"], "team_abbreviation")
 
     def test_object_query_carries_explicit_discovered_path(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players and their total points over the last 10 games"
         )
         resolved = planner_output["resolved_query"]["resolved"]

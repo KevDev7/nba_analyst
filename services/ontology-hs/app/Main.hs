@@ -17,7 +17,7 @@
 
 module Main where
 
-import Data.Aeson (FromJSON, ToJSON, encode, eitherDecodeStrict')
+import Data.Aeson (ToJSON, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
@@ -28,11 +28,7 @@ import GroundedPlanning.Resolve (ResolvedQuery, resolveQuery)
 import GroundedPlanning.Validation (validateQuery)
 import OntologyLayer.Load (loadOntology)
 import OntologyLayer.Types (Ontology)
-import QueryModel.Build (buildQuery)
-import QueryModel.Classify (QueryKind (MetricQueryKind, ObjectQueryKind), classifyQuestion)
 import QueryModel.IR (Query (MetricQuery, ObjectQuery))
-import QueryModel.Interpret (interpretQuestion)
-import QueryModel.Match (matchQuestion)
 import System.Environment (getArgs)
 import System.Exit (die, exitFailure)
 
@@ -58,44 +54,11 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["plan", "--ontology", ontologyPath, "--question", question] -> do
-      ontology <- loadOntology ontologyPath
-      runPlanner ontology (pack question)
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       ontology <- loadOntology ontologyPath
       runPlannerFromQueryJson ontology (pack queryJson)
     _ ->
-      die "Usage: cabal run ontology-hs -- plan --ontology <path> --question <text>"
-
-runPlanner :: Ontology -> Text -> IO ()
-runPlanner ontology question =
-  case interpretQuestion question of
-    Left err -> emitError "QueryModel.Interpret" err
-    Right interpreted ->
-      case matchQuestion ontology interpreted of
-        Left err -> emitError "QueryModel.Match" err
-        Right matched ->
-          case classifyQuestion interpreted matched of
-            Left err -> emitError "QueryModel.Classify" err
-            Right queryKind ->
-              case buildQuery queryKind interpreted matched of
-                Left err -> emitError "QueryModel.Build" err
-                Right plannedQuery ->
-                  case validateQuery ontology plannedQuery of
-                    Left err -> emitError "GroundedPlanning.Validation" err
-                    Right () ->
-                      case resolveQuery ontology plannedQuery of
-                        Left err -> emitError "GroundedPlanning.Resolve" err
-                        Right resolved -> do
-                          let executionPlan = compileExecutionPlan resolved
-                              output =
-                                PlannerOutput
-                                  { query_type = renderQueryKind queryKind
-                                  , query = plannedQuery
-                                  , resolved_query = resolved
-                                  , execution_plan = executionPlan
-                                  }
-                          BL8.putStrLn (encode output)
+      die "Usage: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()
 runPlannerFromQueryJson ontology queryJson =
@@ -125,12 +88,6 @@ emitError :: Text -> Text -> IO ()
 emitError stageName err = do
   BL8.putStrLn (encode (PlannerError stageName err))
   exitFailure
-
-renderQueryKind :: QueryKind -> Text
-renderQueryKind queryKind =
-  case queryKind of
-    MetricQueryKind -> "MetricQuery"
-    ObjectQueryKind -> "ObjectQuery"
 
 renderQueryKindFromQuery :: Query -> Text
 renderQueryKindFromQuery query =

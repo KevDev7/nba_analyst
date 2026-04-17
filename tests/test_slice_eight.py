@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner, run_cli
+from apps.cli.main import plan_question, run_cli
 
 
 class SliceEightTests(unittest.TestCase):
     def test_monthly_average_points_trend_query(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "What are the monthly average points over the past year?"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
@@ -47,7 +47,7 @@ class SliceEightTests(unittest.TestCase):
         self.assertIn("Month | Average Points", output)
 
     def test_monthly_average_points_by_team_trend_query(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "What are the monthly average points by team over the past year?"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")

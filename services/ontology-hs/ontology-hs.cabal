@@ -16,11 +16,7 @@ executable ontology-hs
     , OntologyLayer.Graph
     , OntologyLayer.Load
     , OntologyLayer.Types
-    , QueryModel.Build
-    , QueryModel.Classify
     , QueryModel.IR
-    , QueryModel.Interpret
-    , QueryModel.Match
   build-depends:
       base >= 4.20 && < 5
     , aeson

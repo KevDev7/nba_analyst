@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner, run_cli
+from apps.cli.main import plan_question, run_cli
 
 
 class SliceTwoTests(unittest.TestCase):
     def test_query_root_is_variant_tagged(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me the top 10 players by points over the last 10 games"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")

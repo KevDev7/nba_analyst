@@ -16,19 +16,19 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner, run_cli
+from apps.cli.main import plan_question, run_cli
 
 
 class SliceThreeTests(unittest.TestCase):
     def test_object_query_root(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players and their total points over the last 10 games"
         )
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         self.assertEqual(planner_output["resolved_query"]["kind"], "object_query")
 
     def test_object_query_resolves_live_link(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players and their total points over the last 10 games"
         )
         resolved = planner_output["resolved_query"]["resolved"]

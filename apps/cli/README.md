@@ -10,7 +10,7 @@ Why CLI first:
 
 Target flow:
 
-`question -> ontology mapping -> plan/IR -> execution -> analysis -> answer`
+`question -> Gemini semantic interpretation -> plan/IR -> execution -> analysis -> answer`
 
 Current slice:
 

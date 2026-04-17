@@ -19,7 +19,7 @@ import unittest
 
 import yaml
 
-from apps.cli.main import ROOT, call_haskell_planner, run_cli
+from apps.cli.main import ROOT, plan_question, run_cli
 
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
@@ -44,7 +44,7 @@ class SliceFourTests(unittest.TestCase):
         self.assertIn("Luka Dončić | LAL | 36.6", output)
 
     def test_planner_resolves_governed_metric_formula(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players by average points over the last 10 games"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")

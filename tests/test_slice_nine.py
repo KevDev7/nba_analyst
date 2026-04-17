@@ -4,13 +4,13 @@ import unittest
 
 import duckdb
 
-from apps.cli.main import ROOT, call_haskell_planner, run_cli
+from apps.cli.main import ROOT, plan_question, run_cli
 from scripts.load_gold_snapshot import load_database
 
 
 class SliceNineTests(unittest.TestCase):
     def test_player_season_average_points_query(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players by average points in the 2025-26 regular season"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
@@ -46,7 +46,7 @@ class SliceNineTests(unittest.TestCase):
         self.assertIn("1 | Luka Dončić | 33.7", output)
 
     def test_team_season_wins_query(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me teams by wins in the 2025-26 regular season"
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
@@ -76,7 +76,7 @@ class SliceNineTests(unittest.TestCase):
         self.assertIn("1 | Thunder | OKC | 60", output)
 
     def test_player_season_object_query(self) -> None:
-        planner_output = call_haskell_planner(
+        _interpreted_query, planner_output = plan_question(
             "Show me players and their total points in the 2025-26 regular season"
         )
         self.assertEqual(planner_output["query"]["kind"], "object_query")
