@@ -45,7 +45,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         )
         self.assertIn("Reachable public dimensions by fact object:", summary)
         self.assertIn("Supported family patterns:", summary)
-        self.assertIn("linked filters: Team.team_name", summary)
+        self.assertIn("Supported Team linked-filter attributes:", summary)
+        self.assertIn("conference", summary)
+        self.assertIn("team_name", summary)
+        self.assertIn("linked filters: Team public dimensions", summary)
         self.assertNotIn("Current live supported semantic shapes:", summary)
 
     def test_execution_contract_is_now_only_an_exception_list(self) -> None:
@@ -666,7 +669,7 @@ class SemanticInterpreterTests(unittest.TestCase):
             "dimensions": ["player_name"],
             "filters": [{"kind": "last_n_games", "value": 10}],
             "linked_filters": [
-              {"target_object": "Team", "attribute": "team_abbreviation", "value": "LAL"}
+              {"target_object": "Team", "attribute": "team_id", "value": "1610612747"}
             ],
             "orders": [{"kind": "desc", "metric": "average_points"}],
             "assumptions": []
@@ -676,7 +679,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         with self.assertRaises(SemanticInterpreterError) as context:
             interpret_question_to_planner_query(
-                "Show me players by average points for LAL over the last 10 games"
+                "Show me players by average points for team 1610612747 over the last 10 games"
             )
 
         self.assertIn("invalid supported query template", str(context.exception))

@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tempfile
 from collections import defaultdict, deque
 from pathlib import Path
 
@@ -42,6 +43,7 @@ EXECUTION_CONTRACT_PATH = (
 )
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 OUTPUT_PATH = ROOT / "fixtures" / "interpreter" / "semantic-capabilities.json"
+CAPABILITY_BUILD_DIR = str(Path(tempfile.gettempdir()) / "nba_analyst-dist-newstyle-capabilities")
 
 
 def _normalize_player_alias(value: str) -> str:
@@ -83,6 +85,7 @@ def _load_planner_derived_capabilities() -> dict:
         "cabal",
         "run",
         "-v0",
+        f"--builddir={CAPABILITY_BUILD_DIR}",
         "ontology-hs",
         "--",
         "derive-capabilities-json",
@@ -165,6 +168,21 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
                 else f"- {row_object_name}: [none]"
             )
 
+    team_linked_filter_attributes = sorted(
+        {
+            linked_filter["attribute"]
+            for family in families
+            for linked_filter in family["linked_filters"]
+            if linked_filter["target_object"] == "Team"
+        }
+    )
+    if team_linked_filter_attributes:
+        lines.append("")
+        lines.append(
+            "Supported Team linked-filter attributes: "
+            f"[{', '.join(team_linked_filter_attributes)}]"
+        )
+
     grouped_patterns: dict[tuple, dict[str, set[str] | bool | str | None]] = {}
     for family in families:
         key = (
@@ -174,8 +192,12 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             tuple(family["required_filter_kinds"]),
             family.get("time_grain"),
             tuple(
-                (linked_filter["target_object"], linked_filter["attribute"])
-                for linked_filter in family["linked_filters"]
+                sorted(
+                    {
+                        linked_filter["target_object"]
+                        for linked_filter in family["linked_filters"]
+                    }
+                )
             ),
             family["allow_limit"],
             family["require_order_by_metric"],
@@ -205,7 +227,7 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             row_object,
             required_filter_kinds,
             time_grain,
-            linked_filter_pairs,
+            linked_filter_targets,
             allow_limit,
             require_order_by_metric,
             comparison_enabled,
@@ -219,13 +241,13 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             dimension_parts.append("aggregate output")
         dimension_text = ", ".join(dimension_parts) if dimension_parts else "none"
         linked_text = (
-            "; linked filters: "
-            + ", ".join(
-                f"{target_object}.{attribute}"
-                for target_object, attribute in linked_filter_pairs
+            "; linked filters: Team public dimensions"
+            if linked_filter_targets == ("Team",)
+            else (
+                "; linked filters: " + ", ".join(linked_filter_targets)
+                if linked_filter_targets
+                else ""
             )
-            if linked_filter_pairs
-            else ""
         )
         row_text = f"; row_object: {row_object}" if row_object is not None else ""
         time_text = f"; time_grain: {time_grain}" if time_grain is not None else ""

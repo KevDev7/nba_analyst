@@ -424,12 +424,9 @@ validateLinkedFilters ontology factObjectName linkedFilterValues =
       if targetObject linkedFilterValue /= "Team"
         then Left "Linked filters currently support Team only."
         else pure ()
-      if attribute linkedFilterValue /= "team_name"
-        then Left "Linked filters currently support Team.team_name only."
-        else pure ()
       _ <- requirePath ontology factObjectName "Team"
       targetObjectValue <- requireObject ontology "Team"
-      requireAttributeKind targetObjectValue "team_name" Dimension
+      requirePublicLinkedFilterDimension targetObjectValue (attribute linkedFilterValue)
     _ -> Left "Query currently supports at most one linked filter."
 
 validateOrdinaryLinkedFilters :: Ontology -> OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> Text -> [LinkedFilter] -> Either Text ()
@@ -519,6 +516,17 @@ requireAttributeKind object attributeName expectedKind = do
   if OT.kind attribute == expectedKind
     then pure ()
     else Left ("Attribute '" <> attributeName <> "' has the wrong kind in the ontology.")
+
+requirePublicLinkedFilterDimension :: Object -> Text -> Either Text ()
+requirePublicLinkedFilterDimension object attributeName = do
+  attribute <-
+    maybe
+      (Left ("Linked filters currently support public Team dimensions only."))
+      Right
+      (findAttribute object attributeName)
+  if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
+    then Left "Linked filters currently support public Team dimensions only."
+    else pure ()
 
 objectName :: OT.Object -> Text
 objectName objectValue =
