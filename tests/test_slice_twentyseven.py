@@ -122,7 +122,7 @@ class SliceTwentySevenTests(unittest.TestCase):
         self.assertEqual(resolved_filter["filterColumn"], "team_name")
         self.assertEqual(resolved_filter["filterValue"], "Lakers")
 
-    def test_non_team_target_still_fails_with_team_only_message(self) -> None:
+    def test_non_team_target_player_display_name_now_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -133,7 +133,7 @@ class SliceTwentySevenTests(unittest.TestCase):
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
-                        {"targetObject": "Player", "attribute": "display_name", "value": "Jalen Brunson"}
+                        {"targetObject": "Player", "attribute": "display_name", "value": "sample"}
                     ],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
@@ -144,10 +144,11 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+        planner_output = call_haskell_planner_for_query(payload)
+        resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
-        self.assertIn("Linked filters currently support Team only.", str(context.exception))
+        self.assertEqual(resolved_filter["targetObjectName"], "Player")
+        self.assertEqual(resolved_filter["filterColumn"], "display_name")
 
     def test_more_than_one_linked_filter_still_fails(self) -> None:
         payload = {
@@ -250,28 +251,31 @@ class SliceTwentySevenTests(unittest.TestCase):
             for family in artifact["families"]
             if family["linked_filters"]
         }
+        linked_filter_targets = {
+            family["linked_filters"][0]["target_object"]
+            for family in artifact["families"]
+            if family["linked_filters"]
+        }
 
         self.assertIn("team_name", linked_filter_attributes)
         self.assertIn("conference", linked_filter_attributes)
         self.assertIn("division", linked_filter_attributes)
-        self.assertTrue(
-            all(
-                family["linked_filters"][0]["target_object"] == "Team"
-                for family in artifact["families"]
-                if family["linked_filters"]
-            )
-        )
+        self.assertIn("Team", linked_filter_targets)
+        self.assertIn("Player", linked_filter_targets)
+        self.assertIn("Game", linked_filter_targets)
 
     def test_prompt_summary_reflects_broader_team_linked_filter_surface(self) -> None:
         summary = _capability_prompt_summary()
 
-        self.assertIn("Supported Team linked-filter attributes:", summary)
+        self.assertIn("Supported linked-filter targets and public dimensions:", summary)
+        self.assertIn("- Team: [", summary)
+        self.assertIn("- Player: [", summary)
         self.assertIn("conference", summary)
         self.assertIn("division", summary)
         self.assertIn("team_name", summary)
         self.assertIn("linked filters: Team public dimensions", summary)
 
-    def test_player_game_season_metric_linked_filters_remain_absent_for_other_team_dimensions(self) -> None:
+    def test_player_game_season_metric_linked_filters_remain_absent_for_game_targets(self) -> None:
         artifact = _capability_artifact()
         matching = [
             family
@@ -280,8 +284,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             and family["core_fact_object"] == "PlayerGame"
             and family["required_filter_kinds"] == ["exact_season", "season_type"]
             and family["linked_filters"]
-            and family["linked_filters"][0]["target_object"] == "Team"
-            and family["linked_filters"][0]["attribute"] == "team_abbreviation"
+            and family["linked_filters"][0]["target_object"] == "Game"
             and "average_points" in family["metrics"]
         ]
 

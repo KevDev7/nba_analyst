@@ -421,11 +421,8 @@ validateLinkedFilters ontology factObjectName linkedFilterValues =
   case linkedFilterValues of
     [] -> pure ()
     [linkedFilterValue] -> do
-      if targetObject linkedFilterValue /= "Team"
-        then Left "Linked filters currently support Team only."
-        else pure ()
-      _ <- requirePath ontology factObjectName "Team"
-      targetObjectValue <- requireObject ontology "Team"
+      _ <- requirePath ontology factObjectName (targetObject linkedFilterValue)
+      targetObjectValue <- requireObject ontology (targetObject linkedFilterValue)
       requirePublicLinkedFilterDimension targetObjectValue (attribute linkedFilterValue)
     _ -> Left "Query currently supports at most one linked filter."
 
@@ -521,11 +518,11 @@ requirePublicLinkedFilterDimension :: Object -> Text -> Either Text ()
 requirePublicLinkedFilterDimension object attributeName = do
   attribute <-
     maybe
-      (Left ("Linked filters currently support public Team dimensions only."))
+      (Left ("Linked filters currently support public dimension attributes on reachable ontology objects only."))
       Right
       (findAttribute object attributeName)
   if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
-    then Left "Linked filters currently support public Team dimensions only."
+    then Left "Linked filters currently support public dimension attributes on reachable ontology objects only."
     else pure ()
 
 objectName :: OT.Object -> Text

@@ -45,10 +45,15 @@ class SemanticInterpreterTests(unittest.TestCase):
         )
         self.assertIn("Reachable public dimensions by fact object:", summary)
         self.assertIn("Supported family patterns:", summary)
-        self.assertIn("Supported Team linked-filter attributes:", summary)
+        self.assertIn("Supported linked-filter targets and public dimensions:", summary)
+        self.assertIn("- Team: [", summary)
+        self.assertIn("- Player: [", summary)
+        self.assertIn("- Game: [", summary)
         self.assertIn("conference", summary)
+        self.assertIn("display_name", summary)
         self.assertIn("team_name", summary)
         self.assertIn("linked filters: Team public dimensions", summary)
+        self.assertIn("linked filters: Player public dimensions", summary)
         self.assertNotIn("Current live supported semantic shapes:", summary)
 
     def test_execution_contract_is_now_only_an_exception_list(self) -> None:

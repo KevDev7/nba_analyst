@@ -168,20 +168,17 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
                 else f"- {row_object_name}: [none]"
             )
 
-    team_linked_filter_attributes = sorted(
-        {
-            linked_filter["attribute"]
-            for family in families
-            for linked_filter in family["linked_filters"]
-            if linked_filter["target_object"] == "Team"
-        }
-    )
-    if team_linked_filter_attributes:
+    linked_filter_dimensions_by_target: dict[str, set[str]] = defaultdict(set)
+    for family in families:
+        for linked_filter in family["linked_filters"]:
+            linked_filter_dimensions_by_target[linked_filter["target_object"]].add(
+                linked_filter["attribute"]
+            )
+    if linked_filter_dimensions_by_target:
         lines.append("")
-        lines.append(
-            "Supported Team linked-filter attributes: "
-            f"[{', '.join(team_linked_filter_attributes)}]"
-        )
+        lines.append("Supported linked-filter targets and public dimensions:")
+        for target_object, attributes in sorted(linked_filter_dimensions_by_target.items()):
+            lines.append(f"- {target_object}: [{', '.join(sorted(attributes))}]")
 
     grouped_patterns: dict[tuple, dict[str, set[str] | bool | str | None]] = {}
     for family in families:
@@ -241,10 +238,10 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             dimension_parts.append("aggregate output")
         dimension_text = ", ".join(dimension_parts) if dimension_parts else "none"
         linked_text = (
-            "; linked filters: Team public dimensions"
-            if linked_filter_targets == ("Team",)
+            f"; linked filters: {linked_filter_targets[0]} public dimensions"
+            if len(linked_filter_targets) == 1
             else (
-                "; linked filters: " + ", ".join(linked_filter_targets)
+                "; linked filters: " + ", ".join(linked_filter_targets) + " public dimensions"
                 if linked_filter_targets
                 else ""
             )

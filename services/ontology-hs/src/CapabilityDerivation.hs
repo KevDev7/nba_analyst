@@ -304,11 +304,11 @@ reachablePublicDimensionsForFactObject ontology factObjectName =
         , let targetObjectName = OG.targetObjectName discoveredPath
         ]
 
-linkedFilterCandidates :: Ontology -> [[QI.LinkedFilter]]
-linkedFilterCandidates ontology =
+linkedFilterCandidates :: Ontology -> Text -> [[QI.LinkedFilter]]
+linkedFilterCandidates ontology factObjectName =
   []
-    : [ [QI.LinkedFilter "Team" attributeName (teamLinkedFilterSampleValue attributeName)]
-      | attributeName <- publicTeamDimensions ontology
+    : [ [QI.LinkedFilter targetObjectName attributeName linkedFilterSampleValue]
+      | (targetObjectName, attributeName) <- reachableLinkedFilterTargets ontology factObjectName
       ]
 
 linkedFilterCandidatesForMetric :: Ontology -> Text -> [QI.Filter] -> Maybe QI.TimeGrain -> Maybe QI.ComparisonIntent -> [[QI.LinkedFilter]]
@@ -320,7 +320,7 @@ linkedFilterCandidatesForMetric ontology factObjectName maybeFilters maybeTimeGr
       case classifyOrdinaryMetricFilterFamily maybeFilters of
         Right filterFamily ->
           if ordinaryLinkedFilterShapeSupported ontology MetricLinkedFilterQuery filterFamily factObjectName
-            then linkedFilterCandidates ontology
+            then linkedFilterCandidates ontology factObjectName
             else [[]]
         Left _ -> [[]]
 
@@ -329,26 +329,27 @@ linkedFilterCandidatesForObject ontology factObjectName filterValues =
   case classifyOrdinaryMetricFilterFamily filterValues of
     Right filterFamily ->
       if ordinaryLinkedFilterShapeSupported ontology ObjectLinkedFilterQuery filterFamily factObjectName
-        then linkedFilterCandidates ontology
+        then linkedFilterCandidates ontology factObjectName
         else [[]]
     Left _ -> [[]]
 
-publicTeamDimensions :: Ontology -> [Text]
-publicTeamDimensions ontology =
-  publicDimensionsForObject ontology "Team"
+reachableLinkedFilterTargets :: Ontology -> Text -> [(Text, Text)]
+reachableLinkedFilterTargets ontology factObjectName =
+  nub
+    [ (targetObjectName, attributeName)
+    | targetObjectName <- reachableLinkedFilterObjects ontology factObjectName
+    , attributeName <- publicDimensionsForObject ontology targetObjectName
+    ]
 
-teamLinkedFilterSampleValue :: Text -> Text
-teamLinkedFilterSampleValue attributeName =
-  case attributeName of
-    "team_name" -> "Lakers"
-    "team_city" -> "Los Angeles"
-    "team_abbreviation" -> "LAL"
-    "team_slug" -> "lakers"
-    "conference" -> "Western"
-    "division" -> "Pacific"
-    "first_seen_game_date" -> "1948-11-01"
-    "last_seen_game_date" -> "2025-04-13"
-    _ -> "sample"
+reachableLinkedFilterObjects :: Ontology -> Text -> [Text]
+reachableLinkedFilterObjects ontology factObjectName =
+  nub
+    [ OG.targetObjectName discoveredPath
+    | discoveredPath <- findPathsFrom ontology 2 factObjectName
+    ]
+
+linkedFilterSampleValue :: Text
+linkedFilterSampleValue = "sample"
 
 ordinaryLinkedFilterShapeSupported :: Ontology -> OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> Text -> Bool
 ordinaryLinkedFilterShapeSupported ontology queryKind filterFamily factObjectName =
@@ -580,9 +581,8 @@ linkedFilterKey :: [LinkedFilterCapability] -> Text
 linkedFilterKey linkedFilterValues =
   case linkedFilterValues of
     [] -> ""
-    [LinkedFilterCapability {target_object = "Team", attribute = "team_name"}] -> "team_filter"
-    [LinkedFilterCapability {target_object = "Team", attribute = attributeName}] ->
-      snakeCase attributeName <> "_team_filter"
+    [LinkedFilterCapability {target_object = targetObjectName, attribute = attributeName}] ->
+      snakeCase targetObjectName <> "_" <> snakeCase attributeName <> "_filter"
     _ -> "linked_filter"
 
 comparisonKey :: DerivedComparison -> Text
