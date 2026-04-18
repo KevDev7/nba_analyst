@@ -17,7 +17,7 @@
 
 module OntologyLayer.Types where
 
-import Data.Aeson (FromJSON (parseJSON), ToJSON, withText)
+import Data.Aeson ((.:), (.:?), (.!=), FromJSON (parseJSON), ToJSON, withObject, withText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -41,9 +41,21 @@ data Attribute = Attribute
   , source_column :: Text
   , link_key :: Bool
   , visibility :: AttributeVisibility
+  , comparison_identity :: Bool
   , derivation :: Maybe AttributeDerivation
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic, ToJSON)
+
+instance FromJSON Attribute where
+  parseJSON = withObject "Attribute" $ \obj ->
+    Attribute
+      <$> obj .: "name"
+      <*> obj .: "kind"
+      <*> obj .: "source_column"
+      <*> obj .: "link_key"
+      <*> obj .: "visibility"
+      <*> obj .:? "comparison_identity" .!= False
+      <*> obj .: "derivation"
 
 data AttributeDerivation = AttributeDerivation
   { source_attribute :: Text

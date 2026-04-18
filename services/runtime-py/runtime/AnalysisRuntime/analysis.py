@@ -14,14 +14,21 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .models import ComparisonResult, ComparisonRow, PlayerComparisonStats
+from .models import ComparisonEntityStats, ComparisonResult, ComparisonRow
 
-def run_analysis(analysis_spec: str, runtime_state: object) -> object:
-    # TODO(core-4-first): The runtime is intentionally still thin because the
-    # current v1 focus is ranking/top-N, trend, aggregation, and
-    # filtering/joining. Keep comparison-specific analysis isolated here and
-    # defer broader runtime expansion until those families are complete.
-    if analysis_spec != "ComparePlayers":
+def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) -> float:
+    metric_values = [float(row["metric_value"]) for row in rows]
+    if metric_aggregation == "sum":
+        return float(sum(metric_values))
+    if metric_aggregation == "avg":
+        return round(sum(metric_values) / len(metric_values), 1) if metric_values else 0.0
+    raise ValueError(
+        f"Comparison analysis does not support metric aggregation '{metric_aggregation}'."
+    )
+
+
+def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> object:
+    if analysis_spec != "CompareEntities":
         raise NotImplementedError(
             f"Python analysis step '{analysis_spec}' is not implemented."
         )
@@ -29,53 +36,53 @@ def run_analysis(analysis_spec: str, runtime_state: object) -> object:
     raw_rows = runtime_state.latest_result or []
     grouped = defaultdict(list)
     for row in raw_rows:
-        grouped[int(row["player_id"])].append(row)
+        grouped[int(row["entity_id"])].append(row)
 
     if len(grouped) != 2:
-        raise ValueError("ComparePlayers expects exactly two players in runtime state.")
+        raise ValueError("CompareEntities expects exactly two entities in runtime state.")
 
     stats = []
     comparison_rows = []
-    for player_id, rows in sorted(grouped.items()):
-        player_name = str(rows[0]["player_name"]) if rows else ""
-        total_points = sum(int(row["points"]) for row in rows)
+    for entity_id, rows in sorted(grouped.items()):
+        entity_name = str(rows[0]["entity_name"]) if rows else ""
         games_count = len(rows)
-        average_points = total_points / games_count if games_count else 0.0
-        team = str(rows[0]["team"]) if rows else ""
+        context_value = str(rows[0]["context_value"]) if rows and rows[0]["context_value"] is not None else None
+        metric_value = _aggregate_metric(str(plan.metric_aggregation), rows)
         stats.append(
-            PlayerComparisonStats(
-                player_id=player_id,
-                player_name=player_name,
-                team=team,
-                total_points=total_points,
-                average_points=round(average_points, 1),
+            ComparisonEntityStats(
+                entity_id=entity_id,
+                entity_name=entity_name,
+                context_value=context_value,
+                metric_value=metric_value,
                 games_count=games_count,
             )
         )
         comparison_rows.extend(
             ComparisonRow(
-                player_id=int(row["player_id"]),
-                player_name=str(row["player_name"]),
-                team=str(row["team"]),
+                entity_id=int(row["entity_id"]),
+                entity_name=str(row["entity_name"]),
+                context_value=(
+                    str(row["context_value"]) if row["context_value"] is not None else None
+                ),
                 game_date=str(row["game_date"]),
-                points=int(row["points"]),
+                metric_value=float(row["metric_value"]),
             )
             for row in rows
         )
 
-    player_a, player_b = stats
-    if player_a.total_points >= player_b.total_points:
-      leader = player_a.player_name
-      differential = player_a.total_points - player_b.total_points
+    entity_a, entity_b = stats
+    if entity_a.metric_value >= entity_b.metric_value:
+      leader = entity_a.entity_name
+      differential = entity_a.metric_value - entity_b.metric_value
     else:
-      leader = player_b.player_name
-      differential = player_b.total_points - player_a.total_points
+      leader = entity_b.entity_name
+      differential = entity_b.metric_value - entity_a.metric_value
 
     result = ComparisonResult(
         leader=leader,
-        point_differential=differential,
-        player_a=player_a,
-        player_b=player_b,
+        metric_differential=round(differential, 1),
+        entity_a=entity_a,
+        entity_b=entity_b,
         per_game_rows=comparison_rows,
     )
     runtime_state.artifacts["comparison"] = result

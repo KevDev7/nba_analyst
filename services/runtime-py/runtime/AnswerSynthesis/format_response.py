@@ -44,18 +44,16 @@ def format_response(answer: FinalAnswer) -> str:
     if answer.comparison is not None:
         lines.append("Comparison")
         lines.append("---")
+        for entity in [answer.comparison.entity_a, answer.comparison.entity_b]:
+            context_suffix = f" ({entity.context_value})" if entity.context_value else ""
+            lines.append(
+                f"{entity.entity_name}{context_suffix}: "
+                f"{_metric_value(answer.metric, entity.metric_value)} {_metric_header(answer.metric).lower()} "
+                f"across {entity.games_count} games"
+            )
         lines.append(
-            f"{answer.comparison.player_a.player_name}: "
-            f"{answer.comparison.player_a.total_points} total points, "
-            f"{answer.comparison.player_a.average_points:.1f} per game"
-        )
-        lines.append(
-            f"{answer.comparison.player_b.player_name}: "
-            f"{answer.comparison.player_b.total_points} total points, "
-            f"{answer.comparison.player_b.average_points:.1f} per game"
-        )
-        lines.append(
-            f"Differential: {answer.comparison.point_differential} points"
+            f"Differential: {_metric_value(answer.metric, answer.comparison.metric_differential)} "
+            f"{_metric_header(answer.metric).lower()}"
         )
         return "\n".join(lines)
 

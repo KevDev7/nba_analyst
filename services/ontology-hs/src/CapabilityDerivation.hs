@@ -14,6 +14,7 @@
 
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -53,7 +54,7 @@ data LinkedFilterCapability = LinkedFilterCapability
 
 data DerivedComparison = DerivedComparison
   { enabled :: Bool
-  , entity_type :: Maybe Text
+  , target_object :: Maybe Text
   , max_entities :: Maybe Int
   }
   deriving (Show, Eq, Ord, Generic, ToJSON)
@@ -133,7 +134,7 @@ enumerateMetricQueries :: Ontology -> [QI.Query]
 enumerateMetricQueries ontology =
   enumerateOrdinaryMetricQueries ontology
     ++ enumerateTrendMetricQueries ontology
-    ++ enumerateComparisonQueries
+    ++ enumerateComparisonQueries ontology
 
 enumerateOrdinaryMetricQueries :: Ontology -> [QI.Query]
 enumerateOrdinaryMetricQueries ontology =
@@ -188,15 +189,15 @@ enumerateTrendMetricQueries ontology =
   , dimensionValues <- trendMetricDimensionCandidatesForFactObject ontology factObjectName
   ]
 
-enumerateComparisonQueries :: [QI.Query]
-enumerateComparisonQueries =
+enumerateComparisonQueries :: Ontology -> [QI.Query]
+enumerateComparisonQueries ontology =
   [ QI.MetricQuery
       QI.MetricQuerySpec
         { QI.sharedQuery =
             QI.BaseQuery
-              { QI.coreFactObject = "PlayerGame"
-              , QI.metrics = ["total_points"]
-              , QI.dimensions = ["player_name"]
+              { QI.coreFactObject = factObjectName
+              , QI.metrics = [metricValue]
+              , QI.dimensions = [dimensionValue]
               , QI.timeGrain = Nothing
               , QI.filters = [QI.lastNGamesFilter 10]
               , QI.linkedFilters = []
@@ -204,10 +205,13 @@ enumerateComparisonQueries =
               , QI.limit = Nothing
               , QI.assumptions = []
               }
-        , QI.entityFilters = entityFilterValues
+        , QI.entityFilters = []
         , QI.comparison = comparisonValue
         }
-  | (entityFilterValues, comparisonValue) <- comparisonCandidates
+  | factObjectName <- ontologyObjectNames ontology
+  , metricValue <- executableMetricsForFactObject ontology factObjectName
+  , (targetObjectName, dimensionValue) <- reachableComparisonTargets ontology factObjectName
+  , let comparisonValue = comparisonCandidate targetObjectName
   ]
 
 enumerateObjectQueries :: Ontology -> [QI.Query]
@@ -357,25 +361,15 @@ ordinaryLinkedFilterShapeSupported ontology queryKind filterFamily factObjectNam
     Right () -> True
     Left _ -> False
 
-comparisonCandidates :: [([QI.PlayerRef], Maybe QI.ComparisonIntent)]
-comparisonCandidates =
-  -- Temporary derivation seed set. Slice 13 proves generalized player refs, but
-  -- capability derivation still probes one structural two-player comparison
-  -- shape rather than a fully generative comparison space.
-  -- TODO(core-4-first): Comparison derivation generativity is intentionally
-  -- deferred until after the current v1 families are complete: ranking/top-N,
-  -- trend, aggregation, and filtering/joining.
-  [ ( [ QI.PlayerRef 1 "Comparison Player A"
-      , QI.PlayerRef 2 "Comparison Player B"
-      ]
-    , Just
-        ( QI.CompareEntities
-            [ QI.PlayerRef 1 "Comparison Player A"
-            , QI.PlayerRef 2 "Comparison Player B"
-            ]
-        )
+comparisonCandidate :: Text -> Maybe QI.ComparisonIntent
+comparisonCandidate targetObjectName =
+  Just
+    ( QI.CompareEntities
+        targetObjectName
+        [ QI.EntityRef 1 "Comparison Entity A"
+        , QI.EntityRef 2 "Comparison Entity B"
+        ]
     )
-  ]
 
 metricOrderCandidates :: QI.MetricName -> Maybe QI.ComparisonIntent -> [[QI.Order]]
 metricOrderCandidates metricValue maybeComparison =
@@ -451,8 +445,8 @@ familySignatureFromMetric spec@QI.MetricQuerySpec {QI.sharedQuery = base} =
     , sig_linked_filters = linkedFilterCapabilities (QI.linkedFilters base)
     , sig_comparison =
         case QI.comparison spec of
-          Just (QI.CompareEntities entities) ->
-            DerivedComparison True (Just "player") (Just (length entities))
+          Just (QI.CompareEntities targetObjectName entities) ->
+            DerivedComparison True (Just targetObjectName) (Just (length entities))
           Nothing -> DerivedComparison False Nothing Nothing
     }
 
@@ -614,3 +608,32 @@ snakeCase textValue =
           let prefix = if isFirstCharacter then [] else "_"
            in prefix ++ [toLower currentChar] ++ go False remainingChars
       | otherwise = currentChar : go False remainingChars
+reachableComparisonTargets :: Ontology -> Text -> [(Text, Text)]
+reachableComparisonTargets ontology factObjectName =
+  nub $
+    directTargets ++ linkedTargets
+  where
+    directTargets =
+      [ (factObjectName, dimensionName)
+      | dimensionName <- comparisonIdentityDimensionsForObject ontology factObjectName
+      ]
+    linkedTargets =
+      [ (targetObjectName, dimensionName)
+      | discoveredPath <- findPathsFrom ontology 2 factObjectName
+      , let targetObjectName = OG.targetObjectName discoveredPath
+      , dimensionName <- comparisonIdentityDimensionsForObject ontology targetObjectName
+      ]
+
+comparisonIdentityDimensionsForObject :: Ontology -> Text -> [QI.DimensionName]
+comparisonIdentityDimensionsForObject ontology objectNameValue =
+  case findObject ontology objectNameValue of
+    Just objectValue ->
+      nub $
+        mapMaybe
+          ( \attributeValue@OT.Attribute {OT.name = attributeNameValue} ->
+              case (OT.visibility attributeValue, OT.kind attributeValue, OT.comparison_identity attributeValue) of
+                (OT.Public, OT.Dimension, True) -> Just attributeNameValue
+                _ -> Nothing
+          )
+          (OT.attributes objectValue)
+    Nothing -> []

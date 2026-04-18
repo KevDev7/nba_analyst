@@ -28,20 +28,20 @@ class SliceTwoTests(unittest.TestCase):
 
     def test_comparison_question(self) -> None:
         output = run_cli("Compare Brunson and Haliburton scoring over the last 10 games")
-        self.assertIn("Jalen Brunson scored more total points", output)
+        self.assertIn("Jalen Brunson led in total points", output)
         self.assertIn("245 total points", output)
         self.assertIn("0 total points", output)
-        self.assertIn("Differential: 245 points", output)
+        self.assertIn("Differential: 245 total points", output)
 
     def test_comparison_full_names(self) -> None:
         output = run_cli(
             "Compare Jalen Brunson and Tyrese Haliburton scoring over the last 10 games"
         )
-        self.assertIn("Jalen Brunson scored more total points", output)
+        self.assertIn("Jalen Brunson led in total points", output)
 
     def test_comparison_pts_variant(self) -> None:
         output = run_cli("Compare Brunson and Haliburton pts over the last 10 games")
-        self.assertIn("Jalen Brunson scored more total points", output)
+        self.assertIn("Jalen Brunson led in total points", output)
         self.assertIn("Interpreted 'pts' as total points.", output)
 
     def test_three_player_comparison_rejected(self) -> None:

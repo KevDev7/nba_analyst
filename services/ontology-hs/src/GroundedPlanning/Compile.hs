@@ -50,6 +50,7 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , entity_label_plural = pluralLabel
     , context_label = contextValueLabel
     , metric = metricKey formula
+    , metric_aggregation = aggregationKind formula
     , window_games = metricWindowGames
     , time_grain = Nothing
     , time_filter = Nothing
@@ -76,6 +77,7 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     , entity_label_plural = pluralLabel
     , context_label = contextValueLabel
     , metric = metricKey formula
+    , metric_aggregation = aggregationKind formula
     , window_games = 0
     , time_grain = Just trendTimeGrain
     , time_filter = Just trendTimeFilter
@@ -107,6 +109,7 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , entity_label_plural = pluralLabel
     , context_label = contextValueLabel
     , metric = metricKey formula
+    , metric_aggregation = aggregationKind formula
     , window_games = objectWindowGames
     , time_grain = Nothing
     , time_filter = Nothing
@@ -135,7 +138,7 @@ compileMetricSteps resolved =
       , PlanStep
           { kind = "run_python"
           , sql = Nothing
-          , analysis_spec = Just "ComparePlayers"
+          , analysis_spec = Just "CompareEntities"
           }
       ]
     else
@@ -226,15 +229,15 @@ compileComparisonSql resolved =
       entityList =
         T.intercalate
           ", "
-          (map (\entityValue -> T.pack (show (entityPersonId entityValue))) resolvedComparisonEntities)
+          (map (\entityValue -> T.pack (show (entityIdValue entityValue))) resolvedComparisonEntities)
    in T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS player_id,"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS player_name,"
-        , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS team,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
+        , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS points,"
+        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
         , "    ROW_NUMBER() OVER ("
         , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
         , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
@@ -246,14 +249,14 @@ compileComparisonSql resolved =
           <> [ "  WHERE " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " IN (" <> entityList <> ")"
         , ")"
         , "SELECT"
-        , "  player_id,"
-        , "  player_name,"
-        , "  team,"
+        , "  entity_id,"
+        , "  entity_name,"
+        , "  context_value,"
         , "  game_date,"
-        , "  points"
+        , "  metric_value"
         , "FROM recent_rows"
         , "WHERE game_rank <= " <> T.pack (show metricWindowGames)
-        , "ORDER BY player_id ASC, game_date DESC"
+        , "ORDER BY entity_id ASC, game_date DESC"
         ]
 
 compileObjectSql :: ResolvedObjectQuery -> Text

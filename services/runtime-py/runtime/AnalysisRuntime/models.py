@@ -31,6 +31,7 @@ class ExecutionPlan(BaseModel):
     entity_label_plural: str
     context_label: str
     metric: str
+    metric_aggregation: str
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
@@ -56,27 +57,26 @@ class ObjectRow(BaseModel):
 
 
 class ComparisonRow(BaseModel):
-    player_id: int
-    player_name: str
-    team: str
+    entity_id: int
+    entity_name: str
+    context_value: Optional[str] = None
     game_date: str
-    points: int
+    metric_value: float
 
 
-class PlayerComparisonStats(BaseModel):
-    player_id: int
-    player_name: str
-    team: str
-    total_points: int
-    average_points: float
+class ComparisonEntityStats(BaseModel):
+    entity_id: int
+    entity_name: str
+    context_value: Optional[str] = None
+    metric_value: float
     games_count: int
 
 
 class ComparisonResult(BaseModel):
     leader: str
-    point_differential: int
-    player_a: PlayerComparisonStats
-    player_b: PlayerComparisonStats
+    metric_differential: float
+    entity_a: ComparisonEntityStats
+    entity_b: ComparisonEntityStats
     per_game_rows: List[ComparisonRow] = Field(default_factory=list)
 
 

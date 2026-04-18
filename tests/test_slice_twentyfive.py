@@ -202,15 +202,13 @@ class SliceTwentyFiveTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },

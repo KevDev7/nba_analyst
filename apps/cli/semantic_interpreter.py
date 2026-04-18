@@ -65,12 +65,13 @@ class SemanticOrder(BaseModel):
 
 class SemanticComparison(BaseModel):
     kind: Literal["compare_entities"]
+    target_object: str
     entities: list[str]
 
 
-class ResolvedPlayerRef(BaseModel):
-    personId: int
-    playerName: str
+class ResolvedComparisonEntityRef(BaseModel):
+    entityId: int
+    entityName: str
 
 
 class SemanticLinkedFilter(BaseModel):
@@ -112,6 +113,8 @@ class SemanticQueryTemplate(BaseModel):
             raise ValueError("The live contract allows at most one selected dimension.")
         if self.query_kind == "metric_query" and self.row_object is not None:
             raise ValueError("Metric queries must not set row_object.")
+        if self.comparison is not None and self.entity_filters:
+            raise ValueError("Comparison queries must keep entity_filters empty in the live contract.")
 
         matched_family = _match_family(self)
         if matched_family is None:
@@ -166,9 +169,9 @@ def _comparison_matches(template: SemanticQueryTemplate, family: dict[str, Any])
     entities = template.comparison.entities
     if len(entities) != comparison_capability["max_entities"]:
         return False
-    if comparison_capability.get("entity_type") != "player":
+    if comparison_capability.get("target_object") != template.comparison.target_object:
         return False
-    if template.entity_filters and set(template.entity_filters) != set(entities):
+    if template.entity_filters:
         return False
     if template.orders:
         return False
@@ -241,47 +244,58 @@ def _match_family(template: SemanticQueryTemplate) -> Optional[dict[str, Any]]:
     return None
 
 
-def _resolve_player_name(name: str) -> ResolvedPlayerRef:
+def _resolve_comparison_entity_name(
+    target_object: str, dimension: str, name: str
+) -> ResolvedComparisonEntityRef:
     alias_key = _normalize_player_alias(name)
-    alias_index = _capability_artifact()["player_entity_index"]["aliases"]
+    comparison_indexes = _capability_artifact()["comparison_entity_indexes"]
+    alias_index = comparison_indexes.get(target_object, {}).get(dimension, {}).get("aliases", {})
     match = alias_index.get(alias_key)
     if match is None:
         raise SemanticInterpreterError(
-            f"Could not resolve player name '{name}' for comparison."
+            f"Could not resolve {target_object} {dimension} value '{name}' for comparison."
         )
     if match["status"] == "ambiguous":
         candidate_names = ", ".join(
-            player["player_name"] for player in match["matches"][:5]
+            entity["entity_name"] for entity in match["matches"][:5]
         )
         raise SemanticInterpreterError(
-            f"Player name '{name}' is ambiguous for comparison. Matches: {candidate_names}."
+            f"{target_object} {dimension} value '{name}' is ambiguous for comparison. Matches: {candidate_names}."
         )
-    player = match["player"]
-    return ResolvedPlayerRef(personId=int(player["person_id"]), playerName=player["player_name"])
+    entity = match["entity"]
+    return ResolvedComparisonEntityRef(
+        entityId=int(entity["entity_id"]), entityName=entity["entity_name"]
+    )
 
 
 def _resolved_comparison_entities(
     template: SemanticQueryTemplate,
-) -> tuple[list[ResolvedPlayerRef], Optional[dict[str, Any]]]:
+) -> tuple[list[ResolvedComparisonEntityRef], Optional[dict[str, Any]]]:
     if template.comparison is None:
         return [], None
 
-    comparison_names = template.comparison.entities
-    if template.entity_filters and set(template.entity_filters) != set(comparison_names):
+    if len(template.dimensions) != 1:
         raise SemanticInterpreterError(
-            "Comparison entity_filters must match comparison.entities when provided."
+            "Comparison queries currently require exactly one comparison identity dimension."
         )
 
-    resolved_players = [_resolve_player_name(name) for name in comparison_names]
-    unique_ids = {player.personId for player in resolved_players}
-    if len(unique_ids) != len(resolved_players):
-        raise SemanticInterpreterError("Comparison requires two distinct resolved players.")
+    comparison_names = template.comparison.entities
+    target_object = template.comparison.target_object
+    dimension = template.dimensions[0]
+    resolved_entities = [
+        _resolve_comparison_entity_name(target_object, dimension, name)
+        for name in comparison_names
+    ]
+    unique_ids = {entity.entityId for entity in resolved_entities}
+    if len(unique_ids) != len(resolved_entities):
+        raise SemanticInterpreterError("Comparison requires two distinct resolved entities.")
 
     comparison_payload = {
         "kind": "compare_entities",
-        "entities": [player.model_dump() for player in resolved_players],
+        "targetObject": target_object,
+        "entities": [entity.model_dump() for entity in resolved_entities],
     }
-    return resolved_players, comparison_payload
+    return resolved_entities, comparison_payload
 
 
 @lru_cache(maxsize=1)
@@ -316,7 +330,7 @@ Rules:
 - Use only the live ontology-backed vocabulary and supported query families described below.
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
 - When the user does not explicitly request a limit, use null for limit.
-- For player comparisons, keep the compared entities as player names from the question; the system resolves those names after you return JSON.
+- For comparison queries, keep the compared entities as raw names from the question; the system resolves those names after you return JSON.
 - If the question cannot be represented safely by the current live contract, return:
   {{"status":"unsupported","reason":"<short reason>"}}
 - If the question is supported, return:
@@ -345,8 +359,8 @@ JSON template for supported queries:
       {{"kind":"desc","metric":"<selected metric>"}}
     ],
     "limit": 10 | 5 | 1 | null,
-    "entity_filters": ["<player names from the question when comparing>"],
-    "comparison": {{"kind":"compare_entities","entities":["<player names from the question>"]}} | null,
+    "entity_filters": [],
+    "comparison": {{"kind":"compare_entities","target_object":"<supported comparison target object>","entities":["<entity names from the question>"]}} | null,
     "assumptions": ["..."]
   }}
 }}
@@ -368,10 +382,10 @@ Q: Who are the top 10 scorers over the last 10 games?
 A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":10,"entity_filters":[],"comparison":null,"assumptions":["Interpreted 'scorers' as players ranked by total points."]}}}}
 
 Q: Compare Brunson and Haliburton pts over the last 10 games
-A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":["Brunson","Haliburton"],"comparison":{{"kind":"compare_entities","entities":["Brunson","Haliburton"]}},"assumptions":["Interpreted 'pts' as total points."]}}}}
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":[],"comparison":{{"kind":"compare_entities","target_object":"Player","entities":["Brunson","Haliburton"]}},"assumptions":["Interpreted 'pts' as total points."]}}}}
 
 Q: Compare Ja and Tatum scoring over the last 10 games
-A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":["Ja","Tatum"],"comparison":{{"kind":"compare_entities","entities":["Ja","Tatum"]}},"assumptions":["Interpreted 'scoring' as total points."]}}}}
+A: {{"status":"ok","query":{{"query_kind":"metric_query","core_fact_object":"PlayerGame","row_object":null,"metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[],"limit":null,"entity_filters":[],"comparison":{{"kind":"compare_entities","target_object":"Player","entities":["Ja","Tatum"]}},"assumptions":["Interpreted 'scoring' as total points."]}}}}
 
 Q: Show me players and their total points over the last 10 games
 A: {{"status":"ok","query":{{"query_kind":"object_query","core_fact_object":"PlayerGame","row_object":"Player","metrics":["total_points"],"dimensions":["player_name"],"time_grain":null,"filters":[{{"kind":"last_n_games","value":10}}],"orders":[{{"kind":"desc","metric":"total_points"}}],"limit":null,"entity_filters":[],"comparison":null,"assumptions":[]}}}}
@@ -498,7 +512,7 @@ def _parse_interpreter_response(raw_text: str) -> Union[InterpreterSupported, In
 
 def _normalize_to_haskell_query(
     template: SemanticQueryTemplate,
-    resolved_entities: list[ResolvedPlayerRef],
+    resolved_entities: list[ResolvedComparisonEntityRef],
     resolved_comparison: Optional[dict[str, Any]],
 ) -> dict[str, Any]:
     matched_family = _match_family(template)
@@ -532,7 +546,7 @@ def _normalize_to_haskell_query(
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": shared_query,
-                "entityFilters": [entity.model_dump() for entity in resolved_entities],
+                "entityFilters": [],
                 "comparison": resolved_comparison,
             },
         }

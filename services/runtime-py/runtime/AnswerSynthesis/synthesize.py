@@ -57,9 +57,10 @@ def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
 
     if comparison_payload is not None:
         comparison = ComparisonResult(**comparison_payload)
+        differential_text = _format_metric_value(metric, comparison.metric_differential)
         summary = (
-            f"{comparison.leader} scored more total points over the last "
-            f"{window_games} games, leading by {comparison.point_differential} points."
+            f"{comparison.leader} led in {_human_metric(metric)} over the last "
+            f"{window_games} games by {differential_text} {_human_metric(metric)}."
         )
         return FinalAnswer(
             summary=summary,

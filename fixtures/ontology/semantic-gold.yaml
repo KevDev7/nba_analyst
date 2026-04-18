@@ -15,6 +15,7 @@ objects:
     source_column: player_name
     link_key: false
     visibility: public
+    comparison_identity: true
     derivation: null
   - name: first_name
     kind: dimension
@@ -248,6 +249,7 @@ objects:
     source_column: team_name
     link_key: false
     visibility: public
+    comparison_identity: true
     derivation: null
   - name: team_city
     kind: dimension
@@ -260,12 +262,14 @@ objects:
     source_column: team_abbreviation
     link_key: false
     visibility: public
+    comparison_identity: true
     derivation: null
   - name: team_slug
     kind: dimension
     source_column: team_slug
     link_key: false
     visibility: public
+    comparison_identity: true
     derivation: null
   - name: conference
     kind: dimension

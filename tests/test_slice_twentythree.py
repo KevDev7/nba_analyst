@@ -89,7 +89,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_comparison_still_only_accepts_total_points(self) -> None:
+    def test_comparison_now_accepts_average_points(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -104,24 +104,21 @@ class SliceTwentyThreeTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
-
-        self.assertIn("Comparison currently supports total_points only.", str(context.exception))
+        planner_output = call_haskell_planner_for_query(payload)
+        self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
+        self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
 
     def test_capability_artifact_still_contains_truthful_core_metric_families(self) -> None:
         artifact = _capability_artifact()

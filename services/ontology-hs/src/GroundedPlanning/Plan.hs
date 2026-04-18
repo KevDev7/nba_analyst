@@ -34,6 +34,7 @@ data ExecutionPlan = ExecutionPlan
   , entity_label_plural :: Text
   , context_label :: Text
   , metric :: Text
+  , metric_aggregation :: Text
   , window_games :: Int
   , time_grain :: Maybe Text
   , time_filter :: Maybe Text

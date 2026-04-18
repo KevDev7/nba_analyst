@@ -23,27 +23,24 @@ import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-data PlayerRef = PlayerRef
-  -- Temporary structured comparison ref. This is intentionally narrower than a
-  -- full ontology-backed entity reference model, but it removes the fixed
-  -- player-id enum and keeps comparison generic over resolved players.
-  { personId :: Int
-  , playerName :: Text
+data EntityRef = EntityRef
+  { entityId :: Int
+  , entityName :: Text
   }
   deriving (Show, Eq, Generic)
 
-instance ToJSON PlayerRef where
-  toJSON playerRef =
+instance ToJSON EntityRef where
+  toJSON entityRef =
     object
-      [ "personId" .= personId playerRef
-      , "playerName" .= playerName playerRef
+      [ "entityId" .= entityId entityRef
+      , "entityName" .= entityName entityRef
       ]
 
-instance FromJSON PlayerRef where
-  parseJSON = withObject "PlayerRef" $ \obj ->
-    PlayerRef
-      <$> obj .: "personId"
-      <*> obj .: "playerName"
+instance FromJSON EntityRef where
+  parseJSON = withObject "EntityRef" $ \obj ->
+    EntityRef
+      <$> obj .: "entityId"
+      <*> obj .: "entityName"
 
 type MetricName = Text
 
@@ -217,18 +214,22 @@ data BaseQuery = BaseQuery
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data ComparisonIntent
-  = CompareEntities [PlayerRef]
+  = CompareEntities Text [EntityRef]
   deriving (Show, Eq, Generic)
 
 instance ToJSON ComparisonIntent where
-  toJSON (CompareEntities entities) =
-    object ["kind" .= String "compare_entities", "entities" .= entities]
+  toJSON (CompareEntities targetObject entities) =
+    object
+      [ "kind" .= String "compare_entities"
+      , "targetObject" .= targetObject
+      , "entities" .= entities
+      ]
 
 instance FromJSON ComparisonIntent where
   parseJSON = withObject "ComparisonIntent" $ \obj -> do
     kindValue <- obj .: "kind"
     case (kindValue :: Text) of
-      "compare_entities" -> CompareEntities <$> obj .: "entities"
+      "compare_entities" -> CompareEntities <$> obj .: "targetObject" <*> obj .: "entities"
       _ -> fail ("Unknown comparison intent: " <> show kindValue)
 
 data ObjectQuerySpec = ObjectQuerySpec
@@ -239,7 +240,7 @@ data ObjectQuerySpec = ObjectQuerySpec
 
 data MetricQuerySpec = MetricQuerySpec
   { sharedQuery :: BaseQuery
-  , entityFilters :: [PlayerRef]
+  , entityFilters :: [EntityRef]
   , comparison :: Maybe ComparisonIntent
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)

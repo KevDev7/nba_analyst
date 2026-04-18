@@ -92,7 +92,7 @@ class SliceTwentyFourTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_comparison_still_only_accepts_player_name_dimension(self) -> None:
+    def test_comparison_requires_identity_dimension_on_target_object(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -107,15 +107,13 @@ class SliceTwentyFourTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
@@ -125,7 +123,7 @@ class SliceTwentyFourTests(unittest.TestCase):
             call_haskell_planner_for_query(payload)
 
         self.assertIn(
-            "Comparison queries currently require the player_name dimension.",
+            "Comparison queries currently require a comparison identity dimension on the target object.",
             str(context.exception),
         )
 

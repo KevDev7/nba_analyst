@@ -36,7 +36,7 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         elif step.kind == "run_python":
             if not step.analysis_spec:
                 raise ValueError("Python analysis step missing analysis spec.")
-            comparison_result = run_analysis(step.analysis_spec, runtime_state)
+            comparison_result = run_analysis(step.analysis_spec, runtime_state, plan)
             runtime_state.latest_result = comparison_result
         else:
             raise ValueError(f"Unsupported plan step kind: {step.kind}")

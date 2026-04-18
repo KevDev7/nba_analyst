@@ -75,6 +75,16 @@ def _executable_metric_names(object_entry: dict) -> list[str]:
     )
 
 
+def _comparison_identity_dimension_names(object_entry: dict) -> list[str]:
+    return sorted(
+        attribute["name"]
+        for attribute in object_entry.get("attributes", [])
+        if attribute.get("visibility") == "public"
+        and attribute.get("kind") == "dimension"
+        and attribute.get("comparison_identity")
+    )
+
+
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise ValueError(message)
@@ -180,6 +190,20 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
         for target_object, attributes in sorted(linked_filter_dimensions_by_target.items()):
             lines.append(f"- {target_object}: [{', '.join(sorted(attributes))}]")
 
+    comparison_dimensions_by_target: dict[str, set[str]] = defaultdict(set)
+    for family in families:
+        comparison = family["comparison"]
+        if not comparison["enabled"]:
+            continue
+        comparison_dimensions_by_target[comparison["target_object"]].update(
+            family["dimensions"]
+        )
+    if comparison_dimensions_by_target:
+        lines.append("")
+        lines.append("Comparison identity dimensions by target object:")
+        for target_object, attributes in sorted(comparison_dimensions_by_target.items()):
+            lines.append(f"- {target_object}: [{', '.join(sorted(attributes))}]")
+
     grouped_patterns: dict[tuple, dict[str, set[str] | bool | str | None]] = {}
     for family in families:
         key = (
@@ -199,7 +223,7 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             family["allow_limit"],
             family["require_order_by_metric"],
             family["comparison"]["enabled"],
-            family["comparison"].get("entity_type"),
+            family["comparison"].get("target_object"),
             family["comparison"].get("max_entities"),
         )
         grouped = grouped_patterns.setdefault(
@@ -228,7 +252,7 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
             allow_limit,
             require_order_by_metric,
             comparison_enabled,
-            comparison_entity_type,
+            comparison_target_object,
             comparison_max_entities,
         ) = key
         dimension_parts = []
@@ -249,7 +273,7 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
         row_text = f"; row_object: {row_object}" if row_object is not None else ""
         time_text = f"; time_grain: {time_grain}" if time_grain is not None else ""
         comparison_text = (
-            f"; comparison: {comparison_entity_type} (max {comparison_max_entities})"
+            f"; comparison target: {comparison_target_object} (max {comparison_max_entities})"
             if comparison_enabled
             else ""
         )
@@ -266,75 +290,81 @@ def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _build_player_entity_index() -> dict:
+def _build_comparison_entity_indexes(ontology: dict) -> dict:
     database_path = load_database()
+    comparison_indexes: dict[str, dict[str, dict]] = {}
     with duckdb.connect(str(database_path), read_only=True) as conn:
-        rows = conn.execute(
-            """
-            SELECT
-              person_id,
-              player_name,
-              first_name,
-              family_name,
-              display_name
-            FROM player
-            """
-        ).fetchall()
-
-    players: list[dict] = []
-    alias_candidates: dict[str, dict[int, dict]] = {}
-
-    for person_id, player_name, first_name, family_name, display_name in rows:
-        canonical_name = player_name or display_name
-        if not canonical_name:
-            continue
-
-        player_payload = {
-            "person_id": int(person_id),
-            "player_name": str(canonical_name),
-        }
-        players.append(player_payload)
-
-        alias_forms = {
-            str(canonical_name),
-            str(display_name) if display_name else "",
-            " ".join(part for part in [first_name, family_name] if part),
-        }
-        single_token_candidates = [
-            family_name,
-            first_name,
-        ]
-
-        for alias_value in alias_forms:
-            normalized_alias = _normalize_player_alias(alias_value)
-            if not normalized_alias:
+        for object_entry in ontology["objects"]:
+            object_name = object_entry["name"]
+            identity_dimensions = _comparison_identity_dimension_names(object_entry)
+            if not identity_dimensions:
                 continue
-            alias_candidates.setdefault(normalized_alias, {})[int(person_id)] = player_payload
 
-        for alias_value in single_token_candidates:
-            normalized_alias = _normalize_player_alias(alias_value or "")
-            if not normalized_alias:
+            primary_keys = [
+                attribute["source_column"]
+                for attribute in object_entry.get("attributes", [])
+                if attribute.get("kind") == "primary_key"
+            ]
+            if len(primary_keys) != 1:
                 continue
-            alias_candidates.setdefault(normalized_alias, {})[int(person_id)] = player_payload
 
-    alias_index: dict[str, dict] = {}
-    for alias_value, matches in sorted(alias_candidates.items()):
-        ordered_matches = sorted(matches.values(), key=lambda player: player["player_name"])
-        if len(ordered_matches) == 1:
-            alias_index[alias_value] = {
-                "status": "resolved",
-                "player": ordered_matches[0],
-            }
-        else:
-            alias_index[alias_value] = {
-                "status": "ambiguous",
-                "matches": ordered_matches,
-            }
+            primary_key = primary_keys[0]
+            comparison_indexes[object_name] = {}
+            for dimension_name in identity_dimensions:
+                attribute_entry = next(
+                    attribute
+                    for attribute in object_entry["attributes"]
+                    if attribute["name"] == dimension_name
+                )
+                source_column = attribute_entry["source_column"]
+                rows = conn.execute(
+                    f"""
+                    SELECT {primary_key}, {source_column}
+                    FROM {object_entry["backing_table"]}
+                    WHERE {source_column} IS NOT NULL
+                      AND TRIM(CAST({source_column} AS VARCHAR)) <> ''
+                    """
+                ).fetchall()
 
-    return {
-        "players": sorted(players, key=lambda player: player["player_name"]),
-        "aliases": alias_index,
-    }
+                entities: list[dict] = []
+                alias_candidates: dict[str, dict[int, dict]] = {}
+                for entity_id, entity_name in rows:
+                    entity_payload = {
+                        "entity_id": int(entity_id),
+                        "entity_name": str(entity_name),
+                    }
+                    entities.append(entity_payload)
+
+                    alias_forms = {str(entity_name)}
+                    token_candidates = str(entity_name).split()
+                    alias_forms.update(token_candidates)
+
+                    for alias_value in alias_forms:
+                        normalized_alias = _normalize_player_alias(alias_value)
+                        if not normalized_alias:
+                            continue
+                        alias_candidates.setdefault(normalized_alias, {})[int(entity_id)] = entity_payload
+
+                alias_index: dict[str, dict] = {}
+                for alias_value, matches in sorted(alias_candidates.items()):
+                    ordered_matches = sorted(matches.values(), key=lambda entity: entity["entity_name"])
+                    if len(ordered_matches) == 1:
+                        alias_index[alias_value] = {
+                            "status": "resolved",
+                            "entity": ordered_matches[0],
+                        }
+                    else:
+                        alias_index[alias_value] = {
+                            "status": "ambiguous",
+                            "matches": ordered_matches,
+                        }
+
+                comparison_indexes[object_name][dimension_name] = {
+                    "entities": sorted(entities, key=lambda entity: entity["entity_name"]),
+                    "aliases": alias_index,
+                }
+
+    return comparison_indexes
 
 
 def build_capability_artifact() -> dict:
@@ -353,6 +383,7 @@ def build_capability_artifact() -> dict:
             "backing_table": object_entry["backing_table"],
             "public_attributes": _public_attribute_names(object_entry),
             "public_dimensions": _public_dimension_names(object_entry),
+            "comparison_identity_dimensions": _comparison_identity_dimension_names(object_entry),
             "executable_metrics": _executable_metric_names(object_entry),
             "in_attribute_inventory": object_name in inventory_objects,
         }
@@ -399,8 +430,18 @@ def build_capability_artifact() -> dict:
 
         comparison_payload = dict(family["comparison"])
         if not comparison_payload["enabled"]:
-            comparison_payload["entity_type"] = None
+            comparison_payload["target_object"] = None
             comparison_payload["max_entities"] = None
+        elif comparison_payload["target_object"] not in fact_objects:
+            raise ValueError(
+                f"Planner-derived comparison target '{comparison_payload['target_object']}' is unknown."
+            )
+        elif len(family["dimensions"]) != 1:
+            raise ValueError("Comparison families must retain exactly one identity dimension.")
+        elif family["dimensions"][0] not in fact_objects[comparison_payload["target_object"]]["comparison_identity_dimensions"]:
+            raise ValueError(
+                f"Planner-derived comparison dimension '{family['dimensions'][0]}' is not marked as a comparison identity on '{comparison_payload['target_object']}'."
+            )
 
         family_payload = {
             "family_key": family["family_key"],
@@ -444,7 +485,7 @@ def build_capability_artifact() -> dict:
         }
     )
     top_level_query_kinds = sorted({family["query_kind"] for family in families})
-    player_entity_index = _build_player_entity_index()
+    comparison_entity_indexes = _build_comparison_entity_indexes(ontology)
 
     artifact = {
         "version": contract["version"],
@@ -453,7 +494,7 @@ def build_capability_artifact() -> dict:
         "allowed_time_grains": allowed_time_grains,
         "allowed_assumptions": list(contract["allowed_assumptions"]),
         "fact_objects": fact_objects,
-        "player_entity_index": player_entity_index,
+        "comparison_entity_indexes": comparison_entity_indexes,
         "families": families,
     }
     artifact["prompt_summary"] = _build_prompt_summary(ontology, families)

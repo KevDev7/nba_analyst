@@ -29,7 +29,7 @@ import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
 data ResolvedEntity = ResolvedEntity
-  { entityPersonId :: Int
+  { entityIdValue :: Int
   , entityName :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -153,9 +153,13 @@ resolveMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
+  comparisonTargetObjectName <-
+    case comparison metricQuery of
+      Just (CompareEntities targetObjectName _) -> Right (Just targetObjectName)
+      Nothing -> Right Nothing
   (rowObject, discoveredRowPath) <-
     case comparison metricQuery of
-      Just _ -> resolveComparisonRowObject ontology (coreFactObject base) (dimensions base)
+      Just _ -> resolveComparisonRowObject ontology (coreFactObject base) (dimensions base) comparisonTargetObjectName
       Nothing -> resolveOrdinaryMetricRowObject ontology (coreFactObject base) (dimensions base)
   selectedMetric <-
     case comparison metricQuery of
@@ -176,7 +180,10 @@ resolveMetricQuery ontology metricQuery = do
               Right value -> value
               Left _ -> 0
   let limitValue = limit base
-      entityValues = map resolveEntity (entityFilters metricQuery)
+      entityValues =
+        case comparison metricQuery of
+          Just (CompareEntities _ entities) -> map resolveEntity entities
+          Nothing -> []
       comparisonRequestedFlag =
         case comparison metricQuery of
           Just _ -> True
@@ -332,13 +339,15 @@ resolveMetricFormula metricDef =
     , resultColumn = "metric_value"
     }
 
-resolveEntity :: PlayerRef -> ResolvedEntity
-resolveEntity playerRef =
-  -- Temporary direct passthrough. Slice 13 resolves player names in the
-  -- interpreter and passes structured player refs into Haskell.
+resolveEntity :: EntityRef -> ResolvedEntity
+resolveEntity entityRefValue =
   ResolvedEntity
-    { entityPersonId = personId playerRef
-    , entityName = playerName playerRef
+    { entityIdValue =
+        case entityRefValue of
+          EntityRef {entityId = currentEntityId} -> currentEntityId
+    , entityName =
+        case entityRefValue of
+          EntityRef {entityName = currentEntityName} -> currentEntityName
     }
 
 resolveLinkedFilter :: Ontology -> Text -> LinkedFilter -> Either Text ResolvedLinkedFilter
@@ -371,17 +380,28 @@ resolveOrdinaryMetricRowObject ontology factObjectName dimensionValues = do
         then Right (factObject, emptyPath factObjectName)
         else Left ("Could not resolve a reachable row object for ranking/aggregation dimension '" <> attributeName <> "'.")
 
-resolveComparisonRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
-resolveComparisonRowObject ontology factObjectName dimensionValues = do
+resolveComparisonRowObject :: Ontology -> Text -> [DimensionName] -> Maybe Text -> Either Text (OT.Object, DiscoveredPath)
+resolveComparisonRowObject ontology factObjectName dimensionValues maybeTargetObjectName = do
   dimensionName <- requireComparisonDimensionName dimensionValues
   let attributeName = dimensionName
-  case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
-    Just resolvedValue -> Right resolvedValue
-    Nothing -> do
-      factObject <- requireObject ontology factObjectName
-      if hasAttribute factObject attributeName
-        then Right (factObject, emptyPath factObjectName)
-        else Left ("Could not resolve a reachable row object for comparison dimension '" <> attributeName <> "'.")
+  case maybeTargetObjectName of
+    Just targetObjectName -> do
+      targetObject <- requireObject ontology targetObjectName
+      discoveredPath <-
+        if targetObjectName == factObjectName
+          then Right (emptyPath factObjectName)
+          else requirePath ontology factObjectName targetObjectName
+      if hasAttribute targetObject attributeName
+        then Right (targetObject, discoveredPath)
+        else Left ("Could not resolve comparison identity dimension '" <> attributeName <> "' on target object '" <> targetObjectName <> "'.")
+    Nothing ->
+      case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
+        Just resolvedValue -> Right resolvedValue
+        Nothing -> do
+          factObject <- requireObject ontology factObjectName
+          if hasAttribute factObject attributeName
+            then Right (factObject, emptyPath factObjectName)
+            else Left ("Could not resolve a reachable row object for comparison dimension '" <> attributeName <> "'.")
 
 firstLinkedObjectWithAttribute :: Ontology -> Text -> Text -> [Text] -> Maybe (OT.Object, DiscoveredPath)
 firstLinkedObjectWithAttribute ontology factObjectName attributeName excludedObjectNames =

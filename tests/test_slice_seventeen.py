@@ -18,8 +18,9 @@ class SliceSeventeenTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["player_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["orders"], [])
+        self.assertEqual(interpreted_query["spec"]["comparison"]["targetObject"], "Player")
         self.assertEqual(
-            [entity["playerName"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
+            [entity["entityName"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
             ["Jalen Brunson", "Jayson Tatum"],
         )
 
@@ -47,15 +48,13 @@ class SliceSeventeenTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
@@ -84,15 +83,13 @@ class SliceSeventeenTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
@@ -106,7 +103,7 @@ class SliceSeventeenTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_non_total_points_comparison_is_rejected(self) -> None:
+    def test_average_points_comparison_is_now_supported(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -121,24 +118,21 @@ class SliceSeventeenTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
-
-        self.assertIn("Comparison currently supports total_points only.", str(context.exception))
+        planner_output = call_haskell_planner_for_query(payload)
+        self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
+        self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
 
     def test_non_player_name_dimension_comparison_is_rejected(self) -> None:
         payload = {
@@ -155,15 +149,13 @@ class SliceSeventeenTests(unittest.TestCase):
                     "limit": None,
                     "assumptions": [],
                 },
-                "entityFilters": [
-                    {"personId": 1628973, "playerName": "Jalen Brunson"},
-                    {"personId": 1628369, "playerName": "Jayson Tatum"},
-                ],
+                "entityFilters": [],
                 "comparison": {
                     "kind": "compare_entities",
+                    "targetObject": "Player",
                     "entities": [
-                        {"personId": 1628973, "playerName": "Jalen Brunson"},
-                        {"personId": 1628369, "playerName": "Jayson Tatum"},
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
                     ],
                 },
             },
@@ -173,15 +165,15 @@ class SliceSeventeenTests(unittest.TestCase):
             call_haskell_planner_for_query(payload)
 
         self.assertIn(
-            "Comparison queries currently require the player_name dimension.",
+            "Comparison queries currently require a comparison identity dimension on the target object.",
             str(context.exception),
         )
 
     def test_recent_player_comparison_output_stays_green(self) -> None:
         output = run_cli("Compare Brunson and Haliburton scoring over the last 10 games")
 
-        self.assertIn("Jalen Brunson scored more total points", output)
-        self.assertIn("Differential: 245 points", output)
+        self.assertIn("Jalen Brunson led in total points", output)
+        self.assertIn("Differential: 245 total points", output)
 
 
 if __name__ == "__main__":

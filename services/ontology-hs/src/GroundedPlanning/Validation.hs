@@ -20,7 +20,7 @@ import Data.List (nub)
 import Data.Text (Text)
 import OntologyLayer.Graph (DiscoveredPath, findAttribute, findMetric, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (AttributeKind (Dimension), MetricDef (executable, name, source_attributes), Object, Ontology)
+import OntologyLayer.Types (AttributeKind (Dimension), MetricDef (aggregation, executable, name, source_attributes), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -45,11 +45,11 @@ validateMetricQuery ontology metricQuery = do
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
   case comparison metricQuery of
-    Just (CompareEntities entities) -> do
+    Just comparisonIntent@(CompareEntities _ entities) -> do
       metricDef <- requireComparisonSelectedMetric factObject (metrics base)
       validateMetricAttributes metricDef
-      rowObject <- requireComparisonRowObject ontology factObject (dimensions base)
-      validateComparisonQuery ontology factObject rowObject base entities
+      rowObject <- requireComparisonRowObject ontology factObject (dimensions base) comparisonIntent
+      validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entities
     Nothing ->
       case timeGrain base of
         Just timeGrainValue -> do
@@ -99,10 +99,10 @@ requireOrdinaryMetricRowObject ontology factObject dimensionValues = do
   requireOrdinaryMetricDimensionOnObject rowObject dimensionName
   pure rowObject
 
-requireComparisonRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
-requireComparisonRowObject ontology factObject dimensionValues = do
+requireComparisonRowObject :: Ontology -> Object -> [DimensionName] -> ComparisonIntent -> Either Text Object
+requireComparisonRowObject ontology factObject dimensionValues comparisonIntent = do
   dimensionName <- requireComparisonDimension dimensionValues
-  rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionName
+  rowObject <- requireComparisonTargetObject ontology factObject comparisonIntent
   requireComparisonDimensionOnObject rowObject dimensionName
   pure rowObject
 
@@ -212,11 +212,6 @@ requireOrdinaryMetricDimensionOnObject object dimensionName = do
 requireObjectQueryDimension :: Object -> [DimensionName] -> Either Text ()
 requireObjectQueryDimension object dimensionValues = do
   dimensionName <- requireObjectQueryDimensionName dimensionValues
-  let attributeName = dimensionName
-  requireAttributeKind object attributeName Dimension
-
-requireComparisonDimensionOnObject :: Object -> DimensionName -> Either Text ()
-requireComparisonDimensionOnObject object dimensionName = do
   let attributeName = dimensionName
   requireAttributeKind object attributeName Dimension
 
@@ -354,12 +349,12 @@ validateTrendDimensions ontology factObject dimensionValues =
       pure ()
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 
-validateComparisonQuery :: Ontology -> Object -> Object -> BaseQuery -> [PlayerRef] -> Either Text ()
-validateComparisonQuery ontology factObject rowObject base playerRefs = do
+validateComparisonQuery :: Ontology -> Object -> Object -> OT.MetricDef -> BaseQuery -> ComparisonIntent -> [EntityRef] -> Either Text ()
+validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entityRefs = do
   validateComparisonQueryShape base
-  validateComparisonPath ontology factObject rowObject
-  validateComparisonMetric (metrics base)
-  validateComparisonEntities playerRefs
+  validateComparisonPath ontology factObject rowObject comparisonIntent
+  validateComparisonMetric metricDef
+  validateComparisonEntities entityRefs
 
 validateComparisonQueryShape :: BaseQuery -> Either Text ()
 validateComparisonQueryShape base = do
@@ -369,6 +364,9 @@ validateComparisonQueryShape base = do
   if null (orders base)
     then pure ()
     else Left "Comparison queries should not request ranking order."
+  case limit base of
+    Nothing -> pure ()
+    Just _ -> Left "Comparison queries currently do not support limit."
   case timeGrain base of
     Nothing -> pure ()
     Just _ -> Left "Comparison queries currently do not support time-grain trends."
@@ -379,37 +377,26 @@ validateComparisonQueryShape base = do
       , gamesValue > 0 -> pure ()
     _ -> Left "Comparison queries currently require a positive LastNGames filter."
   case dimensions base of
-    ["player_name"] -> pure ()
-    _ -> Left "Comparison queries currently require the player_name dimension."
+    [_] -> pure ()
+    _ -> Left "Comparison queries currently require exactly one comparison identity dimension."
 
-validateComparisonPath :: Ontology -> Object -> Object -> Either Text ()
-validateComparisonPath ontology factObject rowObject = do
-  _ <- requirePath ontology (objectName factObject) (objectName rowObject)
-  -- Temporary slice restriction. Comparison is still hard-capped to one
-  -- planner path even though entity references are now generalized players.
-  -- TODO(core-4-first): Comparison is intentionally deferred behind the current
-  -- v1 families: ranking/top-N, trend, aggregation, and filtering/joining.
-  -- Broaden this only after those four single-step paths feel complete.
-  if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
-    then Left "Comparison currently supports the PlayerGame -> Player path only."
-    else pure ()
+validateComparisonPath :: Ontology -> Object -> Object -> ComparisonIntent -> Either Text ()
+validateComparisonPath ontology factObject rowObject comparisonIntent = do
+  _ <- requireComparisonTargetPath ontology factObject rowObject comparisonIntent
+  pure ()
 
--- Temporary slice restriction. This should broaden once comparison planning
--- can reason over governed metrics more generally.
--- TODO(core-4-first): Leave comparison metric broadening for later. It is not
--- on the critical path for the current four target families.
-validateComparisonMetric :: [MetricName] -> Either Text ()
-validateComparisonMetric metricValues =
-  if metricValues /= ["total_points"]
-    then Left "Comparison currently supports total_points only."
-    else pure ()
+validateComparisonMetric :: OT.MetricDef -> Either Text ()
+validateComparisonMetric metricDef =
+  if comparisonRuntimeMetricSupported metricDef
+    then pure ()
+    else Left "Comparison currently supports executable sum/avg metrics over recent row-level values only."
 
 -- TODO(core-4-first): Keep comparison entity-count broadening out of scope
 -- until the core single-step ranking/trend/aggregation/filter+join families are
 -- complete and stable.
-validateComparisonEntities :: [PlayerRef] -> Either Text ()
-validateComparisonEntities playerRefs =
-  if length playerRefs /= 2 || length (nub (map personId playerRefs)) /= 2
+validateComparisonEntities :: [EntityRef] -> Either Text ()
+validateComparisonEntities entityRefs =
+  if length entityRefs /= 2 || length (nub (map entityId entityRefs)) /= 2
     then Left "Comparison requires exactly two distinct supported entities."
     else pure ()
 
@@ -532,6 +519,45 @@ requirePublicTrendDimensionOnObject object attributeName = do
   if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
     then Left "Trend grouping currently supports reachable public dimension attributes only."
     else pure ()
+
+requireComparisonDimensionOnObject :: Object -> DimensionName -> Either Text ()
+requireComparisonDimensionOnObject object dimensionName = do
+  attribute <-
+    maybe
+      (Left ("Attribute '" <> dimensionName <> "' not found in ontology."))
+      Right
+      (findAttribute object dimensionName)
+  if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
+    then Left "Comparison queries currently support public comparison identity dimensions only."
+    else
+      if OT.comparison_identity attribute
+        then pure ()
+        else Left "Comparison queries currently require a comparison identity dimension on the target object."
+
+requireComparisonTargetObject :: Ontology -> Object -> ComparisonIntent -> Either Text Object
+requireComparisonTargetObject ontology factObject comparisonIntent =
+  case comparisonIntent of
+    CompareEntities targetObjectName _ -> do
+      targetObject <- requireObject ontology targetObjectName
+      _ <- requireComparisonTargetPath ontology factObject targetObject comparisonIntent
+      pure targetObject
+
+requireComparisonTargetPath :: Ontology -> Object -> Object -> ComparisonIntent -> Either Text DiscoveredPath
+requireComparisonTargetPath ontology factObject rowObject comparisonIntent =
+  case comparisonIntent of
+    CompareEntities targetObjectName _ ->
+      if targetObjectName /= objectName rowObject
+        then Left "Comparison target object and resolved comparison row object must match."
+        else
+          if targetObjectName == objectName factObject
+            then Right (OG.DiscoveredPath (objectName factObject) (objectName factObject) [])
+            else requirePath ontology (objectName factObject) targetObjectName
+
+comparisonRuntimeMetricSupported :: OT.MetricDef -> Bool
+comparisonRuntimeMetricSupported metricDef =
+  executable metricDef
+    && aggregation metricDef `elem` ["sum", "avg"]
+    && length (source_attributes metricDef) == 1
 
 trendFactSurfaceMessage :: Text
 trendFactSurfaceMessage =

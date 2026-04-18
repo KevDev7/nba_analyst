@@ -173,7 +173,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
 
-    def test_recent_player_name_total_points_comparison_family_remains_derived(self) -> None:
+    def test_recent_player_name_comparison_family_remains_derived(self) -> None:
         artifact = _capability_artifact()
         matching = [
             family
@@ -182,7 +182,8 @@ class SemanticInterpreterTests(unittest.TestCase):
             and family["core_fact_object"] == "PlayerGame"
             and family["dimensions"] == ["player_name"]
             and family["required_filter_kinds"] == ["last_n_games"]
-            and family["metrics"] == ["total_points"]
+            and family["comparison"]["target_object"] == "Player"
+            and "total_points" in family["metrics"]
         ]
 
         self.assertTrue(matching)
@@ -197,12 +198,14 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertEqual(matching, [])
 
-    def test_misleading_non_player_name_comparison_families_are_not_derived(self) -> None:
+    def test_non_identity_comparison_families_are_not_derived(self) -> None:
         artifact = _capability_artifact()
         matching = [
             family
             for family in artifact["families"]
-            if family["comparison"]["enabled"] and family["dimensions"] != ["player_name"]
+            if family["comparison"]["enabled"]
+            and family["dimensions"][0]
+            not in {"player_name", "team_name", "team_abbreviation", "team_slug"}
         ]
 
         self.assertEqual(matching, [])
@@ -247,17 +250,18 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertNotIn("temporary ambiguity nudge", prompt)
         self.assertNotIn("prefer the broad team-level aggregate path on TeamGame", prompt)
 
-    def test_player_entity_index_is_generated_from_snapshot(self) -> None:
+    def test_comparison_entity_indexes_are_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()
-        player_index = artifact["player_entity_index"]
+        player_index = artifact["comparison_entity_indexes"]["Player"]["player_name"]
+        team_index = artifact["comparison_entity_indexes"]["Team"]["team_name"]
 
-        self.assertIn("players", player_index)
         self.assertIn("aliases", player_index)
         self.assertIn("brunson", player_index["aliases"])
         self.assertEqual(
-            player_index["aliases"]["brunson"]["player"]["player_name"], "Jalen Brunson"
+            player_index["aliases"]["brunson"]["entity"]["entity_name"], "Jalen Brunson"
         )
         self.assertEqual(player_index["aliases"]["jalen"]["status"], "ambiguous")
+        self.assertIn("lakers", team_index["aliases"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_valid_metric_query_template_normalizes_to_haskell_query_json(
@@ -408,7 +412,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIsNone(payload["spec"]["comparison"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_comparison_names_normalize_into_structured_player_refs(
+    def test_comparison_names_normalize_into_structured_entity_refs(
         self, mock_call_gemini
     ) -> None:
         mock_call_gemini.return_value = """
@@ -420,9 +424,10 @@ class SemanticInterpreterTests(unittest.TestCase):
             "metrics": ["total_points"],
             "dimensions": ["player_name"],
             "filters": [{"kind": "last_n_games", "value": 10}],
-            "entity_filters": ["Brunson", "Tatum"],
+            "entity_filters": [],
             "comparison": {
               "kind": "compare_entities",
+              "target_object": "Player",
               "entities": ["Brunson", "Tatum"]
             },
             "assumptions": ["Interpreted 'scoring' as total points."]
@@ -435,11 +440,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["kind"], "metric_query")
-        self.assertEqual(len(payload["spec"]["entityFilters"]), 2)
-        self.assertEqual(payload["spec"]["entityFilters"][0]["playerName"], "Jalen Brunson")
-        self.assertEqual(payload["spec"]["entityFilters"][1]["playerName"], "Jayson Tatum")
+        self.assertEqual(payload["spec"]["entityFilters"], [])
+        self.assertEqual(payload["spec"]["comparison"]["targetObject"], "Player")
         self.assertEqual(
-            payload["spec"]["comparison"]["entities"][0]["playerName"], "Jalen Brunson"
+            payload["spec"]["comparison"]["entities"][0]["entityName"], "Jalen Brunson"
         )
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
@@ -453,9 +457,10 @@ class SemanticInterpreterTests(unittest.TestCase):
             "metrics": ["total_points"],
             "dimensions": ["player_name"],
             "filters": [{"kind": "last_n_games", "value": 10}],
-            "entity_filters": ["Jalen", "Tatum"],
+            "entity_filters": [],
             "comparison": {
               "kind": "compare_entities",
+              "target_object": "Player",
               "entities": ["Jalen", "Tatum"]
             },
             "assumptions": ["Interpreted 'scoring' as total points."]
@@ -481,9 +486,10 @@ class SemanticInterpreterTests(unittest.TestCase):
             "metrics": ["total_points"],
             "dimensions": ["player_name"],
             "filters": [{"kind": "last_n_games", "value": 10}],
-            "entity_filters": ["Jokic", "Tatum"],
+            "entity_filters": [],
             "comparison": {
               "kind": "compare_entities",
+              "target_object": "Player",
               "entities": ["Jokic", "Tatum"]
             },
             "assumptions": ["Interpreted 'scoring' as total points."]
@@ -496,7 +502,7 @@ class SemanticInterpreterTests(unittest.TestCase):
                 "Compare Jokic and Tatum scoring over the last 10 games"
             )
 
-        self.assertIn("Could not resolve player name", str(context.exception))
+        self.assertIn("Could not resolve Player player_name value", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_explicit_season_team_player_average_query_rejects_invalid_game_grain(

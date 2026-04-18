@@ -16,12 +16,10 @@ class SliceThirteenTests(unittest.TestCase):
             interpreted_query["spec"]["sharedQuery"]["filters"],
             [{"kind": "last_n_games", "value": 10}],
         )
+        self.assertEqual(interpreted_query["spec"]["entityFilters"], [])
+        self.assertEqual(interpreted_query["spec"]["comparison"]["targetObject"], "Player")
         self.assertEqual(
-            [entity["playerName"] for entity in interpreted_query["spec"]["entityFilters"]],
-            ["Jalen Brunson", "Jayson Tatum"],
-        )
-        self.assertEqual(
-            [entity["personId"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
+            [entity["entityId"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
             [1628973, 1628369],
         )
 
@@ -32,7 +30,7 @@ class SliceThirteenTests(unittest.TestCase):
         )
 
         sql = planner_output["execution_plan"]["steps"][0]["sql"]
-        self.assertIn("player_id", sql)
+        self.assertIn("entity_id", sql)
         self.assertIn("IN (1628973, 1628369)", sql)
 
     def test_first_name_alias_comparison_query(self) -> None:
@@ -40,8 +38,9 @@ class SliceThirteenTests(unittest.TestCase):
             "Compare Ja and Tatum scoring over the last 10 games"
         )
 
+        self.assertEqual(interpreted_query["spec"]["entityFilters"], [])
         self.assertEqual(
-            [entity["playerName"] for entity in interpreted_query["spec"]["entityFilters"]],
+            [entity["entityName"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
             ["Ja Morant", "Jayson Tatum"],
         )
 
