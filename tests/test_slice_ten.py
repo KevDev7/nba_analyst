@@ -178,7 +178,8 @@ class SliceTenTests(unittest.TestCase):
             ROOT / "services" / "ontology-hs" / "app" / "Main.hs"
         ).read_text(encoding="utf-8")
         self.assertNotIn('"plan", "--ontology"', main_contents)
-        self.assertNotIn("--question", main_contents)
+        self.assertIn("query-model-ranking-json", main_contents)
+        self.assertIn("--question", main_contents)
 
         cli_contents = (ROOT / "apps" / "cli" / "main.py").read_text(encoding="utf-8")
         self.assertNotIn("def call_haskell_planner(", cli_contents)

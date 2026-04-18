@@ -64,6 +64,10 @@ main = do
       BL8.putStrLn (encode (QB.toIRQuery QB.exampleMetricSemanticQuery))
     ["query-model-foundation-json", "object"] ->
       BL8.putStrLn (encode (QB.toIRQuery QB.exampleObjectSemanticQuery))
+    ["query-model-ranking-json", "--question", questionText] ->
+      case QB.buildRecentPlayerRankingQuery (pack questionText) of
+        Right queryValue -> BL8.putStrLn (encode queryValue)
+        Left err -> emitError "QueryModel.Build" err
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       ontology <- loadOntology ontologyPath
       runPlannerFromQueryJson ontology (pack queryJson)
@@ -71,6 +75,7 @@ main = do
       die
         "Usage: cabal run ontology-hs -- derive-capabilities-json --ontology <path>\n\
         \   or: cabal run ontology-hs -- query-model-foundation-json metric|object\n\
+        \   or: cabal run ontology-hs -- query-model-ranking-json --question <text>\n\
         \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()

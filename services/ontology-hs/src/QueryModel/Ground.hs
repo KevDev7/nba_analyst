@@ -17,11 +17,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module QueryModel.Ground where
 
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import QueryModel.Intent
 import qualified QueryModel.IR as QI
 
 data GroundedQueryShape
@@ -91,3 +93,32 @@ groundedObjectRequest factObjectName rowObjectName =
   (groundedMetricRequest factObjectName)
     { queryShape = GroundedObjectQuery rowObjectName
     }
+
+groundRecentPlayerRankingIntent :: QueryIntent -> Either Text GroundedSemanticRequest
+groundRecentPlayerRankingIntent queryIntent = do
+  gamesValue <-
+    maybe
+      (Left "QueryModel.Ground requires a recent-games hint for recent ranking grounding.")
+      Right
+      (recentGamesHint queryIntent)
+  if not (supportsRecentPlayerRanking queryIntent)
+    then Left "QueryModel.Ground only supports the recent player scoring ranking slice."
+    else
+      pure
+        ( (groundedMetricRequest "PlayerGame")
+            { groundedMetrics = ["total_points"]
+            , groundedDimensions = ["player_name"]
+            , groundedFilters = [GroundedFilter "last_n_games" (Just (QI.FilterInt gamesValue))]
+            , groundedOrdering = Just (GroundedOrdering (Just "total_points") True)
+            , groundedLimit = limitHint queryIntent
+            }
+        )
+
+supportsRecentPlayerRanking :: QueryIntent -> Bool
+supportsRecentPlayerRanking queryIntent =
+  any (`elem` objectMentions queryIntent) ["player", "scorer"]
+    && any (`elem` metricMentions queryIntent) ["total_points", "scoring"]
+    && recentGamesHint queryIntent /= Nothing
+    && case orderingHint queryIntent of
+      Just (OrderingHint IntentDescending _) -> True
+      _ -> False

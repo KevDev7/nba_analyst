@@ -23,6 +23,7 @@ module QueryModel.Build where
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import QueryModel.Ground
+import QueryModel.Intent
 import qualified QueryModel.IR as QI
 
 data SemanticOrder
@@ -135,6 +136,17 @@ toIRBackedExample groundedRequest =
   case buildSemanticQuery groundedRequest of
     Right semanticQuery -> semanticQuery
     Left err -> error ("QueryModel foundation example construction failed: " <> show err)
+
+buildRecentPlayerRankingQuery :: Text -> Either Text QI.Query
+buildRecentPlayerRankingQuery questionText = do
+  intent <-
+    maybe
+      (Left "QueryModel.Intent did not match the slice-32 recent player ranking pattern.")
+      Right
+      (extractRecentPlayerRankingIntent questionText)
+  grounded <- groundRecentPlayerRankingIntent intent
+  semanticQuery <- buildSemanticQuery grounded
+  pure (toIRQuery semanticQuery)
 
 fromGroundedFilter :: GroundedFilter -> SemanticFilter
 fromGroundedFilter groundedFilter =

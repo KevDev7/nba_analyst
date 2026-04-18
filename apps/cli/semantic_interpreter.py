@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -29,6 +30,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 
 ROOT = Path(__file__).resolve().parents[2]
 CAPABILITY_PATH = ROOT / "fixtures" / "interpreter" / "semantic-capabilities.json"
+HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 
 load_dotenv(ROOT / ".env", override=False)
 
@@ -142,6 +144,63 @@ def _strip_json_fences(raw_text: str) -> str:
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
     return cleaned.strip()
+
+
+def _is_querymodel_recent_ranking_question(question: str) -> bool:
+    question_text = question.lower()
+    if re.search(r"\b(compare|average|avg|season|playoffs|monthly|trend)\b", question_text):
+        return False
+    if re.search(r"\b(and their|for the|for team)\b", question_text):
+        return False
+    if not re.search(r"\blast\s+\d+\s+games?\b", question_text):
+        return False
+    if not re.search(r"\b(top\s+\d+|most|highest|best)\b", question_text):
+        return False
+    if not re.search(r"\b(points|pts|scoring|scorer|scorers)\b", question_text):
+        return False
+    return bool(re.search(r"\b(player|players|scorer|scorers)\b", question_text))
+
+
+def _querymodel_recent_ranking_assumptions(question: str) -> list[str]:
+    candidate_assumptions = [
+        "Interpreted 'pts' as total points.",
+        "Interpreted 'scoring' as total points.",
+        "Interpreted 'scorers' as players ranked by total points.",
+        "Interpreted 'scorer' as players ranked by total points.",
+    ]
+    return _normalize_assumptions(question, candidate_assumptions)
+
+
+def _call_haskell_querymodel_recent_ranking(question: str) -> dict[str, Any]:
+    command = [
+        "cabal",
+        "run",
+        "-v0",
+        "ontology-hs",
+        "--",
+        "query-model-ranking-json",
+        "--question",
+        question,
+    ]
+    result = subprocess.run(
+        command,
+        cwd=HASKELL_SERVICE_DIR,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload_text = result.stdout.strip() or result.stderr.strip()
+    if not payload_text:
+        raise SemanticInterpreterError("Haskell QueryModel returned no output.")
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError as exc:
+        raise SemanticInterpreterError(
+            f"Haskell QueryModel returned malformed JSON: {exc}"
+        ) from exc
+    if result.returncode != 0:
+        raise SemanticInterpreterError(payload.get("message", payload_text))
+    return payload
 
 
 @lru_cache(maxsize=1)
@@ -590,6 +649,15 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
 
 @lru_cache(maxsize=256)
 def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
+    if _is_querymodel_recent_ranking_question(question):
+        try:
+            query_payload = _call_haskell_querymodel_recent_ranking(question)
+            shared_query = query_payload["spec"]["sharedQuery"]
+            shared_query["assumptions"] = _querymodel_recent_ranking_assumptions(question)
+            return query_payload
+        except Exception:
+            pass
+
     prompt = (
         f"{_interpreter_prompt_preamble()}\n\n"
         f"User question:\n{question}\n\n"

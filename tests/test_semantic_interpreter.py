@@ -264,8 +264,9 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("lakers", team_index["aliases"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
     def test_valid_metric_query_template_normalizes_to_haskell_query_json(
-        self, mock_call_gemini
+        self, _mock_fast_path, mock_call_gemini
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -347,7 +348,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIsNone(payload["spec"]["sharedQuery"]["limit"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_malformed_json_is_rejected_clearly(self, mock_call_gemini) -> None:
+    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
+    def test_malformed_json_is_rejected_clearly(
+        self, _mock_fast_path, mock_call_gemini
+    ) -> None:
         mock_call_gemini.return_value = "{not valid json"
 
         with self.assertRaises(SemanticInterpreterError) as context:
@@ -358,7 +362,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("malformed JSON", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_unsupported_values_are_rejected_clearly(self, mock_call_gemini) -> None:
+    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
+    def test_unsupported_values_are_rejected_clearly(
+        self, _mock_fast_path, mock_call_gemini
+    ) -> None:
         mock_call_gemini.return_value = """
         {
           "status": "ok",
