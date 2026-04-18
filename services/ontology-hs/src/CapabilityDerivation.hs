@@ -23,9 +23,9 @@ import Control.Exception (SomeException, evaluate, try)
 import Data.Aeson (ToJSON, encode)
 import qualified Data.ByteString.Lazy as BL
 import Data.Char (isUpper, toLower)
-import Data.List (nub, sort)
+import Data.List (foldl', nub, sort)
 import qualified Data.Map.Strict as Map
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -38,6 +38,8 @@ import GroundedPlanning.Validation
   , validateLinkedFilterFactSurface
   , validateQuery
   )
+import OntologyLayer.Graph (findObject, findPathsFrom)
+import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (Ontology, objects)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
@@ -129,6 +131,12 @@ enumerateCandidateQueries ontology =
 
 enumerateMetricQueries :: Ontology -> [QI.Query]
 enumerateMetricQueries ontology =
+  enumerateOrdinaryMetricQueries ontology
+    ++ enumerateTrendMetricQueries ontology
+    ++ enumerateComparisonQueries
+
+enumerateOrdinaryMetricQueries :: Ontology -> [QI.Query]
+enumerateOrdinaryMetricQueries ontology =
   [ QI.MetricQuery
       QI.MetricQuerySpec
         { QI.sharedQuery =
@@ -143,17 +151,63 @@ enumerateMetricQueries ontology =
               , QI.limit = limitValue
               , QI.assumptions = []
               }
+        , QI.entityFilters = []
+        , QI.comparison = Nothing
+        }
+  | factObjectName <- ontologyObjectNames ontology
+  , metricValue <- executableMetricsForFactObject ontology factObjectName
+  , dimensionValues <- ordinaryMetricDimensionCandidatesForFactObject ontology factObjectName
+  , filterValues <- ordinaryMetricFilterCandidates
+  , let timeGrainValue = Nothing
+  , linkedFilterValues <- linkedFilterCandidatesForMetric ontology factObjectName filterValues timeGrainValue Nothing
+  , orderValues <- metricOrderCandidates metricValue Nothing
+  , limitValue <- metricLimitCandidates Nothing
+  ]
+
+enumerateTrendMetricQueries :: Ontology -> [QI.Query]
+enumerateTrendMetricQueries ontology =
+  [ QI.MetricQuery
+      QI.MetricQuerySpec
+        { QI.sharedQuery =
+            QI.BaseQuery
+              { QI.coreFactObject = factObjectName
+              , QI.metrics = [metricValue]
+              , QI.dimensions = dimensionValues
+              , QI.timeGrain = Just QI.Month
+              , QI.filters = [QI.PastYear]
+              , QI.linkedFilters = []
+              , QI.orders = []
+              , QI.limit = Nothing
+              , QI.assumptions = []
+              }
+        , QI.entityFilters = []
+        , QI.comparison = Nothing
+        }
+  | factObjectName <- ontologyObjectNames ontology
+  , metricValue <- executableMetricsForFactObject ontology factObjectName
+  , dimensionValues <- trendMetricDimensionCandidatesForFactObject ontology factObjectName
+  ]
+
+enumerateComparisonQueries :: [QI.Query]
+enumerateComparisonQueries =
+  [ QI.MetricQuery
+      QI.MetricQuerySpec
+        { QI.sharedQuery =
+            QI.BaseQuery
+              { QI.coreFactObject = "PlayerGame"
+              , QI.metrics = [QI.TotalPoints]
+              , QI.dimensions = [QI.PlayerName]
+              , QI.timeGrain = Nothing
+              , QI.filters = [QI.LastNGames 10]
+              , QI.linkedFilters = []
+              , QI.orders = []
+              , QI.limit = Nothing
+              , QI.assumptions = []
+              }
         , QI.entityFilters = entityFilterValues
         , QI.comparison = comparisonValue
         }
-  | factObjectName <- ontologyObjectNames ontology
-  , metricValue <- allMetrics
-  , dimensionValues <- metricDimensionCandidates
-  , (filterValues, timeGrainValue) <- filterBundleCandidates
-  , (entityFilterValues, comparisonValue) <- comparisonCandidates
-  , linkedFilterValues <- linkedFilterCandidatesForMetric ontology factObjectName filterValues timeGrainValue comparisonValue
-  , orderValues <- metricOrderCandidates metricValue comparisonValue
-  , limitValue <- metricLimitCandidates comparisonValue
+  | (entityFilterValues, comparisonValue) <- comparisonCandidates
   ]
 
 enumerateObjectQueries :: Ontology -> [QI.Query]
@@ -176,9 +230,9 @@ enumerateObjectQueries ontology =
         }
   | factObjectName <- ontologyObjectNames ontology
   , rowObjectName <- ontologyObjectNames ontology
-  , metricValue <- allMetrics
-  , dimensionValues <- objectDimensionCandidates
-  , (filterValues, _) <- filterBundleCandidates
+  , metricValue <- executableMetricsForFactObject ontology factObjectName
+  , dimensionValues <- objectDimensionCandidatesForRowObject ontology rowObjectName
+  , filterValues <- objectQueryFilterCandidates
   , linkedFilterValues <- linkedFilterCandidatesForObject ontology factObjectName filterValues
   , orderValues <- objectOrderCandidates metricValue
   , limitValue <- objectLimitCandidates
@@ -190,42 +244,87 @@ ontologyObjectNames ontology =
   | OT.Object {OT.name = currentName} <- objects ontology
   ]
 
-allMetrics :: [QI.MetricName]
-allMetrics =
-  [ QI.TotalPoints
-  , QI.AveragePoints
-  , QI.GamesPlayed
-  , QI.PointsPer36
-  , QI.Wins
-  , QI.Losses
-  , QI.WinPercentage
+executableMetricsForFactObject :: Ontology -> Text -> [QI.MetricName]
+executableMetricsForFactObject ontology factObjectName =
+  case findObject ontology factObjectName of
+    Just objectValue ->
+      nub $
+        mapMaybe
+          ( \metricDef@OT.MetricDef {OT.name = metricNameValue} ->
+              if OT.executable metricDef
+                then metricNameFromText metricNameValue
+                else Nothing
+          )
+          (OT.metrics objectValue)
+    Nothing -> []
+
+ordinaryMetricDimensionCandidatesForFactObject :: Ontology -> Text -> [[QI.DimensionName]]
+ordinaryMetricDimensionCandidatesForFactObject ontology factObjectName =
+  map pure (reachablePublicDimensionsForFactObject ontology factObjectName)
+
+trendMetricDimensionCandidatesForFactObject :: Ontology -> Text -> [[QI.DimensionName]]
+trendMetricDimensionCandidatesForFactObject ontology factObjectName =
+  [] : map pure (reachablePublicDimensionsForFactObject ontology factObjectName)
+
+objectDimensionCandidatesForRowObject :: Ontology -> Text -> [[QI.DimensionName]]
+objectDimensionCandidatesForRowObject ontology rowObjectName =
+  map pure (publicDimensionsForObject ontology rowObjectName)
+
+ordinaryMetricFilterCandidates :: [[QI.Filter]]
+ordinaryMetricFilterCandidates =
+  [ [QI.LastNGames 10]
+  , [QI.ExactSeason "2025-26", QI.SeasonTypeFilter "regular_season"]
   ]
 
-metricDimensionCandidates :: [[QI.DimensionName]]
-metricDimensionCandidates =
-  [ []
-  , [QI.PlayerName]
-  , [QI.TeamName]
-  , [QI.DisplayName]
-  , [QI.Team]
-  , [QI.PrimaryPosition]
-  ]
+objectQueryFilterCandidates :: [[QI.Filter]]
+objectQueryFilterCandidates = ordinaryMetricFilterCandidates
 
-objectDimensionCandidates :: [[QI.DimensionName]]
-objectDimensionCandidates =
-  [ [QI.PlayerName]
-  , [QI.TeamName]
-  , [QI.DisplayName]
-  , [QI.Team]
-  , [QI.PrimaryPosition]
-  ]
+publicDimensionsForObject :: Ontology -> Text -> [QI.DimensionName]
+publicDimensionsForObject ontology objectNameValue =
+  case findObject ontology objectNameValue of
+    Just objectValue ->
+      nub $
+        mapMaybe
+          ( \attributeValue@OT.Attribute {OT.name = attributeNameValue} ->
+              case (OT.visibility attributeValue, OT.kind attributeValue) of
+                (OT.Public, OT.Dimension) -> dimensionNameFromText attributeNameValue
+                _ -> Nothing
+          )
+          (OT.attributes objectValue)
+    Nothing -> []
 
-filterBundleCandidates :: [([QI.Filter], Maybe QI.TimeGrain)]
-filterBundleCandidates =
-  [ ([QI.LastNGames 10], Nothing)
-  , ([QI.PastYear], Just QI.Month)
-  , ([QI.ExactSeason "2025-26", QI.SeasonTypeFilter "regular_season"], Nothing)
-  ]
+reachablePublicDimensionsForFactObject :: Ontology -> Text -> [QI.DimensionName]
+reachablePublicDimensionsForFactObject ontology factObjectName =
+  nub $
+    publicDimensionsForObject ontology factObjectName
+      ++ concatMap
+        (publicDimensionsForObject ontology)
+        [ targetObjectName
+        | discoveredPath <- findPathsFrom ontology 2 factObjectName
+        , let targetObjectName = OG.targetObjectName discoveredPath
+        ]
+
+metricNameFromText :: Text -> Maybe QI.MetricName
+metricNameFromText metricName =
+  case metricName of
+    "total_points" -> Just QI.TotalPoints
+    "average_points" -> Just QI.AveragePoints
+    "games_played" -> Just QI.GamesPlayed
+    "points_per_36" -> Just QI.PointsPer36
+    "wins" -> Just QI.Wins
+    "losses" -> Just QI.Losses
+    "win_percentage" -> Just QI.WinPercentage
+    _ -> Nothing
+
+dimensionNameFromText :: Text -> Maybe QI.DimensionName
+dimensionNameFromText dimensionName =
+  case dimensionName of
+    "player_name" -> Just QI.PlayerName
+    "team_name" -> Just QI.TeamName
+    "display_name" -> Just QI.DisplayName
+    "team" -> Just QI.Team
+    "primary_position" -> Just QI.PrimaryPosition
+    _ -> Nothing
 
 linkedFilterCandidates :: [[QI.LinkedFilter]]
 linkedFilterCandidates =
@@ -272,18 +371,16 @@ comparisonCandidates =
   -- TODO(core-4-first): Comparison derivation generativity is intentionally
   -- deferred until after the current v1 families are complete: ranking/top-N,
   -- trend, aggregation, and filtering/joining.
-  [ ([], Nothing)
-  ,
-      ( [ QI.PlayerRef 1 "Comparison Player A"
-        , QI.PlayerRef 2 "Comparison Player B"
-        ]
-      , Just
-          ( QI.CompareEntities
-              [ QI.PlayerRef 1 "Comparison Player A"
-              , QI.PlayerRef 2 "Comparison Player B"
-              ]
-          )
-      )
+  [ ( [ QI.PlayerRef 1 "Comparison Player A"
+      , QI.PlayerRef 2 "Comparison Player B"
+      ]
+    , Just
+        ( QI.CompareEntities
+            [ QI.PlayerRef 1 "Comparison Player A"
+            , QI.PlayerRef 2 "Comparison Player B"
+            ]
+        )
+    )
   ]
 
 metricOrderCandidates :: QI.MetricName -> Maybe QI.ComparisonIntent -> [[QI.Order]]
