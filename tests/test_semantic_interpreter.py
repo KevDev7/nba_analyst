@@ -388,7 +388,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("invalid supported query template", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_omitted_optional_fields_normalize_cleanly(self, mock_call_gemini) -> None:
+    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
+    def test_omitted_optional_fields_normalize_cleanly(
+        self, _mock_fast_path, mock_call_gemini
+    ) -> None:
         mock_call_gemini.return_value = """
         {
           "status": "ok",

@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 ROOT = Path(__file__).resolve().parents[2]
 CAPABILITY_PATH = ROOT / "fixtures" / "interpreter" / "semantic-capabilities.json"
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
+ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 
 load_dotenv(ROOT / ".env", override=False)
 
@@ -160,11 +161,6 @@ def _is_querymodel_recent_ranking_question(question: str) -> bool:
         or re.search(r"\bwho\s+has\b", question_text)
     ):
         return False
-    if not re.search(
-        r"\b(average\s+points|avg\s+points|average\s+scoring|points|pts|scoring|scorer|scorers)\b",
-        question_text,
-    ):
-        return False
     return bool(re.search(r"\b(player|players|scorer|scorers|who)\b", question_text))
 
 
@@ -188,6 +184,8 @@ def _call_haskell_querymodel_recent_ranking(question: str) -> dict[str, Any]:
         "ontology-hs",
         "--",
         "query-model-ranking-json",
+        "--ontology",
+        str(ONTOLOGY_PATH),
         "--question",
         question,
     ]

@@ -7,9 +7,11 @@ from unittest.mock import patch
 
 from apps.cli.main import ROOT
 from apps.cli.semantic_interpreter import interpret_question_to_planner_query
+from scripts.generate_interpreter_capabilities import build_capability_artifact
 
 
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
+ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 
 
 def call_query_model_recent_ranking(question: str) -> dict:
@@ -20,6 +22,8 @@ def call_query_model_recent_ranking(question: str) -> dict:
         "ontology-hs",
         "--",
         "query-model-ranking-json",
+        "--ontology",
+        str(ONTOLOGY_PATH),
         "--question",
         question,
     ]
@@ -39,6 +43,30 @@ def call_query_model_recent_ranking(question: str) -> dict:
 class SliceThirtyTwoTests(unittest.TestCase):
     def setUp(self) -> None:
         interpret_question_to_planner_query.cache_clear()
+
+    def test_live_ranking_lane_metrics_match_planner_derived_capabilities(self) -> None:
+        artifact = build_capability_artifact()
+        matching_families = [
+            family
+            for family in artifact["families"]
+            if family["query_kind"] == "metric_query"
+            and family["core_fact_object"] == "PlayerGame"
+            and family["dimensions"] == ["player_name"]
+            and family["required_filter_kinds"] == ["last_n_games"]
+            and family["time_grain"] is None
+            and family["linked_filters"] == []
+            and not family["comparison"]["enabled"]
+        ]
+
+        self.assertTrue(matching_families)
+        supported_metrics = sorted(
+            {
+                metric_name
+                for family in matching_families
+                for metric_name in family["metrics"]
+            }
+        )
+        self.assertEqual(supported_metrics, ["average_points", "total_points"])
 
     def test_haskell_query_model_handles_top_players_by_points(self) -> None:
         payload = call_query_model_recent_ranking(
@@ -269,6 +297,40 @@ class SliceThirtyTwoTests(unittest.TestCase):
         self.assertEqual(object_payload["kind"], "object_query")
         self.assertEqual(comparison_payload["kind"], "metric_query")
         self.assertEqual(mock_call_gemini.call_count, 4)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel_recent_ranking",
+        side_effect=RuntimeError("unsupported metric"),
+    )
+    def test_live_fast_path_no_longer_hardcodes_metric_support(
+        self, mock_haskell_querymodel, mock_call_gemini
+    ) -> None:
+        mock_call_gemini.return_value = """
+        {
+          "status": "ok",
+          "query": {
+            "query_kind": "metric_query",
+            "core_fact_object": "PlayerGame",
+            "metrics": ["total_points"],
+            "dimensions": ["player_name"],
+            "filters": [{"kind": "last_n_games", "value": 10}],
+            "orders": [{"kind": "desc", "metric": "total_points"}],
+            "limit": null,
+            "entity_filters": [],
+            "comparison": null,
+            "assumptions": []
+          }
+        }
+        """
+
+        payload = interpret_question_to_planner_query(
+            "Show me players by steals over the last 10 games"
+        )
+
+        self.assertEqual(payload["kind"], "metric_query")
+        mock_haskell_querymodel.assert_called_once()
+        mock_call_gemini.assert_called_once()
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     @patch(

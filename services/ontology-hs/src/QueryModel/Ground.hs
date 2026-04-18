@@ -94,16 +94,16 @@ groundedObjectRequest factObjectName rowObjectName =
     { queryShape = GroundedObjectQuery rowObjectName
     }
 
-groundRecentPlayerRankingIntent :: QueryIntent -> Either Text GroundedSemanticRequest
-groundRecentPlayerRankingIntent queryIntent = do
+groundRecentPlayerRankingIntent :: [Text] -> QueryIntent -> Either Text GroundedSemanticRequest
+groundRecentPlayerRankingIntent supportedMetrics queryIntent = do
   gamesValue <-
     maybe
       (Left "QueryModel.Ground requires a recent-games hint for recent ranking grounding.")
       Right
       (recentGamesHint queryIntent)
   metricName <- selectedRecentRankingMetric queryIntent
-  if not (supportsRecentPlayerRanking queryIntent)
-    then Left "QueryModel.Ground only supports the recent player ranking slice over the current executable PlayerGame metrics."
+  if not (supportsRecentPlayerRanking supportedMetrics queryIntent)
+    then Left "QueryModel.Ground only supports the recent player ranking slice over planner-derived PlayerGame metrics."
     else
       pure
         ( (groundedMetricRequest "PlayerGame")
@@ -115,11 +115,11 @@ groundRecentPlayerRankingIntent queryIntent = do
             }
         )
 
-supportsRecentPlayerRanking :: QueryIntent -> Bool
-supportsRecentPlayerRanking queryIntent =
+supportsRecentPlayerRanking :: [Text] -> QueryIntent -> Bool
+supportsRecentPlayerRanking supportedMetrics queryIntent =
   any (`elem` objectMentions queryIntent) ["player", "scorer"]
     && case selectedRecentRankingMetric queryIntent of
-      Right _ -> True
+      Right metricName -> metricName `elem` supportedMetrics
       Left _ -> False
     && recentGamesHint queryIntent /= Nothing
     && case orderingHint queryIntent of

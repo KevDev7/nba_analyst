@@ -137,14 +137,14 @@ toIRBackedExample groundedRequest =
     Right semanticQuery -> semanticQuery
     Left err -> error ("QueryModel foundation example construction failed: " <> show err)
 
-buildRecentPlayerRankingQuery :: Text -> Either Text QI.Query
-buildRecentPlayerRankingQuery questionText = do
+buildRecentPlayerRankingQuery :: [Text] -> Text -> Either Text QI.Query
+buildRecentPlayerRankingQuery supportedMetrics questionText = do
   intent <-
     maybe
       (Left "QueryModel.Intent did not match the live recent player ranking QueryModel pattern.")
       Right
       (extractRecentPlayerRankingIntent questionText)
-  grounded <- groundRecentPlayerRankingIntent intent
+  grounded <- groundRecentPlayerRankingIntent supportedMetrics intent
   semanticQuery <- buildSemanticQuery grounded
   pure (toIRQuery semanticQuery)
 
