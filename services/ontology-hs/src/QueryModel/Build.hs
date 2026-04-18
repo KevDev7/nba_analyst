@@ -1,0 +1,46 @@
+-- Purpose:
+-- Build an ontology-grounded semantic request into the structured query form
+-- that can be normalized into the typed IR.
+--
+-- Uses:
+-- - QueryModel/Ground.hs outputs
+-- - query-shape rules for object queries vs metric queries
+--
+-- Produces:
+-- - a DSL-like semantic query representation that is ready for normalization
+--   into QueryModel/IR.hs
+--
+-- Next:
+-- - QueryModel/IR.hs
+
+module QueryModel.Build where
+
+-- This module is intentionally scaffold-only for now.
+--
+-- Long-term responsibility:
+-- - decide the final top-level query shape
+--   - ObjectQuery
+--   - MetricQuery
+-- - assemble the selected:
+--   - core fact object
+--   - metrics
+--   - dimensions
+--   - filters
+--   - orders
+--   - limit
+--   - time grain when relevant for our product
+-- - build a DSL-like structured request before IR normalization
+--
+-- Example DSL-like shape:
+--
+--   METRIC QUERY
+--   core fact object: PlayerGame
+--   metric: total_points
+--   dimension: player_name
+--   filter: last_n_games(10)
+--   order: desc(total_points)
+--   limit: 10
+--
+-- Important:
+-- This stage should still be semantic and domain-facing.
+-- QueryModel/IR.hs remains the exact typed planner/runtime contract.

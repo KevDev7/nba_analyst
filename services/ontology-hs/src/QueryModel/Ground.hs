@@ -1,0 +1,47 @@
+-- Purpose:
+-- Ground loose semantic intent onto actual ontology concepts, paths, and
+-- business definitions.
+--
+-- Uses:
+-- - QueryModel/Intent.hs outputs
+-- - OntologyLayer types and graph traversal
+-- - lexical matching, alias matching, and later embeddings / hybrid matching
+--
+-- Produces:
+-- - an ontology-grounded semantic request that is specific enough to build into
+--   a DSL-like query form
+--
+-- Next:
+-- - QueryModel/Build.hs
+
+module QueryModel.Ground where
+
+-- This module is intentionally scaffold-only for now.
+--
+-- Long-term responsibility:
+-- - map rough user concepts to ontology objects
+-- - map rough metric language to ontology metrics
+-- - map grouping/filter language to ontology dimensions
+-- - discover reachable paths between fact objects and linked objects
+-- - surface ambiguity when multiple ontology matches are plausible
+-- - record what failed to ground cleanly
+--
+-- This is the most natural home for:
+-- - lexical matching
+-- - alias matching
+-- - embeddings-based semantic matching
+-- - selective model assistance for hard ambiguity
+--
+-- Example:
+--   user language: "scoring"
+--   possible ontology matches: total_points, average_points, points_per_36
+--
+-- Output should move closer to:
+-- - core fact object: PlayerGame
+-- - metric: total_points
+-- - dimension: player_name
+-- - filter: last_n_games = 10
+--
+-- Important:
+-- This stage should ground meaning through the ontology, but it still does not
+-- need to commit to the final IR structure.

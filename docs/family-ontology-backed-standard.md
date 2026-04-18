@@ -1,0 +1,231 @@
+# Family Ontology-Backed Standard
+
+This doc records the standard we decided to hold the five explicitly supported
+query families to after the comparison redesign in slice 30.
+
+The goal is to stop the endless loop of reopening families for smaller and
+smaller purity fixes, while still holding a high bar for ontology-backed
+behavior.
+
+## Why This Standard Exists
+
+We have spent multiple slices removing fake family restrictions:
+
+- player-only comparison
+- `team_name`-only linked filters
+- hardcoded metric and dimension enums above the ontology
+- fixed capability lists that were not derived from planner truth
+
+That work was valuable, but it also risked turning into a repetitive cleanup
+loop where every family is always "almost done" but never actually considered
+done.
+
+So we need a concrete stopping rule.
+
+## The Standard
+
+A family is considered "ontology-backed enough for this phase" if all of the
+following are true:
+
+1. Core semantic references are ontology-backed.
+   - Metrics, dimensions, target objects, linked objects, and identity
+     dimensions come from ontology truth rather than handwritten bless-lists.
+
+2. Support is not primarily gated by a narrow handcrafted allowlist.
+   - The family is not mainly limited by one blessed object, one blessed
+     dimension, one blessed metric, or one special-case attribute path.
+
+3. Capability derivation is driven by planner truth.
+   - Supported capability families come from validation, resolution, and
+     compilation truth rather than a manually curated family matrix.
+
+4. Remaining restrictions are explainable as current runtime or result-shape
+   truth.
+   - If a restriction remains, we can explain what failure it prevents and why
+     it is still needed for the current execution or answer-shape path.
+
+5. The interpreter is not secretly redefining the family.
+   - The interpreter may map language into the contract, but it should not be
+     the hidden source of what the family supports.
+
+## What This Standard Is Not
+
+This is not the same as "fully ontology-backed in the ideal long-term sense."
+
+A family can pass this standard and still have:
+
+- one-metric limits
+- one-dimension limits
+- one-linked-filter limits
+- path-depth limits
+- runtime-specific shape limits
+- family-specific time or cardinality limits
+
+The point of the standard is not perfection. The point is to distinguish:
+
+- fake restrictions caused by handwritten family boxes
+
+from:
+
+- honest restrictions caused by current planner, runtime, or answer-shape
+  limits
+
+## The Five Explicitly Supported Families
+
+For the current repo, the five explicit supported families are:
+
+1. ranking / top-N
+2. aggregation
+3. filtering / joining
+4. trend
+5. comparison
+
+## Current Assessment
+
+Under the standard above, all five families now count as done for this phase.
+
+### 1. Ranking / Top-N
+
+Status: passes
+
+Why it passes:
+
+- metrics and dimensions are now ontology-backed
+- capability derivation is planner-derived
+- linked-filter support is ontology-reachable rather than tied to a tiny
+  handwritten set
+
+What still falls short of full ontology-backed behavior:
+
+- exactly one selected metric
+- exactly one selected business grouping dimension
+- descending-by-selected-metric shape
+- limited limit behavior
+
+### 2. Aggregation
+
+Status: passes
+
+Why it passes:
+
+- core metric and dimension references are ontology-backed
+- support is no longer mainly driven by handwritten metric or dimension lists
+- capability derivation comes from validate + resolve + compile truth
+
+What still falls short of full ontology-backed behavior:
+
+- exactly one selected metric
+- exactly one grouping dimension
+- current answer and result shapes are still narrow
+
+### 3. Filtering / Joining
+
+Status: passes
+
+Why it passes:
+
+- filters are text-backed rather than enum-blocked
+- linked-filter support is now based on ontology reachability and public
+  dimension truth
+- capability derivation is no longer tied to one special linked target shape
+
+What still falls short of full ontology-backed behavior:
+
+- ordinary queries still use a narrow recent-or-season filter-family box
+- at most one linked filter
+- path traversal is still capped at depth 2
+
+### 4. Trend
+
+Status: passes, but is the most borderline family
+
+Why it passes:
+
+- fact-surface and grouping support are no longer hardcoded to one fact object
+  and one blessed dimension
+- grouping uses reachable public dimensions rather than a tiny allowlist
+- capability derivation is planner-derived
+
+What still falls short of full ontology-backed behavior:
+
+- `past_year` only
+- `month` only
+- no linked filters
+- no explicit ordering
+- no limit
+- at most one grouping dimension
+
+Trend is the closest family to the line, but it still passes because the
+remaining restrictions look more like current runtime truth than stale
+handwritten bless-lists.
+
+### 5. Comparison
+
+Status: passes
+
+Why it passes:
+
+- comparison is no longer player-only
+- comparison is no longer tied to one identity dimension or one blessed metric
+- comparison target objects and identity dimensions come from ontology truth
+- capability derivation is planner-derived
+
+What still falls short of full ontology-backed behavior:
+
+- recent-window only
+- exactly two entities
+- no linked filters
+- no explicit ordering
+- no limit
+- no time grain
+
+## Why We Are Moving Forward
+
+We are moving forward because the five families now meet the phase standard.
+
+That means:
+
+- the main fake handwritten family boxes have been removed
+- the support surface is now mostly determined by ontology, validation,
+  resolution, and compilation truth
+- the remaining restrictions are mostly current runtime and result-shape limits
+  rather than stale allowlists
+
+At this point, continuing to polish families one by one would likely produce
+diminishing returns and repeat the same pattern:
+
+- find a smaller restriction
+- loosen it
+- discover another smaller restriction
+- call the family "almost done" again
+
+That is not the right next architectural phase.
+
+## What Comes Next
+
+The next major architectural gap is not another family cleanup slice.
+
+The bigger remaining move is a richer ontology-driven semantic layer upstream
+of IR, something closer to:
+
+- scan
+- semantic match
+- classify
+- build
+
+The project should now shift away from treating family cleanup as the main
+workstream and toward that broader semantic-construction phase.
+
+## Practical Rule Going Forward
+
+Do not reopen a family just because it is not fully ontology-backed in the
+ideal sense.
+
+Reopen a family only if one of these is true:
+
+- it still fails because of a fake handwritten allowlist
+- a restriction cannot be honestly justified as current runtime or answer-shape
+  truth
+- there is a concrete user-facing product bug caused by stale family logic
+
+Otherwise, treat the family as complete for this phase and move on.

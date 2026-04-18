@@ -1,0 +1,39 @@
+-- Purpose:
+-- Capture loose semantic intent from a natural-language user question before it
+-- is grounded to concrete ontology concepts.
+--
+-- Uses:
+-- - raw user language
+-- - optional NLP / model-assisted extraction
+--
+-- Produces:
+-- - a best-effort semantic intent that is not yet committed to exact ontology
+--   objects, metrics, dimensions, or paths
+--
+-- Next:
+-- - QueryModel/Ground.hs
+
+module QueryModel.Intent where
+
+-- This module is intentionally scaffold-only for now.
+--
+-- Long-term responsibility:
+-- - extract rough object-ish concepts
+-- - extract rough metric-ish concepts
+-- - extract time/filter intent
+-- - extract ranking/comparison intent
+-- - preserve ambiguity instead of forcing early commitment
+--
+-- Example:
+--   "Which players scored the most points over the last 10 games?"
+--
+-- Possible intent artifact:
+-- - subject concept: players
+-- - metric concept: points
+-- - time/filter concept: last 10 games
+-- - ranking intent: descending
+-- - limit intent: top results
+--
+-- Important:
+-- This stage should not decide final ontology objects or final query shape.
+-- It should only capture what the user appears to mean.
