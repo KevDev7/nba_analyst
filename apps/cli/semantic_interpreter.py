@@ -148,17 +148,24 @@ def _strip_json_fences(raw_text: str) -> str:
 
 def _is_querymodel_recent_ranking_question(question: str) -> bool:
     question_text = question.lower()
-    if re.search(r"\b(compare|average|avg|season|playoffs|monthly|trend)\b", question_text):
+    if re.search(r"\b(compare|season|playoffs|monthly|trend)\b", question_text):
         return False
     if re.search(r"\b(and their|for the|for team)\b", question_text):
         return False
     if not re.search(r"\blast\s+\d+\s+games?\b", question_text):
         return False
-    if not re.search(r"\b(top\s+\d+|most|highest|best)\b", question_text):
+    if not (
+        re.search(r"\b(top\s+\d+|most|highest|best)\b", question_text)
+        or re.search(r"\bplayers?\s+by\b", question_text)
+        or re.search(r"\bwho\s+has\b", question_text)
+    ):
         return False
-    if not re.search(r"\b(points|pts|scoring|scorer|scorers)\b", question_text):
+    if not re.search(
+        r"\b(average\s+points|avg\s+points|average\s+scoring|points|pts|scoring|scorer|scorers)\b",
+        question_text,
+    ):
         return False
-    return bool(re.search(r"\b(player|players|scorer|scorers)\b", question_text))
+    return bool(re.search(r"\b(player|players|scorer|scorers|who)\b", question_text))
 
 
 def _querymodel_recent_ranking_assumptions(question: str) -> list[str]:
@@ -167,6 +174,8 @@ def _querymodel_recent_ranking_assumptions(question: str) -> list[str]:
         "Interpreted 'scoring' as total points.",
         "Interpreted 'scorers' as players ranked by total points.",
         "Interpreted 'scorer' as players ranked by total points.",
+        "Interpreted 'avg points' as average points.",
+        "Interpreted 'average scoring' as average points.",
     ]
     return _normalize_assumptions(question, candidate_assumptions)
 

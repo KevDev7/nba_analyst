@@ -101,15 +101,16 @@ groundRecentPlayerRankingIntent queryIntent = do
       (Left "QueryModel.Ground requires a recent-games hint for recent ranking grounding.")
       Right
       (recentGamesHint queryIntent)
+  metricName <- selectedRecentRankingMetric queryIntent
   if not (supportsRecentPlayerRanking queryIntent)
-    then Left "QueryModel.Ground only supports the recent player scoring ranking slice."
+    then Left "QueryModel.Ground only supports the recent player ranking slice over the current executable PlayerGame metrics."
     else
       pure
         ( (groundedMetricRequest "PlayerGame")
-            { groundedMetrics = ["total_points"]
+            { groundedMetrics = [metricName]
             , groundedDimensions = ["player_name"]
             , groundedFilters = [GroundedFilter "last_n_games" (Just (QI.FilterInt gamesValue))]
-            , groundedOrdering = Just (GroundedOrdering (Just "total_points") True)
+            , groundedOrdering = Just (GroundedOrdering (Just metricName) True)
             , groundedLimit = limitHint queryIntent
             }
         )
@@ -117,8 +118,16 @@ groundRecentPlayerRankingIntent queryIntent = do
 supportsRecentPlayerRanking :: QueryIntent -> Bool
 supportsRecentPlayerRanking queryIntent =
   any (`elem` objectMentions queryIntent) ["player", "scorer"]
-    && any (`elem` metricMentions queryIntent) ["total_points", "scoring"]
+    && case selectedRecentRankingMetric queryIntent of
+      Right _ -> True
+      Left _ -> False
     && recentGamesHint queryIntent /= Nothing
     && case orderingHint queryIntent of
       Just (OrderingHint IntentDescending _) -> True
       _ -> False
+
+selectedRecentRankingMetric :: QueryIntent -> Either Text Text
+selectedRecentRankingMetric queryIntent
+  | "average_points" `elem` metricMentions queryIntent = Right "average_points"
+  | "total_points" `elem` metricMentions queryIntent = Right "total_points"
+  | otherwise = Left "unsupported metric"

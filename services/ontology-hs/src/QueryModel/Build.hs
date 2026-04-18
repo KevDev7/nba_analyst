@@ -141,7 +141,7 @@ buildRecentPlayerRankingQuery :: Text -> Either Text QI.Query
 buildRecentPlayerRankingQuery questionText = do
   intent <-
     maybe
-      (Left "QueryModel.Intent did not match the slice-32 recent player ranking pattern.")
+      (Left "QueryModel.Intent did not match the live recent player ranking QueryModel pattern.")
       Right
       (extractRecentPlayerRankingIntent questionText)
   grounded <- groundRecentPlayerRankingIntent intent

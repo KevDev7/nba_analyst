@@ -72,12 +72,12 @@ emptyIntent questionText =
 
 extractRecentPlayerRankingIntent :: Text -> Maybe QueryIntent
 extractRecentPlayerRankingIntent questionText
-  | not (isRankingQuestion questionTerms) = Nothing
+  | not (isRecentPlayerRankingShape questionTerms) = Nothing
   | not (mentionsRecentGames questionTerms) = Nothing
-  | not (mentionsPlayerConcept questionTerms) = Nothing
-  | not (mentionsPointsConcept questionTerms) = Nothing
+  | not (mentionsPlayerRankingSubject questionTerms) = Nothing
   | otherwise =
-      let recentGames = extractRecentGames questionTerms
+      let maybeMetric = metricIntentFromTokens questionTerms
+          recentGames = extractRecentGames questionTerms
           explicitLimit = extractTopLimit questionTerms
           inferredLimit =
             case explicitLimit of
@@ -87,51 +87,73 @@ extractRecentPlayerRankingIntent questionText
                   then Just 1
                   else Nothing
           objectHints =
-            if any (`elem` questionTerms) ["player", "players"]
+            if any (`elem` questionTerms) ["player", "players"] || "who" `elem` questionTerms
               then ["player"]
               else ["player", "scorer"]
-          metricHints =
-            if any (`elem` questionTerms) ["points", "pts"]
-              then ["total_points"]
-              else ["total_points", "scoring"]
-       in recentGames >>= \gamesValue ->
+       in maybeMetric >>= \metricKey ->
+            recentGames >>= \gamesValue ->
             Just
               ( (emptyIntent questionText)
                   { objectMentions = objectHints
-                  , metricMentions = metricHints
+                  , metricMentions = [metricKey]
                   , filterMentions = ["last_n_games"]
                   , timeMentions = ["recent_games"]
                   , recentGamesHint = Just gamesValue
-                  , orderingHint = Just (OrderingHint IntentDescending (Just "total_points"))
+                  , orderingHint = Just (OrderingHint IntentDescending (Just metricKey))
                   , limitHint = inferredLimit
                   }
               )
   where
     questionTerms = questionTokens questionText
 
-mentionsPlayerConcept :: [Text] -> Bool
-mentionsPlayerConcept tokens =
-  any (`elem` tokens) ["player", "players", "scorer", "scorers"]
+mentionsPlayerRankingSubject :: [Text] -> Bool
+mentionsPlayerRankingSubject questionTerms =
+  any (`elem` questionTerms) ["player", "players", "scorer", "scorers"]
+    || ("who" `elem` questionTerms && isRankingQuestion questionTerms)
 
-mentionsPointsConcept :: [Text] -> Bool
-mentionsPointsConcept tokens =
-  not (any (`elem` tokens) ["average", "avg"])
-    && any (`elem` tokens) ["points", "pts", "scoring", "scorer", "scorers"]
+metricIntentFromTokens :: [Text] -> Maybe Text
+metricIntentFromTokens questionTerms
+  | mentionsAveragePointsConcept questionTerms = Just "average_points"
+  | mentionsTotalPointsConcept questionTerms = Just "total_points"
+  | otherwise = Nothing
+
+mentionsAveragePointsConcept :: [Text] -> Bool
+mentionsAveragePointsConcept questionTerms =
+  any (`elem` questionTerms) ["average", "avg"]
+    && any (`elem` questionTerms) ["points", "scoring"]
+
+mentionsTotalPointsConcept :: [Text] -> Bool
+mentionsTotalPointsConcept questionTerms =
+  not (any (`elem` questionTerms) ["average", "avg"])
+    && any (`elem` questionTerms) ["points", "pts", "scoring", "scorer", "scorers"]
 
 isRankingQuestion :: [Text] -> Bool
-isRankingQuestion tokens =
-  isJustTextIntPair "top" tokens || any (`elem` tokens) ["most", "highest", "best"]
+isRankingQuestion questionTerms =
+  isJustTextIntPair "top" questionTerms || any (`elem` questionTerms) ["most", "highest", "best"]
+
+isRecentPlayerRankingShape :: [Text] -> Bool
+isRecentPlayerRankingShape questionTerms =
+  not (containsUnsupportedQualifier questionTerms)
+    && (isRankingQuestion questionTerms || isMetricBreakdownRanking questionTerms)
+
+isMetricBreakdownRanking :: [Text] -> Bool
+isMetricBreakdownRanking questionTerms =
+  "by" `elem` questionTerms
+
+containsUnsupportedQualifier :: [Text] -> Bool
+containsUnsupportedQualifier questionTerms =
+  any (`elem` questionTerms) ["compare", "vs", "versus", "season", "playoffs", "monthly", "month", "trend", "for", "team", "teams"]
 
 mentionsRecentGames :: [Text] -> Bool
-mentionsRecentGames tokens =
-  extractRecentGames tokens /= Nothing
+mentionsRecentGames questionTerms =
+  extractRecentGames questionTerms /= Nothing
 
 extractTopLimit :: [Text] -> Maybe Int
 extractTopLimit = extractKeywordIntPair "top"
 
 extractRecentGames :: [Text] -> Maybe Int
-extractRecentGames tokens =
-  go tokens
+extractRecentGames questionTerms =
+  go questionTerms
   where
     go ("last" : numberToken : unitToken : remainingTokens)
       | unitToken `elem` ["game", "games"] =
@@ -142,8 +164,8 @@ extractRecentGames tokens =
     go [] = Nothing
 
 extractKeywordIntPair :: Text -> [Text] -> Maybe Int
-extractKeywordIntPair keyword tokens =
-  go tokens
+extractKeywordIntPair keyword questionTerms =
+  go questionTerms
   where
     go (currentToken : nextToken : remainingTokens)
       | currentToken == keyword =
@@ -154,8 +176,8 @@ extractKeywordIntPair keyword tokens =
     go [] = Nothing
 
 isJustTextIntPair :: Text -> [Text] -> Bool
-isJustTextIntPair keyword tokens =
-  case extractKeywordIntPair keyword tokens of
+isJustTextIntPair keyword questionTerms =
+  case extractKeywordIntPair keyword questionTerms of
     Just _ -> True
     Nothing -> False
 

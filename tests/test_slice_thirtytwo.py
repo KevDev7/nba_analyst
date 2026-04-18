@@ -75,6 +75,43 @@ class SliceThirtyTwoTests(unittest.TestCase):
         self.assertEqual(shared["limit"], 5)
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
 
+    def test_haskell_query_model_handles_average_points_variant(self) -> None:
+        payload = call_query_model_recent_ranking(
+            "Show me players by average points over the last 10 games"
+        )
+
+        shared = payload["spec"]["sharedQuery"]
+        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
+        self.assertEqual(
+            shared["orders"], [{"kind": "desc", "metric": "average_points"}]
+        )
+        self.assertIsNone(shared["limit"])
+
+    def test_haskell_query_model_handles_avg_points_variant(self) -> None:
+        payload = call_query_model_recent_ranking(
+            "Show me players by avg points over the last 10 games"
+        )
+
+        shared = payload["spec"]["sharedQuery"]
+        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(
+            shared["orders"], [{"kind": "desc", "metric": "average_points"}]
+        )
+
+    def test_haskell_query_model_handles_highest_average_scoring_variant(self) -> None:
+        payload = call_query_model_recent_ranking(
+            "Who has the highest average scoring over the last 10 games?"
+        )
+
+        shared = payload["spec"]["sharedQuery"]
+        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(
+            shared["orders"], [{"kind": "desc", "metric": "average_points"}]
+        )
+        self.assertEqual(shared["limit"], 1)
+
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_live_fast_path_uses_haskell_for_recent_ranking(self, mock_call_gemini) -> None:
         payload = interpret_question_to_planner_query(
@@ -100,33 +137,44 @@ class SliceThirtyTwoTests(unittest.TestCase):
         mock_call_gemini.assert_not_called()
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_out_of_scope_average_points_query_falls_back_to_gemini(
+    def test_live_fast_path_uses_haskell_for_average_points_recent_ranking(
         self, mock_call_gemini
     ) -> None:
-        mock_call_gemini.return_value = """
-        {
-          "status": "ok",
-          "query": {
-            "query_kind": "metric_query",
-            "core_fact_object": "PlayerGame",
-            "metrics": ["average_points"],
-            "dimensions": ["player_name"],
-            "filters": [{"kind": "last_n_games", "value": 10}],
-            "orders": [{"kind": "desc", "metric": "average_points"}],
-            "limit": null,
-            "entity_filters": [],
-            "comparison": null,
-            "assumptions": []
-          }
-        }
-        """
-
         payload = interpret_question_to_planner_query(
             "Show me players by average points over the last 10 games"
         )
 
         self.assertEqual(payload["spec"]["sharedQuery"]["metrics"], ["average_points"])
-        mock_call_gemini.assert_called_once()
+        self.assertEqual(payload["spec"]["sharedQuery"]["assumptions"], [])
+        mock_call_gemini.assert_not_called()
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_live_fast_path_preserves_python_owned_avg_points_assumption(
+        self, mock_call_gemini
+    ) -> None:
+        payload = interpret_question_to_planner_query(
+            "Show me players by avg points over the last 10 games"
+        )
+
+        self.assertEqual(
+            payload["spec"]["sharedQuery"]["assumptions"],
+            ["Interpreted 'avg points' as average points."],
+        )
+        mock_call_gemini.assert_not_called()
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_live_fast_path_preserves_python_owned_average_scoring_assumption(
+        self, mock_call_gemini
+    ) -> None:
+        payload = interpret_question_to_planner_query(
+            "Who has the highest average scoring over the last 10 games?"
+        )
+
+        self.assertEqual(
+            payload["spec"]["sharedQuery"]["assumptions"],
+            ["Interpreted 'average scoring' as average points."],
+        )
+        mock_call_gemini.assert_not_called()
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_out_of_scope_queries_keep_using_gemini(self, mock_call_gemini) -> None:
