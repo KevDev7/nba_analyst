@@ -70,6 +70,7 @@ validateObjectQuery ontology objectQuery = do
   let base =
         case objectQuery of
           ObjectQuerySpec {sharedQuery = currentBase} -> currentBase
+  validateObjectQueryTimeGrain (timeGrain base)
   factObject <- requireObject ontology (coreFactObject base)
   let rowObjectNameValue = rowObject objectQuery
   _ <- requirePath ontology (objectName factObject) rowObjectNameValue
@@ -268,8 +269,15 @@ validateTrendFilters filterValues =
 
 validateTrendTimeGrain :: TimeGrain -> Either Text ()
 validateTrendTimeGrain timeGrainValue =
-  case timeGrainValue of
-    Month -> pure ()
+  if timeGrainText timeGrainValue == timeGrainText monthTimeGrain
+    then pure ()
+    else Left "Trend queries currently support only the month time grain."
+
+validateObjectQueryTimeGrain :: Maybe TimeGrain -> Either Text ()
+validateObjectQueryTimeGrain maybeTimeGrain =
+  case maybeTimeGrain of
+    Nothing -> pure ()
+    Just _ -> Left "Object queries currently do not support time-grain trends."
 
 validateTrendLimit :: Maybe Int -> Either Text ()
 validateTrendLimit maybeLimit =

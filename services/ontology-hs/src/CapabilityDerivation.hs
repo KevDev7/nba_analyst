@@ -173,7 +173,7 @@ enumerateTrendMetricQueries ontology =
               { QI.coreFactObject = factObjectName
               , QI.metrics = [metricValue]
               , QI.dimensions = dimensionValues
-              , QI.timeGrain = Just QI.Month
+              , QI.timeGrain = Just QI.monthTimeGrain
               , QI.filters = [QI.pastYearFilter]
               , QI.linkedFilters = []
               , QI.orders = []
@@ -583,9 +583,7 @@ dimensionText :: QI.DimensionName -> Text
 dimensionText dimensionValue = dimensionValue
 
 timeGrainText :: QI.TimeGrain -> Text
-timeGrainText timeGrainValue =
-  case timeGrainValue of
-    QI.Month -> "month"
+timeGrainText timeGrainValue = QI.timeGrainText timeGrainValue
 
 snakeCase :: Text -> Text
 snakeCase textValue =

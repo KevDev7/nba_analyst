@@ -212,10 +212,14 @@ resolveTrendQuery ontology metricQuery = do
   let base =
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
+      maybeTrendTimeGrain =
+        case base of
+          BaseQuery {timeGrain = currentTimeGrain} -> currentTimeGrain
+  trendTimeGrain <- requireTrendTimeGrainValue maybeTrendTimeGrain
   factObject <- requireObject ontology (coreFactObject base)
   selectedMetric <- requireTrendMetricName (metrics base)
   metricDef <- requireMetric factObject selectedMetric
-  derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName base)
+  derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName trendTimeGrain)
   resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
   metricSourceColumn <- metricSourceAttribute metricDef
   resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
@@ -232,7 +236,7 @@ resolveTrendQuery ontology metricQuery = do
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
       , timeFilterKind = "past_year"
-      , timeGrain = "month"
+      , timeGrain = timeGrainText trendTimeGrain
       , linkedFiltersResolved = resolvedLinkedFilters
       , resolvedAssumptions = assumptions base
       }
@@ -517,8 +521,11 @@ requireDerivedTimeAttribute objectValue attributeName =
         Nothing -> Left ("Attribute '" <> attributeName <> "' is not configured as a derived time attribute.")
     Nothing -> Left ("Could not resolve derived time attribute '" <> attributeName <> "' against the ontology.")
 
-timeBucketAttributeName :: BaseQuery -> Text
-timeBucketAttributeName _ = "game_year_month"
+timeBucketAttributeName :: TimeGrain -> Text
+timeBucketAttributeName timeGrainValue =
+  case timeGrainText timeGrainValue of
+    "month" -> "game_year_month"
+    _ -> error "Expected a supported trend time grain."
 
 resolveTrendSeries :: Ontology -> OT.Object -> [DimensionName] -> Either Text (Maybe (OT.Object, DiscoveredPath))
 resolveTrendSeries ontology factObject dimensionValues =
@@ -567,3 +574,9 @@ queryTimeGrain :: MetricQuerySpec -> Maybe TimeGrain
 queryTimeGrain spec =
   case spec of
     MetricQuerySpec {sharedQuery = BaseQuery {timeGrain = currentTimeGrain}} -> currentTimeGrain
+
+requireTrendTimeGrainValue :: Maybe TimeGrain -> Either Text TimeGrain
+requireTrendTimeGrainValue maybeTimeGrain =
+  case maybeTimeGrain of
+    Just timeGrainValue -> Right timeGrainValue
+    Nothing -> Left "Trend queries currently require a time grain."

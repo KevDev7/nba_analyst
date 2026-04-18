@@ -49,18 +49,25 @@ type MetricName = Text
 
 type DimensionName = Text
 
-data TimeGrain
-  = Month
+newtype TimeGrain = TimeGrainRef Text
   deriving (Show, Eq, Generic)
 
+monthTimeGrain :: TimeGrain
+monthTimeGrain = TimeGrainRef "month"
+
 instance ToJSON TimeGrain where
-  toJSON Month = String "month"
+  toJSON timeGrainValue = String (timeGrainText timeGrainValue)
 
 instance FromJSON TimeGrain where
   parseJSON = withText "TimeGrain" $ \value ->
-    case value of
-      "month" -> pure Month
-      _ -> fail ("Unknown time grain: " <> show value)
+    if value /= ""
+      then pure (TimeGrainRef value)
+      else fail "time grains require a non-empty string value."
+
+timeGrainText :: TimeGrain -> Text
+timeGrainText timeGrainValue =
+  case timeGrainValue of
+    TimeGrainRef rawValue -> rawValue
 
 data FilterValue
   = FilterInt Int
