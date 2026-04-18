@@ -161,21 +161,22 @@ class SliceTwentySixTests(unittest.TestCase):
             family for family in artifact["families"] if family["time_grain"] is not None
         ]
 
-        self.assertEqual(len(trend_families), 2)
         self.assertTrue(all(family["time_grain"] == "month" for family in trend_families))
-        self.assertEqual(
-            {
-                (
-                    family["core_fact_object"],
-                    tuple(family["dimensions"]),
-                    tuple(family["required_filter_kinds"]),
-                )
+        self.assertTrue(
+            any(
+                family["core_fact_object"] == "PlayerGame"
+                and tuple(family["dimensions"]) == tuple()
+                and tuple(family["required_filter_kinds"]) == ("past_year",)
                 for family in trend_families
-            },
-            {
-                ("TeamGame", tuple(), ("past_year",)),
-                ("TeamGame", ("team_name",), ("past_year",)),
-            },
+            )
+        )
+        self.assertTrue(
+            any(
+                family["core_fact_object"] == "TeamGame"
+                and tuple(family["dimensions"]) == ("team_name",)
+                and tuple(family["required_filter_kinds"]) == ("past_year",)
+                for family in trend_families
+            )
         )
 
 

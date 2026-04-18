@@ -70,7 +70,7 @@ class SliceNineteenTests(unittest.TestCase):
         self.assertEqual(shared["orders"], [])
         self.assertIsNone(shared["limit"])
 
-    def test_player_game_monthly_trend_is_rejected(self) -> None:
+    def test_player_game_monthly_trend_is_now_supported(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -90,19 +90,20 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+        planner_output = call_haskell_planner_for_query(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
 
-        self.assertIn("Trend queries currently support TeamGame only.", str(context.exception))
+        self.assertEqual(resolved["factTableName"], "player_game")
+        self.assertEqual(resolved["timeGrain"], "month")
 
-    def test_non_team_grouped_trend_is_rejected(self) -> None:
+    def test_non_team_grouped_trend_is_now_supported_when_reachable(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["game_label"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
                     "linkedFilters": [],
@@ -115,13 +116,11 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+        planner_output = call_haskell_planner_for_query(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
 
-        self.assertIn(
-            "Trend queries currently support only aggregate output or team_name grouping.",
-            str(context.exception),
-        )
+        self.assertEqual(resolved["seriesObjectName"], "Game")
+        self.assertEqual(resolved["seriesName"]["columnName"], "game_label")
 
     def test_linked_filter_trend_is_rejected(self) -> None:
         payload = {

@@ -91,7 +91,6 @@ validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
   validateTrendOrders (orders base)
   validateTrendFactSurface factObject
   validateTrendDimensions ontology factObject (dimensions base)
-  requireAttributeKind factObject "game_year_month" Dimension
 
 requireOrdinaryMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
 requireOrdinaryMetricRowObject ontology factObject dimensionValues = do
@@ -292,10 +291,9 @@ validateTrendLinkedFilters linkedFilterValues =
     else Left "Trend queries currently do not support linked filters."
 
 validateTrendFactSurface :: Object -> Either Text ()
-validateTrendFactSurface factObject =
-  if objectName factObject == "TeamGame"
-    then pure ()
-    else Left "Trend queries currently support TeamGame only."
+validateTrendFactSurface factObject = do
+  requireFactAttribute factObject "game_date" trendFactSurfaceMessage
+  requireDerivedTrendBucket factObject "game_year_month"
 
 validateSeasonFilters :: [Filter] -> Either Text ()
 validateSeasonFilters filterValues =
@@ -350,11 +348,10 @@ validateTrendDimensions :: Ontology -> Object -> [DimensionName] -> Either Text 
 validateTrendDimensions ontology factObject dimensionValues =
   case dimensionValues of
     [] -> pure ()
-    ["team_name"] -> do
-      rowObject <- requireReachableDimensionObject ontology (objectName factObject) "team_name"
-      requireOrdinaryMetricDimensionOnObject rowObject "team_name"
+    [dimensionValue] -> do
+      rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionValue
+      requirePublicTrendDimensionOnObject rowObject dimensionValue
       pure ()
-    [_] -> Left "Trend queries currently support only aggregate output or team_name grouping."
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 
 validateComparisonQuery :: Ontology -> Object -> Object -> BaseQuery -> [PlayerRef] -> Either Text ()
@@ -523,6 +520,32 @@ requirePublicLinkedFilterDimension object attributeName = do
       (findAttribute object attributeName)
   if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
     then Left "Linked filters currently support public dimension attributes on reachable ontology objects only."
+    else pure ()
+
+requirePublicTrendDimensionOnObject :: Object -> Text -> Either Text ()
+requirePublicTrendDimensionOnObject object attributeName = do
+  attribute <-
+    maybe
+      (Left ("Attribute '" <> attributeName <> "' not found in ontology."))
+      Right
+      (findAttribute object attributeName)
+  if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
+    then Left "Trend grouping currently supports reachable public dimension attributes only."
+    else pure ()
+
+trendFactSurfaceMessage :: Text
+trendFactSurfaceMessage =
+  "Trend queries currently require a fact surface that exposes game_date and a derived game_year_month time bucket."
+
+requireDerivedTrendBucket :: Object -> Text -> Either Text ()
+requireDerivedTrendBucket object attributeName = do
+  attribute <-
+    maybe
+      (Left trendFactSurfaceMessage)
+      Right
+      (findAttribute object attributeName)
+  if OT.kind attribute /= Dimension || OT.derivation attribute == Nothing
+    then Left trendFactSurfaceMessage
     else pure ()
 
 objectName :: OT.Object -> Text

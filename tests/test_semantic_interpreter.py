@@ -207,29 +207,21 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertEqual(matching, [])
 
-    def test_only_narrow_core_trend_families_remain_derived(self) -> None:
+    def test_monthly_trend_families_are_now_derived_from_truthful_fact_surfaces(self) -> None:
         artifact = _capability_artifact()
         trend_families = [
             family for family in artifact["families"] if family["time_grain"] == "month"
         ]
 
-        self.assertEqual(len(trend_families), 2)
-        self.assertEqual(
-            {
-                (
-                    family["core_fact_object"],
-                    tuple(family["dimensions"]),
-                    tuple(family["required_filter_kinds"]),
-                )
-                for family in trend_families
-            },
-            {
-                ("TeamGame", tuple(), ("past_year",)),
-                ("TeamGame", ("team_name",), ("past_year",)),
-            },
+        self.assertTrue(trend_families)
+        self.assertTrue(
+            all(tuple(family["required_filter_kinds"]) == ("past_year",) for family in trend_families)
+        )
+        self.assertTrue(
+            {family["core_fact_object"] for family in trend_families}.issubset({"PlayerGame", "TeamGame"})
         )
 
-    def test_misleading_player_game_trend_families_are_not_derived(self) -> None:
+    def test_player_game_trend_families_are_now_derived_when_truthful(self) -> None:
         artifact = _capability_artifact()
         matching = [
             family
@@ -238,7 +230,7 @@ class SemanticInterpreterTests(unittest.TestCase):
             and family["core_fact_object"] == "PlayerGame"
         ]
 
-        self.assertEqual(matching, [])
+        self.assertTrue(matching)
 
     def test_trend_families_do_not_allow_limit(self) -> None:
         artifact = _capability_artifact()

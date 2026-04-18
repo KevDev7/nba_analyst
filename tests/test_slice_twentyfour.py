@@ -129,7 +129,7 @@ class SliceTwentyFourTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_trend_still_only_accepts_aggregate_or_team_name_grouping(self) -> None:
+    def test_trend_grouping_requires_reachable_public_dimension(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -152,10 +152,7 @@ class SliceTwentyFourTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             call_haskell_planner_for_query(payload)
 
-        self.assertIn(
-            "Trend queries currently support only aggregate output or team_name grouping.",
-            str(context.exception),
-        )
+        self.assertIn("No valid ontology path from 'TeamGame' reaches a displayed dimension attribute 'display_name'.", str(context.exception))
 
     def test_capability_artifact_still_contains_truthful_core_dimension_families(self) -> None:
         artifact = _capability_artifact()
