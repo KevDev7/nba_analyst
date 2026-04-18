@@ -43,36 +43,7 @@ instance FromJSON PlayerRef where
       <$> obj .: "personId"
       <*> obj .: "playerName"
 
-data MetricName
-  = TotalPoints
-  | AveragePoints
-  | GamesPlayed
-  | PointsPer36
-  | Wins
-  | Losses
-  | WinPercentage
-  deriving (Show, Eq, Generic)
-
-instance ToJSON MetricName where
-  toJSON TotalPoints = String "total_points"
-  toJSON AveragePoints = String "average_points"
-  toJSON GamesPlayed = String "games_played"
-  toJSON PointsPer36 = String "points_per_36"
-  toJSON Wins = String "wins"
-  toJSON Losses = String "losses"
-  toJSON WinPercentage = String "win_percentage"
-
-instance FromJSON MetricName where
-  parseJSON = withText "MetricName" $ \value ->
-    case value of
-      "total_points" -> pure TotalPoints
-      "average_points" -> pure AveragePoints
-      "games_played" -> pure GamesPlayed
-      "points_per_36" -> pure PointsPer36
-      "wins" -> pure Wins
-      "losses" -> pure Losses
-      "win_percentage" -> pure WinPercentage
-      _ -> fail ("Unknown metric: " <> show value)
+type MetricName = Text
 
 data DimensionName
   = PlayerName

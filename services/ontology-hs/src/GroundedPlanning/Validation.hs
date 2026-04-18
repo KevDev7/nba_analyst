@@ -179,7 +179,7 @@ requireFamilySelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.
 requireFamilySelectedMetric cardinalityMessage factObject metricValues =
   case metricValues of
     [metricValue] -> do
-      metricDef <- requireMetric factObject (metricKey metricValue)
+      metricDef <- requireMetric factObject metricValue
       if executable metricDef
         then pure metricDef
         else Left ("Metric '" <> name metricDef <> "' is present in the ontology but not executable in this slice.")
@@ -388,7 +388,7 @@ validateComparisonPath ontology factObject rowObject = do
 -- on the critical path for the current four target families.
 validateComparisonMetric :: [MetricName] -> Either Text ()
 validateComparisonMetric metricValues =
-  if metricValues /= [TotalPoints]
+  if metricValues /= ["total_points"]
     then Left "Comparison currently supports total_points only."
     else pure ()
 
@@ -504,17 +504,6 @@ requireAttributeKind object attributeName expectedKind = do
   if kind attribute == expectedKind
     then pure ()
     else Left ("Attribute '" <> attributeName <> "' has the wrong kind in the ontology.")
-
-metricKey :: MetricName -> Text
-metricKey metricValue =
-  case metricValue of
-    TotalPoints -> "total_points"
-    AveragePoints -> "average_points"
-    GamesPlayed -> "games_played"
-    PointsPer36 -> "points_per_36"
-    Wins -> "wins"
-    Losses -> "losses"
-    WinPercentage -> "win_percentage"
 
 dimensionKey :: DimensionName -> Either Text Text
 dimensionKey dimensionValue =

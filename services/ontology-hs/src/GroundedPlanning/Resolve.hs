@@ -160,7 +160,7 @@ resolveMetricQuery ontology metricQuery = do
     case comparison metricQuery of
       Just _ -> requireComparisonMetricName (metrics base)
       Nothing -> requireOrdinaryMetricName (metrics base)
-  metricDef <- requireMetric factObject (metricText selectedMetric)
+  metricDef <- requireMetric factObject selectedMetric
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
@@ -213,7 +213,7 @@ resolveTrendQuery ontology metricQuery = do
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
   selectedMetric <- requireTrendMetricName (metrics base)
-  metricDef <- requireMetric factObject (metricText selectedMetric)
+  metricDef <- requireMetric factObject selectedMetric
   derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName base)
   resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
   metricSourceColumn <- metricSourceAttribute metricDef
@@ -248,7 +248,7 @@ resolveObjectQuery ontology objectQuery = do
   rowObjectValue <- requireObject ontology rowObjectNameValue
   discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
   selectedMetric <- requireObjectQueryMetricName (metrics base)
-  metricDef <- requireMetric factObject (metricText selectedMetric)
+  metricDef <- requireMetric factObject selectedMetric
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef
@@ -422,17 +422,6 @@ objectPrimaryKey objectValue =
     of
     primaryKeyColumn : _ -> Right primaryKeyColumn
     [] -> Left ("Object '" <> objectName objectValue <> "' does not expose a primary key in the ontology.")
-
-metricText :: MetricName -> Text
-metricText metricValue =
-  case metricValue of
-    TotalPoints -> "total_points"
-    AveragePoints -> "average_points"
-    GamesPlayed -> "games_played"
-    PointsPer36 -> "points_per_36"
-    Wins -> "wins"
-    Losses -> "losses"
-    WinPercentage -> "win_percentage"
 
 metricDisplayColumn :: [DimensionName] -> Either Text Text
 metricDisplayColumn dimensionValues = do

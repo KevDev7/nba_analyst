@@ -195,7 +195,7 @@ enumerateComparisonQueries =
         { QI.sharedQuery =
             QI.BaseQuery
               { QI.coreFactObject = "PlayerGame"
-              , QI.metrics = [QI.TotalPoints]
+              , QI.metrics = ["total_points"]
               , QI.dimensions = [QI.PlayerName]
               , QI.timeGrain = Nothing
               , QI.filters = [QI.LastNGames 10]
@@ -252,7 +252,7 @@ executableMetricsForFactObject ontology factObjectName =
         mapMaybe
           ( \metricDef@OT.MetricDef {OT.name = metricNameValue} ->
               if OT.executable metricDef
-                then metricNameFromText metricNameValue
+                then Just metricNameValue
                 else Nothing
           )
           (OT.metrics objectValue)
@@ -303,18 +303,6 @@ reachablePublicDimensionsForFactObject ontology factObjectName =
         | discoveredPath <- findPathsFrom ontology 2 factObjectName
         , let targetObjectName = OG.targetObjectName discoveredPath
         ]
-
-metricNameFromText :: Text -> Maybe QI.MetricName
-metricNameFromText metricName =
-  case metricName of
-    "total_points" -> Just QI.TotalPoints
-    "average_points" -> Just QI.AveragePoints
-    "games_played" -> Just QI.GamesPlayed
-    "points_per_36" -> Just QI.PointsPer36
-    "wins" -> Just QI.Wins
-    "losses" -> Just QI.Losses
-    "win_percentage" -> Just QI.WinPercentage
-    _ -> Nothing
 
 dimensionNameFromText :: Text -> Maybe QI.DimensionName
 dimensionNameFromText dimensionName =
@@ -598,19 +586,8 @@ comparisonKey comparisonValue =
 metricTextFromList :: [QI.MetricName] -> Text
 metricTextFromList metricValues =
   case metricValues of
-    [metricValue] -> metricText metricValue
+    [metricValue] -> metricValue
     _ -> error "Capability derivation expected exactly one selected metric."
-
-metricText :: QI.MetricName -> Text
-metricText metricValue =
-  case metricValue of
-    QI.TotalPoints -> "total_points"
-    QI.AveragePoints -> "average_points"
-    QI.GamesPlayed -> "games_played"
-    QI.PointsPer36 -> "points_per_36"
-    QI.Wins -> "wins"
-    QI.Losses -> "losses"
-    QI.WinPercentage -> "win_percentage"
 
 dimensionText :: QI.DimensionName -> Text
 dimensionText dimensionValue =
