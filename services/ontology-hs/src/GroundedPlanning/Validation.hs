@@ -15,11 +15,12 @@
 
 module GroundedPlanning.Validation where
 
+import Control.Applicative ((<|>))
 import Data.List (nub)
 import Data.Text (Text)
 import OntologyLayer.Graph (DiscoveredPath, findAttribute, findMetric, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (Attribute (kind), AttributeKind (Dimension), MetricDef (executable, name, source_attributes), Object, Ontology)
+import OntologyLayer.Types (AttributeKind (Dimension), MetricDef (executable, name, source_attributes), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -222,13 +223,19 @@ requireComparisonDimensionOnObject object dimensionName = do
 validateMetricFilters :: [Filter] -> Either Text ()
 validateMetricFilters filterValues =
   case filterValues of
-    [LastNGames gamesValue] | gamesValue > 0 -> pure ()
+    [filterValue]
+      | filterKindText filterValue == "last_n_games"
+      , Just gamesValue <- filterIntValue filterValue
+      , gamesValue > 0 -> pure ()
     _ -> Left "Query requires a positive LastNGames filter."
 
 classifyOrdinaryMetricFilterFamily :: [Filter] -> Either Text OrdinaryMetricFilterFamily
 classifyOrdinaryMetricFilterFamily filterValues =
   case filterValues of
-    [LastNGames gamesValue] | gamesValue > 0 -> Right RecentMetricWindow
+    [filterValue]
+      | filterKindText filterValue == "last_n_games"
+      , Just gamesValue <- filterIntValue filterValue
+      , gamesValue > 0 -> Right RecentMetricWindow
     _ ->
       if isExactSeasonBundle filterValues
         then Right SeasonMetricWindow
@@ -241,25 +248,22 @@ isExactSeasonBundle filterValues =
     Nothing -> False
   where
     isSeasonFilter filterValue =
-      case filterValue of
-        ExactSeason _ -> True
-        SeasonTypeFilter _ -> True
-        _ -> False
+      let kindValue = filterKindText filterValue
+       in kindValue == "exact_season" || kindValue == "season_type"
 
 hasSeasonFilters :: [Filter] -> Bool
 hasSeasonFilters filterValues =
   any isSeasonFilter filterValues
   where
     isSeasonFilter filterValue =
-      case filterValue of
-        ExactSeason _ -> True
-        SeasonTypeFilter _ -> True
-        _ -> False
+      let kindValue = filterKindText filterValue
+       in kindValue == "exact_season" || kindValue == "season_type"
 
 validateTrendFilters :: [Filter] -> Either Text ()
 validateTrendFilters filterValues =
   case filterValues of
-    [PastYear] -> pure ()
+    [filterValue]
+      | isPastYearFilter filterValue -> pure ()
     _ -> Left "Trend queries currently require a PastYear filter."
 
 validateTrendTimeGrain :: TimeGrain -> Either Text ()
@@ -293,18 +297,18 @@ validateSeasonFilters filterValues =
 
 seasonFilterPair :: [Filter] -> Maybe (Text, Text)
 seasonFilterPair filterValues = do
-  seasonLabel <- foldr exactSeasonFilter Nothing filterValues
-  seasonTypeLabel <- foldr seasonTypeFilter Nothing filterValues
+  seasonLabel <- foldr pickExactSeasonValue Nothing filterValues
+  seasonTypeLabel <- foldr pickSeasonTypeValue Nothing filterValues
   pure (seasonLabel, seasonTypeLabel)
   where
-    exactSeasonFilter filterValue currentValue =
-      case filterValue of
-        ExactSeason seasonLabel -> Just seasonLabel
-        _ -> currentValue
-    seasonTypeFilter filterValue currentValue =
-      case filterValue of
-        SeasonTypeFilter seasonTypeLabel -> Just seasonTypeLabel
-        _ -> currentValue
+    pickExactSeasonValue filterValue currentValue =
+      if filterKindText filterValue == "exact_season"
+        then filterTextValue filterValue <|> currentValue
+        else currentValue
+    pickSeasonTypeValue filterValue currentValue =
+      if filterKindText filterValue == "season_type"
+        then filterTextValue filterValue <|> currentValue
+        else currentValue
 
 validateMetricOrders :: Maybe ComparisonIntent -> [Order] -> [MetricName] -> Either Text ()
 validateMetricOrders maybeComparison orderValues metricValues =
@@ -364,7 +368,10 @@ validateComparisonQueryShape base = do
     Nothing -> pure ()
     Just _ -> Left "Comparison queries currently do not support time-grain trends."
   case filters base of
-    [LastNGames gamesValue] | gamesValue > 0 -> pure ()
+    [filterValue]
+      | filterKindText filterValue == "last_n_games"
+      , Just gamesValue <- filterIntValue filterValue
+      , gamesValue > 0 -> pure ()
     _ -> Left "Comparison queries currently require a positive LastNGames filter."
   case dimensions base of
     ["player_name"] -> pure ()
@@ -501,7 +508,7 @@ requireAttributeKind :: Object -> Text -> OT.AttributeKind -> Either Text ()
 requireAttributeKind object attributeName expectedKind = do
   attribute <- maybe (Left ("Attribute '" <> attributeName <> "' not found in ontology.")) Right $
     findAttribute object attributeName
-  if kind attribute == expectedKind
+  if OT.kind attribute == expectedKind
     then pure ()
     else Left ("Attribute '" <> attributeName <> "' has the wrong kind in the ontology.")
 
@@ -509,3 +516,7 @@ objectName :: OT.Object -> Text
 objectName objectValue =
   case objectValue of
     OT.Object {OT.name = currentName} -> currentName
+
+isPastYearFilter :: Filter -> Bool
+isPastYearFilter filterValue =
+  filterKindText filterValue == "past_year" && filterValueRef filterValue == Nothing

@@ -17,7 +17,9 @@
 
 module QueryModel.IR where
 
+import Control.Applicative ((<|>))
 import Data.Aeson
+import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -60,30 +62,118 @@ instance FromJSON TimeGrain where
       "month" -> pure Month
       _ -> fail ("Unknown time grain: " <> show value)
 
+data FilterValue
+  = FilterInt Int
+  | FilterText Text
+  deriving (Show, Eq, Generic)
+
+instance ToJSON FilterValue where
+  toJSON filterValue =
+    case filterValue of
+      FilterInt intValue -> toJSON intValue
+      FilterText textValue -> toJSON textValue
+
+instance FromJSON FilterValue where
+  parseJSON value =
+    (FilterInt <$> parseJSON value) <|> (FilterText <$> parseJSON value)
+
 data Filter
-  = LastNGames Int
-  | PastYear
-  | ExactSeason Text
-  | SeasonTypeFilter Text
+  = FilterRef
+      { kind :: Text
+      , value :: Maybe FilterValue
+      }
   deriving (Show, Eq, Generic)
 
 instance ToJSON Filter where
-  toJSON (LastNGames n) = object ["kind" .= String "last_n_games", "value" .= n]
-  toJSON PastYear = object ["kind" .= String "past_year"]
-  toJSON (ExactSeason seasonLabel) =
-    object ["kind" .= String "exact_season", "value" .= seasonLabel]
-  toJSON (SeasonTypeFilter seasonTypeLabel) =
-    object ["kind" .= String "season_type", "value" .= seasonTypeLabel]
+  toJSON filterValue =
+    object $
+      ["kind" .= filterKindText filterValue]
+        ++ maybe [] (\filterScalar -> ["value" .= filterScalar]) (filterValueRef filterValue)
 
 instance FromJSON Filter where
   parseJSON = withObject "Filter" $ \obj -> do
     kindValue <- obj .: "kind"
     case (kindValue :: Text) of
-      "last_n_games" -> LastNGames <$> obj .: "value"
-      "past_year" -> pure PastYear
-      "exact_season" -> ExactSeason <$> obj .: "value"
-      "season_type" -> SeasonTypeFilter <$> obj .: "value"
-      _ -> fail ("Unknown filter kind: " <> show kindValue)
+      "last_n_games" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterInt gamesValue) | gamesValue > 0 ->
+            pure (lastNGamesFilter gamesValue)
+          _ -> fail "last_n_games filters require a positive integer value."
+      "past_year" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Nothing -> pure pastYearFilter
+          Just _ -> fail "past_year filters must not provide a value."
+      "exact_season" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterText seasonLabel) | seasonLabel /= ("" :: Text) ->
+            pure (exactSeasonFilter seasonLabel)
+          _ -> fail "exact_season filters require a non-empty string value."
+      "season_type" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterText seasonTypeLabel) | seasonTypeLabel /= ("" :: Text) ->
+            pure (seasonTypeFilter seasonTypeLabel)
+          _ -> fail "season_type filters require a non-empty string value."
+      _ -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        pure
+          FilterRef
+            { kind = kindValue
+            , value = maybeValue
+            }
+
+lastNGamesFilter :: Int -> Filter
+lastNGamesFilter gamesValue =
+  FilterRef
+    { kind = "last_n_games"
+    , value = Just (FilterInt gamesValue)
+    }
+
+pastYearFilter :: Filter
+pastYearFilter =
+  FilterRef
+    { kind = "past_year"
+    , value = Nothing
+    }
+
+exactSeasonFilter :: Text -> Filter
+exactSeasonFilter seasonLabel =
+  FilterRef
+    { kind = "exact_season"
+    , value = Just (FilterText seasonLabel)
+    }
+
+seasonTypeFilter :: Text -> Filter
+seasonTypeFilter seasonTypeLabel =
+  FilterRef
+    { kind = "season_type"
+    , value = Just (FilterText seasonTypeLabel)
+    }
+
+filterKindText :: Filter -> Text
+filterKindText filterValue =
+  case filterValue of
+    FilterRef {kind = kindValue} -> kindValue
+
+filterValueRef :: Filter -> Maybe FilterValue
+filterValueRef filterValue =
+  case filterValue of
+    FilterRef {value = maybeValue} -> maybeValue
+
+filterIntValue :: Filter -> Maybe Int
+filterIntValue filterValue =
+  case filterValueRef filterValue of
+    Just (FilterInt intValue) -> Just intValue
+    _ -> Nothing
+
+filterTextValue :: Filter -> Maybe Text
+filterTextValue filterValue =
+  case filterValueRef filterValue of
+    Just (FilterText textValue) -> Just textValue
+    _ -> Nothing
 
 data Order
   = Desc MetricName

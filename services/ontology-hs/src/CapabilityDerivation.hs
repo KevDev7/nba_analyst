@@ -23,7 +23,7 @@ import Control.Exception (SomeException, evaluate, try)
 import Data.Aeson (ToJSON, encode)
 import qualified Data.ByteString.Lazy as BL
 import Data.Char (isUpper, toLower)
-import Data.List (foldl', nub, sort)
+import Data.List (nub, sort)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Text (Text)
@@ -174,7 +174,7 @@ enumerateTrendMetricQueries ontology =
               , QI.metrics = [metricValue]
               , QI.dimensions = dimensionValues
               , QI.timeGrain = Just QI.Month
-              , QI.filters = [QI.PastYear]
+              , QI.filters = [QI.pastYearFilter]
               , QI.linkedFilters = []
               , QI.orders = []
               , QI.limit = Nothing
@@ -198,7 +198,7 @@ enumerateComparisonQueries =
               , QI.metrics = ["total_points"]
               , QI.dimensions = ["player_name"]
               , QI.timeGrain = Nothing
-              , QI.filters = [QI.LastNGames 10]
+              , QI.filters = [QI.lastNGamesFilter 10]
               , QI.linkedFilters = []
               , QI.orders = []
               , QI.limit = Nothing
@@ -272,8 +272,8 @@ objectDimensionCandidatesForRowObject ontology rowObjectName =
 
 ordinaryMetricFilterCandidates :: [[QI.Filter]]
 ordinaryMetricFilterCandidates =
-  [ [QI.LastNGames 10]
-  , [QI.ExactSeason "2025-26", QI.SeasonTypeFilter "regular_season"]
+  [ [QI.lastNGamesFilter 10]
+  , [QI.exactSeasonFilter "2025-26", QI.seasonTypeFilter "regular_season"]
   ]
 
 objectQueryFilterCandidates :: [[QI.Filter]]
@@ -430,7 +430,7 @@ familySignatureFromMetric spec@QI.MetricQuerySpec {QI.sharedQuery = base} =
     , sig_core_fact_object = QI.coreFactObject base
     , sig_row_object = Nothing
     , sig_dimensions = map dimensionText (QI.dimensions base)
-    , sig_required_filter_kinds = sort (map filterKindText (QI.filters base))
+    , sig_required_filter_kinds = sort (map QI.filterKindText (QI.filters base))
     , sig_time_grain = fmap timeGrainText (QI.timeGrain base)
     , sig_linked_filters = linkedFilterCapabilities (QI.linkedFilters base)
     , sig_comparison =
@@ -447,7 +447,7 @@ familySignatureFromObject spec@QI.ObjectQuerySpec {QI.sharedQuery = base} =
     , sig_core_fact_object = QI.coreFactObject base
     , sig_row_object = Just (QI.rowObject spec)
     , sig_dimensions = map dimensionText (QI.dimensions base)
-    , sig_required_filter_kinds = sort (map filterKindText (QI.filters base))
+    , sig_required_filter_kinds = sort (map QI.filterKindText (QI.filters base))
     , sig_time_grain = fmap timeGrainText (QI.timeGrain base)
     , sig_linked_filters = linkedFilterCapabilities (QI.linkedFilters base)
     , sig_comparison = DerivedComparison False Nothing Nothing
@@ -586,14 +586,6 @@ timeGrainText :: QI.TimeGrain -> Text
 timeGrainText timeGrainValue =
   case timeGrainValue of
     QI.Month -> "month"
-
-filterKindText :: QI.Filter -> Text
-filterKindText filterValue =
-  case filterValue of
-    QI.LastNGames _ -> "last_n_games"
-    QI.PastYear -> "past_year"
-    QI.ExactSeason _ -> "exact_season"
-    QI.SeasonTypeFilter _ -> "season_type"
 
 snakeCase :: Text -> Text
 snakeCase textValue =

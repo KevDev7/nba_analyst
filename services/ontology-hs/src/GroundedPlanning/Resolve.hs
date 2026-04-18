@@ -18,12 +18,13 @@
 
 module GroundedPlanning.Resolve where
 
+import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON, ToJSON (toJSON), object, (.=))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import OntologyLayer.Graph (DiscoveredPath (steps), findAttribute, findMetric, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (Attribute (derivation, kind, source_column), AttributeDerivation (sql_expression), AttributeKind (PrimaryKey), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
+import OntologyLayer.Types (Attribute (derivation, source_column), AttributeDerivation (sql_expression), AttributeKind (PrimaryKey), MetricDef (aggregation, executable, expression, name, source_attributes), Object (backing_table), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -349,7 +350,9 @@ resolveLinkedFilter ontology factObjectName linkedFilterValue = do
       { targetObjectName = targetObject linkedFilterValue
       , filterPath = discoveredFilterPath
       , filterColumn = attribute linkedFilterValue
-      , filterValue = value linkedFilterValue
+      , filterValue =
+          case linkedFilterValue of
+            LinkedFilter {value = filterTextValue'} -> filterTextValue'
       }
 
 resolveOrdinaryMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
@@ -417,7 +420,7 @@ objectPrimaryKey objectValue =
   case
     [ source_column attribute
     | attribute <- OT.attributes objectValue
-    , kind attribute == PrimaryKey
+    , OT.kind attribute == PrimaryKey
     ]
     of
     primaryKeyColumn : _ -> Right primaryKeyColumn
@@ -467,23 +470,25 @@ requireExactlyOneMetricName cardinalityMessage metricValues =
 requireLastNGames :: [Filter] -> Either Text Int
 requireLastNGames filterValues =
   case filterValues of
-    [LastNGames n] -> Right n
+    [filterValue]
+      | filterKindText filterValue == "last_n_games"
+      , Just gamesValue <- filterIntValue filterValue -> Right gamesValue
     _ -> Left "Only a single LastNGames filter is supported."
 
 seasonFilterPair :: [Filter] -> Maybe (Text, Text)
 seasonFilterPair filterValues = do
-  seasonLabelValue <- foldr exactSeasonFilter Nothing filterValues
-  seasonTypeValue <- foldr seasonTypeFilter Nothing filterValues
+  seasonLabelValue <- foldr pickExactSeasonValue Nothing filterValues
+  seasonTypeValue <- foldr pickSeasonTypeValue Nothing filterValues
   pure (seasonLabelValue, seasonTypeValue)
   where
-    exactSeasonFilter filterValue currentValue =
-      case filterValue of
-        ExactSeason seasonLabelValue -> Just seasonLabelValue
-        _ -> currentValue
-    seasonTypeFilter filterValue currentValue =
-      case filterValue of
-        SeasonTypeFilter seasonTypeValue -> Just seasonTypeValue
-        _ -> currentValue
+    pickExactSeasonValue filterValue currentValue =
+      if filterKindText filterValue == "exact_season"
+        then filterTextValue filterValue <|> currentValue
+        else currentValue
+    pickSeasonTypeValue filterValue currentValue =
+      if filterKindText filterValue == "season_type"
+        then filterTextValue filterValue <|> currentValue
+        else currentValue
 
 requireAnySingleDimensionName :: [DimensionName] -> Either Text DimensionName
 requireAnySingleDimensionName dimensionValues =
