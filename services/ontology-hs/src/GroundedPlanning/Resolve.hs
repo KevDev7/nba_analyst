@@ -152,8 +152,14 @@ resolveMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  (rowObject, discoveredRowPath) <- resolveMetricRowObject ontology (coreFactObject base) (dimensions base)
-  selectedMetric <- requireSingleMetric (metrics base)
+  (rowObject, discoveredRowPath) <-
+    case comparison metricQuery of
+      Just _ -> resolveComparisonRowObject ontology (coreFactObject base) (dimensions base)
+      Nothing -> resolveOrdinaryMetricRowObject ontology (coreFactObject base) (dimensions base)
+  selectedMetric <-
+    case comparison metricQuery of
+      Just _ -> requireComparisonMetricName (metrics base)
+      Nothing -> requireOrdinaryMetricName (metrics base)
   metricDef <- requireMetric factObject (metricText selectedMetric)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
@@ -206,7 +212,7 @@ resolveTrendQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  selectedMetric <- requireSingleMetric (metrics base)
+  selectedMetric <- requireTrendMetricName (metrics base)
   metricDef <- requireMetric factObject (metricText selectedMetric)
   derivedAttribute <- requireDerivedTimeAttribute factObject (timeBucketAttributeName base)
   resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
@@ -241,7 +247,7 @@ resolveObjectQuery ontology objectQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   rowObjectValue <- requireObject ontology rowObjectNameValue
   discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
-  selectedMetric <- requireSingleMetric (metrics base)
+  selectedMetric <- requireObjectQueryMetricName (metrics base)
   metricDef <- requireMetric factObject (metricText selectedMetric)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
@@ -346,9 +352,9 @@ resolveLinkedFilter ontology factObjectName linkedFilterValue = do
       , filterValue = value linkedFilterValue
       }
 
-resolveMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
-resolveMetricRowObject ontology factObjectName dimensionValues = do
-  dimensionName <- requireSingleDimension dimensionValues
+resolveOrdinaryMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
+resolveOrdinaryMetricRowObject ontology factObjectName dimensionValues = do
+  dimensionName <- requireOrdinaryMetricDimensionName dimensionValues
   attributeName <- dimensionKey dimensionName
   case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
     Just resolvedValue -> Right resolvedValue
@@ -356,7 +362,19 @@ resolveMetricRowObject ontology factObjectName dimensionValues = do
       factObject <- requireObject ontology factObjectName
       if hasAttribute factObject attributeName
         then Right (factObject, emptyPath factObjectName)
-        else Left ("Could not resolve a reachable row object for dimension '" <> attributeName <> "'.")
+        else Left ("Could not resolve a reachable row object for ranking/aggregation dimension '" <> attributeName <> "'.")
+
+resolveComparisonRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
+resolveComparisonRowObject ontology factObjectName dimensionValues = do
+  dimensionName <- requireComparisonDimensionName dimensionValues
+  attributeName <- dimensionKey dimensionName
+  case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
+    Just resolvedValue -> Right resolvedValue
+    Nothing -> do
+      factObject <- requireObject ontology factObjectName
+      if hasAttribute factObject attributeName
+        then Right (factObject, emptyPath factObjectName)
+        else Left ("Could not resolve a reachable row object for comparison dimension '" <> attributeName <> "'.")
 
 firstLinkedObjectWithAttribute :: Ontology -> Text -> Text -> [Text] -> Maybe (OT.Object, DiscoveredPath)
 firstLinkedObjectWithAttribute ontology factObjectName attributeName excludedObjectNames =
@@ -418,7 +436,7 @@ metricText metricValue =
 
 metricDisplayColumn :: [DimensionName] -> Either Text Text
 metricDisplayColumn dimensionValues = do
-  dimensionName <- requireSingleDimension dimensionValues
+  dimensionName <- requireAnySingleDimensionName dimensionValues
   dimensionKey dimensionName
 
 metricSourceAttribute :: MetricDef -> Either Text Text
@@ -427,11 +445,35 @@ metricSourceAttribute metricDef =
     sourceAttribute : _ -> Right sourceAttribute
     [] -> Left "Selected metric must reference at least one source attribute."
 
-requireSingleMetric :: [MetricName] -> Either Text MetricName
-requireSingleMetric metricValues =
+requireOrdinaryMetricName :: [MetricName] -> Either Text MetricName
+requireOrdinaryMetricName metricValues =
+  requireExactlyOneMetricName
+    "Ranking/aggregation metric queries currently require exactly one selected metric."
+    metricValues
+
+requireTrendMetricName :: [MetricName] -> Either Text MetricName
+requireTrendMetricName metricValues =
+  requireExactlyOneMetricName
+    "Trend queries currently require exactly one selected metric."
+    metricValues
+
+requireObjectQueryMetricName :: [MetricName] -> Either Text MetricName
+requireObjectQueryMetricName metricValues =
+  requireExactlyOneMetricName
+    "Object queries currently require exactly one selected metric."
+    metricValues
+
+requireComparisonMetricName :: [MetricName] -> Either Text MetricName
+requireComparisonMetricName metricValues =
+  requireExactlyOneMetricName
+    "Comparison queries currently require exactly one selected metric."
+    metricValues
+
+requireExactlyOneMetricName :: Text -> [MetricName] -> Either Text MetricName
+requireExactlyOneMetricName cardinalityMessage metricValues =
   case metricValues of
     [metricValue] -> Right metricValue
-    _ -> Left "Query requires exactly one selected metric."
+    _ -> Left cardinalityMessage
 
 requireLastNGames :: [Filter] -> Either Text Int
 requireLastNGames filterValues =
@@ -454,11 +496,23 @@ seasonFilterPair filterValues = do
         SeasonTypeFilter seasonTypeValue -> Just seasonTypeValue
         _ -> currentValue
 
-requireSingleDimension :: [DimensionName] -> Either Text DimensionName
-requireSingleDimension dimensionValues =
+requireAnySingleDimensionName :: [DimensionName] -> Either Text DimensionName
+requireAnySingleDimensionName dimensionValues =
   case dimensionValues of
     [dimensionValue] -> Right dimensionValue
-    _ -> Left "Query requires exactly one selected dimension."
+    _ -> Left "Current runtime result shapes require exactly one selected dimension."
+
+requireOrdinaryMetricDimensionName :: [DimensionName] -> Either Text DimensionName
+requireOrdinaryMetricDimensionName dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Ranking/aggregation metric queries currently require exactly one business grouping dimension."
+
+requireComparisonDimensionName :: [DimensionName] -> Either Text DimensionName
+requireComparisonDimensionName dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Comparison queries currently require exactly one business grouping dimension."
 
 requireDerivedTimeAttribute :: OT.Object -> Text -> Either Text OT.Attribute
 requireDerivedTimeAttribute objectValue attributeName =
@@ -477,7 +531,7 @@ resolveTrendSeries ontology factObject dimensionValues =
   case dimensionValues of
     [] -> Right Nothing
     [dimensionValue] -> do
-      seriesObject <- resolveMetricRowObject ontology (objectName factObject) [dimensionValue]
+      seriesObject <- resolveOrdinaryMetricRowObject ontology (objectName factObject) [dimensionValue]
       pure (Just seriesObject)
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 

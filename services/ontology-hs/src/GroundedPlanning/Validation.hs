@@ -43,16 +43,22 @@ validateMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  metricDef <- requireSelectedMetric factObject (metrics base)
-  validateMetricAttributes metricDef
   case comparison metricQuery of
     Just (CompareEntities entities) -> do
-      rowObject <- requireMetricRowObject ontology factObject (dimensions base)
+      metricDef <- requireComparisonSelectedMetric factObject (metrics base)
+      validateMetricAttributes metricDef
+      rowObject <- requireComparisonRowObject ontology factObject (dimensions base)
       validateComparisonQuery ontology factObject rowObject base entities
     Nothing ->
       case timeGrain base of
-        Just timeGrainValue -> validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
+        Just timeGrainValue -> do
+          metricDef <- requireTrendSelectedMetric factObject (metrics base)
+          validateMetricAttributes metricDef
+          validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
         Nothing -> do
+          metricDef <- requireOrdinaryMetricSelectedMetric factObject (metrics base)
+          validateMetricAttributes metricDef
+          _ <- requireOrdinaryMetricRowObject ontology factObject (dimensions base)
           filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
           validateOrdinaryLinkedFilters ontology MetricLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
           validateMetricOrders (comparison metricQuery) (orders base) (metrics base)
@@ -66,9 +72,10 @@ validateObjectQuery ontology objectQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   let rowObjectNameValue = rowObject objectQuery
   _ <- requirePath ontology (objectName factObject) rowObjectNameValue
-  _ <- requireSelectedMetric factObject (metrics base)
+  metricDef <- requireObjectQuerySelectedMetric factObject (metrics base)
+  validateMetricAttributes metricDef
   rowObjectValue <- requireObject ontology rowObjectNameValue
-  requireSelectedDimension rowObjectValue (dimensions base)
+  requireObjectQueryDimension rowObjectValue (dimensions base)
   filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
   validateOrdinaryLinkedFilters ontology ObjectLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
   validateOptionalMetricOrder (orders base) (metrics base)
@@ -84,11 +91,18 @@ validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
   validateTrendDimensions ontology factObject (dimensions base)
   requireAttributeKind factObject "game_year_month" Dimension
 
-requireMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
-requireMetricRowObject ontology factObject dimensionValues = do
-  dimensionName <- requireSingleDimension dimensionValues
+requireOrdinaryMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
+requireOrdinaryMetricRowObject ontology factObject dimensionValues = do
+  dimensionName <- requireOrdinaryMetricDimension dimensionValues
   rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionName
-  requireSelectedDimension rowObject [dimensionName]
+  requireOrdinaryMetricDimensionOnObject rowObject dimensionName
+  pure rowObject
+
+requireComparisonRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
+requireComparisonRowObject ontology factObject dimensionValues = do
+  dimensionName <- requireComparisonDimension dimensionValues
+  rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionName
+  requireComparisonDimensionOnObject rowObject dimensionName
   pure rowObject
 
 requireReachableDimensionObject :: Ontology -> Text -> DimensionName -> Either Text Object
@@ -133,31 +147,77 @@ hasAttribute objectValue attributeName =
     Just _ -> True
     Nothing -> False
 
-requireSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
-requireSelectedMetric factObject metricValues =
-  -- Temporary planner restriction. The current slices still validate exactly
-  -- one selected metric instead of a broader multi-metric query model.
+requireOrdinaryMetricSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
+requireOrdinaryMetricSelectedMetric factObject metricValues =
+  requireFamilySelectedMetric
+    "Ranking/aggregation metric queries currently require exactly one selected metric."
+    factObject
+    metricValues
+
+requireTrendSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
+requireTrendSelectedMetric factObject metricValues =
+  requireFamilySelectedMetric
+    "Trend queries currently require exactly one selected metric."
+    factObject
+    metricValues
+
+requireObjectQuerySelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
+requireObjectQuerySelectedMetric factObject metricValues =
+  requireFamilySelectedMetric
+    "Object queries currently require exactly one selected metric."
+    factObject
+    metricValues
+
+requireComparisonSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
+requireComparisonSelectedMetric factObject metricValues =
+  requireFamilySelectedMetric
+    "Comparison queries currently require exactly one selected metric."
+    factObject
+    metricValues
+
+requireFamilySelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.MetricDef
+requireFamilySelectedMetric cardinalityMessage factObject metricValues =
   case metricValues of
     [metricValue] -> do
       metricDef <- requireMetric factObject (metricKey metricValue)
       if executable metricDef
         then pure metricDef
         else Left ("Metric '" <> name metricDef <> "' is present in the ontology but not executable in this slice.")
-    _ -> Left "Query requires exactly one selected metric."
+    _ -> Left cardinalityMessage
 
-requireSelectedDimension :: Object -> [DimensionName] -> Either Text ()
-requireSelectedDimension object dimensionValues = do
-  dimensionName <- requireSingleDimension dimensionValues
+requireOrdinaryMetricDimension :: [DimensionName] -> Either Text DimensionName
+requireOrdinaryMetricDimension dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Ranking/aggregation metric queries currently require exactly one business grouping dimension."
+
+requireObjectQueryDimensionName :: [DimensionName] -> Either Text DimensionName
+requireObjectQueryDimensionName dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Object queries currently require exactly one row dimension."
+
+requireComparisonDimension :: [DimensionName] -> Either Text DimensionName
+requireComparisonDimension dimensionValues =
+  case dimensionValues of
+    [dimensionValue] -> Right dimensionValue
+    _ -> Left "Comparison queries currently require exactly one business grouping dimension."
+
+requireOrdinaryMetricDimensionOnObject :: Object -> DimensionName -> Either Text ()
+requireOrdinaryMetricDimensionOnObject object dimensionName = do
   attributeName <- dimensionKey dimensionName
   requireAttributeKind object attributeName Dimension
 
-requireSingleDimension :: [DimensionName] -> Either Text DimensionName
-requireSingleDimension dimensionValues =
-  -- Temporary planner restriction. The long-term design should allow broader
-  -- dimension combinations once validation and compilation become more general.
-  case dimensionValues of
-    [dimensionValue] -> Right dimensionValue
-    _ -> Left "Query requires exactly one selected dimension."
+requireObjectQueryDimension :: Object -> [DimensionName] -> Either Text ()
+requireObjectQueryDimension object dimensionValues = do
+  dimensionName <- requireObjectQueryDimensionName dimensionValues
+  attributeName <- dimensionKey dimensionName
+  requireAttributeKind object attributeName Dimension
+
+requireComparisonDimensionOnObject :: Object -> DimensionName -> Either Text ()
+requireComparisonDimensionOnObject object dimensionName = do
+  attributeName <- dimensionKey dimensionName
+  requireAttributeKind object attributeName Dimension
 
 validateMetricFilters :: [Filter] -> Either Text ()
 validateMetricFilters filterValues =
@@ -280,7 +340,7 @@ validateTrendDimensions ontology factObject dimensionValues =
     [] -> pure ()
     [TeamName] -> do
       rowObject <- requireReachableDimensionObject ontology (objectName factObject) TeamName
-      requireSelectedDimension rowObject [TeamName]
+      requireOrdinaryMetricDimensionOnObject rowObject TeamName
       pure ()
     [_] -> Left "Trend queries currently support only aggregate output or team_name grouping."
     _ -> Left "Trend queries currently support at most one business grouping dimension."
