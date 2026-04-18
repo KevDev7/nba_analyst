@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from functools import lru_cache
@@ -316,8 +317,6 @@ Rules:
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
 - When the user does not explicitly request a limit, use null for limit.
 - For player comparisons, keep the compared entities as player names from the question; the system resolves those names after you return JSON.
-- The next line is a temporary ambiguity nudge, not ideal long-term semantic reasoning.
-- When a past-year monthly trend question does not explicitly mention players or teams, prefer the broad team-level aggregate path on TeamGame.
 - If the question cannot be represented safely by the current live contract, return:
   {{"status":"unsupported","reason":"<short reason>"}}
 - If the question is supported, return:
@@ -449,16 +448,25 @@ def _call_gemini(prompt: str) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            body = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise SemanticInterpreterError(
-            f"Gemini interpreter request failed with HTTP {exc.code}: {body[:500]}"
-        ) from exc
-    except Exception as exc:  # pragma: no cover - network exceptions are environment-specific
-        raise SemanticInterpreterError(f"Gemini interpreter request failed: {exc}") from exc
+    body = ""
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                body = response.read().decode("utf-8")
+            break
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if exc.code in {429, 503} and attempt < 3:
+                # Temporary reliability shim. Provider spikes should not change
+                # product behavior; we retry a few times before surfacing the
+                # upstream failure.
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise SemanticInterpreterError(
+                f"Gemini interpreter request failed with HTTP {exc.code}: {body[:500]}"
+            ) from exc
+        except Exception as exc:  # pragma: no cover - network exceptions are environment-specific
+            raise SemanticInterpreterError(f"Gemini interpreter request failed: {exc}") from exc
 
     try:
         payload_json = json.loads(body)
@@ -545,6 +553,9 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
     # Temporary normalization shim. This keeps harmless Gemini wording drift out
     # of the user-facing/query contract until assumption handling is modeled more
     # semantically instead of as a fixed allow-list.
+    # TODO(core-4-first): This shim is lower priority than finishing the four v1
+    # families (ranking/top-N, trend, aggregation, filtering/joining). Clean it
+    # up after those families feel complete end to end.
     if "pts" in question_text and "Interpreted 'pts' as total points." in assumptions:
         normalized.append("Interpreted 'pts' as total points.")
     if "average scoring" in question_text and "Interpreted 'average scoring' as average points." in assumptions:

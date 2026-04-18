@@ -75,14 +75,14 @@ validateObjectQuery ontology objectQuery = do
 
 validateTrendMetricQuery :: Ontology -> Object -> OT.MetricDef -> TimeGrain -> BaseQuery -> Either Text ()
 validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
+  validateTrendTimeGrain timeGrainValue
   validateTrendFilters (filters base)
-  if null (linkedFilters base)
-    then pure ()
-    else Left "Trend queries currently do not support linked filters."
-  validateTrendDimensions ontology factObject (dimensions base)
+  validateTrendLimit (limit base)
+  validateTrendLinkedFilters (linkedFilters base)
   validateTrendOrders (orders base)
-  case timeGrainValue of
-    Month -> requireAttributeKind factObject "game_year_month" Dimension
+  validateTrendFactSurface factObject
+  validateTrendDimensions ontology factObject (dimensions base)
+  requireAttributeKind factObject "game_year_month" Dimension
 
 requireMetricRowObject :: Ontology -> Object -> [DimensionName] -> Either Text Object
 requireMetricRowObject ontology factObject dimensionValues = do
@@ -202,6 +202,29 @@ validateTrendFilters filterValues =
     [PastYear] -> pure ()
     _ -> Left "Trend queries currently require a PastYear filter."
 
+validateTrendTimeGrain :: TimeGrain -> Either Text ()
+validateTrendTimeGrain timeGrainValue =
+  case timeGrainValue of
+    Month -> pure ()
+
+validateTrendLimit :: Maybe Int -> Either Text ()
+validateTrendLimit maybeLimit =
+  case maybeLimit of
+    Nothing -> pure ()
+    Just _ -> Left "Trend queries currently do not support limit."
+
+validateTrendLinkedFilters :: [LinkedFilter] -> Either Text ()
+validateTrendLinkedFilters linkedFilterValues =
+  if null linkedFilterValues
+    then pure ()
+    else Left "Trend queries currently do not support linked filters."
+
+validateTrendFactSurface :: Object -> Either Text ()
+validateTrendFactSurface factObject =
+  if objectName factObject == "TeamGame"
+    then pure ()
+    else Left "Trend queries currently support TeamGame only."
+
 validateSeasonFilters :: [Filter] -> Either Text ()
 validateSeasonFilters filterValues =
   case seasonFilterPair filterValues of
@@ -255,10 +278,11 @@ validateTrendDimensions :: Ontology -> Object -> [DimensionName] -> Either Text 
 validateTrendDimensions ontology factObject dimensionValues =
   case dimensionValues of
     [] -> pure ()
-    [dimensionValue] -> do
-      rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionValue
-      requireSelectedDimension rowObject [dimensionValue]
+    [TeamName] -> do
+      rowObject <- requireReachableDimensionObject ontology (objectName factObject) TeamName
+      requireSelectedDimension rowObject [TeamName]
       pure ()
+    [_] -> Left "Trend queries currently support only aggregate output or team_name grouping."
     _ -> Left "Trend queries currently support at most one business grouping dimension."
 
 validateComparisonQuery :: Ontology -> Object -> Object -> BaseQuery -> [PlayerRef] -> Either Text ()
@@ -291,18 +315,26 @@ validateComparisonPath ontology factObject rowObject = do
   _ <- requirePath ontology (objectName factObject) (objectName rowObject)
   -- Temporary slice restriction. Comparison is still hard-capped to one
   -- planner path even though entity references are now generalized players.
+  -- TODO(core-4-first): Comparison is intentionally deferred behind the current
+  -- v1 families: ranking/top-N, trend, aggregation, and filtering/joining.
+  -- Broaden this only after those four single-step paths feel complete.
   if objectName factObject /= "PlayerGame" || objectName rowObject /= "Player"
     then Left "Comparison currently supports the PlayerGame -> Player path only."
     else pure ()
 
 -- Temporary slice restriction. This should broaden once comparison planning
 -- can reason over governed metrics more generally.
+-- TODO(core-4-first): Leave comparison metric broadening for later. It is not
+-- on the critical path for the current four target families.
 validateComparisonMetric :: [MetricName] -> Either Text ()
 validateComparisonMetric metricValues =
   if metricValues /= [TotalPoints]
     then Left "Comparison currently supports total_points only."
     else pure ()
 
+-- TODO(core-4-first): Keep comparison entity-count broadening out of scope
+-- until the core single-step ranking/trend/aggregation/filter+join families are
+-- complete and stable.
 validateComparisonEntities :: [PlayerRef] -> Either Text ()
 validateComparisonEntities playerRefs =
   if length playerRefs /= 2 || length (nub (map personId playerRefs)) /= 2

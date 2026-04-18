@@ -17,6 +17,10 @@ from collections import defaultdict
 from .models import ComparisonResult, ComparisonRow, PlayerComparisonStats
 
 def run_analysis(analysis_spec: str, runtime_state: object) -> object:
+    # TODO(core-4-first): The runtime is intentionally still thin because the
+    # current v1 focus is ranking/top-N, trend, aggregation, and
+    # filtering/joining. Keep comparison-specific analysis isolated here and
+    # defer broader runtime expansion until those families are complete.
     if analysis_spec != "ComparePlayers":
         raise NotImplementedError(
             f"Python analysis step '{analysis_spec}' is not implemented."

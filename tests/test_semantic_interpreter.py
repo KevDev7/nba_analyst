@@ -9,6 +9,7 @@ from apps.cli.semantic_interpreter import (
     SemanticInterpreterError,
     _capability_artifact,
     _capability_prompt_summary,
+    _interpreter_prompt_preamble,
     interpret_question_to_planner_query,
 )
 from scripts.generate_interpreter_capabilities import build_capability_artifact
@@ -195,6 +196,54 @@ class SemanticInterpreterTests(unittest.TestCase):
         ]
 
         self.assertEqual(matching, [])
+
+    def test_only_narrow_core_trend_families_remain_derived(self) -> None:
+        artifact = _capability_artifact()
+        trend_families = [
+            family for family in artifact["families"] if family["time_grain"] == "month"
+        ]
+
+        self.assertEqual(len(trend_families), 2)
+        self.assertEqual(
+            {
+                (
+                    family["core_fact_object"],
+                    tuple(family["dimensions"]),
+                    tuple(family["required_filter_kinds"]),
+                )
+                for family in trend_families
+            },
+            {
+                ("TeamGame", tuple(), ("past_year",)),
+                ("TeamGame", ("team_name",), ("past_year",)),
+            },
+        )
+
+    def test_misleading_player_game_trend_families_are_not_derived(self) -> None:
+        artifact = _capability_artifact()
+        matching = [
+            family
+            for family in artifact["families"]
+            if family["time_grain"] == "month"
+            and family["core_fact_object"] == "PlayerGame"
+        ]
+
+        self.assertEqual(matching, [])
+
+    def test_trend_families_do_not_allow_limit(self) -> None:
+        artifact = _capability_artifact()
+        trend_families = [
+            family for family in artifact["families"] if family["time_grain"] == "month"
+        ]
+
+        self.assertTrue(trend_families)
+        self.assertTrue(all(not family["allow_limit"] for family in trend_families))
+
+    def test_interpreter_prompt_no_longer_uses_trend_ambiguity_nudge(self) -> None:
+        prompt = _interpreter_prompt_preamble()
+
+        self.assertNotIn("temporary ambiguity nudge", prompt)
+        self.assertNotIn("prefer the broad team-level aggregate path on TeamGame", prompt)
 
     def test_player_entity_index_is_generated_from_snapshot(self) -> None:
         artifact = _capability_artifact()

@@ -79,6 +79,12 @@ def test_fact_like_schemas_keep_link_keys_and_business_grain_fields() -> None:
     assert {"team_id", "season_year", "season_type", "wins", "losses", "win_percentage"}.issubset(team_season_names)
 
 
+def test_team_game_schema_exposes_core_trend_fields() -> None:
+    team_game_names = set(TEAM_GAME_SCHEMA.names)
+
+    assert {"game_date", "team_name", "score"}.issubset(team_game_names)
+
+
 def test_semantic_transforms_read_from_silver_only() -> None:
     source_keys = [
         game_transform.BOXSCORE_SOURCE_KEY,
@@ -159,6 +165,9 @@ def test_attribute_inventory_has_expected_key_classifications() -> None:
     assert inventory[("player_game", "person_id")]["link_key"] is True
     assert inventory[("team_game", "opponent_team_id")]["link_key"] is True
     assert inventory[("team_game", "is_win")]["attribute_kind"] == "measure"
+    assert inventory[("team_game", "game_date")]["attribute_kind"] == "dimension"
+    assert inventory[("team_game", "team_name")]["attribute_kind"] == "dimension"
+    assert inventory[("team_game", "score")]["attribute_kind"] == "measure"
     assert inventory[("player_season", "person_id")]["attribute_kind"] == "primary_key"
     assert inventory[("player_season", "person_id")]["link_key"] is True
     assert inventory[("player_season_team", "team_id")]["link_key"] is True

@@ -235,6 +235,9 @@ comparisonCandidates =
   -- Temporary derivation seed set. Slice 13 proves generalized player refs, but
   -- capability derivation still probes one structural two-player comparison
   -- shape rather than a fully generative comparison space.
+  -- TODO(core-4-first): Comparison derivation generativity is intentionally
+  -- deferred until after the current v1 families are complete: ranking/top-N,
+  -- trend, aggregation, and filtering/joining.
   [ ([], Nothing)
   ,
       ( [ QI.PlayerRef 1 "Comparison Player A"
