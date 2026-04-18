@@ -196,7 +196,7 @@ enumerateComparisonQueries =
             QI.BaseQuery
               { QI.coreFactObject = "PlayerGame"
               , QI.metrics = ["total_points"]
-              , QI.dimensions = [QI.PlayerName]
+              , QI.dimensions = ["player_name"]
               , QI.timeGrain = Nothing
               , QI.filters = [QI.LastNGames 10]
               , QI.linkedFilters = []
@@ -287,7 +287,7 @@ publicDimensionsForObject ontology objectNameValue =
         mapMaybe
           ( \attributeValue@OT.Attribute {OT.name = attributeNameValue} ->
               case (OT.visibility attributeValue, OT.kind attributeValue) of
-                (OT.Public, OT.Dimension) -> dimensionNameFromText attributeNameValue
+                (OT.Public, OT.Dimension) -> Just attributeNameValue
                 _ -> Nothing
           )
           (OT.attributes objectValue)
@@ -303,16 +303,6 @@ reachablePublicDimensionsForFactObject ontology factObjectName =
         | discoveredPath <- findPathsFrom ontology 2 factObjectName
         , let targetObjectName = OG.targetObjectName discoveredPath
         ]
-
-dimensionNameFromText :: Text -> Maybe QI.DimensionName
-dimensionNameFromText dimensionName =
-  case dimensionName of
-    "player_name" -> Just QI.PlayerName
-    "team_name" -> Just QI.TeamName
-    "display_name" -> Just QI.DisplayName
-    "team" -> Just QI.Team
-    "primary_position" -> Just QI.PrimaryPosition
-    _ -> Nothing
 
 linkedFilterCandidates :: [[QI.LinkedFilter]]
 linkedFilterCandidates =
@@ -590,13 +580,7 @@ metricTextFromList metricValues =
     _ -> error "Capability derivation expected exactly one selected metric."
 
 dimensionText :: QI.DimensionName -> Text
-dimensionText dimensionValue =
-  case dimensionValue of
-    QI.PlayerName -> "player_name"
-    QI.TeamName -> "team_name"
-    QI.DisplayName -> "display_name"
-    QI.Team -> "team"
-    QI.PrimaryPosition -> "primary_position"
+dimensionText dimensionValue = dimensionValue
 
 timeGrainText :: QI.TimeGrain -> Text
 timeGrainText timeGrainValue =

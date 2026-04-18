@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections import defaultdict, deque
 from pathlib import Path
 
 import duckdb
@@ -104,47 +105,145 @@ def _load_planner_derived_capabilities() -> dict:
     return json.loads(payload_text)
 
 
-def _build_prompt_summary(families: list[dict]) -> str:
+def _reachable_public_dimensions(
+    ontology: dict, fact_object_name: str, max_depth: int = 2
+) -> list[str]:
+    objects = {obj["name"]: obj for obj in ontology["objects"]}
+    links_from_object: dict[str, list[str]] = defaultdict(list)
+    for link in ontology["links"]:
+        links_from_object[link["source_object"]].append(link["target_object"])
+
+    reachable_objects = {fact_object_name}
+    queue: deque[tuple[str, int]] = deque([(fact_object_name, 0)])
+    while queue:
+        current_object, depth = queue.popleft()
+        if depth >= max_depth:
+            continue
+        for target_object in links_from_object.get(current_object, []):
+            if target_object in reachable_objects:
+                continue
+            reachable_objects.add(target_object)
+            queue.append((target_object, depth + 1))
+
+    dimension_names: set[str] = set()
+    for object_name in reachable_objects:
+        dimension_names.update(_public_dimension_names(objects[object_name]))
+    return sorted(dimension_names)
+
+
+def _build_prompt_summary(ontology: dict, families: list[dict]) -> str:
     lines = [
-        "Supported semantic families (generated from ontology + planner-derived capabilities):"
+        "Supported semantic families (generated from ontology + planner-derived capabilities):",
+        "Reachable public dimensions by fact object:",
     ]
-    for family in families:
-        dimension_text = (
-            ", ".join(family["dimensions"])
-            if family["dimensions"]
-            else "no business grouping dimension"
+
+    fact_objects = sorted({family["core_fact_object"] for family in families})
+    for fact_object_name in fact_objects:
+        dimensions = _reachable_public_dimensions(ontology, fact_object_name)
+        lines.append(
+            f"- {fact_object_name}: [{', '.join(dimensions)}]"
+            if dimensions
+            else f"- {fact_object_name}: [none]"
         )
-        filter_text = ", ".join(family["required_filter_kinds"])
-        metric_text = ", ".join(family["metrics"])
+
+    row_objects = sorted(
+        {
+            family["row_object"]
+            for family in families
+            if family.get("row_object") is not None
+        }
+    )
+    if row_objects:
+        objects = {obj["name"]: obj for obj in ontology["objects"]}
+        lines.append("")
+        lines.append("Public row-object dimensions:")
+        for row_object_name in row_objects:
+            dimensions = _public_dimension_names(objects[row_object_name])
+            lines.append(
+                f"- {row_object_name}: [{', '.join(dimensions)}]"
+                if dimensions
+                else f"- {row_object_name}: [none]"
+            )
+
+    grouped_patterns: dict[tuple, dict[str, set[str] | bool | str | None]] = {}
+    for family in families:
+        key = (
+            family["query_kind"],
+            family["core_fact_object"],
+            family.get("row_object"),
+            tuple(family["required_filter_kinds"]),
+            family.get("time_grain"),
+            tuple(
+                (linked_filter["target_object"], linked_filter["attribute"])
+                for linked_filter in family["linked_filters"]
+            ),
+            family["allow_limit"],
+            family["require_order_by_metric"],
+            family["comparison"]["enabled"],
+            family["comparison"].get("entity_type"),
+            family["comparison"].get("max_entities"),
+        )
+        grouped = grouped_patterns.setdefault(
+            key,
+            {
+                "metrics": set(),
+                "dimensions": set(),
+                "allows_aggregate": False,
+                "example_family_key": family["family_key"],
+            },
+        )
+        grouped["metrics"].update(family["metrics"])
+        grouped["dimensions"].update(family["dimensions"])
+        grouped["allows_aggregate"] = bool(grouped["allows_aggregate"]) or not family["dimensions"]
+
+    lines.append("")
+    lines.append("Supported family patterns:")
+    for key, grouped in sorted(grouped_patterns.items()):
+        (
+            query_kind,
+            core_fact_object,
+            row_object,
+            required_filter_kinds,
+            time_grain,
+            linked_filter_pairs,
+            allow_limit,
+            require_order_by_metric,
+            comparison_enabled,
+            comparison_entity_type,
+            comparison_max_entities,
+        ) = key
+        dimension_parts = []
+        if grouped["dimensions"]:
+            dimension_parts.append(", ".join(sorted(grouped["dimensions"])))
+        if grouped["allows_aggregate"]:
+            dimension_parts.append("aggregate output")
+        dimension_text = ", ".join(dimension_parts) if dimension_parts else "none"
         linked_text = (
             "; linked filters: "
             + ", ".join(
-                f"{linked_filter['target_object']}.{linked_filter['attribute']}"
-                for linked_filter in family["linked_filters"]
+                f"{target_object}.{attribute}"
+                for target_object, attribute in linked_filter_pairs
             )
-            if family["linked_filters"]
+            if linked_filter_pairs
             else ""
         )
-        time_text = (
-            f"; time_grain: {family['time_grain']}"
-            if family["time_grain"] is not None
-            else ""
-        )
-        row_text = (
-            f"; row_object: {family['row_object']}"
-            if family.get("row_object") is not None
-            else ""
-        )
+        row_text = f"; row_object: {row_object}" if row_object is not None else ""
+        time_text = f"; time_grain: {time_grain}" if time_grain is not None else ""
         comparison_text = (
-            "; comparison enabled"
-            if family["comparison"]["enabled"]
+            f"; comparison: {comparison_entity_type} (max {comparison_max_entities})"
+            if comparison_enabled
             else ""
         )
         lines.append(
-            f"- {family['family_key']}: {family['query_kind']} on {family['core_fact_object']} "
-            f"with metrics [{metric_text}], dimensions [{dimension_text}], required filters "
-            f"[{filter_text}]{row_text}{time_text}{linked_text}{comparison_text}"
+            f"- {grouped['example_family_key']}: {query_kind} on {core_fact_object}"
+            f" with metrics [{', '.join(sorted(grouped['metrics']))}]"
+            f", dimensions [{dimension_text}], required filters [{', '.join(required_filter_kinds)}]"
+            f"{row_text}{time_text}{linked_text}"
+            f"; limit {'allowed' if allow_limit else 'not allowed'}"
+            f"; order by selected metric {'required' if require_order_by_metric else 'not required'}"
+            f"{comparison_text}"
         )
+
     return "\n".join(lines)
 
 
@@ -338,7 +437,7 @@ def build_capability_artifact() -> dict:
         "player_entity_index": player_entity_index,
         "families": families,
     }
-    artifact["prompt_summary"] = _build_prompt_summary(families)
+    artifact["prompt_summary"] = _build_prompt_summary(ontology, families)
     return artifact
 
 

@@ -11,14 +11,6 @@ from apps.cli.semantic_interpreter import ROOT, _capability_artifact
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 
-SUPPORTED_DIMENSIONS = {
-    "player_name",
-    "team_name",
-    "display_name",
-    "team",
-    "primary_position",
-}
-
 
 def _load_ontology() -> dict:
     return yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
@@ -61,18 +53,14 @@ class SliceTwentyTwoTests(unittest.TestCase):
 
         self.assertEqual(matching, [])
 
-    def test_capability_dimensions_stay_within_ontology_backed_ir_surface(self) -> None:
+    def test_capability_dimensions_stay_within_ontology_backed_surface(self) -> None:
         artifact = _capability_artifact()
 
         for family in artifact["families"]:
             if family["query_kind"] == "object_query":
-                supported_dimensions = self._public_supported_dimensions(
-                    family["row_object"]
-                )
+                supported_dimensions = self._public_dimensions(family["row_object"])
             else:
-                supported_dimensions = self._reachable_supported_dimensions(
-                    family["core_fact_object"]
-                )
+                supported_dimensions = self._reachable_dimensions(family["core_fact_object"])
 
             self.assertTrue(
                 set(family["dimensions"]).issubset(supported_dimensions),
@@ -99,7 +87,7 @@ class SliceTwentyTwoTests(unittest.TestCase):
             ["average_points", "games_played", "total_points"],
         )
 
-    def _public_supported_dimensions(self, object_name: str | None) -> set[str]:
+    def _public_dimensions(self, object_name: str | None) -> set[str]:
         if object_name is None:
             return set()
 
@@ -109,10 +97,9 @@ class SliceTwentyTwoTests(unittest.TestCase):
             for attribute in object_entry.get("attributes", [])
             if attribute.get("visibility") == "public"
             and attribute.get("kind") == "dimension"
-            and attribute["name"] in SUPPORTED_DIMENSIONS
         }
 
-    def _reachable_supported_dimensions(self, fact_object_name: str) -> set[str]:
+    def _reachable_dimensions(self, fact_object_name: str) -> set[str]:
         reachable_objects = {fact_object_name}
         queue: deque[tuple[str, int]] = deque([(fact_object_name, 0)])
 
@@ -128,7 +115,7 @@ class SliceTwentyTwoTests(unittest.TestCase):
 
         supported_dimensions: set[str] = set()
         for object_name in reachable_objects:
-            supported_dimensions.update(self._public_supported_dimensions(object_name))
+            supported_dimensions.update(self._public_dimensions(object_name))
         return supported_dimensions
 
 

@@ -107,7 +107,7 @@ requireComparisonRowObject ontology factObject dimensionValues = do
 
 requireReachableDimensionObject :: Ontology -> Text -> DimensionName -> Either Text Object
 requireReachableDimensionObject ontology factObjectName dimensionName = do
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   case firstLinkedObjectWithAttribute ontology factObjectName attributeName of
     Just objectValue -> Right objectValue
     Nothing ->
@@ -205,18 +205,18 @@ requireComparisonDimension dimensionValues =
 
 requireOrdinaryMetricDimensionOnObject :: Object -> DimensionName -> Either Text ()
 requireOrdinaryMetricDimensionOnObject object dimensionName = do
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   requireAttributeKind object attributeName Dimension
 
 requireObjectQueryDimension :: Object -> [DimensionName] -> Either Text ()
 requireObjectQueryDimension object dimensionValues = do
   dimensionName <- requireObjectQueryDimensionName dimensionValues
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   requireAttributeKind object attributeName Dimension
 
 requireComparisonDimensionOnObject :: Object -> DimensionName -> Either Text ()
 requireComparisonDimensionOnObject object dimensionName = do
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   requireAttributeKind object attributeName Dimension
 
 validateMetricFilters :: [Filter] -> Either Text ()
@@ -338,9 +338,9 @@ validateTrendDimensions :: Ontology -> Object -> [DimensionName] -> Either Text 
 validateTrendDimensions ontology factObject dimensionValues =
   case dimensionValues of
     [] -> pure ()
-    [TeamName] -> do
-      rowObject <- requireReachableDimensionObject ontology (objectName factObject) TeamName
-      requireOrdinaryMetricDimensionOnObject rowObject TeamName
+    ["team_name"] -> do
+      rowObject <- requireReachableDimensionObject ontology (objectName factObject) "team_name"
+      requireOrdinaryMetricDimensionOnObject rowObject "team_name"
       pure ()
     [_] -> Left "Trend queries currently support only aggregate output or team_name grouping."
     _ -> Left "Trend queries currently support at most one business grouping dimension."
@@ -367,7 +367,7 @@ validateComparisonQueryShape base = do
     [LastNGames gamesValue] | gamesValue > 0 -> pure ()
     _ -> Left "Comparison queries currently require a positive LastNGames filter."
   case dimensions base of
-    [PlayerName] -> pure ()
+    ["player_name"] -> pure ()
     _ -> Left "Comparison queries currently require the player_name dimension."
 
 validateComparisonPath :: Ontology -> Object -> Object -> Either Text ()
@@ -504,15 +504,6 @@ requireAttributeKind object attributeName expectedKind = do
   if kind attribute == expectedKind
     then pure ()
     else Left ("Attribute '" <> attributeName <> "' has the wrong kind in the ontology.")
-
-dimensionKey :: DimensionName -> Either Text Text
-dimensionKey dimensionValue =
-  case dimensionValue of
-    PlayerName -> Right "player_name"
-    TeamName -> Right "team_name"
-    DisplayName -> Right "display_name"
-    Team -> Right "team"
-    PrimaryPosition -> Right "primary_position"
 
 objectName :: OT.Object -> Text
 objectName objectValue =

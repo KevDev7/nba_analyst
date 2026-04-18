@@ -355,7 +355,7 @@ resolveLinkedFilter ontology factObjectName linkedFilterValue = do
 resolveOrdinaryMetricRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
 resolveOrdinaryMetricRowObject ontology factObjectName dimensionValues = do
   dimensionName <- requireOrdinaryMetricDimensionName dimensionValues
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
     Just resolvedValue -> Right resolvedValue
     Nothing -> do
@@ -367,7 +367,7 @@ resolveOrdinaryMetricRowObject ontology factObjectName dimensionValues = do
 resolveComparisonRowObject :: Ontology -> Text -> [DimensionName] -> Either Text (OT.Object, DiscoveredPath)
 resolveComparisonRowObject ontology factObjectName dimensionValues = do
   dimensionName <- requireComparisonDimensionName dimensionValues
-  attributeName <- dimensionKey dimensionName
+  let attributeName = dimensionName
   case firstLinkedObjectWithAttribute ontology factObjectName attributeName [] of
     Just resolvedValue -> Right resolvedValue
     Nothing -> do
@@ -426,7 +426,7 @@ objectPrimaryKey objectValue =
 metricDisplayColumn :: [DimensionName] -> Either Text Text
 metricDisplayColumn dimensionValues = do
   dimensionName <- requireAnySingleDimensionName dimensionValues
-  dimensionKey dimensionName
+  pure dimensionName
 
 metricSourceAttribute :: MetricDef -> Either Text Text
 metricSourceAttribute metricDef =
@@ -527,10 +527,7 @@ resolveTrendSeries ontology factObject dimensionValues =
 trendSeriesColumn :: OT.Object -> [DimensionName] -> Text
 trendSeriesColumn _ dimensionValues =
   case dimensionValues of
-    [dimensionValue] ->
-      case dimensionKey dimensionValue of
-        Right columnNameValue -> columnNameValue
-        Left _ -> error "Unsupported trend series dimension."
+    [dimensionValue] -> dimensionValue
     _ -> error "Trend series columns require exactly one business grouping dimension."
 
 renderDerivedExpression :: OT.Attribute -> Text
@@ -555,15 +552,6 @@ requirePath ontology sourceName targetName =
     (Left ("Could not resolve an ontology path from '" <> sourceName <> "' to '" <> targetName <> "'."))
     Right
     (findPath ontology 2 sourceName targetName)
-
-dimensionKey :: DimensionName -> Either Text Text
-dimensionKey dimensionValue =
-  case dimensionValue of
-    PlayerName -> Right "player_name"
-    TeamName -> Right "team_name"
-    DisplayName -> Right "display_name"
-    Team -> Right "team"
-    PrimaryPosition -> Right "primary_position"
 
 objectName :: OT.Object -> Text
 objectName objectValue =

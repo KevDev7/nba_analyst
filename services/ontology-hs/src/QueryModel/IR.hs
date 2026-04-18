@@ -45,30 +45,7 @@ instance FromJSON PlayerRef where
 
 type MetricName = Text
 
-data DimensionName
-  = PlayerName
-  | TeamName
-  | DisplayName
-  | Team
-  | PrimaryPosition
-  deriving (Show, Eq, Generic)
-
-instance ToJSON DimensionName where
-  toJSON PlayerName = String "player_name"
-  toJSON TeamName = String "team_name"
-  toJSON DisplayName = String "display_name"
-  toJSON Team = String "team"
-  toJSON PrimaryPosition = String "primary_position"
-
-instance FromJSON DimensionName where
-  parseJSON = withText "DimensionName" $ \value ->
-    case value of
-      "player_name" -> pure PlayerName
-      "team_name" -> pure TeamName
-      "display_name" -> pure DisplayName
-      "team" -> pure Team
-      "primary_position" -> pure PrimaryPosition
-      _ -> fail ("Unknown dimension: " <> show value)
+type DimensionName = Text
 
 data TimeGrain
   = Month

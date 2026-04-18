@@ -43,7 +43,9 @@ class SemanticInterpreterTests(unittest.TestCase):
             "Supported semantic families (generated from ontology + planner-derived capabilities):",
             summary,
         )
-        self.assertIn("player_game_recent_object_player_team_filter", summary)
+        self.assertIn("Reachable public dimensions by fact object:", summary)
+        self.assertIn("Supported family patterns:", summary)
+        self.assertIn("linked filters: Team.team_name", summary)
         self.assertNotIn("Current live supported semantic shapes:", summary)
 
     def test_execution_contract_is_now_only_an_exception_list(self) -> None:
