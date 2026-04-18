@@ -128,7 +128,7 @@ class SliceSixteenTests(unittest.TestCase):
             call_haskell_planner_for_query(payload)
 
         self.assertIn(
-            "Linked team filters on recent object queries currently support PlayerGame only.",
+            "Recent object queries with linked filters currently require a fact surface that exposes game_date.",
             str(context.exception),
         )
 

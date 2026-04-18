@@ -422,33 +422,48 @@ validateOrdinaryLinkedFilters ontology queryKind filterFamily factObjectName lin
   validateLinkedFilters ontology factObjectName linkedFilterValues
   case linkedFilterValues of
     [] -> pure ()
-    _ ->
-      if factObjectName `elem` allowedFactObjectsForLinkedFilters queryKind filterFamily
-        then pure ()
-        else Left (unsupportedLinkedFilterFactObjectMessage queryKind filterFamily)
+    _ -> validateLinkedFilterFactSurface ontology queryKind filterFamily factObjectName
 
-allowedFactObjectsForLinkedFilters :: OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> [Text]
-allowedFactObjectsForLinkedFilters queryKind filterFamily =
-  case (queryKind, filterFamily) of
-    (MetricLinkedFilterQuery, RecentMetricWindow) -> ["PlayerGame"]
-    (MetricLinkedFilterQuery, SeasonMetricWindow) -> ["PlayerSeasonTeam"]
-    (ObjectLinkedFilterQuery, RecentMetricWindow) -> ["PlayerGame"]
-    (ObjectLinkedFilterQuery, SeasonMetricWindow) -> ["PlayerGame", "PlayerSeasonTeam"]
+validateLinkedFilterFactSurface :: Ontology -> OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> Text -> Either Text ()
+validateLinkedFilterFactSurface ontology queryKind filterFamily factObjectName = do
+  factObject <- requireObject ontology factObjectName
+  case filterFamily of
+    RecentMetricWindow -> requireFactAttribute factObject "game_date" (recentLinkedFilterFactSurfaceMessage queryKind)
+    SeasonMetricWindow -> do
+      requireFactAttribute factObject "season_year" (seasonLinkedFilterFactSurfaceMessage queryKind)
+      requireFactAttribute factObject "season_type" (seasonLinkedFilterFactSurfaceMessage queryKind)
+      validateSeasonLinkedFilterFactSurface queryKind factObject
 
-unsupportedLinkedFilterFactObjectMessage :: OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> Text
-unsupportedLinkedFilterFactObjectMessage queryKind filterFamily =
-  case (queryKind, filterFamily) of
-    -- Temporary planner restriction. Linked team filters are now validated by
-    -- one shared compositional helper, but the supported fact surfaces are
-    -- still intentionally narrow for the current single-step slices.
-    (MetricLinkedFilterQuery, RecentMetricWindow) ->
-      "Linked team filters on recent metric queries currently support PlayerGame only."
-    (MetricLinkedFilterQuery, SeasonMetricWindow) ->
-      "Season-scoped linked team filters currently support PlayerSeasonTeam only for metric queries."
-    (ObjectLinkedFilterQuery, RecentMetricWindow) ->
-      "Linked team filters on recent object queries currently support PlayerGame only."
-    (ObjectLinkedFilterQuery, SeasonMetricWindow) ->
-      "Season-scoped linked team filters currently support PlayerGame and PlayerSeasonTeam only for object queries."
+recentLinkedFilterFactSurfaceMessage :: OrdinaryLinkedFilterQueryKind -> Text
+recentLinkedFilterFactSurfaceMessage queryKind =
+  case queryKind of
+    MetricLinkedFilterQuery ->
+      "Recent metric queries with linked filters currently require a fact surface that exposes game_date."
+    ObjectLinkedFilterQuery ->
+      "Recent object queries with linked filters currently require a fact surface that exposes game_date."
+
+seasonLinkedFilterFactSurfaceMessage :: OrdinaryLinkedFilterQueryKind -> Text
+seasonLinkedFilterFactSurfaceMessage queryKind =
+  case queryKind of
+    MetricLinkedFilterQuery ->
+      "Season-scoped metric queries with linked filters currently require a fact surface that exposes season_year and season_type."
+    ObjectLinkedFilterQuery ->
+      "Season-scoped object queries with linked filters currently require a fact surface that exposes season_year and season_type."
+
+requireFactAttribute :: Object -> Text -> Text -> Either Text ()
+requireFactAttribute factObject attributeName failureMessage =
+  case findAttribute factObject attributeName of
+    Just _ -> pure ()
+    _ -> Left failureMessage
+
+validateSeasonLinkedFilterFactSurface :: OrdinaryLinkedFilterQueryKind -> Object -> Either Text ()
+validateSeasonLinkedFilterFactSurface queryKind factObject =
+  case queryKind of
+    MetricLinkedFilterQuery ->
+      if hasAttribute factObject "game_date"
+        then Left "Season-scoped metric queries with linked filters currently require a season-level fact surface rather than per-game rows."
+        else pure ()
+    ObjectLinkedFilterQuery -> pure ()
 
 validateMetricAttributes :: OT.MetricDef -> Either Text ()
 validateMetricAttributes metricDef =

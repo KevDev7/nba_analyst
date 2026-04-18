@@ -31,7 +31,13 @@ import qualified Data.Text as T
 import GHC.Generics (Generic)
 import GroundedPlanning.Compile (compileExecutionPlan)
 import GroundedPlanning.Resolve (ResolvedQuery, resolveQuery)
-import GroundedPlanning.Validation (validateQuery)
+import GroundedPlanning.Validation
+  ( OrdinaryLinkedFilterQueryKind (MetricLinkedFilterQuery, ObjectLinkedFilterQuery)
+  , OrdinaryMetricFilterFamily
+  , classifyOrdinaryMetricFilterFamily
+  , validateLinkedFilterFactSurface
+  , validateQuery
+  )
 import OntologyLayer.Types (Ontology, objects)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
@@ -144,8 +150,8 @@ enumerateMetricQueries ontology =
   , metricValue <- allMetrics
   , dimensionValues <- metricDimensionCandidates
   , (filterValues, timeGrainValue) <- filterBundleCandidates
-  , linkedFilterValues <- linkedFilterCandidates
   , (entityFilterValues, comparisonValue) <- comparisonCandidates
+  , linkedFilterValues <- linkedFilterCandidatesForMetric ontology factObjectName filterValues timeGrainValue comparisonValue
   , orderValues <- metricOrderCandidates metricValue comparisonValue
   , limitValue <- metricLimitCandidates comparisonValue
   ]
@@ -173,7 +179,7 @@ enumerateObjectQueries ontology =
   , metricValue <- allMetrics
   , dimensionValues <- objectDimensionCandidates
   , (filterValues, _) <- filterBundleCandidates
-  , linkedFilterValues <- linkedFilterCandidates
+  , linkedFilterValues <- linkedFilterCandidatesForObject ontology factObjectName filterValues
   , orderValues <- objectOrderCandidates metricValue
   , limitValue <- objectLimitCandidates
   ]
@@ -229,6 +235,34 @@ linkedFilterCandidates =
   [ []
   , [QI.LinkedFilter "Team" "team_name" "Lakers"]
   ]
+
+linkedFilterCandidatesForMetric :: Ontology -> Text -> [QI.Filter] -> Maybe QI.TimeGrain -> Maybe QI.ComparisonIntent -> [[QI.LinkedFilter]]
+linkedFilterCandidatesForMetric ontology factObjectName maybeFilters maybeTimeGrain maybeComparison =
+  case (maybeTimeGrain, maybeComparison) of
+    (Just _, _) -> [[]]
+    (_, Just _) -> [[]]
+    (Nothing, Nothing) ->
+      case classifyOrdinaryMetricFilterFamily maybeFilters of
+        Right filterFamily ->
+          if ordinaryLinkedFilterShapeSupported ontology MetricLinkedFilterQuery filterFamily factObjectName
+            then linkedFilterCandidates
+            else [[]]
+        Left _ -> [[]]
+
+linkedFilterCandidatesForObject :: Ontology -> Text -> [QI.Filter] -> [[QI.LinkedFilter]]
+linkedFilterCandidatesForObject ontology factObjectName filterValues =
+  case classifyOrdinaryMetricFilterFamily filterValues of
+    Right filterFamily ->
+      if ordinaryLinkedFilterShapeSupported ontology ObjectLinkedFilterQuery filterFamily factObjectName
+        then linkedFilterCandidates
+        else [[]]
+    Left _ -> [[]]
+
+ordinaryLinkedFilterShapeSupported :: Ontology -> OrdinaryLinkedFilterQueryKind -> OrdinaryMetricFilterFamily -> Text -> Bool
+ordinaryLinkedFilterShapeSupported ontology queryKind filterFamily factObjectName =
+  case validateLinkedFilterFactSurface ontology queryKind filterFamily factObjectName of
+    Right () -> True
+    Left _ -> False
 
 comparisonCandidates :: [([QI.PlayerRef], Maybe QI.ComparisonIntent)]
 comparisonCandidates =

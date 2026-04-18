@@ -94,7 +94,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertTrue(matching)
 
-    def test_misleading_player_game_season_team_filter_metric_family_is_not_derived(self) -> None:
+    def test_player_game_season_team_filter_metric_family_is_not_derived(self) -> None:
         artifact = _capability_artifact()
         matching = [
             family

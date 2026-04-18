@@ -38,7 +38,7 @@ class SliceFifteenTests(unittest.TestCase):
         )
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
 
-    def test_player_game_season_team_filter_metric_query_is_rejected(self) -> None:
+    def test_player_game_season_team_filter_metric_query_is_rejected_with_compile_reason(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -67,7 +67,7 @@ class SliceFifteenTests(unittest.TestCase):
             call_haskell_planner_for_query(payload)
 
         self.assertIn(
-            "Season-scoped linked team filters currently support PlayerSeasonTeam only for metric queries.",
+            "Season-scoped metric queries with linked filters currently require a season-level fact surface rather than per-game rows.",
             str(context.exception),
         )
 
