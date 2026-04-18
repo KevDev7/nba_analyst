@@ -13,27 +13,54 @@
 -- Next:
 -- - QueryModel/Ground.hs
 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module QueryModel.Intent where
 
--- This module is intentionally scaffold-only for now.
---
--- Long-term responsibility:
--- - extract rough object-ish concepts
--- - extract rough metric-ish concepts
--- - extract time/filter intent
--- - extract ranking/comparison intent
--- - preserve ambiguity instead of forcing early commitment
---
--- Example:
---   "Which players scored the most points over the last 10 games?"
---
--- Possible intent artifact:
--- - subject concept: players
--- - metric concept: points
--- - time/filter concept: last 10 games
--- - ranking intent: descending
--- - limit intent: top results
---
--- Important:
--- This stage should not decide final ontology objects or final query shape.
--- It should only capture what the user appears to mean.
+import Data.Text (Text)
+import GHC.Generics (Generic)
+
+data OrderingDirection
+  = IntentAscending
+  | IntentDescending
+  deriving (Show, Eq, Generic)
+
+data OrderingHint = OrderingHint
+  { direction :: OrderingDirection
+  , target :: Maybe Text
+  }
+  deriving (Show, Eq, Generic)
+
+data ComparisonHint = ComparisonHint
+  { targetObjectHint :: Maybe Text
+  , entityMentions :: [Text]
+  }
+  deriving (Show, Eq, Generic)
+
+data QueryIntent = QueryIntent
+  { rawQuestion :: Text
+  , objectMentions :: [Text]
+  , metricMentions :: [Text]
+  , dimensionMentions :: [Text]
+  , filterMentions :: [Text]
+  , timeMentions :: [Text]
+  , orderingHint :: Maybe OrderingHint
+  , limitHint :: Maybe Int
+  , comparisonHint :: Maybe ComparisonHint
+  }
+  deriving (Show, Eq, Generic)
+
+emptyIntent :: Text -> QueryIntent
+emptyIntent questionText =
+  QueryIntent
+    { rawQuestion = questionText
+    , objectMentions = []
+    , metricMentions = []
+    , dimensionMentions = []
+    , filterMentions = []
+    , timeMentions = []
+    , orderingHint = Nothing
+    , limitHint = Nothing
+    , comparisonHint = Nothing
+    }

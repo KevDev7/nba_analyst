@@ -17,7 +17,10 @@ executable ontology-hs
     , OntologyLayer.Graph
     , OntologyLayer.Load
     , OntologyLayer.Types
+    , QueryModel.Build
+    , QueryModel.Ground
     , QueryModel.IR
+    , QueryModel.Intent
   build-depends:
       base >= 4.20 && < 5
     , aeson

@@ -14,34 +14,80 @@
 -- Next:
 -- - QueryModel/Build.hs
 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module QueryModel.Ground where
 
--- This module is intentionally scaffold-only for now.
---
--- Long-term responsibility:
--- - map rough user concepts to ontology objects
--- - map rough metric language to ontology metrics
--- - map grouping/filter language to ontology dimensions
--- - discover reachable paths between fact objects and linked objects
--- - surface ambiguity when multiple ontology matches are plausible
--- - record what failed to ground cleanly
---
--- This is the most natural home for:
--- - lexical matching
--- - alias matching
--- - embeddings-based semantic matching
--- - selective model assistance for hard ambiguity
---
--- Example:
---   user language: "scoring"
---   possible ontology matches: total_points, average_points, points_per_36
---
--- Output should move closer to:
--- - core fact object: PlayerGame
--- - metric: total_points
--- - dimension: player_name
--- - filter: last_n_games = 10
---
--- Important:
--- This stage should ground meaning through the ontology, but it still does not
--- need to commit to the final IR structure.
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import qualified QueryModel.IR as QI
+
+data GroundedQueryShape
+  = GroundedMetricQuery
+  | GroundedObjectQuery Text
+  deriving (Show, Eq, Generic)
+
+data GroundedOrdering = GroundedOrdering
+  { metric :: Maybe Text
+  , descending :: Bool
+  }
+  deriving (Show, Eq, Generic)
+
+data GroundedFilter = GroundedFilter
+  { kind :: Text
+  , value :: Maybe QI.FilterValue
+  }
+  deriving (Show, Eq, Generic)
+
+data GroundedLinkedFilter = GroundedLinkedFilter
+  { targetObject :: Text
+  , attribute :: Text
+  , value :: Text
+  }
+  deriving (Show, Eq, Generic)
+
+data GroundedComparison = GroundedComparison
+  { targetObject :: Text
+  , identityDimension :: Text
+  , entities :: [QI.EntityRef]
+  }
+  deriving (Show, Eq, Generic)
+
+data GroundedSemanticRequest = GroundedSemanticRequest
+  { queryShape :: GroundedQueryShape
+  , candidateCoreFactObject :: Maybe Text
+  , groundedMetrics :: [Text]
+  , groundedDimensions :: [Text]
+  , groundedTimeGrain :: Maybe Text
+  , groundedFilters :: [GroundedFilter]
+  , groundedLinkedFilters :: [GroundedLinkedFilter]
+  , groundedOrdering :: Maybe GroundedOrdering
+  , groundedLimit :: Maybe Int
+  , groundedComparison :: Maybe GroundedComparison
+  , unresolvedPieces :: [Text]
+  }
+  deriving (Show, Eq, Generic)
+
+groundedMetricRequest :: Text -> GroundedSemanticRequest
+groundedMetricRequest factObjectName =
+  GroundedSemanticRequest
+    { queryShape = GroundedMetricQuery
+    , candidateCoreFactObject = Just factObjectName
+    , groundedMetrics = []
+    , groundedDimensions = []
+    , groundedTimeGrain = Nothing
+    , groundedFilters = []
+    , groundedLinkedFilters = []
+    , groundedOrdering = Nothing
+    , groundedLimit = Nothing
+    , groundedComparison = Nothing
+    , unresolvedPieces = []
+    }
+
+groundedObjectRequest :: Text -> Text -> GroundedSemanticRequest
+groundedObjectRequest factObjectName rowObjectName =
+  (groundedMetricRequest factObjectName)
+    { queryShape = GroundedObjectQuery rowObjectName
+    }

@@ -33,6 +33,7 @@ SAMPLE_EXECUTION_PLAN = {
     "entity_label_plural": "Players",
     "context_label": "Team",
     "metric": "total_points",
+    "metric_aggregation": "sum",
     "window_games": 10,
     "time_grain": None,
     "time_filter": None,
@@ -158,14 +159,20 @@ class SliceTenTests(unittest.TestCase):
         )
         mock_query_planner.assert_called_once_with(SAMPLE_INTERPRETED_QUERY)
 
-    def test_stale_haskell_question_front_end_modules_are_removed(self) -> None:
+    def test_query_model_direction_uses_intent_ground_build(self) -> None:
         for relative_path in [
             "services/ontology-hs/src/QueryModel/Interpret.hs",
             "services/ontology-hs/src/QueryModel/Match.hs",
             "services/ontology-hs/src/QueryModel/Classify.hs",
-            "services/ontology-hs/src/QueryModel/Build.hs",
         ]:
             self.assertFalse((ROOT / relative_path).exists(), relative_path)
+
+        for relative_path in [
+            "services/ontology-hs/src/QueryModel/Intent.hs",
+            "services/ontology-hs/src/QueryModel/Ground.hs",
+            "services/ontology-hs/src/QueryModel/Build.hs",
+        ]:
+            self.assertTrue((ROOT / relative_path).exists(), relative_path)
 
         main_contents = (
             ROOT / "services" / "ontology-hs" / "app" / "Main.hs"

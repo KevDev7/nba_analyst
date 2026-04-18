@@ -29,6 +29,7 @@ import GroundedPlanning.Resolve (ResolvedQuery, resolveQuery)
 import GroundedPlanning.Validation (validateQuery)
 import OntologyLayer.Load (loadOntology)
 import OntologyLayer.Types (Ontology)
+import qualified QueryModel.Build as QB
 import QueryModel.IR (Query (MetricQuery, ObjectQuery))
 import System.Environment (getArgs)
 import System.Exit (die, exitFailure)
@@ -59,12 +60,17 @@ main = do
       ontology <- loadOntology ontologyPath
       derived <- deriveCapabilitiesIO ontology
       BL8.putStrLn (encode derived)
+    ["query-model-foundation-json", "metric"] ->
+      BL8.putStrLn (encode (QB.toIRQuery QB.exampleMetricSemanticQuery))
+    ["query-model-foundation-json", "object"] ->
+      BL8.putStrLn (encode (QB.toIRQuery QB.exampleObjectSemanticQuery))
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       ontology <- loadOntology ontologyPath
       runPlannerFromQueryJson ontology (pack queryJson)
     _ ->
       die
         "Usage: cabal run ontology-hs -- derive-capabilities-json --ontology <path>\n\
+        \   or: cabal run ontology-hs -- query-model-foundation-json metric|object\n\
         \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()
