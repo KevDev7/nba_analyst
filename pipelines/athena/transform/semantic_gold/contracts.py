@@ -78,6 +78,17 @@ TEAM_SCHEMA = pa.schema(
     ]
 )
 
+ARENA_SCHEMA = pa.schema(
+    [
+        pa.field("arena_id", pa.int64()),
+        pa.field("arena_name", pa.string()),
+        pa.field("arena_city", pa.string()),
+        pa.field("arena_state", pa.string()),
+        pa.field("arena_country", pa.string()),
+        pa.field("arena_timezone", pa.string()),
+    ]
+)
+
 GAME_SCHEMA = pa.schema(
     [
         pa.field("game_id", pa.string()),
@@ -111,11 +122,6 @@ GAME_SCHEMA = pa.schema(
         pa.field("current_period", pa.int64()),
         pa.field("game_clock", pa.string()),
         pa.field("arena_id", pa.int64()),
-        pa.field("arena_name", pa.string()),
-        pa.field("arena_city", pa.string()),
-        pa.field("arena_state", pa.string()),
-        pa.field("arena_country", pa.string()),
-        pa.field("arena_timezone", pa.string()),
         pa.field("home_team_id", pa.int64()),
         pa.field("away_team_id", pa.int64()),
         pa.field("home_team_name", pa.string()),
@@ -303,6 +309,12 @@ SEMANTIC_GOLD_TABLE_SPECS = [
         data_key="semantic_gold/team/team.parquet",
         table_location=f"s3://{S3_BUCKET}/semantic_gold/team/",
         schema=TEAM_SCHEMA,
+    ),
+    SemanticGoldTableSpec(
+        table_name="arena",
+        data_key="semantic_gold/arena/arena.parquet",
+        table_location=f"s3://{S3_BUCKET}/semantic_gold/arena/",
+        schema=ARENA_SCHEMA,
     ),
     SemanticGoldTableSpec(
         table_name="game",

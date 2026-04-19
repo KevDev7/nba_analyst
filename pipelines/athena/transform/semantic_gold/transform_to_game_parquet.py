@@ -48,7 +48,7 @@ def finalize_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     return [{column: row.get(column) for column in public_columns} for row in rows]
 
 
-def build_game_rows_from_tables(
+def build_semantic_game_source_rows_from_tables(
     box_table: pa.Table,
     schedule_table: pa.Table,
     team_game_table: pa.Table,
@@ -64,6 +64,17 @@ def build_game_rows_from_tables(
         if is_semantic_game_row(row)
         and season_type_label_from_code(str(row.get("game_id"))[:3]) is not None
     ]
+    return semantic_rows
+
+
+def build_game_rows_from_tables(
+    box_table: pa.Table,
+    schedule_table: pa.Table,
+    team_game_table: pa.Table,
+) -> list[dict[str, object]]:
+    semantic_rows = build_semantic_game_source_rows_from_tables(
+        box_table, schedule_table, team_game_table
+    )
     return finalize_rows(semantic_rows)
 
 

@@ -62,6 +62,18 @@
       ]
     },
     {
+      "table_name": "arena",
+      "object_name": "Arena",
+      "columns": [
+        {"name": "arena_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
+        {"name": "arena_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "arena_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "arena_state", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "arena_country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "arena_timezone", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+      ]
+    },
+    {
       "table_name": "game",
       "object_name": "Game",
       "columns": [
@@ -95,12 +107,7 @@
         {"name": "regulation_periods", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "current_period", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "game_clock", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_id", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_state", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_timezone", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "arena_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
         {"name": "home_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
         {"name": "away_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
         {"name": "home_team_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
