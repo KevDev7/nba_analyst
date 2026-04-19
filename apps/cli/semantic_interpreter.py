@@ -147,43 +147,14 @@ def _strip_json_fences(raw_text: str) -> str:
     return cleaned.strip()
 
 
-def _is_querymodel_recent_ranking_question(question: str) -> bool:
-    question_text = question.lower()
-    if re.search(r"\b(compare|season|playoffs|monthly|trend)\b", question_text):
-        return False
-    if re.search(r"\b(and their|for the|for team)\b", question_text):
-        return False
-    if not re.search(r"\blast\s+\d+\s+games?\b", question_text):
-        return False
-    if not (
-        re.search(r"\b(top\s+\d+|most|highest|best)\b", question_text)
-        or re.search(r"\bplayers?\s+by\b", question_text)
-        or re.search(r"\bwho\s+has\b", question_text)
-    ):
-        return False
-    return bool(re.search(r"\b(player|players|scorer|scorers|who)\b", question_text))
-
-
-def _querymodel_recent_ranking_assumptions(question: str) -> list[str]:
-    candidate_assumptions = [
-        "Interpreted 'pts' as total points.",
-        "Interpreted 'scoring' as total points.",
-        "Interpreted 'scorers' as players ranked by total points.",
-        "Interpreted 'scorer' as players ranked by total points.",
-        "Interpreted 'avg points' as average points.",
-        "Interpreted 'average scoring' as average points.",
-    ]
-    return _normalize_assumptions(question, candidate_assumptions)
-
-
-def _call_haskell_querymodel_recent_ranking(question: str) -> dict[str, Any]:
+def _call_haskell_querymodel(question: str) -> dict[str, Any]:
     command = [
         "cabal",
         "run",
         "-v0",
         "ontology-hs",
         "--",
-        "query-model-ranking-json",
+        "query-model-json",
         "--ontology",
         str(ONTOLOGY_PATH),
         "--question",
@@ -656,14 +627,11 @@ def _normalize_assumptions(question: str, assumptions: list[str]) -> list[str]:
 
 @lru_cache(maxsize=256)
 def interpret_question_to_planner_query(question: str) -> dict[str, Any]:
-    if _is_querymodel_recent_ranking_question(question):
-        try:
-            query_payload = _call_haskell_querymodel_recent_ranking(question)
-            shared_query = query_payload["spec"]["sharedQuery"]
-            shared_query["assumptions"] = _querymodel_recent_ranking_assumptions(question)
-            return query_payload
-        except Exception:
-            pass
+    querymodel_payload = _call_haskell_querymodel(question)
+    if querymodel_payload.get("status") == "ok":
+        return querymodel_payload["query"]
+    if querymodel_payload.get("status") != "unsupported":
+        raise SemanticInterpreterError("Haskell QueryModel returned an unknown status.")
 
     prompt = (
         f"{_interpreter_prompt_preamble()}\n\n"

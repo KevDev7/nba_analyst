@@ -105,25 +105,12 @@ deriveCapabilitiesIO ontology =
   DerivedCapabilityOutput
     <$> (renderFamilies <$> supportedObservations ontology)
 
-liveRecentPlayerRankingMetricsIO :: Ontology -> IO [Text]
-liveRecentPlayerRankingMetricsIO ontology =
-  liveRecentPlayerRankingMetrics . families <$> deriveCapabilitiesIO ontology
+queryModelFamiliesIO :: Ontology -> IO [DerivedFamily]
+queryModelFamiliesIO ontology =
+  queryModelFamilies . families <$> deriveCapabilitiesIO ontology
 
-liveRecentPlayerRankingMetrics :: [DerivedFamily] -> [Text]
-liveRecentPlayerRankingMetrics derivedFamilies =
-  case
-    [ metrics currentFamily
-    | currentFamily <- derivedFamilies
-    , query_kind currentFamily == "metric_query"
-    , core_fact_object currentFamily == "PlayerGame"
-    , dimensions currentFamily == ["player_name"]
-    , required_filter_kinds currentFamily == ["last_n_games"]
-    , time_grain currentFamily == Nothing
-    , linked_filters currentFamily == []
-    , comparison currentFamily == DerivedComparison False Nothing Nothing
-    ]
-  of
-    matchingMetricSets -> sort (nub (concat matchingMetricSets))
+queryModelFamilies :: [DerivedFamily] -> [DerivedFamily]
+queryModelFamilies = id
 
 data SupportedObservation = SupportedObservation
   { supported_signature :: FamilySignature
