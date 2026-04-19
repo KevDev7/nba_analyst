@@ -109,15 +109,7 @@
         {"name": "game_clock", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "arena_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
         {"name": "home_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "away_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "home_team_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "away_team_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "home_team_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "away_team_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "home_team_abbreviation", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "away_team_abbreviation", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "home_team_slug", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "away_team_slug", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {"name": "away_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"}
       ]
     },
     {

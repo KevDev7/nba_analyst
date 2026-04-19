@@ -124,14 +124,6 @@ GAME_SCHEMA = pa.schema(
         pa.field("arena_id", pa.int64()),
         pa.field("home_team_id", pa.int64()),
         pa.field("away_team_id", pa.int64()),
-        pa.field("home_team_name", pa.string()),
-        pa.field("away_team_name", pa.string()),
-        pa.field("home_team_city", pa.string()),
-        pa.field("away_team_city", pa.string()),
-        pa.field("home_team_abbreviation", pa.string()),
-        pa.field("away_team_abbreviation", pa.string()),
-        pa.field("home_team_slug", pa.string()),
-        pa.field("away_team_slug", pa.string()),
     ]
 )
 
