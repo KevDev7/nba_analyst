@@ -669,7 +669,6 @@ def test_build_player_season_rows_aggregate_one_row_per_player_season() -> None:
         (201939, "2024-25", "regular_season"),
     }
     curry = by_key[(201939, "2024-25", "regular_season")]
-    assert curry["player_name"] == "Stephen Curry"
     assert curry["games_played"] == 1
     assert curry["total_points"] == 33
     assert curry["average_points"] == 33.0
@@ -694,7 +693,6 @@ def test_build_player_season_team_rows_keep_team_stint_grain() -> None:
         (201939, 1610612744, "2024-25", "regular_season"),
     }
     lebron = by_key[(2544, 1610612747, "2024-25", "regular_season")]
-    assert lebron["player_name"] == "LeBron James"
     assert lebron["games_played"] == 1
     assert lebron["total_points"] == 30
     assert lebron["average_points"] == 30.0

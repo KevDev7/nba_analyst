@@ -41,28 +41,8 @@ load_dotenv(override=True)
 DESTINATION_KEY = "semantic_gold/player_season/player_season.parquet"
 
 
-def build_player_name_by_person_id(player_table: pa.Table) -> dict[int, str]:
-    names: dict[int, str] = {}
-    for row in player_table.to_pylist():
-        person_id = to_positive_int_or_none(row.get("personId"))
-        if person_id is None:
-            continue
-        player_name = to_str_or_none(row.get("name"))
-        if player_name is None:
-            first_name = to_str_or_none(row.get("firstName"))
-            family_name = to_str_or_none(row.get("familyName"))
-            if first_name and family_name:
-                player_name = f"{first_name} {family_name}"
-            else:
-                player_name = first_name or family_name
-        if player_name is not None:
-            names[person_id] = player_name
-    return names
-
-
 def build_player_season_rows_from_player_game_rows(
     player_game_rows: list[dict[str, object]],
-    player_name_by_person_id: dict[int, str],
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, str, str], dict[str, object]] = {}
 
@@ -78,7 +58,6 @@ def build_player_season_rows_from_player_game_rows(
             key,
             {
                 "person_id": person_id,
-                "player_name": player_name_by_person_id.get(person_id),
                 "season_year": season_year,
                 "season_type": season_type,
                 "season_start_year": row.get("season_start_year"),
@@ -129,10 +108,7 @@ def build_player_season_rows_from_tables(
     player_game_rows = build_player_game_rows_from_tables(
         player_table, box_table, schedule_table, team_game_table
     )
-    player_name_by_person_id = build_player_name_by_person_id(player_table)
-    return build_player_season_rows_from_player_game_rows(
-        player_game_rows, player_name_by_person_id
-    )
+    return build_player_season_rows_from_player_game_rows(player_game_rows)
 
 
 def main() -> None:

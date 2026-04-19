@@ -232,7 +232,6 @@
       "object_name": "PlayerSeason",
       "columns": [
         {"name": "person_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "player_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
         {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
         {"name": "season_start_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
@@ -249,7 +248,6 @@
       "object_name": "PlayerSeasonTeam",
       "columns": [
         {"name": "person_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "player_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "team_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
         {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
         {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},

@@ -243,7 +243,6 @@ TEAM_GAME_SCHEMA = pa.schema(
 PLAYER_SEASON_SCHEMA = pa.schema(
     [
         pa.field("person_id", pa.int64()),
-        pa.field("player_name", pa.string()),
         pa.field("season_year", pa.string()),
         pa.field("season_type", pa.string()),
         pa.field("season_start_year", pa.int64()),
@@ -259,7 +258,6 @@ PLAYER_SEASON_SCHEMA = pa.schema(
 PLAYER_SEASON_TEAM_SCHEMA = pa.schema(
     [
         pa.field("person_id", pa.int64()),
-        pa.field("player_name", pa.string()),
         pa.field("team_id", pa.int64()),
         pa.field("season_year", pa.string()),
         pa.field("season_type", pa.string()),

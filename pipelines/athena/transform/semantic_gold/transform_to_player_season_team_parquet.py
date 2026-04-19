@@ -35,7 +35,6 @@ from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import
 
 from .contracts import PLAYER_SEASON_TEAM_SCHEMA
 from .transform_to_player_game_parquet import build_player_game_rows_from_tables
-from .transform_to_player_season_parquet import build_player_name_by_person_id
 
 load_dotenv(override=True)
 
@@ -44,7 +43,6 @@ DESTINATION_KEY = "semantic_gold/player_season_team/player_season_team.parquet"
 
 def build_player_season_team_rows_from_player_game_rows(
     player_game_rows: list[dict[str, object]],
-    player_name_by_person_id: dict[int, str],
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, int, str, str], dict[str, object]] = {}
 
@@ -61,7 +59,6 @@ def build_player_season_team_rows_from_player_game_rows(
             key,
             {
                 "person_id": person_id,
-                "player_name": player_name_by_person_id.get(person_id),
                 "team_id": team_id,
                 "season_year": season_year,
                 "season_type": season_type,
@@ -106,10 +103,7 @@ def build_player_season_team_rows_from_tables(
     player_game_rows = build_player_game_rows_from_tables(
         player_table, box_table, schedule_table, team_game_table
     )
-    player_name_by_person_id = build_player_name_by_person_id(player_table)
-    return build_player_season_team_rows_from_player_game_rows(
-        player_game_rows, player_name_by_person_id
-    )
+    return build_player_season_team_rows_from_player_game_rows(player_game_rows)
 
 
 def main() -> None:
