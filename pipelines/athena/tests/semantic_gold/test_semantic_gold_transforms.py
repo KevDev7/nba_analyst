@@ -587,8 +587,9 @@ def test_build_team_game_rows_resolve_opponent_links() -> None:
     away_row = by_key[("0022400001", 1610612747)]
     assert home_row["opponent_team_id"] == 1610612747
     assert away_row["opponent_team_id"] == 1610612744
-    assert home_row["point_diff"] == 5
-    assert away_row["is_loss"] == 1
+    assert home_row["point_differential"] == 5
+    assert home_row["game_result"] == "win"
+    assert away_row["game_result"] == "loss"
 
 
 def test_build_team_game_rows_drop_non_semantic_team_pairs() -> None:
@@ -713,9 +714,7 @@ def test_build_team_season_rows_aggregate_team_results() -> None:
     assert warriors["wins"] == 1
     assert warriors["losses"] == 0
     assert warriors["win_percentage"] == 1.0
-    assert warriors["average_points"] == 120.0
 
     assert lakers["wins"] == 0
     assert lakers["losses"] == 1
     assert lakers["win_percentage"] == 0.0
-    assert lakers["average_points"] == 115.0

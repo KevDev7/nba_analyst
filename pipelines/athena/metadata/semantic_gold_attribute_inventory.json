@@ -159,16 +159,11 @@
         {"name": "game_datetime_utc", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "season_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_start_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "raw_season_type_code", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "season_type", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "team_side", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_home_team", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "score", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "opponent_score", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "point_diff", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "is_in_bonus", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "timeouts_remaining", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "point_differential", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "seconds_played_total", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "minutes_played_decimal", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "assists", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
@@ -198,9 +193,7 @@
         {"name": "points_fast_break", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "points_in_the_paint", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "points_second_chance", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "is_win", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "is_loss", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "is_tie", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {"name": "game_result", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
       ]
     },
     {
@@ -241,13 +234,10 @@
         {"name": "team_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
         {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
         {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "season_start_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "raw_season_type_code", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "games_played", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "wins", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
         {"name": "losses", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "win_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "average_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {"name": "win_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
       ]
     }
   ]

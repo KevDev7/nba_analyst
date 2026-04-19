@@ -58,23 +58,19 @@ def build_team_season_rows_from_team_game_rows(
                 "team_id": team_id,
                 "season_year": season_year,
                 "season_type": season_type,
-                "season_start_year": row.get("season_start_year"),
-                "raw_season_type_code": row.get("raw_season_type_code"),
                 "games_played": 0,
                 "wins": 0,
                 "losses": 0,
-                "points_total": 0.0,
             },
         )
 
         current["games_played"] = to_int_or_none(current.get("games_played")) or 0
         current["games_played"] += 1
+        game_result = row.get("game_result")
         current["wins"] = to_int_or_none(current.get("wins")) or 0
-        current["wins"] += to_int_or_none(row.get("is_win")) or 0
+        current["wins"] += 1 if game_result == "win" else 0
         current["losses"] = to_int_or_none(current.get("losses")) or 0
-        current["losses"] += to_int_or_none(row.get("is_loss")) or 0
-        current["points_total"] = to_float_or_none(current.get("points_total")) or 0.0
-        current["points_total"] += to_float_or_none(row.get("score")) or 0.0
+        current["losses"] += 1 if game_result == "loss" else 0
 
     season_rows: list[dict[str, object]] = []
     for key in sorted(grouped):
@@ -82,7 +78,6 @@ def build_team_season_rows_from_team_game_rows(
         games_played = to_int_or_none(aggregate.get("games_played")) or 0
         wins = to_int_or_none(aggregate.get("wins")) or 0
         losses = to_int_or_none(aggregate.get("losses")) or 0
-        points_total = to_float_or_none(aggregate.pop("points_total")) or 0.0
         season_rows.append(
             {
                 **aggregate,
@@ -90,9 +85,6 @@ def build_team_season_rows_from_team_game_rows(
                 "wins": wins,
                 "losses": losses,
                 "win_percentage": round(safe_ratio(wins, games_played), 3)
-                if games_played > 0
-                else None,
-                "average_points": round(safe_ratio(points_total, games_played), 1)
                 if games_played > 0
                 else None,
             }

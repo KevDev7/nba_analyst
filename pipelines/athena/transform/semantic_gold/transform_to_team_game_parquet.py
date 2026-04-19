@@ -93,6 +93,14 @@ def build_team_game_rows_from_tables(
             opponent_score = (
                 to_int_or_none(opponent.get("score")) if opponent is not None else None
             ) or (to_int_or_none(opponent.get("points")) if opponent is not None else None)
+            game_result = (
+                "win"
+                if score is not None and opponent_score is not None and score > opponent_score
+                else "loss"
+                if score is not None and opponent_score is not None and score < opponent_score
+                else None
+            )
+
             candidate = {
                 "game_id": game_id,
                 "team_id": team_id,
@@ -100,16 +108,11 @@ def build_team_game_rows_from_tables(
                 "game_datetime_utc": game.get("game_datetime_utc"),
                 "game_date": game.get("game_date"),
                 "season_year": game.get("season_year"),
-                "season_start_year": game.get("season_start_year"),
-                "raw_season_type_code": game.get("raw_season_type_code"),
                 "season_type": game.get("season_type"),
                 "team_side": side,
-                "is_home_team": 1 if side == "home" else 0 if side == "away" else None,
                 "score": score,
                 "opponent_score": opponent_score,
-                "point_diff": (score - opponent_score) if score is not None and opponent_score is not None else None,
-                "is_in_bonus": to_int_or_none(row.get("inBonus")),
-                "timeouts_remaining": to_int_or_none(row.get("timeoutsRemaining")),
+                "point_differential": (score - opponent_score) if score is not None and opponent_score is not None else None,
                 "seconds_played_total": seconds_played_total,
                 "minutes_played_decimal": round(seconds_played_total / 60.0, 3) if seconds_played_total is not None else None,
                 "assists": to_int_or_none(row.get("assists")),
@@ -139,9 +142,7 @@ def build_team_game_rows_from_tables(
                 "points_fast_break": to_int_or_none(row.get("pointsFastBreak")),
                 "points_in_the_paint": to_int_or_none(row.get("pointsInThePaint")),
                 "points_second_chance": to_int_or_none(row.get("pointsSecondChance")),
-                "is_win": 1 if score is not None and opponent_score is not None and score > opponent_score else 0 if score is not None and opponent_score is not None else None,
-                "is_loss": 1 if score is not None and opponent_score is not None and score < opponent_score else 0 if score is not None and opponent_score is not None else None,
-                "is_tie": 1 if score is not None and opponent_score is not None and score == opponent_score else 0 if score is not None and opponent_score is not None else None,
+                "game_result": game_result,
             }
             key = (game_id, team_id)
             current = deduped.get(key)

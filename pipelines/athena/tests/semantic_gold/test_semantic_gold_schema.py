@@ -178,7 +178,7 @@ def test_attribute_inventory_has_expected_key_classifications() -> None:
     assert inventory[("player_game", "points")]["attribute_kind"] == "measure"
     assert inventory[("player_game", "person_id")]["link_key"] is True
     assert inventory[("team_game", "opponent_team_id")]["link_key"] is True
-    assert inventory[("team_game", "is_win")]["attribute_kind"] == "measure"
+    assert inventory[("team_game", "game_result")]["attribute_kind"] == "dimension"
     assert inventory[("team_game", "game_date")]["attribute_kind"] == "dimension"
     assert inventory[("team_game", "team_id")]["link_key"] is True
     assert inventory[("team_game", "score")]["attribute_kind"] == "measure"

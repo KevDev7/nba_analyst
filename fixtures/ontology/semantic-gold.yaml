@@ -840,18 +840,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
-    link_key: false
-    visibility: public
-    derivation: null
   - name: season_type
     kind: dimension
     source_column: season_type
@@ -861,12 +849,6 @@ objects:
   - name: team_side
     kind: dimension
     source_column: team_side
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_home_team
-    kind: dimension
-    source_column: is_home_team
     link_key: false
     visibility: public
     derivation: null
@@ -882,21 +864,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: point_diff
+  - name: point_differential
     kind: measure
-    source_column: point_diff
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_in_bonus
-    kind: dimension
-    source_column: is_in_bonus
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: timeouts_remaining
-    kind: dimension
-    source_column: timeouts_remaining
+    source_column: point_differential
     link_key: false
     visibility: public
     derivation: null
@@ -1074,21 +1044,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: is_win
-    kind: measure
-    source_column: is_win
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_loss
-    kind: measure
-    source_column: is_loss
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_tie
-    kind: measure
-    source_column: is_tie
+  - name: game_result
+    kind: dimension
+    source_column: game_result
     link_key: false
     visibility: public
     derivation: null
@@ -1319,18 +1277,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
-    link_key: false
-    visibility: public
-    derivation: null
   - name: games_played
     kind: measure
     source_column: games_played
@@ -1352,12 +1298,6 @@ objects:
   - name: win_percentage
     kind: measure
     source_column: win_percentage
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: average_points
-    kind: measure
-    source_column: average_points
     link_key: false
     visibility: public
     derivation: null

@@ -171,16 +171,11 @@ TEAM_GAME_SCHEMA = pa.schema(
         pa.field("game_datetime_utc", pa.timestamp("us", tz="UTC")),
         pa.field("game_date", pa.date32()),
         pa.field("season_year", pa.string()),
-        pa.field("season_start_year", pa.int64()),
-        pa.field("raw_season_type_code", pa.string()),
         pa.field("season_type", pa.string()),
         pa.field("team_side", pa.string()),
-        pa.field("is_home_team", pa.int64()),
         pa.field("score", pa.int64()),
         pa.field("opponent_score", pa.int64()),
-        pa.field("point_diff", pa.int64()),
-        pa.field("is_in_bonus", pa.int64()),
-        pa.field("timeouts_remaining", pa.int64()),
+        pa.field("point_differential", pa.int64()),
         pa.field("seconds_played_total", pa.float64()),
         pa.field("minutes_played_decimal", pa.float64()),
         pa.field("assists", pa.int64()),
@@ -210,9 +205,7 @@ TEAM_GAME_SCHEMA = pa.schema(
         pa.field("points_fast_break", pa.int64()),
         pa.field("points_in_the_paint", pa.int64()),
         pa.field("points_second_chance", pa.int64()),
-        pa.field("is_win", pa.int64()),
-        pa.field("is_loss", pa.int64()),
-        pa.field("is_tie", pa.int64()),
+        pa.field("game_result", pa.string()),
     ]
 )
 
@@ -250,13 +243,10 @@ TEAM_SEASON_SCHEMA = pa.schema(
         pa.field("team_id", pa.int64()),
         pa.field("season_year", pa.string()),
         pa.field("season_type", pa.string()),
-        pa.field("season_start_year", pa.int64()),
-        pa.field("raw_season_type_code", pa.string()),
         pa.field("games_played", pa.int64()),
         pa.field("wins", pa.int64()),
         pa.field("losses", pa.int64()),
         pa.field("win_percentage", pa.float64()),
-        pa.field("average_points", pa.float64()),
     ]
 )
 
