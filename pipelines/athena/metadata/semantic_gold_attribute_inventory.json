@@ -7,19 +7,13 @@
       "object_name": "Player",
       "columns": [
         {"name": "person_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "player_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "full_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "first_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "family_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "display_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "last_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "primary_position", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "position_group", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "latest_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
         {"name": "latest_jersey_number", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "latest_status", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "first_seen_game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "last_seen_game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "first_season_played", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "last_season_played", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "birth_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "school", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
@@ -27,10 +21,7 @@
         {"name": "weight_lbs", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "draft_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "draft_round", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "draft_number", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_guard", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_forward", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_center", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {"name": "draft_number", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
       ]
     },
     {

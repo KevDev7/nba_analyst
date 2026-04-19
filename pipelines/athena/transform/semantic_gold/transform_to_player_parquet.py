@@ -11,7 +11,6 @@ import pyarrow as pa
 from dotenv import load_dotenv
 
 from pipelines.athena.transform.gold.gold_transform_helpers import S3_BUCKET, TEAM_CONTEXT_BY_ID, normalize_position_group, read_parquet_table_from_s3, to_positive_int_or_none, to_str_or_none, write_parquet_to_s3
-from pipelines.athena.transform.gold.player_surface.current_profile import build_profile_flags_map
 from pipelines.athena.transform.gold.player_surface.history import (
     build_bbr_birth_date_map,
     build_game_time_map,
@@ -53,11 +52,8 @@ def build_player_rows_from_tables(
     )
     nba_team_ids = set(TEAM_CONTEXT_BY_ID.keys())
     player_events = build_player_events(player_table, game_time_by_id, player_bio_by_person, nba_team_ids)
-    flags_by_person = build_profile_flags_map(player_bio_table)
 
     latest_event_by_person: dict[int, dict[str, object]] = {}
-    first_seen_by_person: dict[int, object] = {}
-    last_seen_by_person: dict[int, object] = {}
     latest_detail_by_person: dict[int, dict[str, object]] = {}
     latest_sort_key_by_person: dict[int, tuple[object, str]] = {}
 
@@ -72,20 +68,11 @@ def build_player_rows_from_tables(
             latest_sort_key_by_person[person_id] = sort_key
             latest_detail_by_person[person_id] = {
                 "latest_jersey_number": to_str_or_none(row.get("jerseyNum")),
-                "latest_status": to_str_or_none(row.get("status")),
                 "primary_position": to_str_or_none(row.get("position")),
             }
 
     for event in player_events:
         person_id = event["person_id"]
-        game_date = event.get("game_date")
-        if game_date is not None:
-            current_first = first_seen_by_person.get(person_id)
-            current_last = last_seen_by_person.get(person_id)
-            if current_first is None or game_date < current_first:
-                first_seen_by_person[person_id] = game_date
-            if current_last is None or game_date > current_last:
-                last_seen_by_person[person_id] = game_date
         latest_event_by_person[person_id] = event
 
     person_ids = sorted(
@@ -106,29 +93,13 @@ def build_player_rows_from_tables(
         rows.append(
             {
                 "person_id": person_id,
-                "player_name": event.get("player_name"),
+                "full_name": event.get("player_name"),
                 "first_name": event.get("first_name") or bio.get("first_name"),
-                "family_name": event.get("family_name") or bio.get("family_name"),
-                "display_name": event.get("display_name") or event.get("player_name"),
+                "last_name": event.get("family_name") or bio.get("family_name"),
                 "primary_position": primary_position,
                 "position_group": normalize_position_group(primary_position),
                 "latest_team_id": latest_team_id if latest_team_id in nba_team_ids else None,
                 "latest_jersey_number": latest_detail.get("latest_jersey_number"),
-                "latest_status": latest_detail.get("latest_status"),
-                "first_seen_game_date": first_seen_by_person.get(person_id),
-                "last_seen_game_date": last_seen_by_person.get(person_id),
-                "first_season_played": (
-                    f"{first_seen_by_person[person_id].year if first_seen_by_person[person_id].month >= 7 else first_seen_by_person[person_id].year - 1}-"
-                    f"{((first_seen_by_person[person_id].year if first_seen_by_person[person_id].month >= 7 else first_seen_by_person[person_id].year - 1) + 1) % 100:02d}"
-                    if person_id in first_seen_by_person
-                    else None
-                ),
-                "last_season_played": (
-                    f"{last_seen_by_person[person_id].year if last_seen_by_person[person_id].month >= 7 else last_seen_by_person[person_id].year - 1}-"
-                    f"{((last_seen_by_person[person_id].year if last_seen_by_person[person_id].month >= 7 else last_seen_by_person[person_id].year - 1) + 1) % 100:02d}"
-                    if person_id in last_seen_by_person
-                    else None
-                ),
                 "birth_date": bio.get("birth_date"),
                 "school": bio.get("school"),
                 "country": bio.get("country"),
@@ -137,9 +108,6 @@ def build_player_rows_from_tables(
                 "draft_year": bio.get("draft_year"),
                 "draft_round": bio.get("draft_round"),
                 "draft_number": bio.get("draft_number"),
-                "is_guard": flags_by_person.get(person_id, {}).get("is_guard"),
-                "is_forward": flags_by_person.get(person_id, {}).get("is_forward"),
-                "is_center": flags_by_person.get(person_id, {}).get("is_center"),
             }
         )
     return rows

@@ -10,9 +10,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: player_name
+  - name: full_name
     kind: dimension
-    source_column: player_name
+    source_column: full_name
     link_key: false
     visibility: public
     derivation: null
@@ -22,15 +22,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: family_name
+  - name: last_name
     kind: dimension
-    source_column: family_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: display_name
-    kind: dimension
-    source_column: display_name
+    source_column: last_name
     link_key: false
     visibility: public
     derivation: null
@@ -55,36 +49,6 @@ objects:
   - name: latest_jersey_number
     kind: dimension
     source_column: latest_jersey_number
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: latest_status
-    kind: dimension
-    source_column: latest_status
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: first_seen_game_date
-    kind: dimension
-    source_column: first_seen_game_date
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: last_seen_game_date
-    kind: dimension
-    source_column: last_seen_game_date
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: first_season_played
-    kind: dimension
-    source_column: first_season_played
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: last_season_played
-    kind: dimension
-    source_column: last_season_played
     link_key: false
     visibility: public
     derivation: null
@@ -133,24 +97,6 @@ objects:
   - name: draft_number
     kind: dimension
     source_column: draft_number
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_guard
-    kind: dimension
-    source_column: is_guard
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_forward
-    kind: dimension
-    source_column: is_forward
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_center
-    kind: dimension
-    source_column: is_center
     link_key: false
     visibility: public
     derivation: null

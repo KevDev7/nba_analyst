@@ -509,8 +509,14 @@ def test_build_player_rows_combines_core_and_enrichment() -> None:
         sample_bbr_profile_table(),
     )
     by_person = {row["person_id"]: row for row in rows}
-    assert by_person[201939]["display_name"] == "Stephen Curry"
+    assert by_person[201939]["full_name"] == "Stephen Curry"
+    assert by_person[201939]["last_name"] == "Curry"
     assert by_person[2544]["position_group"] == "forward"
+    assert "first_season_played" not in by_person[201939]
+    assert "last_season_played" not in by_person[201939]
+    assert "latest_status" not in by_person[201939]
+    assert "first_seen_game_date" not in by_person[201939]
+    assert "last_seen_game_date" not in by_person[201939]
     assert "basketball_reference_player_id" not in by_person[201939]
     assert "player_sk" not in by_person[201939]
 

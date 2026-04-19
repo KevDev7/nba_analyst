@@ -54,8 +54,14 @@ def test_public_semantic_schemas_exclude_warehouse_only_fields() -> None:
 def test_player_schema_uses_business_key_and_enrichment_fields() -> None:
     names = set(PLAYER_SCHEMA.names)
     assert "person_id" in names
-    assert "display_name" in names
+    assert "full_name" in names
+    assert "last_name" in names
     assert "position_group" in names
+    assert "first_season_played" not in names
+    assert "last_season_played" not in names
+    assert "latest_status" not in names
+    assert "first_seen_game_date" not in names
+    assert "last_seen_game_date" not in names
     assert "basketball_reference_player_id" not in names
     assert "player_sk" not in names
 

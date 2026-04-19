@@ -24,19 +24,13 @@ class SemanticGoldTableSpec:
 PLAYER_SCHEMA = pa.schema(
     [
         pa.field("person_id", pa.int64()),
-        pa.field("player_name", pa.string()),
+        pa.field("full_name", pa.string()),
         pa.field("first_name", pa.string()),
-        pa.field("family_name", pa.string()),
-        pa.field("display_name", pa.string()),
+        pa.field("last_name", pa.string()),
         pa.field("primary_position", pa.string()),
         pa.field("position_group", pa.string()),
         pa.field("latest_team_id", pa.int64()),
         pa.field("latest_jersey_number", pa.string()),
-        pa.field("latest_status", pa.string()),
-        pa.field("first_seen_game_date", pa.date32()),
-        pa.field("last_seen_game_date", pa.date32()),
-        pa.field("first_season_played", pa.string()),
-        pa.field("last_season_played", pa.string()),
         pa.field("birth_date", pa.date32()),
         pa.field("school", pa.string()),
         pa.field("country", pa.string()),
@@ -45,9 +39,6 @@ PLAYER_SCHEMA = pa.schema(
         pa.field("draft_year", pa.int64()),
         pa.field("draft_round", pa.int64()),
         pa.field("draft_number", pa.int64()),
-        pa.field("is_guard", pa.int64()),
-        pa.field("is_forward", pa.int64()),
-        pa.field("is_center", pa.int64()),
     ]
 )
 
