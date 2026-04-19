@@ -510,8 +510,8 @@ def test_build_player_rows_combines_core_and_enrichment() -> None:
     )
     by_person = {row["person_id"]: row for row in rows}
     assert by_person[201939]["display_name"] == "Stephen Curry"
-    assert by_person[201939]["basketball_reference_player_id"] == "curryst01"
     assert by_person[2544]["position_group"] == "forward"
+    assert "basketball_reference_player_id" not in by_person[201939]
     assert "player_sk" not in by_person[201939]
 
 

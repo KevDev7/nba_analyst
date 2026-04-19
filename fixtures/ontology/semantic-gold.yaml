@@ -15,7 +15,6 @@ objects:
     source_column: player_name
     link_key: false
     visibility: public
-    comparison_identity: true
     derivation: null
   - name: first_name
     kind: dimension
@@ -155,84 +154,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: basketball_reference_player_id
-    kind: dimension
-    source_column: basketball_reference_player_id
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_match_method
-    kind: dimension
-    source_column: bbr_match_method
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_match_confidence
-    kind: dimension
-    source_column: bbr_match_confidence
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_profile_url
-    kind: dimension
-    source_column: bbr_profile_url
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_formal_name
-    kind: dimension
-    source_column: bbr_formal_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_position_raw
-    kind: dimension
-    source_column: bbr_position_raw
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_shoots
-    kind: dimension
-    source_column: bbr_shoots
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_height_cm
-    kind: dimension
-    source_column: bbr_height_cm
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_weight_kg
-    kind: dimension
-    source_column: bbr_weight_kg
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_college_raw
-    kind: dimension
-    source_column: bbr_college_raw
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_birth_country_code
-    kind: dimension
-    source_column: bbr_birth_country_code
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_headshot_url
-    kind: dimension
-    source_column: bbr_headshot_url
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: bbr_hall_of_fame_flag
-    kind: dimension
-    source_column: bbr_hall_of_fame_flag
-    link_key: false
-    visibility: public
-    derivation: null
   metrics: []
 - name: Team
   backing_table: team
@@ -249,7 +170,6 @@ objects:
     source_column: team_name
     link_key: false
     visibility: public
-    comparison_identity: true
     derivation: null
   - name: team_city
     kind: dimension
@@ -262,14 +182,12 @@ objects:
     source_column: team_abbreviation
     link_key: false
     visibility: public
-    comparison_identity: true
     derivation: null
   - name: team_slug
     kind: dimension
     source_column: team_slug
     link_key: false
     visibility: public
-    comparison_identity: true
     derivation: null
   - name: conference
     kind: dimension
@@ -292,6 +210,47 @@ objects:
   - name: last_seen_game_date
     kind: dimension
     source_column: last_seen_game_date
+    link_key: false
+    visibility: public
+    derivation: null
+  metrics: []
+- name: Arena
+  backing_table: arena
+  description: One arena entity from the semantic_gold surface.
+  attributes:
+  - name: arena_id
+    kind: primary_key
+    source_column: arena_id
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: arena_name
+    kind: dimension
+    source_column: arena_name
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: arena_city
+    kind: dimension
+    source_column: arena_city
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: arena_state
+    kind: dimension
+    source_column: arena_state
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: arena_country
+    kind: dimension
+    source_column: arena_country
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: arena_timezone
+    kind: dimension
+    source_column: arena_timezone
     link_key: false
     visibility: public
     derivation: null
@@ -483,37 +442,7 @@ objects:
   - name: arena_id
     kind: dimension
     source_column: arena_id
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: arena_name
-    kind: dimension
-    source_column: arena_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: arena_city
-    kind: dimension
-    source_column: arena_city
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: arena_state
-    kind: dimension
-    source_column: arena_state
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: arena_country
-    kind: dimension
-    source_column: arena_country
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: arena_timezone
-    kind: dimension
-    source_column: arena_timezone
-    link_key: false
+    link_key: true
     visibility: public
     derivation: null
   - name: home_team_id
@@ -526,54 +455,6 @@ objects:
     kind: dimension
     source_column: away_team_id
     link_key: true
-    visibility: public
-    derivation: null
-  - name: home_team_name
-    kind: dimension
-    source_column: home_team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: away_team_name
-    kind: dimension
-    source_column: away_team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: home_team_city
-    kind: dimension
-    source_column: home_team_city
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: away_team_city
-    kind: dimension
-    source_column: away_team_city
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: home_team_abbreviation
-    kind: dimension
-    source_column: home_team_abbreviation
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: away_team_abbreviation
-    kind: dimension
-    source_column: away_team_abbreviation
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: home_team_slug
-    kind: dimension
-    source_column: home_team_slug
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: away_team_slug
-    kind: dimension
-    source_column: away_team_slug
-    link_key: false
     visibility: public
     derivation: null
   - name: game_month
@@ -665,24 +546,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: player_position
-    kind: dimension
-    source_column: player_position
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: player_status
-    kind: dimension
-    source_column: player_status
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: player_order
-    kind: dimension
-    source_column: player_order
-    link_key: false
-    visibility: public
-    derivation: null
   - name: is_starter
     kind: dimension
     source_column: is_starter
@@ -713,9 +576,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: plus_minus_points
+  - name: plus_minus
     kind: measure
-    source_column: plus_minus_points
+    source_column: plus_minus
     link_key: false
     visibility: public
     derivation: null
@@ -1007,42 +870,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: team_name
-    kind: dimension
-    source_column: team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: team_city
-    kind: dimension
-    source_column: team_city
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: team_abbreviation
-    kind: dimension
-    source_column: team_abbreviation
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: opponent_team_name
-    kind: dimension
-    source_column: opponent_team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: opponent_team_city
-    kind: dimension
-    source_column: opponent_team_city
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: opponent_team_abbreviation
-    kind: dimension
-    source_column: opponent_team_abbreviation
-    link_key: false
-    visibility: public
-    derivation: null
   - name: score
     kind: measure
     source_column: score
@@ -1319,12 +1146,6 @@ objects:
     link_key: true
     visibility: public
     derivation: null
-  - name: player_name
-    kind: dimension
-    source_column: player_name
-    link_key: false
-    visibility: public
-    derivation: null
   - name: season_year
     kind: primary_key
     source_column: season_year
@@ -1409,28 +1230,10 @@ objects:
     link_key: true
     visibility: public
     derivation: null
-  - name: player_name
-    kind: dimension
-    source_column: player_name
-    link_key: false
-    visibility: public
-    derivation: null
   - name: team_id
     kind: primary_key
     source_column: team_id
     link_key: true
-    visibility: public
-    derivation: null
-  - name: team_name
-    kind: dimension
-    source_column: team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: team_abbreviation
-    kind: dimension
-    source_column: team_abbreviation
-    link_key: false
     visibility: public
     derivation: null
   - name: season_year
@@ -1502,18 +1305,6 @@ objects:
     kind: primary_key
     source_column: team_id
     link_key: true
-    visibility: public
-    derivation: null
-  - name: team_name
-    kind: dimension
-    source_column: team_name
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: team_abbreviation
-    kind: dimension
-    source_column: team_abbreviation
-    link_key: false
     visibility: public
     derivation: null
   - name: season_year
@@ -1602,6 +1393,12 @@ objects:
     expression: average_points
     executable: true
 links:
+- name: game_arena
+  source_object: Game
+  target_object: Arena
+  relation_type: many_to_one
+  source_key: arena_id
+  target_key: arena_id
 - name: player_game_player
   source_object: PlayerGame
   target_object: Player

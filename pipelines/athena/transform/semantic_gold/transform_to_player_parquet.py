@@ -11,8 +11,7 @@ import pyarrow as pa
 from dotenv import load_dotenv
 
 from pipelines.athena.transform.gold.gold_transform_helpers import S3_BUCKET, TEAM_CONTEXT_BY_ID, normalize_position_group, read_parquet_table_from_s3, to_positive_int_or_none, to_str_or_none, write_parquet_to_s3
-from pipelines.athena.transform.gold.player_surface.bbr_projection import build_bbr_by_person_id
-from pipelines.athena.transform.gold.player_surface.current_profile import build_profile_flags_map, map_bbr_draft_team_id
+from pipelines.athena.transform.gold.player_surface.current_profile import build_profile_flags_map
 from pipelines.athena.transform.gold.player_surface.history import (
     build_bbr_birth_date_map,
     build_game_time_map,
@@ -55,7 +54,6 @@ def build_player_rows_from_tables(
     nba_team_ids = set(TEAM_CONTEXT_BY_ID.keys())
     player_events = build_player_events(player_table, game_time_by_id, player_bio_by_person, nba_team_ids)
     flags_by_person = build_profile_flags_map(player_bio_table)
-    bbr_by_person = build_bbr_by_person_id(bridge_table, bbr_profile_table)
 
     latest_event_by_person: dict[int, dict[str, object]] = {}
     first_seen_by_person: dict[int, object] = {}
@@ -103,7 +101,6 @@ def build_player_rows_from_tables(
         event = latest_event_by_person.get(person_id, {})
         bio = player_bio_by_person.get(person_id, {})
         latest_detail = latest_detail_by_person.get(person_id, {})
-        bbr = bbr_by_person.get(person_id, {})
         primary_position = latest_detail.get("primary_position") or event.get("primary_position")
         latest_team_id = event.get("latest_team_id")
         rows.append(
@@ -143,19 +140,6 @@ def build_player_rows_from_tables(
                 "is_guard": flags_by_person.get(person_id, {}).get("is_guard"),
                 "is_forward": flags_by_person.get(person_id, {}).get("is_forward"),
                 "is_center": flags_by_person.get(person_id, {}).get("is_center"),
-                "basketball_reference_player_id": bbr.get("basketball_reference_player_id"),
-                "bbr_match_method": bbr.get("bbr_match_method"),
-                "bbr_match_confidence": bbr.get("bbr_match_confidence"),
-                "bbr_profile_url": bbr.get("bbr_profile_url"),
-                "bbr_formal_name": bbr.get("bbr_formal_name"),
-                "bbr_position_raw": bbr.get("bbr_position_raw"),
-                "bbr_shoots": bbr.get("bbr_shoots"),
-                "bbr_height_cm": bbr.get("bbr_height_cm"),
-                "bbr_weight_kg": bbr.get("bbr_weight_kg"),
-                "bbr_college_raw": bbr.get("bbr_college_raw"),
-                "bbr_birth_country_code": bbr.get("bbr_birth_country_code"),
-                "bbr_headshot_url": bbr.get("bbr_headshot_url"),
-                "bbr_hall_of_fame_flag": bbr.get("bbr_hall_of_fame_flag"),
             }
         )
     return rows

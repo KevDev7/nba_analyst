@@ -55,8 +55,8 @@ def test_player_schema_uses_business_key_and_enrichment_fields() -> None:
     names = set(PLAYER_SCHEMA.names)
     assert "person_id" in names
     assert "display_name" in names
-    assert "basketball_reference_player_id" in names
     assert "position_group" in names
+    assert "basketball_reference_player_id" not in names
     assert "player_sk" not in names
 
 

@@ -19,6 +19,8 @@ Working rule:
 - [Batch 3](./batch-3.md)
 - [Batch 4](./batch-4.md)
 - [Batch 5](./batch-5.md)
+- [Batch 6](./batch-6.md)
+- [Batch 7](./batch-7.md)
 
 ## Deferred Downstream Follow-Up
 
