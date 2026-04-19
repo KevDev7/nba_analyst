@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 
+from pipelines.athena.transform.semantic_gold.transform_to_arena_parquet import build_arena_rows_from_tables
 from pipelines.athena.transform.semantic_gold.transform_to_game_parquet import build_game_rows_from_tables
 from pipelines.athena.transform.semantic_gold.transform_to_player_game_parquet import build_player_game_rows_from_tables
 from pipelines.athena.transform.semantic_gold.transform_to_player_parquet import build_player_rows_from_tables
@@ -451,6 +452,8 @@ def test_build_game_rows_preserves_expected_business_grain() -> None:
     )
     assert len(rows) == 1
     assert rows[0]["game_id"] == "0022400001"
+    assert rows[0]["arena_id"] == 1
+    assert "arena_name" not in rows[0]
     assert "game_sk" not in rows[0]
 
 
@@ -477,6 +480,24 @@ def test_build_game_rows_excludes_malformed_non_semantic_games() -> None:
         sample_team_game_table(),
     )
     assert {row["game_id"] for row in rows} == {"0022400001"}
+
+
+def test_build_arena_rows_extracts_reusable_venue_object() -> None:
+    rows = build_arena_rows_from_tables(
+        sample_boxscore_game_table(),
+        sample_schedule_table(),
+        sample_team_game_table(),
+    )
+    assert rows == [
+        {
+            "arena_id": 1,
+            "arena_name": "Chase Center",
+            "arena_city": "San Francisco",
+            "arena_state": "CA",
+            "arena_country": "USA",
+            "arena_timezone": "America/Los_Angeles",
+        }
+    ]
 
 
 def test_build_player_rows_combines_core_and_enrichment() -> None:

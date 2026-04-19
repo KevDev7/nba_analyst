@@ -36,6 +36,7 @@ def test_table_specs_use_clean_object_names() -> None:
     assert table_names == {
         "player",
         "team",
+        "arena",
         "game",
         "player_game",
         "team_game",

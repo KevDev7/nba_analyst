@@ -29,6 +29,7 @@ ONTOLOGY_OUTPUT_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 OBJECT_DESCRIPTIONS = {
     "Player": "One player entity from the semantic_gold surface.",
     "Team": "One team entity from the semantic_gold surface.",
+    "Arena": "One arena entity from the semantic_gold surface.",
     "Game": "One NBA game entity from the semantic_gold surface.",
     "PlayerGame": "One player in one NBA game from the semantic_gold surface.",
     "TeamGame": "One team in one NBA game from the semantic_gold surface.",
@@ -286,6 +287,14 @@ DERIVED_ATTRIBUTES_BY_OBJECT = {
 
 LINKS = [
     {
+        "name": "game_arena",
+        "source_object": "Game",
+        "target_object": "Arena",
+        "relation_type": "many_to_one",
+        "source_key": "arena_id",
+        "target_key": "arena_id",
+    },
+    {
         "name": "player_game_player",
         "source_object": "PlayerGame",
         "target_object": "Player",
@@ -372,6 +381,7 @@ def object_name_for_table(table_name: str) -> str:
     return {
         "player": "Player",
         "team": "Team",
+        "arena": "Arena",
         "game": "Game",
         "player_game": "PlayerGame",
         "team_game": "TeamGame",
