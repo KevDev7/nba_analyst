@@ -82,8 +82,6 @@ def build_player_game_rows_from_tables(
             "game_datetime_utc": game.get("game_datetime_utc"),
             "game_date": game.get("game_date"),
             "season_year": game.get("season_year"),
-            "season_start_year": game.get("season_start_year"),
-            "raw_season_type_code": game.get("raw_season_type_code"),
             "season_type": game.get("season_type"),
             "is_starter": to_int_or_none(row.get("starter")),
             "is_on_court": to_int_or_none(row.get("oncourt")),

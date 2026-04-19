@@ -271,39 +271,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
-    link_key: false
-    visibility: public
-    derivation: null
   - name: season_type
     kind: dimension
     source_column: season_type
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: league_id
-    kind: dimension
-    source_column: league_id
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_code
-    kind: dimension
-    source_column: game_code
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_sequence
-    kind: dimension
-    source_column: game_sequence
     link_key: false
     visibility: public
     derivation: null
@@ -316,126 +286,6 @@ objects:
   - name: game_datetime_utc
     kind: dimension
     source_column: game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: local_market_game_datetime_utc
-    kind: dimension
-    source_column: local_market_game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: home_market_game_datetime_utc
-    kind: dimension
-    source_column: home_market_game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: away_market_game_datetime_utc
-    kind: dimension
-    source_column: away_market_game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: eastern_time_game_datetime_utc
-    kind: dimension
-    source_column: eastern_time_game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_status_code
-    kind: dimension
-    source_column: game_status_code
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_status_text
-    kind: dimension
-    source_column: game_status_text
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: postponed_status
-    kind: dimension
-    source_column: postponed_status
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_if_necessary
-    kind: dimension
-    source_column: is_if_necessary
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_label
-    kind: dimension
-    source_column: game_label
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_sublabel
-    kind: dimension
-    source_column: game_sublabel
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_subtype
-    kind: dimension
-    source_column: game_subtype
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: series_game_number
-    kind: dimension
-    source_column: series_game_number
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: series_text
-    kind: dimension
-    source_column: series_text
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_neutral_site
-    kind: dimension
-    source_column: is_neutral_site
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: duration_minutes
-    kind: measure
-    source_column: duration_minutes
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: attendance
-    kind: measure
-    source_column: attendance
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: is_sellout
-    kind: dimension
-    source_column: is_sellout
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: regulation_periods
-    kind: dimension
-    source_column: regulation_periods
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: current_period
-    kind: dimension
-    source_column: current_period
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_clock
-    kind: dimension
-    source_column: game_clock
     link_key: false
     visibility: public
     derivation: null
@@ -525,18 +375,6 @@ objects:
   - name: season_year
     kind: dimension
     source_column: season_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
     link_key: false
     visibility: public
     derivation: null
@@ -1116,18 +954,6 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
-    link_key: false
-    visibility: public
-    derivation: null
   - name: team_count
     kind: dimension
     source_column: team_count
@@ -1203,18 +1029,6 @@ objects:
   - name: season_type
     kind: primary_key
     source_column: season_type
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: season_start_year
-    kind: dimension
-    source_column: season_start_year
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: raw_season_type_code
-    kind: dimension
-    source_column: raw_season_type_code
     link_key: false
     visibility: public
     derivation: null

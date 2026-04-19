@@ -62,8 +62,6 @@ def build_player_season_team_rows_from_player_game_rows(
                 "team_id": team_id,
                 "season_year": season_year,
                 "season_type": season_type,
-                "season_start_year": row.get("season_start_year"),
-                "raw_season_type_code": row.get("raw_season_type_code"),
                 "games_played": 0,
                 "total_points": 0,
             },
