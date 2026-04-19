@@ -377,14 +377,14 @@ Phase 3:
 
 Phase 4:
 
-- `gold/dim_date`
-- `gold/dim_game`
-- `gold/dim_player`
-- `gold/dim_team`
-- `gold/fct_player_game`
-- `gold/fct_team_game`
-- `gold/agg_player_season`
-- `gold/agg_team_season`
+- `legacy_gold/dim_date`
+- `legacy_gold/dim_game`
+- `legacy_gold/dim_player`
+- `legacy_gold/dim_team`
+- `legacy_gold/fct_player_game`
+- `legacy_gold/fct_team_game`
+- `legacy_gold/agg_player_season`
+- `legacy_gold/agg_team_season`
 
 Phase 5:
 

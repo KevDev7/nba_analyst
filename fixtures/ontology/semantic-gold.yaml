@@ -336,21 +336,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: is_on_court
-    kind: dimension
-    source_column: is_on_court
-    link_key: false
-    visibility: public
-    derivation: null
   - name: did_play
     kind: dimension
     source_column: did_play
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: seconds_played_total
-    kind: measure
-    source_column: seconds_played_total
     link_key: false
     visibility: public
     derivation: null
@@ -372,15 +360,15 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: blocks
+  - name: shots_blocked
     kind: measure
-    source_column: blocks
+    source_column: shots_blocked
     link_key: false
     visibility: public
     derivation: null
-  - name: blocks_received
+  - name: shots_blocked_against
     kind: measure
-    source_column: blocks_received
+    source_column: shots_blocked_against
     link_key: false
     visibility: public
     derivation: null
@@ -672,15 +660,15 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: blocks
+  - name: shots_blocked
     kind: measure
-    source_column: blocks
+    source_column: shots_blocked
     link_key: false
     visibility: public
     derivation: null
-  - name: blocks_received
+  - name: shots_blocked_against
     kind: measure
-    source_column: blocks_received
+    source_column: shots_blocked_against
     link_key: false
     visibility: public
     derivation: null

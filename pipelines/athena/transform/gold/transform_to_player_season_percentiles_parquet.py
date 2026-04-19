@@ -2,15 +2,15 @@
 Build gold player_season_percentiles from canonical player season aggregates.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/agg_player_season/agg_player_season.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_player/dim_player.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game/fct_player_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/agg_player_season/agg_player_season.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_player/dim_player.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game/fct_player_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/player_game_possession_context.parquet
   s3://nba-analytics-lakehouse-dev/silver/player_game_defensive_shot_context.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/player_season_percentiles/player_season_percentiles.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/player_season_percentiles/player_season_percentiles.parquet
 """
 
 from __future__ import annotations
@@ -58,13 +58,13 @@ except ImportError:
 
 load_dotenv(override=True)
 
-PLAYER_AGG_SOURCE_KEY = "gold/agg_player_season/agg_player_season.parquet"
-DIM_PLAYER_SOURCE_KEY = "gold/dim_player/dim_player.parquet"
-PLAYER_FACT_SOURCE_KEY = "gold/fct_player_game/fct_player_game.parquet"
-TEAM_FACT_SOURCE_KEY = "gold/fct_team_game/fct_team_game.parquet"
+PLAYER_AGG_SOURCE_KEY = "legacy_gold/agg_player_season/agg_player_season.parquet"
+DIM_PLAYER_SOURCE_KEY = "legacy_gold/dim_player/dim_player.parquet"
+PLAYER_FACT_SOURCE_KEY = "legacy_gold/fct_player_game/fct_player_game.parquet"
+TEAM_FACT_SOURCE_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
 PLAYER_POSSESSION_CONTEXT_SOURCE_KEY = "silver/player_game_possession_context.parquet"
 PLAYER_DEFENSIVE_SHOT_CONTEXT_SOURCE_KEY = "silver/player_game_defensive_shot_context.parquet"
-DESTINATION_KEY = "gold/player_season_percentiles/player_season_percentiles.parquet"
+DESTINATION_KEY = "legacy_gold/player_season_percentiles/player_season_percentiles.parquet"
 
 RECORD_SOURCE = "gold.agg_player_season|gold.vw_player_season_boxscore_advanced"
 

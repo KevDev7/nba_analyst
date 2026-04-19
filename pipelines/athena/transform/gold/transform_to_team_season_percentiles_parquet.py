@@ -2,13 +2,13 @@
 Build gold team_season_percentiles from canonical team season aggregates.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/agg_team_season/agg_team_season.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/agg_team_season/agg_team_season.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/boxscore_team_game.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/team_season_percentiles/team_season_percentiles.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/team_season_percentiles/team_season_percentiles.parquet
 """
 
 from __future__ import annotations
@@ -52,11 +52,11 @@ except ImportError:
 
 load_dotenv(override=True)
 
-TEAM_AGG_SOURCE_KEY = "gold/agg_team_season/agg_team_season.parquet"
-DIM_TEAM_SOURCE_KEY = "gold/dim_team/dim_team.parquet"
-TEAM_FACT_SOURCE_KEY = "gold/fct_team_game/fct_team_game.parquet"
+TEAM_AGG_SOURCE_KEY = "legacy_gold/agg_team_season/agg_team_season.parquet"
+DIM_TEAM_SOURCE_KEY = "legacy_gold/dim_team/dim_team.parquet"
+TEAM_FACT_SOURCE_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
 SILVER_TEAM_SOURCE_KEY = "silver/boxscore_team_game.parquet"
-DESTINATION_KEY = "gold/team_season_percentiles/team_season_percentiles.parquet"
+DESTINATION_KEY = "legacy_gold/team_season_percentiles/team_season_percentiles.parquet"
 
 RECORD_SOURCE = "gold.agg_team_season|gold.vw_team_season_boxscore_advanced"
 

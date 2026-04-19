@@ -87,6 +87,10 @@ def test_fact_like_schemas_keep_link_keys_and_business_grain_fields() -> None:
     team_season_names = set(TEAM_SEASON_SCHEMA.names)
 
     assert {"game_id", "person_id", "team_id", "points", "minutes_played_decimal"}.issubset(player_game_names)
+    assert "is_on_court" not in player_game_names
+    assert "seconds_played_total" not in player_game_names
+    assert "shots_blocked" in player_game_names
+    assert "shots_blocked_against" in player_game_names
     assert {"game_id", "team_id", "opponent_team_id", "score", "opponent_score"}.issubset(team_game_names)
     assert {"person_id", "season_year", "season_type", "games_played", "total_points", "average_points"}.issubset(player_season_names)
     assert {"person_id", "team_id", "season_year", "season_type", "games_played", "total_points"}.issubset(player_season_team_names)

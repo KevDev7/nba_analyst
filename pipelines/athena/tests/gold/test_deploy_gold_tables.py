@@ -17,8 +17,8 @@ def test_athena_type_for_field_maps_supported_types() -> None:
 def test_build_create_table_ddl_uses_folder_location() -> None:
     spec = tables.GoldTableSpec(
         table_name="dim_date",
-        data_key="gold/dim_date/dim_date.parquet",
-        table_location="s3://nba-analytics-lakehouse-dev/gold/dim_date/",
+        data_key="legacy_gold/dim_date/dim_date.parquet",
+        table_location="s3://nba-analytics-lakehouse-dev/legacy_gold/dim_date/",
     )
     schema = pa.schema(
         [
@@ -34,7 +34,7 @@ def test_build_create_table_ddl_uses_folder_location() -> None:
     assert "`date_sk` bigint" in ddl
     assert "`calendar_date` date" in ddl
     assert "`is_weekend` boolean" in ddl
-    assert "LOCATION 's3://nba-analytics-lakehouse-dev/gold/dim_date/'" in ddl
+    assert "LOCATION 's3://nba-analytics-lakehouse-dev/legacy_gold/dim_date/'" in ddl
 
 
 def test_table_specs_include_player_game_shot_profiles() -> None:

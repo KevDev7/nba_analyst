@@ -2,14 +2,14 @@
 Build paired gold player-game shot profile tables.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game/fct_player_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game/fct_player_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/playbyplay/game_id=<GAME_ID>.parquet
   s3://nba-analytics-lakehouse-dev/silver/pbpstats_event_projection_v1/game_id=<GAME_ID>.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game_shot_profile_standard/fct_player_game_shot_profile_standard.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game_shot_profile_source/fct_player_game_shot_profile_source.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game_shot_profile_standard/fct_player_game_shot_profile_standard.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game_shot_profile_source/fct_player_game_shot_profile_source.parquet
 """
 
 from __future__ import annotations
@@ -50,15 +50,15 @@ except ImportError:
 
 load_dotenv(override=True)
 
-PLAYER_FACT_KEY = "gold/fct_player_game/fct_player_game.parquet"
-TEAM_FACT_KEY = "gold/fct_team_game/fct_team_game.parquet"
+PLAYER_FACT_KEY = "legacy_gold/fct_player_game/fct_player_game.parquet"
+TEAM_FACT_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
 PLAYBYPLAY_PREFIX = "silver/playbyplay/"
 PBPSTATS_PROJECTION_PREFIX = "silver/pbpstats_event_projection_v1/"
 STANDARD_DESTINATION_KEY = (
-    "gold/fct_player_game_shot_profile_standard/fct_player_game_shot_profile_standard.parquet"
+    "legacy_gold/fct_player_game_shot_profile_standard/fct_player_game_shot_profile_standard.parquet"
 )
 SOURCE_DESTINATION_KEY = (
-    "gold/fct_player_game_shot_profile_source/fct_player_game_shot_profile_source.parquet"
+    "legacy_gold/fct_player_game_shot_profile_source/fct_player_game_shot_profile_source.parquet"
 )
 
 RECORD_SOURCE = (

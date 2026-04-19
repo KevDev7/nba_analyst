@@ -2,8 +2,8 @@
 Build gold extended_player_dim as a current-state player enrichment table.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/dim_player/dim_player.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_player/dim_player.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
   s3://nba-analytics-lakehouse-dev/silver/boxscore_player_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/boxscore_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/players.parquet
@@ -11,7 +11,7 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/bbr_player_profile.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/extended_player_dim/extended_player_dim.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/extended_player_dim/extended_player_dim.parquet
 """
 
 from __future__ import annotations

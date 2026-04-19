@@ -40,7 +40,7 @@ def _dbx_query(host: str, token: str, warehouse_id: str, sql: str) -> tuple[list
         {
             "statement": sql,
             "warehouse_id": warehouse_id,
-            "catalog": "nba_analytics",
+            "catalog": "legacy_gold",
             "schema": "gold",
             "wait_timeout": "50s",
         }
@@ -96,7 +96,7 @@ def main() -> None:
         warehouse_id,
         """
         SELECT table_name
-        FROM nba_analytics.information_schema.tables
+        FROM legacy_gold.information_schema.tables
         WHERE table_schema = 'gold'
           AND table_type = 'VIEW'
           AND table_name LIKE 'vw_%'
@@ -128,7 +128,7 @@ def main() -> None:
             warehouse_id,
             f"""
             SELECT column_name
-            FROM nba_analytics.information_schema.columns
+            FROM legacy_gold.information_schema.columns
             WHERE table_schema = 'gold'
               AND table_name = '{view_name}'
             ORDER BY ordinal_position
@@ -143,7 +143,7 @@ def main() -> None:
             host,
             token,
             warehouse_id,
-            f'SELECT COUNT(*) AS row_count FROM nba_analytics.gold.`{view_name}`',
+            f'SELECT COUNT(*) AS row_count FROM legacy_gold.gold.`{view_name}`',
         )
         athena_count = int(athena_count_rows[0][0])
         dbx_count = int(dbx_count_rows[0][0])
@@ -174,7 +174,7 @@ def main() -> None:
             host,
             token,
             warehouse_id,
-            template.format(view_ref=f'nba_analytics.gold.`{view_name}`'),
+            template.format(view_ref=f'legacy_gold.gold.`{view_name}`'),
         )
         athena_tuples = [tuple(row) for row in athena_rows]
         dbx_tuples = [tuple(row) for row in dbx_rows]

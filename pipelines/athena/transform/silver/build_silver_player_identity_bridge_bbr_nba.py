@@ -76,7 +76,7 @@ UNMATCHED_BBR_DESTINATION_KEY = "silver/player_identity_bridge_bbr_nba_unmatched
 TABLE_NAME = "player_identity_bridge_bbr_nba"
 META_SOURCE_SYSTEM = "silver_players|silver_bbr_player_profile"
 META_SCHEMA_VERSION = 1
-META_SOURCE_KEY = "nba_analytics.silver.players|nba_analytics.silver.bbr_player_profile"
+META_SOURCE_KEY = "legacy_gold.silver.players|legacy_gold.silver.bbr_player_profile"
 
 BRIDGE_SCHEMA = pa.schema(
     [

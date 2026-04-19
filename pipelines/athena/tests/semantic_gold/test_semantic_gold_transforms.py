@@ -567,6 +567,10 @@ def test_build_player_game_rows_preserve_expected_grain() -> None:
     keys = {(row["game_id"], row["person_id"]) for row in rows}
     assert len(rows) == len(keys) == 2
     assert rows[0]["season_type"] == "regular_season"
+    assert "shots_blocked" in rows[0]
+    assert "shots_blocked_against" in rows[0]
+    assert "is_on_court" not in rows[0]
+    assert "seconds_played_total" not in rows[0]
 
 
 def test_build_player_game_rows_drop_non_semantic_team_links() -> None:
@@ -593,6 +597,8 @@ def test_build_team_game_rows_resolve_opponent_links() -> None:
     away_row = by_key[("0022400001", 1610612747)]
     assert home_row["opponent_team_id"] == 1610612747
     assert away_row["opponent_team_id"] == 1610612744
+    assert home_row["shots_blocked"] == 5
+    assert home_row["shots_blocked_against"] == 4
     assert home_row["point_differential"] == 5
     assert home_row["game_result"] == "win"
     assert away_row["game_result"] == "loss"

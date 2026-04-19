@@ -2,14 +2,14 @@
 Build gold agg_team_season from core gold facts, dimensions, and team possession context.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
   s3://nba-analytics-lakehouse-dev/silver/team_game_possession_context.parquet
   s3://nba-analytics-lakehouse-dev/silver/team_game_defensive_shot_context.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/agg_team_season/agg_team_season.parquet
-  s3://nba-analytics-lakehouse-dev/gold/team_season_provenance_sidecar/team_season_provenance_sidecar.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/agg_team_season/agg_team_season.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/team_season_provenance_sidecar/team_season_provenance_sidecar.parquet
 """
 
 from __future__ import annotations
@@ -48,13 +48,13 @@ except ImportError:
 
 load_dotenv(override=True)
 
-FACT_SOURCE_KEY = "gold/fct_team_game/fct_team_game.parquet"
-DIM_TEAM_SOURCE_KEY = "gold/dim_team/dim_team.parquet"
+FACT_SOURCE_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
+DIM_TEAM_SOURCE_KEY = "legacy_gold/dim_team/dim_team.parquet"
 TEAM_GAME_POSSESSION_CONTEXT_SOURCE_KEY = "silver/team_game_possession_context.parquet"
 TEAM_GAME_DEFENSIVE_SHOT_CONTEXT_SOURCE_KEY = "silver/team_game_defensive_shot_context.parquet"
-DESTINATION_KEY = "gold/agg_team_season/agg_team_season.parquet"
+DESTINATION_KEY = "legacy_gold/agg_team_season/agg_team_season.parquet"
 PROVENANCE_DESTINATION_KEY = (
-    "gold/team_season_provenance_sidecar/team_season_provenance_sidecar.parquet"
+    "legacy_gold/team_season_provenance_sidecar/team_season_provenance_sidecar.parquet"
 )
 
 RECORD_SOURCE = (

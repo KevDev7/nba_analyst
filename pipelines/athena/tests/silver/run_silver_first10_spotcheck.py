@@ -242,7 +242,7 @@ def _dbx_schema(name: str) -> list[str]:
         DEFAULT_WAREHOUSE_ID,
         f"""
         SELECT column_name
-        FROM nba_analytics.information_schema.columns
+        FROM legacy_gold.information_schema.columns
         WHERE table_schema = 'silver' AND table_name = '{name}'
         ORDER BY ordinal_position
         """,
@@ -270,7 +270,7 @@ def _dbx_top10(name: str, columns: list[str], order_columns: list[str]) -> list[
     select_columns = ", ".join(f"`{column}`" for column in columns)
     return rows_query(
         DEFAULT_WAREHOUSE_ID,
-        f"SELECT {select_columns} FROM nba_analytics.silver.`{name}` ORDER BY {order_by} LIMIT 10",
+        f"SELECT {select_columns} FROM legacy_gold.silver.`{name}` ORDER BY {order_by} LIMIT 10",
     )
 
 

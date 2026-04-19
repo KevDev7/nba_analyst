@@ -37,85 +37,85 @@ class GoldTableSpec:
 TABLE_SPECS = [
     GoldTableSpec(
         table_name="dim_date",
-        data_key="gold/dim_date/dim_date.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/dim_date/",
+        data_key="legacy_gold/dim_date/dim_date.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/dim_date/",
     ),
     GoldTableSpec(
         table_name="dim_game",
-        data_key="gold/dim_game/dim_game.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/dim_game/",
+        data_key="legacy_gold/dim_game/dim_game.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/dim_game/",
     ),
     GoldTableSpec(
         table_name="dim_team",
-        data_key="gold/dim_team/dim_team.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/dim_team/",
+        data_key="legacy_gold/dim_team/dim_team.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/dim_team/",
     ),
     GoldTableSpec(
         table_name="fct_player_game",
-        data_key="gold/fct_player_game/fct_player_game.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/fct_player_game/",
+        data_key="legacy_gold/fct_player_game/fct_player_game.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/fct_player_game/",
     ),
     GoldTableSpec(
         table_name="fct_team_game",
-        data_key="gold/fct_team_game/fct_team_game.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/fct_team_game/",
+        data_key="legacy_gold/fct_team_game/fct_team_game.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/fct_team_game/",
     ),
     GoldTableSpec(
         table_name="fct_player_game_shot_profile_standard",
         data_key=(
-            "gold/fct_player_game_shot_profile_standard/"
+            "legacy_gold/fct_player_game_shot_profile_standard/"
             "fct_player_game_shot_profile_standard.parquet"
         ),
-        table_location=f"s3://{S3_BUCKET}/gold/fct_player_game_shot_profile_standard/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/fct_player_game_shot_profile_standard/",
     ),
     GoldTableSpec(
         table_name="fct_player_game_shot_profile_source",
         data_key=(
-            "gold/fct_player_game_shot_profile_source/"
+            "legacy_gold/fct_player_game_shot_profile_source/"
             "fct_player_game_shot_profile_source.parquet"
         ),
-        table_location=f"s3://{S3_BUCKET}/gold/fct_player_game_shot_profile_source/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/fct_player_game_shot_profile_source/",
     ),
     GoldTableSpec(
         table_name="fct_player_game_shot_type_source",
         data_key=(
-            "gold/fct_player_game_shot_type_source/"
+            "legacy_gold/fct_player_game_shot_type_source/"
             "fct_player_game_shot_type_source.parquet"
         ),
-        table_location=f"s3://{S3_BUCKET}/gold/fct_player_game_shot_type_source/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/fct_player_game_shot_type_source/",
     ),
     GoldTableSpec(
         table_name="agg_player_season",
-        data_key="gold/agg_player_season/agg_player_season.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/agg_player_season/",
+        data_key="legacy_gold/agg_player_season/agg_player_season.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/agg_player_season/",
     ),
     GoldTableSpec(
         table_name="agg_team_season",
-        data_key="gold/agg_team_season/agg_team_season.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/agg_team_season/",
+        data_key="legacy_gold/agg_team_season/agg_team_season.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/agg_team_season/",
     ),
     GoldTableSpec(
         table_name="team_season_provenance_sidecar",
         data_key=(
-            "gold/team_season_provenance_sidecar/"
+            "legacy_gold/team_season_provenance_sidecar/"
             "team_season_provenance_sidecar.parquet"
         ),
-        table_location=f"s3://{S3_BUCKET}/gold/team_season_provenance_sidecar/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/team_season_provenance_sidecar/",
     ),
     GoldTableSpec(
         table_name="player_season_percentiles",
-        data_key="gold/player_season_percentiles/player_season_percentiles.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/player_season_percentiles/",
+        data_key="legacy_gold/player_season_percentiles/player_season_percentiles.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/player_season_percentiles/",
     ),
     GoldTableSpec(
         table_name="team_season_percentiles",
-        data_key="gold/team_season_percentiles/team_season_percentiles.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/team_season_percentiles/",
+        data_key="legacy_gold/team_season_percentiles/team_season_percentiles.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/team_season_percentiles/",
     ),
     GoldTableSpec(
         table_name="player_award_history",
-        data_key="gold/player_award_history/player_award_history.parquet",
-        table_location=f"s3://{S3_BUCKET}/gold/player_award_history/",
+        data_key="legacy_gold/player_award_history/player_award_history.parquet",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/player_award_history/",
     ),
 ] + [
     GoldTableSpec(

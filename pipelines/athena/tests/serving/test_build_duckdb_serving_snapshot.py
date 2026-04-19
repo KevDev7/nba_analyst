@@ -176,7 +176,7 @@ class _FakeS3Client:
 
 def _make_exporter(objects: dict[str, bytes]) -> AthenaSourceParquetExporter:
     settings = DuckDBServingSnapshotSettings(
-        athena_database="nba_analytics",
+        athena_database="legacy_gold",
         athena_output_location="s3://example/athena-results/",
         athena_workgroup="primary",
         athena_catalog="AwsDataCatalog",

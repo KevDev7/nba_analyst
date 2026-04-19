@@ -34,7 +34,7 @@ DEFAULT_GAME_SET_CSV = (
 
 BUCKET = "nba-analytics-lakehouse-dev"
 S3_PREFIX = "silver/playbyplay/"
-DATABRICKS_TABLE = "nba_analytics.silver.playbyplay_events"
+DATABRICKS_TABLE = "legacy_gold.silver.playbyplay_events"
 
 
 def parse_args() -> argparse.Namespace:
@@ -179,7 +179,7 @@ def databricks_schema_columns() -> list[str]:
         DEFAULT_WAREHOUSE_ID,
         """
         SELECT column_name
-        FROM nba_analytics.information_schema.columns
+        FROM legacy_gold.information_schema.columns
         WHERE table_schema = 'silver' AND table_name = 'playbyplay_events'
         ORDER BY ordinal_position
         """,

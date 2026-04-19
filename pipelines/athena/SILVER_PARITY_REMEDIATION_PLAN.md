@@ -9,7 +9,7 @@ This document captures the post-migration silver-layer parity gaps surfaced by t
 The check used:
 
 - Athena-side live S3 silver parquet outputs
-- Databricks live `nba_analytics.silver.*` tables
+- Databricks live `legacy_gold.silver.*` tables
 - exact schema comparison where possible
 - exact first-10-row comparison using stable sort keys per table
 

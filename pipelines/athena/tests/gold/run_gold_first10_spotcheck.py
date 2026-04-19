@@ -62,7 +62,7 @@ def _dbx_query(host: str, token: str, warehouse_id: str, sql: str) -> tuple[list
         {
             "statement": sql,
             "warehouse_id": warehouse_id,
-            "catalog": "nba_analytics",
+            "catalog": "legacy_gold",
             "schema": "gold",
             "wait_timeout": "50s",
         }
@@ -146,7 +146,7 @@ def _fetch_dbx_columns(host: str, token: str, warehouse_id: str, object_name: st
         warehouse_id,
         f"""
         SELECT column_name
-        FROM nba_analytics.information_schema.columns
+        FROM legacy_gold.information_schema.columns
         WHERE table_schema = 'gold'
           AND table_name = '{object_name}'
         ORDER BY ordinal_position
@@ -191,7 +191,7 @@ def _check_object(
         host,
         token,
         warehouse_id,
-        f"SELECT {_quote_dbx_columns(dbx_columns)} FROM nba_analytics.gold.`{object_name}` ORDER BY {order_by} LIMIT 10",
+        f"SELECT {_quote_dbx_columns(dbx_columns)} FROM legacy_gold.gold.`{object_name}` ORDER BY {order_by} LIMIT 10",
     )
 
     if [header.lower() for header in athena_headers] != [header.lower() for header in dbx_headers]:

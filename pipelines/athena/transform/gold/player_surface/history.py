@@ -31,7 +31,7 @@ except ImportError:
 
 DIM_PLAYER_RECORD_SOURCE = (
     "silver/boxscore_player_game.parquet|silver/boxscore_game.parquet|"
-    "silver/players.parquet|gold/dim_team/dim_team.parquet"
+    "silver/players.parquet|legacy_gold/dim_team/dim_team.parquet"
 )
 TRACKED_COLS = [
     "player_name",

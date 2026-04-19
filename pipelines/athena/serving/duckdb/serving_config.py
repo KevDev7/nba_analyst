@@ -111,7 +111,7 @@ class DuckDBServingSnapshotSettings:
         default_output_path = resolved_repo_root / "data" / "serving" / "nba_serving.duckdb"
         default_unload_prefix = f"{athena_output_location.rstrip('/')}/duckdb-serving-unload" if athena_output_location else ""
         return cls(
-            athena_database=os.getenv("ATHENA_DATABASE", "nba_analytics").strip() or "nba_analytics",
+            athena_database=os.getenv("ATHENA_DATABASE", "legacy_gold").strip() or "legacy_gold",
             athena_output_location=athena_output_location,
             athena_workgroup=os.getenv("ATHENA_WORKGROUP", "primary").strip() or "primary",
             athena_catalog=os.getenv("ATHENA_CATALOG", "AwsDataCatalog").strip() or "AwsDataCatalog",

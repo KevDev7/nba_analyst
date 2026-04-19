@@ -6,8 +6,8 @@ import pyarrow as pa
 
 S3_BUCKET = "nba-analytics-lakehouse-dev"
 
-DIM_PLAYER_DESTINATION_KEY = "gold/dim_player/dim_player.parquet"
-EXTENDED_PLAYER_DIM_DESTINATION_KEY = "gold/extended_player_dim/extended_player_dim.parquet"
+DIM_PLAYER_DESTINATION_KEY = "legacy_gold/dim_player/dim_player.parquet"
+EXTENDED_PLAYER_DIM_DESTINATION_KEY = "legacy_gold/extended_player_dim/extended_player_dim.parquet"
 
 DIM_PLAYER_TARGET_SCHEMA = pa.schema(
     [
@@ -110,11 +110,11 @@ PLAYER_SURFACE_TABLE_SPECS = [
     PlayerSurfaceTableSpec(
         table_name="dim_player",
         data_key=DIM_PLAYER_DESTINATION_KEY,
-        table_location=f"s3://{S3_BUCKET}/gold/dim_player/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/dim_player/",
     ),
     PlayerSurfaceTableSpec(
         table_name="extended_player_dim",
         data_key=EXTENDED_PLAYER_DIM_DESTINATION_KEY,
-        table_location=f"s3://{S3_BUCKET}/gold/extended_player_dim/",
+        table_location=f"s3://{S3_BUCKET}/legacy_gold/extended_player_dim/",
     ),
 ]
