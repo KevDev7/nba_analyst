@@ -86,7 +86,7 @@ def build_player_season_rows_from_player_game_rows(
             {
                 **aggregate,
                 "team_count": team_count,
-                "is_multi_team_season": 1 if team_count > 1 else 0,
+                "is_multi_team_season": team_count > 1,
                 "games_played": games_played,
                 "total_points": total_points,
                 "average_points": round(safe_ratio(total_points, games_played), 1)

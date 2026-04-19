@@ -55,6 +55,52 @@ TEAM_GAME_REQUIRED_COLUMNS = ["gameId", "teamId", "teamName", "teamCity", "teamT
 TEAM_HISTORIES_REQUIRED_COLUMNS = ["teamId", "teamCity", "teamName", "teamAbbrev"]
 GAME_REQUIRED_COLUMNS = ["gameId", "gameTimeUTC"]
 
+TEAM_CITY_OVERRIDES_BY_ID = {
+    1610612744: "San Francisco",   # Warriors
+    1610612754: "Indianapolis",    # Pacers
+    1610612746: "Los Angeles",     # Clippers
+    1610612750: "Minneapolis",     # Timberwolves
+    1610612752: "New York City",   # Knicks
+    1610612762: "Salt Lake City",  # Jazz
+}
+
+TEAM_LOCATION_BY_ID = {
+    1610612737: {"team_state": "Georgia", "team_country": "United States"},
+    1610612738: {"team_state": "Massachusetts", "team_country": "United States"},
+    1610612739: {"team_state": "Ohio", "team_country": "United States"},
+    1610612740: {"team_state": "Louisiana", "team_country": "United States"},
+    1610612741: {"team_state": "Illinois", "team_country": "United States"},
+    1610612742: {"team_state": "Texas", "team_country": "United States"},
+    1610612743: {"team_state": "Colorado", "team_country": "United States"},
+    1610612744: {"team_state": "California", "team_country": "United States"},
+    1610612745: {"team_state": "Texas", "team_country": "United States"},
+    1610612746: {"team_state": "California", "team_country": "United States"},
+    1610612747: {"team_state": "California", "team_country": "United States"},
+    1610612748: {"team_state": "Florida", "team_country": "United States"},
+    1610612749: {"team_state": "Wisconsin", "team_country": "United States"},
+    1610612750: {"team_state": "Minnesota", "team_country": "United States"},
+    1610612751: {"team_state": "New York", "team_country": "United States"},
+    1610612752: {"team_state": "New York", "team_country": "United States"},
+    1610612753: {"team_state": "Florida", "team_country": "United States"},
+    1610612754: {"team_state": "Indiana", "team_country": "United States"},
+    1610612755: {"team_state": "Pennsylvania", "team_country": "United States"},
+    1610612756: {"team_state": "Arizona", "team_country": "United States"},
+    1610612757: {"team_state": "Oregon", "team_country": "United States"},
+    1610612758: {"team_state": "California", "team_country": "United States"},
+    1610612759: {"team_state": "Texas", "team_country": "United States"},
+    1610612760: {"team_state": "Oklahoma", "team_country": "United States"},
+    1610612761: {"team_state": "Ontario", "team_country": "Canada"},
+    1610612762: {"team_state": "Utah", "team_country": "United States"},
+    1610612763: {"team_state": "Tennessee", "team_country": "United States"},
+    1610612764: {"team_state": "District of Columbia", "team_country": "United States"},
+    1610612765: {"team_state": "Michigan", "team_country": "United States"},
+    1610612766: {"team_state": "North Carolina", "team_country": "United States"},
+}
+
+
+def canonical_team_city(team_id: int, candidate_city: object) -> str | None:
+    return TEAM_CITY_OVERRIDES_BY_ID.get(team_id) or to_str_or_none(candidate_city)
+
 
 def build_game_time_map(game_table: pa.Table) -> dict[str, object]:
     output: dict[str, object] = {}
@@ -157,8 +203,6 @@ def build_team_rows_from_tables(
     rows: list[dict[str, object]] = []
     for team_id in current_team_ids:
         latest: dict[str, Any] = {}
-        first_seen: date | None = None
-        last_seen: date | None = None
         for event in sorted(
             events_by_team.get(team_id, []),
             key=lambda row: (row.get("game_time_utc") is not None, row.get("game_time_utc"), row.get("game_id") or ""),
@@ -169,10 +213,6 @@ def build_team_rows_from_tables(
                 quality_keys=["team_name", "team_city", "team_abbreviation", "team_slug"],
                 preferred_timestamp_keys=["game_time_utc"],
             )
-            event_date = event.get("game_date")
-            if event_date is not None:
-                first_seen = event_date if first_seen is None or event_date < first_seen else first_seen
-                last_seen = event_date if last_seen is None or event_date > last_seen else last_seen
 
         fallback = fallbacks.get(team_id, {})
         context = team_context_for_id(team_id) or {}
@@ -180,13 +220,14 @@ def build_team_rows_from_tables(
             {
                 "team_id": team_id,
                 "team_name": latest.get("team_name") or fallback.get("team_name"),
-                "team_city": latest.get("team_city") or fallback.get("team_city"),
+                "team_city": canonical_team_city(
+                    team_id, latest.get("team_city") or fallback.get("team_city")
+                ),
+                "team_state": TEAM_LOCATION_BY_ID.get(team_id, {}).get("team_state"),
+                "team_country": TEAM_LOCATION_BY_ID.get(team_id, {}).get("team_country"),
                 "team_abbreviation": latest.get("team_abbreviation") or fallback.get("team_abbreviation"),
-                "team_slug": latest.get("team_slug"),
                 "conference": context.get("conference"),
                 "division": context.get("division"),
-                "first_seen_game_date": first_seen,
-                "last_seen_game_date": last_seen,
             }
         )
     return rows

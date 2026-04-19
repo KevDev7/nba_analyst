@@ -31,12 +31,11 @@
         {"name": "team_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
         {"name": "team_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "team_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "team_state", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
+        {"name": "team_country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "team_abbreviation", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_slug", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
         {"name": "conference", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "division", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "first_seen_game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "last_seen_game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {"name": "division", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
       ]
     },
     {

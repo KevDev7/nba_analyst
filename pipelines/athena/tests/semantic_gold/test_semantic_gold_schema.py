@@ -79,6 +79,11 @@ def test_arena_schema_keeps_reusable_venue_context() -> None:
     assert {"arena_id", "arena_name", "arena_city", "arena_state", "arena_country", "arena_timezone"}.issubset(names)
 
 
+def test_team_schema_keeps_reusable_team_location_context() -> None:
+    names = set(TEAM_SCHEMA.names)
+    assert {"team_id", "team_name", "team_city", "team_state", "team_country"}.issubset(names)
+
+
 def test_fact_like_schemas_keep_link_keys_and_business_grain_fields() -> None:
     player_game_names = set(PLAYER_GAME_SCHEMA.names)
     team_game_names = set(TEAM_GAME_SCHEMA.names)

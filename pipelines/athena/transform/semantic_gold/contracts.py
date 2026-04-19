@@ -47,12 +47,11 @@ TEAM_SCHEMA = pa.schema(
         pa.field("team_id", pa.int64()),
         pa.field("team_name", pa.string()),
         pa.field("team_city", pa.string()),
+        pa.field("team_state", pa.string()),
+        pa.field("team_country", pa.string()),
         pa.field("team_abbreviation", pa.string()),
-        pa.field("team_slug", pa.string()),
         pa.field("conference", pa.string()),
         pa.field("division", pa.string()),
-        pa.field("first_seen_game_date", pa.date32()),
-        pa.field("last_seen_game_date", pa.date32()),
     ]
 )
 
@@ -177,7 +176,7 @@ PLAYER_SEASON_SCHEMA = pa.schema(
         pa.field("season_year", pa.string()),
         pa.field("season_type", pa.string()),
         pa.field("team_count", pa.int64()),
-        pa.field("is_multi_team_season", pa.int64()),
+        pa.field("is_multi_team_season", pa.bool_()),
         pa.field("games_played", pa.int64()),
         pa.field("total_points", pa.int64()),
         pa.field("average_points", pa.float64()),

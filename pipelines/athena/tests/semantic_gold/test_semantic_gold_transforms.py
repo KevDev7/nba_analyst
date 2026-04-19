@@ -530,6 +530,18 @@ def test_build_team_rows_returns_current_team_objects() -> None:
     )
     by_team = {row["team_id"]: row for row in rows}
     assert by_team[1610612744]["team_abbreviation"] == "GSW"
+    assert by_team[1610612744]["team_city"] == "San Francisco"
+    assert by_team[1610612744]["team_state"] == "California"
+    assert by_team[1610612744]["team_country"] == "United States"
+    assert by_team[1610612754]["team_city"] == "Indianapolis"
+    assert by_team[1610612746]["team_city"] == "Los Angeles"
+    assert by_team[1610612750]["team_city"] == "Minneapolis"
+    assert by_team[1610612752]["team_city"] == "New York City"
+    assert by_team[1610612752]["team_state"] == "New York"
+    assert by_team[1610612761]["team_state"] == "Ontario"
+    assert by_team[1610612761]["team_country"] == "Canada"
+    assert by_team[1610612764]["team_state"] == "District of Columbia"
+    assert by_team[1610612762]["team_city"] == "Salt Lake City"
     assert by_team[1610612747]["conference"] == "west"
 
 
@@ -697,7 +709,7 @@ def test_build_player_season_rows_aggregate_one_row_per_player_season() -> None:
     assert curry["total_points"] == 33
     assert curry["average_points"] == 33.0
     assert curry["team_count"] == 1
-    assert curry["is_multi_team_season"] == 0
+    assert curry["is_multi_team_season"] is False
 
 
 def test_build_player_season_team_rows_keep_team_stint_grain() -> None:

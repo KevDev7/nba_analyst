@@ -123,15 +123,21 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: team_abbreviation
+  - name: team_state
     kind: dimension
-    source_column: team_abbreviation
+    source_column: team_state
     link_key: false
     visibility: public
     derivation: null
-  - name: team_slug
+  - name: team_country
     kind: dimension
-    source_column: team_slug
+    source_column: team_country
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_abbreviation
+    kind: dimension
+    source_column: team_abbreviation
     link_key: false
     visibility: public
     derivation: null
@@ -144,18 +150,6 @@ objects:
   - name: division
     kind: dimension
     source_column: division
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: first_seen_game_date
-    kind: dimension
-    source_column: first_seen_game_date
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: last_seen_game_date
-    kind: dimension
-    source_column: last_seen_game_date
     link_key: false
     visibility: public
     derivation: null
