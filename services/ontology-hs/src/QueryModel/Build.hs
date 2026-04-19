@@ -4,7 +4,7 @@
 --
 -- Uses:
 -- - QueryModel/Ground.hs outputs
--- - query-shape rules for object queries vs metric queries
+-- - planner-derived supported shapes
 --
 -- Produces:
 -- - a DSL-like semantic query representation that is ready for normalization
@@ -20,10 +20,18 @@
 
 module QueryModel.Build where
 
+import CapabilityDerivation (DerivedFamily, deriveCapabilitiesIO, families)
+import Data.Aeson (FromJSON)
+import qualified Data.Aeson as Aeson
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Map.Strict as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import qualified Data.Text as T
 import GHC.Generics (Generic)
+import OntologyLayer.Types (Ontology)
 import QueryModel.Ground
-import QueryModel.Intent
+import QueryModel.Intent (extractQueryIntent)
 import qualified QueryModel.IR as QI
 
 data SemanticOrder
@@ -63,17 +71,56 @@ data SemanticComparison = SemanticComparison
   deriving (Show, Eq, Generic)
 
 data SemanticQuery
-  = SemanticMetricQuery SemanticBaseQuery (Maybe SemanticComparison)
+  = SemanticMetricQuery SemanticBaseQuery [QI.EntityRef] (Maybe SemanticComparison)
   | SemanticObjectQuery SemanticBaseQuery Text
   deriving (Show, Eq, Generic)
 
-buildSemanticQuery :: GroundedSemanticRequest -> Either Text SemanticQuery
-buildSemanticQuery groundedRequest = do
+data ComparisonAliasEntity = ComparisonAliasEntity
+  { entity_id :: Int
+  , entity_name :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON)
+
+data ComparisonAliasMatch = ComparisonAliasMatch
+  { status :: Text
+  , entity :: Maybe ComparisonAliasEntity
+  , matches :: Maybe [ComparisonAliasEntity]
+  }
+  deriving (Show, Eq, Generic, FromJSON)
+
+data ComparisonAliasIndex = ComparisonAliasIndex
+  { aliases :: Map.Map Text ComparisonAliasMatch
+  }
+  deriving (Show, Eq, Generic, FromJSON)
+
+data CapabilityArtifact = CapabilityArtifact
+  { comparison_entity_indexes :: Map.Map Text (Map.Map Text ComparisonAliasIndex)
+  }
+  deriving (Show, Eq, Generic, FromJSON)
+
+type ComparisonIndexes = Map.Map Text (Map.Map Text ComparisonAliasIndex)
+
+buildQueryFromQuestionIO :: Ontology -> Text -> IO (Either Text QI.Query)
+buildQueryFromQuestionIO ontology questionText = do
+  derivedCapabilityOutput <- deriveCapabilitiesIO ontology
+  comparisonIndexes <- loadComparisonIndexesIO
+  pure (buildQueryFromQuestion (families derivedCapabilityOutput) comparisonIndexes questionText)
+
+buildQueryFromQuestion :: [DerivedFamily] -> ComparisonIndexes -> Text -> Either Text QI.Query
+buildQueryFromQuestion derivedFamilies comparisonIndexes questionText = do
+  let intent = extractQueryIntent questionText
+  grounded <- groundIntent derivedFamilies intent
+  semanticQuery <- buildSemanticQuery comparisonIndexes grounded
+  pure (toIRQuery semanticQuery)
+
+buildSemanticQuery :: ComparisonIndexes -> GroundedSemanticRequest -> Either Text SemanticQuery
+buildSemanticQuery comparisonIndexes groundedRequest = do
   factObjectName <-
     maybe
       (Left "QueryModel.Build requires a grounded core fact object.")
       Right
       (candidateCoreFactObject groundedRequest)
+  comparisonValue <- traverse (resolveGroundedComparison comparisonIndexes) (groundedComparison groundedRequest)
   let baseQuery =
         SemanticBaseQuery
           { coreFactObject = factObjectName
@@ -84,23 +131,23 @@ buildSemanticQuery groundedRequest = do
           , linkedFilters = map fromGroundedLinkedFilter (groundedLinkedFilters groundedRequest)
           , orders = maybe [] (\ordering -> [fromGroundedOrdering ordering]) (groundedOrdering groundedRequest)
           , limit = groundedLimit groundedRequest
-          , assumptions = unresolvedPieces groundedRequest
+          , assumptions = QueryModel.Ground.unresolvedPieces groundedRequest
           }
   pure $
     case queryShape groundedRequest of
       GroundedMetricQuery ->
-        SemanticMetricQuery baseQuery (fmap fromGroundedComparison (groundedComparison groundedRequest))
+        SemanticMetricQuery baseQuery [] comparisonValue
       GroundedObjectQuery rowObjectName ->
         SemanticObjectQuery baseQuery rowObjectName
 
 toIRQuery :: SemanticQuery -> QI.Query
 toIRQuery semanticQuery =
   case semanticQuery of
-    SemanticMetricQuery baseQuery maybeComparison ->
+    SemanticMetricQuery baseQuery entityFilters maybeComparison ->
       QI.MetricQuery
         QI.MetricQuerySpec
           { QI.sharedQuery = toIRBaseQuery baseQuery
-          , QI.entityFilters = []
+          , QI.entityFilters = entityFilters
           , QI.comparison = fmap toIRComparison maybeComparison
           }
     SemanticObjectQuery baseQuery rowObjectName ->
@@ -112,50 +159,111 @@ toIRQuery semanticQuery =
 
 exampleMetricSemanticQuery :: SemanticQuery
 exampleMetricSemanticQuery =
-  toIRBackedExample $
-    (groundedMetricRequest "PlayerGame")
-      { groundedMetrics = ["total_points"]
+  toIRBackedExample Map.empty $
+    GroundedSemanticRequest
+      { queryShape = GroundedMetricQuery
+      , selectedFamilyKey = "example_metric"
+      , candidateCoreFactObject = Just "PlayerGame"
+      , groundedMetrics = ["total_points"]
       , groundedDimensions = ["player_name"]
+      , groundedEntityMentions = []
+      , groundedTimeGrain = Nothing
       , groundedFilters = [GroundedFilter "last_n_games" (Just (QI.FilterInt 10))]
+      , groundedLinkedFilters = []
       , groundedOrdering = Just (GroundedOrdering (Just "total_points") True)
       , groundedLimit = Just 10
+      , groundedComparison = Nothing
+      , unresolvedPieces = []
       }
 
 exampleObjectSemanticQuery :: SemanticQuery
 exampleObjectSemanticQuery =
-  toIRBackedExample $
-    (groundedObjectRequest "PlayerGame" "Player")
-      { groundedMetrics = ["average_points"]
+  toIRBackedExample Map.empty $
+    GroundedSemanticRequest
+      { queryShape = GroundedObjectQuery "Player"
+      , selectedFamilyKey = "example_object"
+      , candidateCoreFactObject = Just "PlayerGame"
+      , groundedMetrics = ["average_points"]
       , groundedDimensions = ["player_name"]
+      , groundedEntityMentions = []
+      , groundedTimeGrain = Nothing
       , groundedFilters = [GroundedFilter "last_n_games" (Just (QI.FilterInt 10))]
+      , groundedLinkedFilters = []
       , groundedOrdering = Just (GroundedOrdering (Just "average_points") True)
+      , groundedLimit = Nothing
+      , groundedComparison = Nothing
+      , unresolvedPieces = []
       }
 
-toIRBackedExample :: GroundedSemanticRequest -> SemanticQuery
-toIRBackedExample groundedRequest =
-  case buildSemanticQuery groundedRequest of
+toIRBackedExample :: ComparisonIndexes -> GroundedSemanticRequest -> SemanticQuery
+toIRBackedExample comparisonIndexes groundedRequest =
+  case buildSemanticQuery comparisonIndexes groundedRequest of
     Right semanticQuery -> semanticQuery
     Left err -> error ("QueryModel foundation example construction failed: " <> show err)
 
-buildRecentPlayerRankingQuery :: [Text] -> Text -> Either Text QI.Query
-buildRecentPlayerRankingQuery supportedMetrics questionText = do
-  intent <-
+resolveGroundedComparison :: ComparisonIndexes -> GroundedComparison -> Either Text SemanticComparison
+resolveGroundedComparison comparisonIndexes groundedComparisonValue = do
+  resolvedEntities <- mapM (resolveComparisonEntity comparisonIndexes targetObjectName identityDimensionName) entityNamesValue
+  pure
+    SemanticComparison
+      { semanticComparisonTargetObject = targetObjectName
+      , semanticComparisonEntities = resolvedEntities
+      }
+  where
+    targetObjectName =
+      case groundedComparisonValue of
+        GroundedComparison {QueryModel.Ground.targetObject = currentTargetObject} -> currentTargetObject
+    identityDimensionName = identityDimension groundedComparisonValue
+    entityNamesValue = entityNames groundedComparisonValue
+
+resolveComparisonEntity :: ComparisonIndexes -> Text -> Text -> Text -> Either Text QI.EntityRef
+resolveComparisonEntity comparisonIndexes targetObjectName dimensionName rawEntityName = do
+  aliasIndex <-
     maybe
-      (Left "QueryModel.Intent did not match the live recent player ranking QueryModel pattern.")
+      (Left ("No comparison alias index is available for target object '" <> targetObjectName <> "'."))
       Right
-      (extractRecentPlayerRankingIntent questionText)
-  grounded <- groundRecentPlayerRankingIntent supportedMetrics intent
-  semanticQuery <- buildSemanticQuery grounded
-  pure (toIRQuery semanticQuery)
+      (Map.lookup targetObjectName comparisonIndexes >>= Map.lookup dimensionName)
+  aliasMatch <-
+    maybe
+      (Left ("Could not resolve " <> targetObjectName <> " " <> dimensionName <> " value '" <> rawEntityName <> "' for comparison."))
+      Right
+      (Map.lookup (normalizeAlias rawEntityName) (aliases aliasIndex))
+  case status aliasMatch of
+    "resolved" ->
+      case entity aliasMatch of
+        Just resolvedEntity ->
+          Right
+            QI.EntityRef
+              { QI.entityId = entity_id resolvedEntity
+              , QI.entityName = entity_name resolvedEntity
+              }
+        Nothing -> Left ("Resolved comparison alias for '" <> rawEntityName <> "' did not include an entity payload.")
+    "ambiguous" ->
+      let candidateNames =
+            T.intercalate
+              ", "
+              [ entity_name matchedEntity
+              | matchedEntity <- fromMaybe [] (matches aliasMatch)
+              ]
+       in Left (targetObjectName <> " " <> dimensionName <> " value '" <> rawEntityName <> "' is ambiguous for comparison. Matches: " <> candidateNames <> ".")
+    _ ->
+      Left ("Could not resolve " <> targetObjectName <> " " <> dimensionName <> " value '" <> rawEntityName <> "' for comparison.")
+
+loadComparisonIndexesIO :: IO ComparisonIndexes
+loadComparisonIndexesIO = do
+  artifactBytes <- BL.readFile "../../fixtures/interpreter/semantic-capabilities.json"
+  case Aeson.eitherDecode artifactBytes of
+    Left _ -> pure Map.empty
+    Right capabilityArtifact -> pure (comparison_entity_indexes capabilityArtifact)
 
 fromGroundedFilter :: GroundedFilter -> SemanticFilter
 fromGroundedFilter groundedFilter =
   let GroundedFilter {QueryModel.Ground.kind = kindValue, QueryModel.Ground.value = maybeValue} = groundedFilter
    in
-  SemanticFilter
-    { semanticFilterKind = kindValue
-    , semanticFilterValue = maybeValue
-    }
+    SemanticFilter
+      { semanticFilterKind = kindValue
+      , semanticFilterValue = maybeValue
+      }
 
 fromGroundedLinkedFilter :: GroundedLinkedFilter -> SemanticLinkedFilter
 fromGroundedLinkedFilter groundedLinkedFilter =
@@ -165,30 +273,18 @@ fromGroundedLinkedFilter groundedLinkedFilter =
         , QueryModel.Ground.value = linkedValue
         } = groundedLinkedFilter
    in
-  SemanticLinkedFilter
-    { semanticTargetObject = targetObjectValue
-    , semanticAttribute = attributeValue
-    , semanticValue = linkedValue
-    }
+    SemanticLinkedFilter
+      { semanticTargetObject = targetObjectValue
+      , semanticAttribute = attributeValue
+      , semanticValue = linkedValue
+      }
 
 fromGroundedOrdering :: GroundedOrdering -> SemanticOrder
 fromGroundedOrdering groundedOrderingValue =
   case (descending groundedOrderingValue, QueryModel.Ground.metric groundedOrderingValue) of
     (True, Just metricName) -> SemanticDesc metricName
-    (False, Just _) -> error "QueryModel.Build foundation slice only normalizes descending ordering into the live IR."
+    (False, Just _) -> error "QueryModel.Build only normalizes descending ordering into the live IR."
     (_, Nothing) -> error "QueryModel.Build requires grounded ordering hints to name a metric."
-
-fromGroundedComparison :: GroundedComparison -> SemanticComparison
-fromGroundedComparison groundedComparisonValue =
-  let GroundedComparison
-        { QueryModel.Ground.targetObject = targetObjectValue
-        , QueryModel.Ground.entities = groundedEntities
-        } = groundedComparisonValue
-   in
-  SemanticComparison
-    { semanticComparisonTargetObject = targetObjectValue
-    , semanticComparisonEntities = groundedEntities
-    }
 
 toIRBaseQuery :: SemanticBaseQuery -> QI.BaseQuery
 toIRBaseQuery semanticBase =
@@ -197,11 +293,11 @@ toIRBaseQuery semanticBase =
     , QI.metrics = metrics semanticBase
     , QI.dimensions = dimensions semanticBase
     , QI.timeGrain = fmap QI.TimeGrainRef (timeGrain semanticBase)
-    , QI.filters = map toIRFilter (filters semanticBase)
-    , QI.linkedFilters = map toIRLinkedFilter (linkedFilters semanticBase)
+    , QI.filters = map toIRFilter (QueryModel.Build.filters semanticBase)
+    , QI.linkedFilters = map toIRLinkedFilter (QueryModel.Build.linkedFilters semanticBase)
     , QI.orders = map toIROrder (orders semanticBase)
     , QI.limit = limit semanticBase
-    , QI.assumptions = assumptions semanticBase
+    , QI.assumptions = QueryModel.Build.assumptions semanticBase
     }
 
 toIRFilter :: SemanticFilter -> QI.Filter
@@ -229,3 +325,11 @@ toIRComparison semanticComparison =
   QI.CompareEntities
     (semanticComparisonTargetObject semanticComparison)
     (semanticComparisonEntities semanticComparison)
+
+normalizeAlias :: Text -> Text
+normalizeAlias =
+  T.unwords . T.words . T.map normalizeChar . T.toLower
+  where
+    normalizeChar currentChar
+      | T.any (== currentChar) "abcdefghijklmnopqrstuvwxyz0123456789" = currentChar
+      | otherwise = ' '

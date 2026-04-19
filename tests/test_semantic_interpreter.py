@@ -263,10 +263,13 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(player_index["aliases"]["jalen"]["status"], "ambiguous")
         self.assertIn("lakers", team_index["aliases"])
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
     def test_valid_metric_query_template_normalizes_to_haskell_query_json(
-        self, _mock_fast_path, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -307,9 +310,13 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(payload["spec"]["entityFilters"], [])
         self.assertIsNone(payload["spec"]["comparison"])
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_valid_object_query_template_normalizes_to_haskell_query_json(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -347,10 +354,13 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(payload["spec"]["sharedQuery"]["linkedFilters"], [])
         self.assertIsNone(payload["spec"]["sharedQuery"]["limit"])
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
     def test_malformed_json_is_rejected_clearly(
-        self, _mock_fast_path, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = "{not valid json"
 
@@ -361,10 +371,13 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("malformed JSON", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
     def test_unsupported_values_are_rejected_clearly(
-        self, _mock_fast_path, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -387,10 +400,13 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("invalid supported query template", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    @patch("apps.cli.semantic_interpreter._is_querymodel_recent_ranking_question", return_value=False)
     def test_omitted_optional_fields_normalize_cleanly(
-        self, _mock_fast_path, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -421,9 +437,13 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertEqual(payload["spec"]["entityFilters"], [])
         self.assertIsNone(payload["spec"]["comparison"])
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_comparison_names_normalize_into_structured_entity_refs(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -456,8 +476,14 @@ class SemanticInterpreterTests(unittest.TestCase):
             payload["spec"]["comparison"]["entities"][0]["entityName"], "Jalen Brunson"
         )
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_ambiguous_player_alias_fails_clearly(self, mock_call_gemini) -> None:
+    def test_ambiguous_player_alias_fails_clearly(
+        self, mock_call_gemini, _mock_querymodel
+    ) -> None:
         mock_call_gemini.return_value = """
         {
           "status": "ok",
@@ -485,8 +511,14 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("ambiguous", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_unknown_player_alias_fails_clearly(self, mock_call_gemini) -> None:
+    def test_unknown_player_alias_fails_clearly(
+        self, mock_call_gemini, _mock_querymodel
+    ) -> None:
         mock_call_gemini.return_value = """
         {
           "status": "ok",
@@ -514,9 +546,13 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("Could not resolve Player player_name value", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_explicit_season_team_player_average_query_rejects_invalid_game_grain(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -546,9 +582,13 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("invalid supported query template", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_linked_team_filter_normalizes_into_haskell_query_json(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -579,9 +619,13 @@ class SemanticInterpreterTests(unittest.TestCase):
             [{"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}],
         )
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_limited_linked_team_object_query_normalizes_into_haskell_query_json(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -615,9 +659,13 @@ class SemanticInterpreterTests(unittest.TestCase):
             [{"targetObject": "Team", "attribute": "team_name", "value": "Knicks"}],
         )
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_linked_team_filter_supports_player_season_team_queries(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {
@@ -652,8 +700,14 @@ class SemanticInterpreterTests(unittest.TestCase):
             [{"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}],
         )
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_unsupported_response_raises_clear_reason(self, mock_call_gemini) -> None:
+    def test_unsupported_response_raises_clear_reason(
+        self, mock_call_gemini, _mock_querymodel
+    ) -> None:
         mock_call_gemini.return_value = """
         {
           "status": "unsupported",
@@ -668,9 +722,13 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("last month trend", str(context.exception))
 
+    @patch(
+        "apps.cli.semantic_interpreter._call_haskell_querymodel",
+        return_value={"status": "unsupported", "reason": "fallback"},
+    )
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_unsupported_linked_filter_values_are_rejected_clearly(
-        self, mock_call_gemini
+        self, mock_call_gemini, _mock_querymodel
     ) -> None:
         mock_call_gemini.return_value = """
         {

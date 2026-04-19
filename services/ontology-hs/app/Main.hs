@@ -13,11 +13,12 @@
 -- - apps/cli/main.py
 
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
-import CapabilityDerivation (deriveCapabilitiesIO, liveRecentPlayerRankingMetricsIO)
+import CapabilityDerivation (deriveCapabilitiesIO)
 import Data.Aeson (ToJSON, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
@@ -52,6 +53,19 @@ data PlannerError = PlannerError
 
 instance ToJSON PlannerError
 
+data QueryModelResponse
+  = QueryModelOk
+      { status :: Text
+      , query :: Query
+      }
+  | QueryModelUnsupported
+      { status :: Text
+      , reason :: Text
+      }
+  deriving (Show, Generic)
+
+instance ToJSON QueryModelResponse
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -64,12 +78,26 @@ main = do
       BL8.putStrLn (encode (QB.toIRQuery QB.exampleMetricSemanticQuery))
     ["query-model-foundation-json", "object"] ->
       BL8.putStrLn (encode (QB.toIRQuery QB.exampleObjectSemanticQuery))
-    ["query-model-ranking-json", "--ontology", ontologyPath, "--question", questionText] -> do
+    ["query-model-json", "--ontology", ontologyPath, "--question", questionText] -> do
       ontology <- loadOntology ontologyPath
-      supportedMetrics <- liveRecentPlayerRankingMetricsIO ontology
-      case QB.buildRecentPlayerRankingQuery supportedMetrics (pack questionText) of
-        Right queryValue -> BL8.putStrLn (encode queryValue)
-        Left err -> emitError "QueryModel.Build" err
+      builtQuery <- QB.buildQueryFromQuestionIO ontology (pack questionText)
+      case builtQuery of
+        Right queryValue ->
+          BL8.putStrLn
+            ( encode
+                QueryModelOk
+                  { status = "ok"
+                  , query = queryValue
+                  }
+            )
+        Left err ->
+          BL8.putStrLn
+            ( encode
+                QueryModelUnsupported
+                  { status = "unsupported"
+                  , reason = err
+                  }
+            )
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       ontology <- loadOntology ontologyPath
       runPlannerFromQueryJson ontology (pack queryJson)
@@ -77,7 +105,7 @@ main = do
       die
         "Usage: cabal run ontology-hs -- derive-capabilities-json --ontology <path>\n\
         \   or: cabal run ontology-hs -- query-model-foundation-json metric|object\n\
-        \   or: cabal run ontology-hs -- query-model-ranking-json --ontology <path> --question <text>\n\
+        \   or: cabal run ontology-hs -- query-model-json --ontology <path> --question <text>\n\
         \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()
