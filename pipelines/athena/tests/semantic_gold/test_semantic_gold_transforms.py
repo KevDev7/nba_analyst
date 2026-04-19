@@ -695,8 +695,6 @@ def test_build_player_season_team_rows_keep_team_stint_grain() -> None:
     }
     lebron = by_key[(2544, 1610612747, "2024-25", "regular_season")]
     assert lebron["player_name"] == "LeBron James"
-    assert lebron["team_name"] == "Lakers"
-    assert lebron["team_abbreviation"] == "LAL"
     assert lebron["games_played"] == 1
     assert lebron["total_points"] == 30
     assert lebron["average_points"] == 30.0
@@ -713,14 +711,12 @@ def test_build_team_season_rows_aggregate_team_results() -> None:
     warriors = by_key[(1610612744, "2024-25", "regular_season")]
     lakers = by_key[(1610612747, "2024-25", "regular_season")]
 
-    assert warriors["team_name"] == "Warriors"
     assert warriors["games_played"] == 1
     assert warriors["wins"] == 1
     assert warriors["losses"] == 0
     assert warriors["win_percentage"] == 1.0
     assert warriors["average_points"] == 120.0
 
-    assert lakers["team_abbreviation"] == "LAL"
     assert lakers["wins"] == 0
     assert lakers["losses"] == 1
     assert lakers["win_percentage"] == 0.0

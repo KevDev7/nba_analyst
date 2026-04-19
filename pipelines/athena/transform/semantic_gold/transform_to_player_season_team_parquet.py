@@ -42,29 +42,9 @@ load_dotenv(override=True)
 DESTINATION_KEY = "semantic_gold/player_season_team/player_season_team.parquet"
 
 
-def build_team_identity_by_team_id(
-    team_game_table: pa.Table,
-) -> dict[int, dict[str, str | None]]:
-    identity: dict[int, dict[str, str | None]] = {}
-    for row in team_game_table.to_pylist():
-        team_id = to_positive_int_or_none(row.get("teamId"))
-        if team_id is None:
-            continue
-        current = identity.get(team_id, {})
-        team_name = to_str_or_none(row.get("teamName"))
-        team_abbreviation = to_str_or_none(row.get("teamTricode"))
-        if current.get("team_name") is None and team_name is not None:
-            current["team_name"] = team_name
-        if current.get("team_abbreviation") is None and team_abbreviation is not None:
-            current["team_abbreviation"] = team_abbreviation
-        identity[team_id] = current
-    return identity
-
-
 def build_player_season_team_rows_from_player_game_rows(
     player_game_rows: list[dict[str, object]],
     player_name_by_person_id: dict[int, str],
-    team_identity_by_team_id: dict[int, dict[str, str | None]],
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, int, str, str], dict[str, object]] = {}
 
@@ -77,15 +57,12 @@ def build_player_season_team_rows_from_player_game_rows(
             continue
 
         key = (person_id, team_id, season_year, season_type)
-        team_identity = team_identity_by_team_id.get(team_id, {})
         current = grouped.setdefault(
             key,
             {
                 "person_id": person_id,
                 "player_name": player_name_by_person_id.get(person_id),
                 "team_id": team_id,
-                "team_name": team_identity.get("team_name"),
-                "team_abbreviation": team_identity.get("team_abbreviation"),
                 "season_year": season_year,
                 "season_type": season_type,
                 "season_start_year": row.get("season_start_year"),
@@ -130,9 +107,8 @@ def build_player_season_team_rows_from_tables(
         player_table, box_table, schedule_table, team_game_table
     )
     player_name_by_person_id = build_player_name_by_person_id(player_table)
-    team_identity_by_team_id = build_team_identity_by_team_id(team_game_table)
     return build_player_season_team_rows_from_player_game_rows(
-        player_game_rows, player_name_by_person_id, team_identity_by_team_id
+        player_game_rows, player_name_by_person_id
     )
 
 

@@ -41,7 +41,6 @@ DESTINATION_KEY = "semantic_gold/team_season/team_season.parquet"
 
 def build_team_season_rows_from_team_game_rows(
     team_game_rows: list[dict[str, object]],
-    team_identity_by_team_id: dict[int, dict[str, str | None]],
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, str, str], dict[str, object]] = {}
 
@@ -53,13 +52,10 @@ def build_team_season_rows_from_team_game_rows(
             continue
 
         key = (team_id, season_year, season_type)
-        team_identity = team_identity_by_team_id.get(team_id, {})
         current = grouped.setdefault(
             key,
             {
                 "team_id": team_id,
-                "team_name": team_identity.get("team_name"),
-                "team_abbreviation": team_identity.get("team_abbreviation"),
                 "season_year": season_year,
                 "season_type": season_type,
                 "season_start_year": row.get("season_start_year"),
@@ -104,37 +100,15 @@ def build_team_season_rows_from_team_game_rows(
     return season_rows
 
 
-def build_team_identity_by_team_id(
-    team_game_table: pa.Table,
-) -> dict[int, dict[str, str | None]]:
-    identity: dict[int, dict[str, str | None]] = {}
-    for row in team_game_table.to_pylist():
-        team_id = to_positive_int_or_none(row.get("teamId"))
-        if team_id is None:
-            continue
-        current = identity.get(team_id, {})
-        team_name = to_str_or_none(row.get("teamName"))
-        team_abbreviation = to_str_or_none(row.get("teamTricode"))
-        if current.get("team_name") is None and team_name is not None:
-            current["team_name"] = team_name
-        if current.get("team_abbreviation") is None and team_abbreviation is not None:
-            current["team_abbreviation"] = team_abbreviation
-        identity[team_id] = current
-    return identity
-
-
 def build_team_season_rows_from_tables(
     team_game_table: pa.Table,
     box_table: pa.Table,
     schedule_table: pa.Table,
 ) -> list[dict[str, object]]:
-    team_identity_by_team_id = build_team_identity_by_team_id(team_game_table)
     team_game_rows = build_team_game_rows_from_tables(
         team_game_table, box_table, schedule_table
     )
-    return build_team_season_rows_from_team_game_rows(
-        team_game_rows, team_identity_by_team_id
-    )
+    return build_team_season_rows_from_team_game_rows(team_game_rows)
 
 
 def main() -> None:
