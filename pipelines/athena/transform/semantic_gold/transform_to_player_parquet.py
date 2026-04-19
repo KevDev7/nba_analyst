@@ -107,7 +107,7 @@ def build_player_rows_from_tables(
                 "weight_lbs": bio.get("weight_lbs"),
                 "draft_year": bio.get("draft_year"),
                 "draft_round": bio.get("draft_round"),
-                "draft_number": bio.get("draft_number"),
+                "draft_pick_number": bio.get("draft_number"),
             }
         )
     return rows

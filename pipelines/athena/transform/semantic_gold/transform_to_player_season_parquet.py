@@ -71,7 +71,7 @@ def build_player_season_rows_from_player_game_rows(
             current["_team_ids"].add(team_id)
         current["games_played"] = to_int_or_none(current.get("games_played")) or 0
         current["games_played"] += games_played_from_values(
-            row.get("did_play"), row.get("minutes_played_decimal")
+            row.get("did_play"), row.get("minutes_played")
         )
         current["total_points"] = to_int_or_none(current.get("total_points")) or 0
         current["total_points"] += to_int_or_none(row.get("points")) or 0

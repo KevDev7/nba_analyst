@@ -94,9 +94,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: draft_number
+  - name: draft_pick_number
     kind: dimension
-    source_column: draft_number
+    source_column: draft_pick_number
     link_key: false
     visibility: public
     derivation: null
@@ -229,9 +229,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: game_datetime_utc
+  - name: game_start_time_utc
     kind: dimension
-    source_column: game_datetime_utc
+    source_column: game_start_time_utc
     link_key: false
     visibility: public
     derivation: null
@@ -300,15 +300,15 @@ objects:
     link_key: true
     visibility: public
     derivation: null
-  - name: team_side
+  - name: team_home_or_away
     kind: dimension
-    source_column: team_side
+    source_column: team_home_or_away
     link_key: false
     visibility: public
     derivation: null
-  - name: game_datetime_utc
+  - name: game_start_time_utc
     kind: dimension
-    source_column: game_datetime_utc
+    source_column: game_start_time_utc
     link_key: false
     visibility: public
     derivation: null
@@ -342,9 +342,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: minutes_played_decimal
+  - name: minutes_played
     kind: measure
-    source_column: minutes_played_decimal
+    source_column: minutes_played
     link_key: false
     visibility: public
     derivation: null
@@ -390,9 +390,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_offensive
+  - name: offensive_fouls_committed
     kind: measure
-    source_column: fouls_offensive
+    source_column: offensive_fouls_committed
     link_key: false
     visibility: public
     derivation: null
@@ -402,15 +402,15 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_personal
+  - name: personal_fouls_committed
     kind: measure
-    source_column: fouls_personal
+    source_column: personal_fouls_committed
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_technical
+  - name: technical_fouls_committed
     kind: measure
-    source_column: fouls_technical
+    source_column: technical_fouls_committed
     link_key: false
     visibility: public
     derivation: null
@@ -432,21 +432,21 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_defensive
+  - name: defensive_rebounds
     kind: measure
-    source_column: rebounds_defensive
+    source_column: defensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_offensive
+  - name: offensive_rebounds
     kind: measure
-    source_column: rebounds_offensive
+    source_column: offensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_total
+  - name: total_rebounds
     kind: measure
-    source_column: rebounds_total
+    source_column: total_rebounds
     link_key: false
     visibility: public
     derivation: null
@@ -504,21 +504,21 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: points_fast_break
+  - name: fast_break_points
     kind: measure
-    source_column: points_fast_break
+    source_column: fast_break_points
     link_key: false
     visibility: public
     derivation: null
-  - name: points_in_the_paint
+  - name: points_in_paint
     kind: measure
-    source_column: points_in_the_paint
+    source_column: points_in_paint
     link_key: false
     visibility: public
     derivation: null
-  - name: points_second_chance
+  - name: second_chance_points
     kind: measure
-    source_column: points_second_chance
+    source_column: second_chance_points
     link_key: false
     visibility: public
     derivation: null
@@ -618,9 +618,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: team_side
+  - name: team_home_or_away
     kind: dimension
-    source_column: team_side
+    source_column: team_home_or_away
     link_key: false
     visibility: public
     derivation: null
@@ -690,9 +690,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_offensive
+  - name: offensive_fouls_committed
     kind: measure
-    source_column: fouls_offensive
+    source_column: offensive_fouls_committed
     link_key: false
     visibility: public
     derivation: null
@@ -702,15 +702,15 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_personal
+  - name: personal_fouls_committed
     kind: measure
-    source_column: fouls_personal
+    source_column: personal_fouls_committed
     link_key: false
     visibility: public
     derivation: null
-  - name: fouls_technical
+  - name: technical_fouls_committed
     kind: measure
-    source_column: fouls_technical
+    source_column: technical_fouls_committed
     link_key: false
     visibility: public
     derivation: null
@@ -732,21 +732,21 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_defensive
+  - name: defensive_rebounds
     kind: measure
-    source_column: rebounds_defensive
+    source_column: defensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_offensive
+  - name: offensive_rebounds
     kind: measure
-    source_column: rebounds_offensive
+    source_column: offensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: rebounds_total
+  - name: total_rebounds
     kind: measure
-    source_column: rebounds_total
+    source_column: total_rebounds
     link_key: false
     visibility: public
     derivation: null

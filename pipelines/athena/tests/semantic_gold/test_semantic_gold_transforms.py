@@ -569,6 +569,17 @@ def test_build_player_game_rows_preserve_expected_grain() -> None:
     assert rows[0]["season_type"] == "regular_season"
     assert "shots_blocked" in rows[0]
     assert "shots_blocked_against" in rows[0]
+    assert rows[0]["is_starter"] is True
+    assert rows[0]["did_play"] is True
+    assert "game_start_time_utc" in rows[0]
+    assert "minutes_played" in rows[0]
+    assert "fast_break_points" in rows[0]
+    assert "points_in_paint" in rows[0]
+    assert "second_chance_points" in rows[0]
+    assert "game_datetime_utc" not in rows[0]
+    assert "team_home_or_away" in rows[0]
+    assert "team_side" not in rows[0]
+    assert "minutes_played_decimal" not in rows[0]
     assert "is_on_court" not in rows[0]
     assert "seconds_played_total" not in rows[0]
 

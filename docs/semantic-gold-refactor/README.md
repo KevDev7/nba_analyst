@@ -40,6 +40,13 @@ Working rule:
 - [Batch 24](./batch-24.md)
 - [Batch 25](./batch-25.md)
 - [Batch 26](./batch-26.md)
+- [Batch 27](./batch-27.md)
+- [Batch 28](./batch-28.md)
+- [Batch 29](./batch-29.md)
+- [Batch 30](./batch-30.md)
+- [Batch 31](./batch-31.md)
+- [Batch 32](./batch-32.md)
+- [Batch 33](./batch-33.md)
 
 ## Deferred Downstream Follow-Up
 
