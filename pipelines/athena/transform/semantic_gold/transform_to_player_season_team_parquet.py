@@ -36,7 +36,6 @@ from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import
 from .contracts import PLAYER_SEASON_TEAM_SCHEMA
 from .transform_to_player_game_parquet import build_player_game_rows_from_tables
 from .transform_to_player_season_parquet import build_player_name_by_person_id
-from .transform_to_team_game_parquet import build_team_game_rows_from_tables
 
 load_dotenv(override=True)
 
@@ -44,16 +43,16 @@ DESTINATION_KEY = "semantic_gold/player_season_team/player_season_team.parquet"
 
 
 def build_team_identity_by_team_id(
-    team_game_rows: list[dict[str, object]],
+    team_game_table: pa.Table,
 ) -> dict[int, dict[str, str | None]]:
     identity: dict[int, dict[str, str | None]] = {}
-    for row in team_game_rows:
-        team_id = to_positive_int_or_none(row.get("team_id"))
+    for row in team_game_table.to_pylist():
+        team_id = to_positive_int_or_none(row.get("teamId"))
         if team_id is None:
             continue
         current = identity.get(team_id, {})
-        team_name = to_str_or_none(row.get("team_name"))
-        team_abbreviation = to_str_or_none(row.get("team_abbreviation"))
+        team_name = to_str_or_none(row.get("teamName"))
+        team_abbreviation = to_str_or_none(row.get("teamTricode"))
         if current.get("team_name") is None and team_name is not None:
             current["team_name"] = team_name
         if current.get("team_abbreviation") is None and team_abbreviation is not None:
@@ -131,10 +130,7 @@ def build_player_season_team_rows_from_tables(
         player_table, box_table, schedule_table, team_game_table
     )
     player_name_by_person_id = build_player_name_by_person_id(player_table)
-    semantic_team_game_rows = build_team_game_rows_from_tables(
-        team_game_table, box_table, schedule_table
-    )
-    team_identity_by_team_id = build_team_identity_by_team_id(semantic_team_game_rows)
+    team_identity_by_team_id = build_team_identity_by_team_id(team_game_table)
     return build_player_season_team_rows_from_player_game_rows(
         player_game_rows, player_name_by_person_id, team_identity_by_team_id
     )
