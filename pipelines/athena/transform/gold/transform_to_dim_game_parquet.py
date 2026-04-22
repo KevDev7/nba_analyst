@@ -7,7 +7,7 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/scheduleLeagueV2_1.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/dim_game/dim_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_game/dim_game.parquet
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ load_dotenv(override=True)
 BOXSCORE_SOURCE_KEY = "silver/boxscore_game.parquet"
 TEAM_GAME_SOURCE_KEY = "silver/boxscore_team_game.parquet"
 SCHEDULE_SOURCE_KEY = "silver/scheduleLeagueV2_1.parquet"
-DESTINATION_KEY = "gold/dim_game/dim_game.parquet"
+DESTINATION_KEY = "legacy_gold/dim_game/dim_game.parquet"
 RECORD_SOURCE = "silver.boxscore_game|silver.boxscore_team_game|silver.schedule"
 
 BOXSCORE_REQUIRED_COLUMNS = [

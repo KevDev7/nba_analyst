@@ -8,7 +8,7 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/boxscore_game.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ TEAM_GAME_SOURCE_KEY = "silver/boxscore_team_game.parquet"
 PLAYER_GAME_SOURCE_KEY = "silver/boxscore_player_game.parquet"
 SCHEDULE_SOURCE_KEY = "silver/scheduleLeagueV2_1.parquet"
 GAME_SOURCE_KEY = "silver/boxscore_game.parquet"
-DESTINATION_KEY = "gold/dim_team/dim_team.parquet"
+DESTINATION_KEY = "legacy_gold/dim_team/dim_team.parquet"
 
 RECORD_SOURCE = f"{TEAM_GAME_SOURCE_KEY}|{PLAYER_GAME_SOURCE_KEY}|{SCHEDULE_SOURCE_KEY}|{GAME_SOURCE_KEY}"
 TRACKED_COLS = ["team_name", "team_city", "team_abbreviation", "team_slug"]

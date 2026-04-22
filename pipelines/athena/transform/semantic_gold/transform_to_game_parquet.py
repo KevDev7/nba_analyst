@@ -45,7 +45,17 @@ def is_semantic_game_row(row: dict[str, object]) -> bool:
 
 def finalize_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     public_columns = GAME_SCHEMA.names
-    return [{column: row.get(column) for column in public_columns} for row in rows]
+    finalized: list[dict[str, object]] = []
+    for row in rows:
+        finalized.append(
+            {
+                column: row.get("game_datetime_utc")
+                if column == "game_start_time_utc"
+                else row.get(column)
+                for column in public_columns
+            }
+        )
+    return finalized
 
 
 def build_semantic_game_source_rows_from_tables(

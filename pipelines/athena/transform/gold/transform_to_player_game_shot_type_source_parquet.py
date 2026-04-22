@@ -2,15 +2,15 @@
 Build gold player-game shot-type source fact from silver play-by-play field-goal events.
 
 Reads:
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game/fct_player_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game/fct_player_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/playbyplay/game_id=<GAME_ID>.parquet
 
 Writes:
   Full mode:
-    s3://nba-analytics-lakehouse-dev/gold/fct_player_game_shot_type_source/fct_player_game_shot_type_source.parquet
+    s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game_shot_type_source/fct_player_game_shot_type_source.parquet
   Preview mode:
-    s3://nba-analytics-lakehouse-dev/gold/_preview/fct_player_game_shot_type_source/fct_player_game_shot_type_source_preview.parquet
+    s3://nba-analytics-lakehouse-dev/legacy_gold/_preview/fct_player_game_shot_type_source/fct_player_game_shot_type_source_preview.parquet
 """
 
 from __future__ import annotations
@@ -53,15 +53,15 @@ except ImportError:
 
 load_dotenv(override=True)
 
-PLAYER_FACT_KEY = "gold/fct_player_game/fct_player_game.parquet"
-TEAM_FACT_KEY = "gold/fct_team_game/fct_team_game.parquet"
+PLAYER_FACT_KEY = "legacy_gold/fct_player_game/fct_player_game.parquet"
+TEAM_FACT_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
 PLAYBYPLAY_PREFIX = "silver/playbyplay/"
 
 DESTINATION_KEY = (
-    "gold/fct_player_game_shot_type_source/fct_player_game_shot_type_source.parquet"
+    "legacy_gold/fct_player_game_shot_type_source/fct_player_game_shot_type_source.parquet"
 )
 PREVIEW_DESTINATION_KEY = (
-    "gold/_preview/fct_player_game_shot_type_source/"
+    "legacy_gold/_preview/fct_player_game_shot_type_source/"
     "fct_player_game_shot_type_source_preview.parquet"
 )
 

@@ -83,7 +83,7 @@ def test_score_candidate_matches_databricks_secondary_scoring_without_era_penalt
 def test_metadata_constants_match_databricks_bridge_contract():
     assert bridge.NBA_SOURCE_KEY == "silver/players.parquet"
     assert bridge.META_SOURCE_SYSTEM == "silver_players|silver_bbr_player_profile"
-    assert bridge.META_SOURCE_KEY == "nba_analytics.silver.players|nba_analytics.silver.bbr_player_profile"
+    assert bridge.META_SOURCE_KEY == "legacy_gold.silver.players|legacy_gold.silver.bbr_player_profile"
 
 
 def test_choose_candidates_accepts_unique_exact_name_when_not_blocked():

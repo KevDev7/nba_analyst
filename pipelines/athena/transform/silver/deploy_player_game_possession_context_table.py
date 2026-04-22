@@ -5,7 +5,9 @@ Register the silver player_game_possession_context parquet as an Athena external
 from __future__ import annotations
 
 import io
+import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import boto3
@@ -21,7 +23,7 @@ try:
         TABLE_NAME,
     )
 except ModuleNotFoundError:
-    repo_root = Path(__file__).resolve().parents[3]
+    repo_root = Path(__file__).resolve().parents[4]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     from pipelines.athena.transform.gold.athena_view_helpers import AthenaClient, load_settings
@@ -32,9 +34,14 @@ except ModuleNotFoundError:
     )
 
 load_dotenv(override=True)
+if os.getenv("AWS_PROFILE", "").strip() == "":
+    os.environ.pop("AWS_PROFILE", None)
+if os.getenv("AWS_DEFAULT_PROFILE", "").strip() == "":
+    os.environ.pop("AWS_DEFAULT_PROFILE", None)
 
 ATHENA_DATA_KEY = "silver/player_game_possession_context/data.parquet"
 TABLE_LOCATION = f"s3://{S3_BUCKET}/silver/player_game_possession_context/"
+TARGET_DATABASE = "silver"
 
 
 def athena_type_for_field(field: pa.Field) -> str:
@@ -77,7 +84,7 @@ LOCATION '{TABLE_LOCATION}'
 
 
 def main() -> None:
-    settings = load_settings()
+    settings = replace(load_settings(), database=TARGET_DATABASE)
     athena_client = AthenaClient(settings)
     ensure_athena_data_copy()
     schema = fetch_schema()

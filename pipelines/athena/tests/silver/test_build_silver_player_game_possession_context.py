@@ -10,7 +10,10 @@ def _played_players() -> dict[int, dict[str, object]]:
         person_id: {
             "person_id": person_id,
             "team_id": 1 if person_id <= 5 else 2,
-            "seconds_played_total": 600.0,
+            "minutes_seconds_total": 600.0,
+            "field_goals_attempted": 10,
+            "free_throws_attempted": 4,
+            "turnovers_total": 3,
         }
         for person_id in range(1, 11)
     }
@@ -30,15 +33,38 @@ def _on_court_rows() -> list[dict[str, object]]:
     ]
 
 
+def _playbyplay_rows_for_made_shot() -> list[dict[str, object]]:
+    return [
+        {
+            "actionNumber": 1,
+            "orderNumber": 1500,
+            "teamId": 1,
+            "personId": 1,
+            "scoreHome": 2,
+            "scoreAway": 0,
+            "resolvedOffenseTeamId": 1,
+            "resolvedDefenseTeamId": 2,
+            "countAsPossession": True,
+            "isMadeShot": True,
+            "isFreeThrow": False,
+            "isTurnover": False,
+            "isRebound": False,
+            "isDreb": False,
+            "linkedShotActionNumber": None,
+        }
+    ]
+
+
 def test_build_exact_or_ot_player_game_stats_credits_exact_lineups() -> None:
     stats = pgpc.build_exact_or_ot_player_game_stats(
         [
-            {
-                "startOrderNumber": 1200,
-                "endOrderNumber": 1500,
-                "offenseTeamId": 1,
-                "defenseTeamId": 2,
-                "offenseHomeAway": "h",
+                {
+                    "startOrderNumber": 1200,
+                    "endOrderNumber": 1500,
+                    "endActionNumber": 1,
+                    "offenseTeamId": 1,
+                    "defenseTeamId": 2,
+                    "offenseHomeAway": "h",
                 "defenseHomeAway": "v",
                 "pointsScoredOnPossession": 2,
                 "countsAsPossession": True,
@@ -47,12 +73,14 @@ def test_build_exact_or_ot_player_game_stats_credits_exact_lineups() -> None:
             }
         ],
         _on_court_rows(),
+        _playbyplay_rows_for_made_shot(),
         _played_players(),
         source_method="exact",
     )
 
     assert stats is not None
     assert stats[1]["offensive_possessions"] == 1.0
+    assert stats[1]["used_offensive_possessions"] == 1.0
     assert stats[1]["team_points_for_while_on_court"] == 2.0
     assert stats[1]["exact_possessions_count"] == 1.0
     assert stats[1]["exact_game_flag"] == 1
@@ -77,6 +105,7 @@ def test_build_exact_or_ot_player_game_stats_recovers_missing_lineup_from_on_cou
             }
         ],
         _on_court_rows(),
+        _playbyplay_rows_for_made_shot(),
         _played_players(),
         source_method="exact",
     )
@@ -104,6 +133,7 @@ def test_build_exact_or_ot_player_game_stats_marks_ot_fallback_separately() -> N
             }
         ],
         _on_court_rows(),
+        _playbyplay_rows_for_made_shot(),
         _played_players(),
         source_method="ot_fallback",
     )
@@ -114,26 +144,105 @@ def test_build_exact_or_ot_player_game_stats_marks_ot_fallback_separately() -> N
     assert stats[1]["exact_game_flag"] == 0
 
 
+def test_build_exact_or_ot_player_game_stats_credits_shooter_on_defensive_rebound_end() -> None:
+    stats = pgpc.build_exact_or_ot_player_game_stats(
+        [
+            {
+                "startOrderNumber": 1200,
+                "endOrderNumber": 1500,
+                "endActionNumber": 10,
+                "offenseTeamId": 1,
+                "defenseTeamId": 2,
+                "offenseHomeAway": "h",
+                "defenseHomeAway": "v",
+                "pointsScoredOnPossession": 0,
+                "countsAsPossession": True,
+                "homeLineupId": "1-2-3-4-5",
+                "awayLineupId": "6-7-8-9-10",
+            }
+        ],
+        _on_court_rows(),
+        [
+            {
+                "actionNumber": 9,
+                "orderNumber": 1400,
+                "teamId": 1,
+                "personId": 1,
+                "scoreHome": 0,
+                "scoreAway": 0,
+                "resolvedOffenseTeamId": 1,
+                "resolvedDefenseTeamId": 2,
+                "countAsPossession": False,
+                "isMadeShot": False,
+                "isFreeThrow": False,
+                "isTurnover": False,
+                "isRebound": False,
+                "isDreb": False,
+                "linkedShotActionNumber": None,
+            },
+            {
+                "actionNumber": 10,
+                "orderNumber": 1500,
+                "teamId": 2,
+                "personId": 6,
+                "scoreHome": 0,
+                "scoreAway": 0,
+                "resolvedOffenseTeamId": 1,
+                "resolvedDefenseTeamId": 2,
+                "countAsPossession": True,
+                "isMadeShot": False,
+                "isFreeThrow": False,
+                "isTurnover": False,
+                "isRebound": True,
+                "isDreb": True,
+                "linkedShotActionNumber": 9,
+            },
+        ],
+        _played_players(),
+        source_method="exact",
+    )
+
+    assert stats is not None
+    assert stats[1]["used_offensive_possessions"] == 1.0
+    assert stats[6]["used_offensive_possessions"] == 0.0
+
+
 def test_build_event_estimated_player_game_stats_uses_on_court_state() -> None:
     stats = pgpc.build_event_estimated_player_game_stats(
         [
             {
                 "actionNumber": 1,
                 "orderNumber": 1000,
+                "teamId": 1,
+                "personId": 1,
                 "scoreHome": 0,
                 "scoreAway": 0,
                 "resolvedOffenseTeamId": 1,
                 "resolvedDefenseTeamId": 2,
                 "countAsPossession": False,
+                "isMadeShot": False,
+                "isFreeThrow": False,
+                "isTurnover": False,
+                "isRebound": False,
+                "isDreb": False,
+                "linkedShotActionNumber": None,
             },
             {
                 "actionNumber": 2,
                 "orderNumber": 2000,
+                "teamId": 1,
+                "personId": 1,
                 "scoreHome": 2,
                 "scoreAway": 0,
                 "resolvedOffenseTeamId": 1,
                 "resolvedDefenseTeamId": 2,
                 "countAsPossession": True,
+                "isMadeShot": True,
+                "isFreeThrow": False,
+                "isTurnover": False,
+                "isRebound": False,
+                "isDreb": False,
+                "linkedShotActionNumber": None,
             },
         ],
         _on_court_rows(),
@@ -142,6 +251,7 @@ def test_build_event_estimated_player_game_stats_uses_on_court_state() -> None:
 
     assert stats is not None
     assert stats[1]["offensive_possessions"] == 1.0
+    assert stats[1]["used_offensive_possessions"] == 1.0
     assert stats[1]["team_points_for_while_on_court"] == 2.0
     assert stats[6]["defensive_possessions"] == 1.0
     assert stats[6]["team_points_against_while_on_court"] == 2.0
@@ -152,24 +262,24 @@ def test_build_boxscore_estimated_player_game_stats_allocates_by_minute_share() 
     stats = pgpc.build_boxscore_estimated_player_game_stats(
         _played_players(),
         {
-            ("0022400001", 1): {
-                "opponent_team_id": 2,
-                "score": 110,
-                "points_against": 100,
-                "seconds_played_total": 2400.0,
-                "field_goals_attempted": 80,
-                "free_throws_attempted": 20,
-                "rebounds_offensive": 10,
-                "turnovers_total": 12,
-            },
-            ("0022400001", 2): {
-                "opponent_team_id": 1,
-                "score": 100,
-                "points_against": 110,
-                "seconds_played_total": 2400.0,
-                "field_goals_attempted": 78,
-                "free_throws_attempted": 18,
-                "rebounds_offensive": 9,
+                ("0022400001", 1): {
+                    "opponent_team_id": 2,
+                    "score": 110,
+                    "points_against": 100,
+                    "minutes_seconds_total": 2400.0,
+                    "field_goals_attempted": 80,
+                    "free_throws_attempted": 20,
+                    "rebounds_offensive": 10,
+                    "turnovers_total": 12,
+                },
+                ("0022400001", 2): {
+                    "opponent_team_id": 1,
+                    "score": 100,
+                    "points_against": 110,
+                    "minutes_seconds_total": 2400.0,
+                    "field_goals_attempted": 78,
+                    "free_throws_attempted": 18,
+                    "rebounds_offensive": 9,
                 "turnovers_total": 11,
             },
         },
@@ -180,6 +290,7 @@ def test_build_boxscore_estimated_player_game_stats_allocates_by_minute_share() 
     assert stats[1]["boxscore_estimated_game_flag"] == 1
     assert stats[1]["offensive_possessions"] > 0
     assert stats[1]["defensive_possessions"] > 0
+    assert math.isclose(stats[1]["used_offensive_possessions"], 10 + (0.44 * 4) + 3)
     assert stats[1]["team_points_for_while_on_court"] > 0
     assert stats[1]["team_points_against_while_on_court"] > 0
     assert math.isclose(
@@ -202,3 +313,4 @@ def test_choose_game_stats_marks_missing_when_no_path_is_usable() -> None:
     assert stats[1]["missing_game_flag"] == 1
     assert stats[1]["possession_source_method"] == "missing"
     assert stats[1]["offensive_possessions"] == 0.0
+    assert stats[1]["used_offensive_possessions"] == 0.0

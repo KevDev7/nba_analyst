@@ -6,7 +6,7 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/player_identity_bridge_bbr_nba.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/player_award_history/player_award_history.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/player_award_history/player_award_history.parquet
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ load_dotenv(override=True)
 
 AWARDS_SOURCE_KEY = "silver/bbr_player_awards.parquet"
 BRIDGE_SOURCE_KEY = "silver/player_identity_bridge_bbr_nba.parquet"
-DESTINATION_KEY = "gold/player_award_history/player_award_history.parquet"
+DESTINATION_KEY = "legacy_gold/player_award_history/player_award_history.parquet"
 RECORD_SOURCE = "silver/bbr_player_awards.parquet|silver/player_identity_bridge_bbr_nba.parquet"
 
 AWARDS_REQUIRED_COLUMNS = [

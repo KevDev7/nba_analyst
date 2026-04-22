@@ -13,8 +13,8 @@ except ImportError:
 PLAYER_SOURCE_KEY = "silver/boxscore_player_game.parquet"
 GAME_SOURCE_KEY = "silver/boxscore_game.parquet"
 PLAYER_BIO_SOURCE_KEY = "silver/players.parquet"
-DIM_TEAM_SOURCE_KEY = "gold/dim_team/dim_team.parquet"
-DIM_PLAYER_SOURCE_KEY = "gold/dim_player/dim_player.parquet"
+DIM_TEAM_SOURCE_KEY = "legacy_gold/dim_team/dim_team.parquet"
+DIM_PLAYER_SOURCE_KEY = "legacy_gold/dim_player/dim_player.parquet"
 BBR_BRIDGE_SOURCE_KEY = "silver/player_identity_bridge_bbr_nba.parquet"
 BBR_PROFILE_SOURCE_KEY = "silver/bbr_player_profile.parquet"
 

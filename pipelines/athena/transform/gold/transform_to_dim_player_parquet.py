@@ -5,10 +5,10 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/boxscore_player_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/boxscore_game.parquet
   s3://nba-analytics-lakehouse-dev/silver/players.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/dim_player/dim_player.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_player/dim_player.parquet
 """
 
 from __future__ import annotations

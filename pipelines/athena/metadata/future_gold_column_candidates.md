@@ -143,6 +143,55 @@ Why not recommended:
 If we ever expose them in gold:
 - they should likely come through an event-grain model or a dedicated serving view
 
+## Deferred semantic_gold Candidates
+
+These are worth revisiting in a later semantic pass, but they were deferred from
+the current implementation wave because they need more definition discipline or
+clearer denominator logic.
+
+### `semantic_gold.team_season`
+
+#### `strength_of_schedule`
+
+Why it is deferred:
+- high-value team season context
+- but more definition-dependent than the current advanced stats
+- should only be added once the exact business definition is agreed
+
+Open question:
+- what canonical schedule-strength formula should the product use?
+
+#### `turnover_percentage`
+
+Why it is deferred:
+- strong basketball concept
+- but it should not be treated as equivalent to the already-added
+  `turnover_ratio`
+- likely needs a more specific plays-based denominator rather than the current
+  possession-based path
+
+Open question:
+- which denominator should be treated as canonical for the semantic surface?
+
+### `semantic_gold.player_game`
+
+#### non-playing player-game rows
+
+Why it is deferred:
+- the current semantic direction is to treat `PlayerGame` as actual on-court
+  participation rather than every source roster-status row
+- but there is still product value in later handling the excluded non-playing
+  cases explicitly
+
+Later cases to handle:
+- dressed but never entered
+- inactive / unavailable
+- bench DNP rows
+
+Open question:
+- should these eventually live as a normalized participation-status dimension on
+  `PlayerGame`, or as a separate status-oriented semantic object/surface?
+
 ## Summary Recommendation
 
 If we pick only a few future gold promotions, the best next candidates are:

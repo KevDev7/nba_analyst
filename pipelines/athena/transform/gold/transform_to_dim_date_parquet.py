@@ -6,7 +6,7 @@ Reads:
   s3://nba-analytics-lakehouse-dev/silver/boxscore_game.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/dim_date/dim_date.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_date/dim_date.parquet
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ load_dotenv(override=True)
 
 SCHEDULE_SOURCE_KEY = "silver/scheduleLeagueV2_1.parquet"
 BOXSCORE_SOURCE_KEY = "silver/boxscore_game.parquet"
-DESTINATION_KEY = "gold/dim_date/dim_date.parquet"
+DESTINATION_KEY = "legacy_gold/dim_date/dim_date.parquet"
 
 SCHEDULE_REQUIRED_COLUMNS = [
     "gameDate",

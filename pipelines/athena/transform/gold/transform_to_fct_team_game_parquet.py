@@ -3,13 +3,13 @@ Build gold fct_team_game from silver team-game boxscore rows.
 
 Reads:
   s3://nba-analytics-lakehouse-dev/silver/boxscore_team_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/fct_player_game/fct_player_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_game/dim_game.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_date/dim_date.parquet
-  s3://nba-analytics-lakehouse-dev/gold/dim_team/dim_team.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_player_game/fct_player_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_game/dim_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_date/dim_date.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/dim_team/dim_team.parquet
 
 Writes (full overwrite):
-  s3://nba-analytics-lakehouse-dev/gold/fct_team_game/fct_team_game.parquet
+  s3://nba-analytics-lakehouse-dev/legacy_gold/fct_team_game/fct_team_game.parquet
 """
 
 from __future__ import annotations
@@ -53,11 +53,11 @@ except ImportError:
 load_dotenv(override=True)
 
 TEAM_GAME_SOURCE_KEY = "silver/boxscore_team_game.parquet"
-PLAYER_FACT_KEY = "gold/fct_player_game/fct_player_game.parquet"
-DIM_GAME_KEY = "gold/dim_game/dim_game.parquet"
-DIM_DATE_KEY = "gold/dim_date/dim_date.parquet"
-DIM_TEAM_KEY = "gold/dim_team/dim_team.parquet"
-DESTINATION_KEY = "gold/fct_team_game/fct_team_game.parquet"
+PLAYER_FACT_KEY = "legacy_gold/fct_player_game/fct_player_game.parquet"
+DIM_GAME_KEY = "legacy_gold/dim_game/dim_game.parquet"
+DIM_DATE_KEY = "legacy_gold/dim_date/dim_date.parquet"
+DIM_TEAM_KEY = "legacy_gold/dim_team/dim_team.parquet"
+DESTINATION_KEY = "legacy_gold/fct_team_game/fct_team_game.parquet"
 
 RECORD_SOURCE = "silver.boxscore_team_game|gold.fct_player_game|gold.dim_game|gold.dim_date|gold.dim_team"
 
