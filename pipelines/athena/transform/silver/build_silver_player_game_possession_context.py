@@ -17,6 +17,7 @@ Writes:
 from __future__ import annotations
 
 import io
+import os
 import re
 import uuid
 from collections import Counter
@@ -36,6 +37,10 @@ except ModuleNotFoundError:
     from silver_pipeline_helpers import write_audit_artifacts  # type: ignore[no-redef]
 
 load_dotenv(override=True)
+if os.getenv("AWS_PROFILE", "").strip() == "":
+    os.environ.pop("AWS_PROFILE", None)
+if os.getenv("AWS_DEFAULT_PROFILE", "").strip() == "":
+    os.environ.pop("AWS_DEFAULT_PROFILE", None)
 
 S3_BUCKET = "nba-analytics-lakehouse-dev"
 PLAYER_SOURCE_KEY = "silver/boxscore_player_game.parquet"
@@ -78,6 +83,9 @@ PLAYER_REQUIRED_COLUMNS = [
     "played",
     "minutes",
     "minutesCalculated",
+    "fieldGoalsAttempted",
+    "freeThrowsAttempted",
+    "turnovers",
 ]
 
 TEAM_REQUIRED_COLUMNS = [
@@ -128,11 +136,19 @@ PLAYBYPLAY_REQUIRED_COLUMNS = [
     "gameId",
     "actionNumber",
     "orderNumber",
+    "teamId",
+    "personId",
     "scoreHome",
     "scoreAway",
     "resolvedOffenseTeamId",
     "resolvedDefenseTeamId",
     "countAsPossession",
+    "isMadeShot",
+    "isFreeThrow",
+    "isTurnover",
+    "isRebound",
+    "isDreb",
+    "linkedShotActionNumber",
 ]
 
 TARGET_SCHEMA = pa.schema(
@@ -147,6 +163,7 @@ TARGET_SCHEMA = pa.schema(
         pa.field("offensive_possessions", pa.float64()),
         pa.field("defensive_possessions", pa.float64()),
         pa.field("possessions_total", pa.float64()),
+        pa.field("used_offensive_possessions", pa.float64()),
         pa.field("team_points_for_while_on_court", pa.float64()),
         pa.field("team_points_against_while_on_court", pa.float64()),
         pa.field("possession_source_method", pa.string()),
@@ -343,11 +360,21 @@ def list_partition_game_ids(s3_client, prefix: str) -> set[str]:
     return game_ids
 
 
+def build_playbyplay_lookup(rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    lookup: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        action_number = to_int_or_none(row.get("actionNumber"))
+        if action_number is not None:
+            lookup[action_number] = row
+    return lookup
+
+
 def init_player_stats(person_ids: set[int], source_method: str) -> dict[int, dict[str, Any]]:
     return {
         person_id: {
             "offensive_possessions": 0.0,
             "defensive_possessions": 0.0,
+            "used_offensive_possessions": 0.0,
             "team_points_for_while_on_court": 0.0,
             "team_points_against_while_on_court": 0.0,
             "possession_source_method": source_method,
@@ -401,6 +428,9 @@ def build_played_players_by_game(player_table: pa.Table) -> dict[str, dict[int, 
             "person_id": person_id,
             "team_id": team_id,
             "minutes_seconds_total": minutes_seconds or 0.0,
+            "field_goals_attempted": to_int_or_none(row.get("fieldGoalsAttempted")) or 0,
+            "free_throws_attempted": to_int_or_none(row.get("freeThrowsAttempted")) or 0,
+            "turnovers_total": to_int_or_none(row.get("turnoversTotal")) or to_int_or_none(row.get("turnovers")) or 0,
         }
     return rows_by_game
 
@@ -521,6 +551,40 @@ def assign_possession(
             player_stats["recovered_from_on_court_count"] += 1.0
 
 
+def resolve_used_offensive_player_id(
+    end_row: dict[str, Any] | None,
+    playbyplay_lookup: dict[int, dict[str, Any]],
+    *,
+    offense_team_id: int | None,
+) -> int | None:
+    if end_row is None or offense_team_id is None:
+        return None
+
+    def _player_id_if_matching_team(row: dict[str, Any] | None) -> int | None:
+        if row is None or to_int_or_none(row.get("teamId")) != offense_team_id:
+            return None
+        return to_int_or_none(row.get("personId"))
+
+    if to_bool_or_none(end_row.get("isTurnover")) is True:
+        return _player_id_if_matching_team(end_row)
+
+    if to_bool_or_none(end_row.get("isMadeShot")) is True:
+        return _player_id_if_matching_team(end_row)
+
+    if to_bool_or_none(end_row.get("isFreeThrow")) is True:
+        return _player_id_if_matching_team(end_row)
+
+    if (
+        to_bool_or_none(end_row.get("isRebound")) is True
+        and to_bool_or_none(end_row.get("isDreb")) is True
+    ):
+        linked_shot_action_number = to_int_or_none(end_row.get("linkedShotActionNumber"))
+        linked_shot_row = playbyplay_lookup.get(linked_shot_action_number or -1)
+        return _player_id_if_matching_team(linked_shot_row)
+
+    return None
+
+
 def resolve_home_away_team_ids_from_possession_row(
     row: dict[str, Any],
     on_court_lookup: dict[str, Any] | None,
@@ -574,6 +638,7 @@ def resolve_lineups_for_possession_row(
 def build_exact_or_ot_player_game_stats(
     possession_rows: list[dict[str, Any]] | None,
     on_court_rows: list[dict[str, Any]] | None,
+    playbyplay_rows: list[dict[str, Any]] | None,
     played_players: dict[int, dict[str, Any]],
     *,
     source_method: str,
@@ -585,6 +650,7 @@ def build_exact_or_ot_player_game_stats(
     stats = init_player_stats(set(played_players), source_method)
     count_field = "exact_possessions_count" if source_method == "exact" else "ot_fallback_possessions_count"
     game_flag_field = "exact_game_flag" if source_method == "exact" else "ot_fallback_game_flag"
+    playbyplay_lookup = build_playbyplay_lookup(playbyplay_rows or [])
 
     for row in counted_rows:
         resolved = resolve_lineups_for_possession_row(row, on_court_lookup)
@@ -613,6 +679,13 @@ def build_exact_or_ot_player_game_stats(
             method_count_field=count_field,
             recovered=recovered,
         )
+        used_person_id = resolve_used_offensive_player_id(
+            playbyplay_lookup.get(to_int_or_none(row.get("endActionNumber")) or -1),
+            playbyplay_lookup,
+            offense_team_id=offense_team_id,
+        )
+        if used_person_id is not None and used_person_id in stats:
+            stats[used_person_id]["used_offensive_possessions"] += 1.0
 
     for player_stats in stats.values():
         player_stats[game_flag_field] = 1
@@ -634,6 +707,7 @@ def build_event_estimated_player_game_stats(
         return None
 
     stats = init_player_stats(set(played_players), "event_estimated")
+    playbyplay_lookup = build_playbyplay_lookup(playbyplay_rows)
     previous_score_home = 0
     previous_score_away = 0
 
@@ -701,6 +775,13 @@ def build_event_estimated_player_game_stats(
             points=0.0,
             method_count_field="event_estimated_possessions_count",
         )
+        used_person_id = resolve_used_offensive_player_id(
+            row,
+            playbyplay_lookup,
+            offense_team_id=offense_team_id,
+        )
+        if used_person_id is not None and used_person_id in stats:
+            stats[used_person_id]["used_offensive_possessions"] += 1.0
 
     for player_stats in stats.values():
         player_stats["event_estimated_game_flag"] = 1
@@ -752,9 +833,15 @@ def build_boxscore_estimated_player_game_stats(
             return None
         minute_share = player_minutes_seconds_total / (team_minutes_seconds_total / 5.0)
         estimated_possessions = minute_share * team_possessions_estimate(team_row, opponent_row)
+        used_offensive_possessions = (
+            float(to_int_or_none(player_info.get("field_goals_attempted")) or 0)
+            + (0.44 * float(to_int_or_none(player_info.get("free_throws_attempted")) or 0))
+            + float(to_int_or_none(player_info.get("turnovers_total")) or 0)
+        )
         player_stats = stats[person_id]
         player_stats["offensive_possessions"] = estimated_possessions
         player_stats["defensive_possessions"] = estimated_possessions
+        player_stats["used_offensive_possessions"] = used_offensive_possessions
         player_stats["team_points_for_while_on_court"] = minute_share * float(to_int_or_none(team_row.get("score")) or 0)
         player_stats["team_points_against_while_on_court"] = minute_share * float(
             to_int_or_none(team_row.get("points_against")) or 0
@@ -784,6 +871,7 @@ def choose_game_stats(
     exact_stats = build_exact_or_ot_player_game_stats(
         exact_rows,
         on_court_rows,
+        playbyplay_rows,
         played_players,
         source_method="exact",
     )
@@ -792,6 +880,7 @@ def choose_game_stats(
     ot_fallback_stats = build_exact_or_ot_player_game_stats(
         ot_fallback_rows,
         on_court_rows,
+        playbyplay_rows,
         played_players,
         source_method="ot_fallback",
     )
@@ -846,6 +935,7 @@ def finalize_player_game_row(
         "offensive_possessions": offensive_possessions,
         "defensive_possessions": defensive_possessions,
         "possessions_total": offensive_possessions + defensive_possessions,
+        "used_offensive_possessions": to_float_or_none(stats.get("used_offensive_possessions")) or 0.0,
         "team_points_for_while_on_court": to_float_or_none(stats.get("team_points_for_while_on_court")) or 0.0,
         "team_points_against_while_on_court": to_float_or_none(stats.get("team_points_against_while_on_court")) or 0.0,
         "possession_source_method": to_str_or_none(stats.get("possession_source_method")),

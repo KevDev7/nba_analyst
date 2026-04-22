@@ -37,6 +37,7 @@ Related reference:
 | `silver/possessions_ot_fallback` | One row per recovered fallback possession | Separate possession artifact for recoverable overtime games where the pbpstats-exact loader failed. |
 | `silver/player_game_possession_context` | One row per `(game_id, person_id)` | Canonical player-game on-court possession attribution table that blends exact possessions, OT fallback possessions, event-estimated recovery, and boxscore minute-share fallback with explicit provenance flags. |
 | `silver/player_game_defensive_shot_context` | One row per `(game_id, person_id)` | Canonical player-game defensive shot attribution table for opponent two-point attempts while the player is on court, with exact on-court, event-estimated, and boxscore fallback provenance. |
+| `silver/player_game_opportunity_context` | One row per `(game_id, person_id)` | Canonical player-game opportunity attribution table for teammate made field goals and rebound opportunities while the player is on court, with separate assist-family and rebound-family provenance. |
 | `silver/team_game_possession_context` | One row per `(game_id, team_id)` | Canonical team-game possession attribution table that blends exact possessions, OT fallback possessions, event-estimated recovery, and boxscore-estimated fallback with explicit provenance flags. |
 | `silver/scheduleLeagueV2_1` | One row per scheduled game | Flat schedule table from the raw CDN `scheduleLeagueV2_1` payload. |
 | `silver/team_histories` | One row per Kaggle team-history row | Legacy Kaggle team-history reference table. |
@@ -49,7 +50,9 @@ Related reference:
 - `silver/on_court_state` and `silver/possessions` are separate because they are different grains from the source action stream.
 - `silver/possessions_ot_fallback` is intentionally separate from `silver/possessions`; it should be treated as a recovery ledger, not as pbpstats-exact output.
 - `silver/player_game_possession_context` is the canonical silver serving layer for player on-court possessions and on-court points. Gold season attribution should sum this table rather than restitch possession sidecars directly.
+- `silver/player_game_possession_context` also carries the canonical player-game used-possession numerator for higher-quality downstream usage rate calculations.
 - `silver/player_game_defensive_shot_context` is the canonical silver serving layer for player on-court opponent two-point-attempt attribution. Gold block-rate denominators should sum this table rather than re-estimate opponent 2PA from team season context.
+- `silver/player_game_opportunity_context` is the canonical silver serving layer for player on-court assist and rebound opportunity denominators. Gold season attribution should sum this table rather than rely on minute-share proxy formulas for AST% and rebound percentages.
 - `silver/team_game_possession_context` is the canonical silver serving layer for team-game possessions. Gold team-season possession totals should sum this table rather than re-estimate possessions inside the serving view.
 - The Basketball Reference silver tables are sourced from raw HTML snapshots, not JSON APIs. Schema discovery therefore relies on label inventorying and paragraph-shape parsing rather than fixed response contracts.
 - `silver/player_identity_bridge_bbr_nba` is intentionally conservative and should be treated as an iterative matching artifact rather than a final canonical dimension. The matched table is now ownership-resolved so each Basketball Reference id appears at most once. Ambiguous, duplicate-NBA, and unmatched outputs are part of the expected workflow.
@@ -260,6 +263,7 @@ Core columns:
   - `game_id`, `person_id`, `team_id`, `season_year`, `season_start_year`, `season_type_code`, `season_type`
 - canonical on-court totals:
   - `offensive_possessions`, `defensive_possessions`, `possessions_total`
+  - `used_offensive_possessions`
   - `team_points_for_while_on_court`, `team_points_against_while_on_court`
 - provenance counts:
   - `exact_possessions_count`, `recovered_from_on_court_count`, `ot_fallback_possessions_count`
@@ -295,6 +299,39 @@ Core columns:
   - `boxscore_estimated_game_flag`, `missing_game_flag`
 - method tag:
   - `shot_context_source_method`
+
+### `silver/player_game_opportunity_context`
+
+Grain: one row per `(game_id, person_id)`.
+
+Source:
+- `silver/boxscore_player_game`
+- `silver/boxscore_team_game`
+- `silver/scheduleLeagueV2_1`
+- `silver/playbyplay`
+- `silver/on_court_state`
+- `silver/pbpstats_event_context_v1`
+
+Core columns:
+- identity:
+  - `game_id`, `person_id`, `team_id`, `season_year`, `season_start_year`, `season_type_code`, `season_type`
+- canonical opportunity totals:
+  - `teammate_field_goals_made_while_on_court`
+  - `offensive_rebound_opportunities_while_on_court`
+  - `defensive_rebound_opportunities_while_on_court`
+  - `rebound_opportunities_while_on_court`
+- assist-family provenance:
+  - `assist_context_source_method`
+  - `assist_exact_count`, `assist_event_estimated_count`
+  - `assist_boxscore_estimated_count`, `assist_missing_count`
+  - `assist_exact_game_flag`, `assist_event_estimated_game_flag`
+  - `assist_boxscore_estimated_game_flag`, `assist_missing_game_flag`
+- rebound-family provenance:
+  - `rebound_context_source_method`
+  - `rebound_exact_count`, `rebound_event_estimated_count`
+  - `rebound_boxscore_estimated_count`, `rebound_missing_count`
+  - `rebound_exact_game_flag`, `rebound_event_estimated_game_flag`
+  - `rebound_boxscore_estimated_game_flag`, `rebound_missing_game_flag`
 
 ### `silver/team_game_possession_context`
 

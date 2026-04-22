@@ -294,22 +294,10 @@ objects:
     link_key: true
     visibility: public
     derivation: null
-  - name: team_home_or_away
+  - name: opponent_team_id
     kind: dimension
-    source_column: team_home_or_away
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_start_time_utc
-    kind: dimension
-    source_column: game_start_time_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_date
-    kind: dimension
-    source_column: game_date
-    link_key: false
+    source_column: opponent_team_id
+    link_key: true
     visibility: public
     derivation: null
   - name: season_year
@@ -324,15 +312,33 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+  - name: game_date
+    kind: dimension
+    source_column: game_date
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: game_start_time_utc
+    kind: dimension
+    source_column: game_start_time_utc
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: team_home_or_away
+    kind: dimension
+    source_column: team_home_or_away
+    link_key: false
+    visibility: public
+    derivation: null
   - name: is_starter
     kind: dimension
     source_column: is_starter
     link_key: false
     visibility: public
     derivation: null
-  - name: did_play
+  - name: win_loss_result
     kind: dimension
-    source_column: did_play
+    source_column: win_loss_result
     link_key: false
     visibility: public
     derivation: null
@@ -348,51 +354,63 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+  - name: points
+    kind: measure
+    source_column: points
+    link_key: false
+    visibility: public
+    derivation: null
   - name: assists
     kind: measure
     source_column: assists
     link_key: false
     visibility: public
     derivation: null
-  - name: shots_blocked
+  - name: turnovers
     kind: measure
-    source_column: shots_blocked
+    source_column: turnovers
     link_key: false
     visibility: public
     derivation: null
-  - name: shots_blocked_against
+  - name: total_rebounds
     kind: measure
-    source_column: shots_blocked_against
+    source_column: total_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: field_goals_attempted
+  - name: offensive_rebounds
     kind: measure
-    source_column: field_goals_attempted
+    source_column: offensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: field_goals_made
+  - name: defensive_rebounds
     kind: measure
-    source_column: field_goals_made
+    source_column: defensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: field_goals_percentage
+  - name: steals
     kind: measure
-    source_column: field_goals_percentage
+    source_column: steals
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks
+    kind: measure
+    source_column: blocks
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_blocks
+    kind: measure
+    source_column: opponent_blocks
     link_key: false
     visibility: public
     derivation: null
   - name: offensive_fouls_committed
     kind: measure
     source_column: offensive_fouls_committed
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: fouls_drawn
-    kind: measure
-    source_column: fouls_drawn
     link_key: false
     visibility: public
     derivation: null
@@ -408,93 +426,9 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: free_throws_attempted
+  - name: fouls_drawn
     kind: measure
-    source_column: free_throws_attempted
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: free_throws_made
-    kind: measure
-    source_column: free_throws_made
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: free_throws_percentage
-    kind: measure
-    source_column: free_throws_percentage
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: defensive_rebounds
-    kind: measure
-    source_column: defensive_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: offensive_rebounds
-    kind: measure
-    source_column: offensive_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: total_rebounds
-    kind: measure
-    source_column: total_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: steals
-    kind: measure
-    source_column: steals
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: turnovers
-    kind: measure
-    source_column: turnovers
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: points
-    kind: measure
-    source_column: points
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: three_pointers_attempted
-    kind: measure
-    source_column: three_pointers_attempted
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: three_pointers_made
-    kind: measure
-    source_column: three_pointers_made
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: three_pointers_percentage
-    kind: measure
-    source_column: three_pointers_percentage
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: two_pointers_attempted
-    kind: measure
-    source_column: two_pointers_attempted
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: two_pointers_made
-    kind: measure
-    source_column: two_pointers_made
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: two_pointers_percentage
-    kind: measure
-    source_column: two_pointers_percentage
+    source_column: fouls_drawn
     link_key: false
     visibility: public
     derivation: null
@@ -513,6 +447,192 @@ objects:
   - name: second_chance_points
     kind: measure
     source_column: second_chance_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made
+    kind: measure
+    source_column: field_goals_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted
+    kind: measure
+    source_column: field_goals_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made
+    kind: measure
+    source_column: two_pointers_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted
+    kind: measure
+    source_column: two_pointers_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made
+    kind: measure
+    source_column: three_pointers_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted
+    kind: measure
+    source_column: three_pointers_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made
+    kind: measure
+    source_column: free_throws_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted
+    kind: measure
+    source_column: free_throws_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_possessions
+    kind: measure
+    source_column: offensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_possessions
+    kind: measure
+    source_column: defensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: possessions
+    kind: measure
+    source_column: possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: pace
+    kind: measure
+    source_column: pace
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rating
+    kind: measure
+    source_column: offensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rating
+    kind: measure
+    source_column: defensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: net_rating
+    kind: measure
+    source_column: net_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_to_turnover_ratio
+    kind: measure
+    source_column: assist_to_turnover_ratio
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_percentage
+    kind: measure
+    source_column: assist_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: usage_percentage
+    kind: measure
+    source_column: usage_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebound_percentage
+    kind: measure
+    source_column: offensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebound_percentage
+    kind: measure
+    source_column: defensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebound_percentage
+    kind: measure
+    source_column: rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steal_percentage
+    kind: measure
+    source_column: steal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: block_percentage
+    kind: measure
+    source_column: block_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: effective_field_goal_percentage
+    kind: measure
+    source_column: effective_field_goal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: true_shooting_percentage
+    kind: measure
+    source_column: true_shooting_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_point_attempt_rate
+    kind: measure
+    source_column: three_point_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throw_attempt_rate
+    kind: measure
+    source_column: free_throw_attempt_rate
     link_key: false
     visibility: public
     derivation: null
@@ -588,18 +708,6 @@ objects:
     link_key: true
     visibility: public
     derivation: null
-  - name: game_datetime_utc
-    kind: dimension
-    source_column: game_datetime_utc
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: game_date
-    kind: dimension
-    source_column: game_date
-    link_key: false
-    visibility: public
-    derivation: null
   - name: season_year
     kind: dimension
     source_column: season_year
@@ -612,9 +720,33 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+  - name: game_date
+    kind: dimension
+    source_column: game_date
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: game_start_time_utc
+    kind: dimension
+    source_column: game_start_time_utc
+    link_key: false
+    visibility: public
+    derivation: null
   - name: team_home_or_away
     kind: dimension
     source_column: team_home_or_away
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: win_loss_result
+    kind: dimension
+    source_column: win_loss_result
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: minutes_played
+    kind: measure
+    source_column: minutes_played
     link_key: false
     visibility: public
     derivation: null
@@ -636,117 +768,15 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: seconds_played_total
-    kind: measure
-    source_column: seconds_played_total
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: minutes_played_decimal
-    kind: measure
-    source_column: minutes_played_decimal
-    link_key: false
-    visibility: public
-    derivation: null
   - name: assists
     kind: measure
     source_column: assists
     link_key: false
     visibility: public
     derivation: null
-  - name: shots_blocked
+  - name: opponent_assists
     kind: measure
-    source_column: shots_blocked
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: shots_blocked_against
-    kind: measure
-    source_column: shots_blocked_against
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: field_goals_attempted
-    kind: measure
-    source_column: field_goals_attempted
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: field_goals_made
-    kind: measure
-    source_column: field_goals_made
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: field_goals_percentage
-    kind: measure
-    source_column: field_goals_percentage
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: offensive_fouls_committed
-    kind: measure
-    source_column: offensive_fouls_committed
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: fouls_drawn
-    kind: measure
-    source_column: fouls_drawn
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: personal_fouls_committed
-    kind: measure
-    source_column: personal_fouls_committed
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: technical_fouls_committed
-    kind: measure
-    source_column: technical_fouls_committed
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: free_throws_attempted
-    kind: measure
-    source_column: free_throws_attempted
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: free_throws_made
-    kind: measure
-    source_column: free_throws_made
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: free_throws_percentage
-    kind: measure
-    source_column: free_throws_percentage
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: defensive_rebounds
-    kind: measure
-    source_column: defensive_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: offensive_rebounds
-    kind: measure
-    source_column: offensive_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: total_rebounds
-    kind: measure
-    source_column: total_rebounds
-    link_key: false
-    visibility: public
-    derivation: null
-  - name: steals
-    kind: measure
-    source_column: steals
+    source_column: opponent_assists
     link_key: false
     visibility: public
     derivation: null
@@ -756,27 +786,201 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: three_pointers_attempted
+  - name: opponent_turnovers
     kind: measure
-    source_column: three_pointers_attempted
+    source_column: opponent_turnovers
     link_key: false
     visibility: public
     derivation: null
-  - name: three_pointers_made
+  - name: total_rebounds
     kind: measure
-    source_column: three_pointers_made
+    source_column: total_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: three_pointers_percentage
+  - name: offensive_rebounds
     kind: measure
-    source_column: three_pointers_percentage
+    source_column: offensive_rebounds
     link_key: false
     visibility: public
     derivation: null
-  - name: two_pointers_attempted
+  - name: defensive_rebounds
     kind: measure
-    source_column: two_pointers_attempted
+    source_column: defensive_rebounds
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_total_rebounds
+    kind: measure
+    source_column: opponent_total_rebounds
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_offensive_rebounds
+    kind: measure
+    source_column: opponent_offensive_rebounds
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_defensive_rebounds
+    kind: measure
+    source_column: opponent_defensive_rebounds
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals
+    kind: measure
+    source_column: steals
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_steals
+    kind: measure
+    source_column: opponent_steals
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks
+    kind: measure
+    source_column: blocks
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_blocks
+    kind: measure
+    source_column: opponent_blocks
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_fouls_committed
+    kind: measure
+    source_column: offensive_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_offensive_fouls_committed
+    kind: measure
+    source_column: opponent_offensive_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed
+    kind: measure
+    source_column: personal_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_personal_fouls_committed
+    kind: measure
+    source_column: opponent_personal_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: technical_fouls_committed
+    kind: measure
+    source_column: technical_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_technical_fouls_committed
+    kind: measure
+    source_column: opponent_technical_fouls_committed
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fouls_drawn
+    kind: measure
+    source_column: fouls_drawn
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_fouls_drawn
+    kind: measure
+    source_column: opponent_fouls_drawn
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fast_break_points
+    kind: measure
+    source_column: fast_break_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_fast_break_points
+    kind: measure
+    source_column: opponent_fast_break_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_in_paint
+    kind: measure
+    source_column: points_in_paint
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_points_in_paint
+    kind: measure
+    source_column: opponent_points_in_paint
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: second_chance_points
+    kind: measure
+    source_column: second_chance_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_second_chance_points
+    kind: measure
+    source_column: opponent_second_chance_points
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_off_turnovers
+    kind: measure
+    source_column: points_off_turnovers
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_points_off_turnovers
+    kind: measure
+    source_column: opponent_points_off_turnovers
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made
+    kind: measure
+    source_column: field_goals_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted
+    kind: measure
+    source_column: field_goals_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_field_goals_made
+    kind: measure
+    source_column: opponent_field_goals_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_field_goals_attempted
+    kind: measure
+    source_column: opponent_field_goals_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_field_goals_percentage
+    kind: measure
+    source_column: opponent_field_goals_percentage
     link_key: false
     visibility: public
     derivation: null
@@ -786,33 +990,213 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+  - name: two_pointers_attempted
+    kind: measure
+    source_column: two_pointers_attempted
+    link_key: false
+    visibility: public
+    derivation: null
   - name: two_pointers_percentage
     kind: measure
     source_column: two_pointers_percentage
     link_key: false
     visibility: public
     derivation: null
-  - name: points_fast_break
+  - name: opponent_two_pointers_made
     kind: measure
-    source_column: points_fast_break
+    source_column: opponent_two_pointers_made
     link_key: false
     visibility: public
     derivation: null
-  - name: points_in_the_paint
+  - name: opponent_two_pointers_attempted
     kind: measure
-    source_column: points_in_the_paint
+    source_column: opponent_two_pointers_attempted
     link_key: false
     visibility: public
     derivation: null
-  - name: points_second_chance
+  - name: opponent_two_pointers_percentage
     kind: measure
-    source_column: points_second_chance
+    source_column: opponent_two_pointers_percentage
     link_key: false
     visibility: public
     derivation: null
-  - name: game_result
-    kind: dimension
-    source_column: game_result
+  - name: three_pointers_made
+    kind: measure
+    source_column: three_pointers_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted
+    kind: measure
+    source_column: three_pointers_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_three_pointers_made
+    kind: measure
+    source_column: opponent_three_pointers_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_three_pointers_attempted
+    kind: measure
+    source_column: opponent_three_pointers_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_three_pointers_percentage
+    kind: measure
+    source_column: opponent_three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made
+    kind: measure
+    source_column: free_throws_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted
+    kind: measure
+    source_column: free_throws_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_free_throws_made
+    kind: measure
+    source_column: opponent_free_throws_made
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_free_throws_attempted
+    kind: measure
+    source_column: opponent_free_throws_attempted
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_free_throws_percentage
+    kind: measure
+    source_column: opponent_free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: possessions
+    kind: measure
+    source_column: possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_possessions
+    kind: measure
+    source_column: offensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_possessions
+    kind: measure
+    source_column: defensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: pace
+    kind: measure
+    source_column: pace
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rating
+    kind: measure
+    source_column: offensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rating
+    kind: measure
+    source_column: defensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: net_rating
+    kind: measure
+    source_column: net_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_percentage
+    kind: measure
+    source_column: assist_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_to_turnover_ratio
+    kind: measure
+    source_column: assist_to_turnover_ratio
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebound_percentage
+    kind: measure
+    source_column: offensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebound_percentage
+    kind: measure
+    source_column: defensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebound_percentage
+    kind: measure
+    source_column: rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steal_percentage
+    kind: measure
+    source_column: steal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: block_percentage
+    kind: measure
+    source_column: block_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: effective_field_goal_percentage
+    kind: measure
+    source_column: effective_field_goal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: true_shooting_percentage
+    kind: measure
+    source_column: true_shooting_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_point_attempt_rate
+    kind: measure
+    source_column: three_point_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throw_attempt_rate
+    kind: measure
+    source_column: free_throw_attempt_rate
     link_key: false
     visibility: public
     derivation: null
@@ -882,6 +1266,12 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+  - name: age_on_jan_31
+    kind: dimension
+    source_column: age_on_jan_31
+    link_key: false
+    visibility: public
+    derivation: null
   - name: team_count
     kind: dimension
     source_column: team_count
@@ -900,15 +1290,411 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: total_points
+  - name: games_started
     kind: measure
-    source_column: total_points
+    source_column: games_started
     link_key: false
     visibility: public
     derivation: null
-  - name: average_points
+  - name: minutes_total
     kind: measure
-    source_column: average_points
+    source_column: minutes_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: minutes_per_game
+    kind: measure
+    source_column: minutes_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: plus_minus_total
+    kind: measure
+    source_column: plus_minus_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_total
+    kind: measure
+    source_column: points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_per_game
+    kind: measure
+    source_column: points_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_total
+    kind: measure
+    source_column: assists_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_per_game
+    kind: measure
+    source_column: assists_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_total
+    kind: measure
+    source_column: turnovers_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_per_game
+    kind: measure
+    source_column: turnovers_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_total
+    kind: measure
+    source_column: rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_per_game
+    kind: measure
+    source_column: rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_total
+    kind: measure
+    source_column: offensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_per_game
+    kind: measure
+    source_column: offensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_total
+    kind: measure
+    source_column: defensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_per_game
+    kind: measure
+    source_column: defensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_total
+    kind: measure
+    source_column: steals_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_per_game
+    kind: measure
+    source_column: steals_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_total
+    kind: measure
+    source_column: blocks_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_per_game
+    kind: measure
+    source_column: blocks_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_blocks_total
+    kind: measure
+    source_column: opponent_blocks_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_fouls_committed_total
+    kind: measure
+    source_column: offensive_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_total
+    kind: measure
+    source_column: personal_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_per_game
+    kind: measure
+    source_column: personal_fouls_committed_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: technical_fouls_committed_total
+    kind: measure
+    source_column: technical_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fouls_drawn_total
+    kind: measure
+    source_column: fouls_drawn_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fast_break_points_total
+    kind: measure
+    source_column: fast_break_points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_in_paint_total
+    kind: measure
+    source_column: points_in_paint_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: second_chance_points_total
+    kind: measure
+    source_column: second_chance_points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_total
+    kind: measure
+    source_column: field_goals_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_per_game
+    kind: measure
+    source_column: field_goals_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_total
+    kind: measure
+    source_column: field_goals_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_per_game
+    kind: measure
+    source_column: field_goals_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_total
+    kind: measure
+    source_column: two_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_per_game
+    kind: measure
+    source_column: two_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_total
+    kind: measure
+    source_column: two_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_per_game
+    kind: measure
+    source_column: two_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_total
+    kind: measure
+    source_column: three_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_per_game
+    kind: measure
+    source_column: three_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_total
+    kind: measure
+    source_column: three_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_per_game
+    kind: measure
+    source_column: three_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_total
+    kind: measure
+    source_column: free_throws_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_per_game
+    kind: measure
+    source_column: free_throws_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_total
+    kind: measure
+    source_column: free_throws_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_per_game
+    kind: measure
+    source_column: free_throws_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_possessions_total
+    kind: measure
+    source_column: offensive_possessions_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_possessions_total
+    kind: measure
+    source_column: defensive_possessions_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: possessions
+    kind: measure
+    source_column: possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: pace
+    kind: measure
+    source_column: pace
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rating
+    kind: measure
+    source_column: offensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rating
+    kind: measure
+    source_column: defensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: net_rating
+    kind: measure
+    source_column: net_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_to_turnover_ratio
+    kind: measure
+    source_column: assist_to_turnover_ratio
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_percentage
+    kind: measure
+    source_column: assist_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: usage_percentage
+    kind: measure
+    source_column: usage_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebound_percentage
+    kind: measure
+    source_column: offensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebound_percentage
+    kind: measure
+    source_column: defensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebound_percentage
+    kind: measure
+    source_column: rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steal_percentage
+    kind: measure
+    source_column: steal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: block_percentage
+    kind: measure
+    source_column: block_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: effective_field_goal_percentage
+    kind: measure
+    source_column: effective_field_goal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_point_attempt_rate
+    kind: measure
+    source_column: three_point_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throw_attempt_rate
+    kind: measure
+    source_column: free_throw_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: true_shooting_percentage
+    kind: measure
+    source_column: true_shooting_percentage
     link_key: false
     visibility: public
     derivation: null
@@ -919,17 +1705,17 @@ objects:
     - games_played
     expression: games_played
     executable: true
-  - name: total_points
+  - name: points_total
     aggregation: identity
     source_attributes:
-    - total_points
-    expression: total_points
+    - points_total
+    expression: points_total
     executable: true
-  - name: average_points
+  - name: points_per_game
     aggregation: identity
     source_attributes:
-    - average_points
-    expression: average_points
+    - points_per_game
+    expression: points_per_game
     executable: true
 - name: PlayerSeasonTeam
   backing_table: player_season_team
@@ -966,15 +1752,411 @@ objects:
     link_key: false
     visibility: public
     derivation: null
-  - name: total_points
+  - name: games_started
     kind: measure
-    source_column: total_points
+    source_column: games_started
     link_key: false
     visibility: public
     derivation: null
-  - name: average_points
+  - name: minutes_total
     kind: measure
-    source_column: average_points
+    source_column: minutes_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: minutes_per_game
+    kind: measure
+    source_column: minutes_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_total
+    kind: measure
+    source_column: points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_per_game
+    kind: measure
+    source_column: points_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_total
+    kind: measure
+    source_column: assists_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_per_game
+    kind: measure
+    source_column: assists_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_total
+    kind: measure
+    source_column: rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_per_game
+    kind: measure
+    source_column: rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_total
+    kind: measure
+    source_column: offensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_per_game
+    kind: measure
+    source_column: offensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_total
+    kind: measure
+    source_column: defensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_per_game
+    kind: measure
+    source_column: defensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_total
+    kind: measure
+    source_column: steals_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_per_game
+    kind: measure
+    source_column: steals_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_total
+    kind: measure
+    source_column: blocks_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_per_game
+    kind: measure
+    source_column: blocks_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: opponent_blocks_total
+    kind: measure
+    source_column: opponent_blocks_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_total
+    kind: measure
+    source_column: turnovers_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_per_game
+    kind: measure
+    source_column: turnovers_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: plus_minus_total
+    kind: measure
+    source_column: plus_minus_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_fouls_committed_total
+    kind: measure
+    source_column: offensive_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_total
+    kind: measure
+    source_column: personal_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_per_game
+    kind: measure
+    source_column: personal_fouls_committed_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: technical_fouls_committed_total
+    kind: measure
+    source_column: technical_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fouls_drawn_total
+    kind: measure
+    source_column: fouls_drawn_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fast_break_points_total
+    kind: measure
+    source_column: fast_break_points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_in_paint_total
+    kind: measure
+    source_column: points_in_paint_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: second_chance_points_total
+    kind: measure
+    source_column: second_chance_points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_total
+    kind: measure
+    source_column: field_goals_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_per_game
+    kind: measure
+    source_column: field_goals_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_total
+    kind: measure
+    source_column: field_goals_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_per_game
+    kind: measure
+    source_column: field_goals_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_total
+    kind: measure
+    source_column: two_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_per_game
+    kind: measure
+    source_column: two_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_total
+    kind: measure
+    source_column: two_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_per_game
+    kind: measure
+    source_column: two_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_total
+    kind: measure
+    source_column: three_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_per_game
+    kind: measure
+    source_column: three_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_total
+    kind: measure
+    source_column: three_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_per_game
+    kind: measure
+    source_column: three_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_total
+    kind: measure
+    source_column: free_throws_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_per_game
+    kind: measure
+    source_column: free_throws_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_total
+    kind: measure
+    source_column: free_throws_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_per_game
+    kind: measure
+    source_column: free_throws_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_possessions_total
+    kind: measure
+    source_column: offensive_possessions_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_possessions_total
+    kind: measure
+    source_column: defensive_possessions_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: possessions
+    kind: measure
+    source_column: possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: pace
+    kind: measure
+    source_column: pace
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rating
+    kind: measure
+    source_column: offensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rating
+    kind: measure
+    source_column: defensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: net_rating
+    kind: measure
+    source_column: net_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_to_turnover_ratio
+    kind: measure
+    source_column: assist_to_turnover_ratio
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_percentage
+    kind: measure
+    source_column: assist_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: usage_percentage
+    kind: measure
+    source_column: usage_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebound_percentage
+    kind: measure
+    source_column: offensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebound_percentage
+    kind: measure
+    source_column: defensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebound_percentage
+    kind: measure
+    source_column: rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steal_percentage
+    kind: measure
+    source_column: steal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: block_percentage
+    kind: measure
+    source_column: block_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: effective_field_goal_percentage
+    kind: measure
+    source_column: effective_field_goal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_point_attempt_rate
+    kind: measure
+    source_column: three_point_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throw_attempt_rate
+    kind: measure
+    source_column: free_throw_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: true_shooting_percentage
+    kind: measure
+    source_column: true_shooting_percentage
     link_key: false
     visibility: public
     derivation: null
@@ -985,17 +2167,17 @@ objects:
     - games_played
     expression: games_played
     executable: true
-  - name: total_points
+  - name: points_total
     aggregation: identity
     source_attributes:
-    - total_points
-    expression: total_points
+    - points_total
+    expression: points_total
     executable: true
-  - name: average_points
+  - name: points_per_game
     aggregation: identity
     source_attributes:
-    - average_points
-    expression: average_points
+    - points_per_game
+    expression: points_per_game
     executable: true
 - name: TeamSeason
   backing_table: team_season
@@ -1040,6 +2222,372 @@ objects:
   - name: win_percentage
     kind: measure
     source_column: win_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: minutes
+    kind: measure
+    source_column: minutes
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: minutes_per_game
+    kind: measure
+    source_column: minutes_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_total
+    kind: measure
+    source_column: points_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: points_per_game
+    kind: measure
+    source_column: points_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_total
+    kind: measure
+    source_column: assists_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assists_per_game
+    kind: measure
+    source_column: assists_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_total
+    kind: measure
+    source_column: turnovers_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: turnovers_per_game
+    kind: measure
+    source_column: turnovers_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_total
+    kind: measure
+    source_column: rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebounds_per_game
+    kind: measure
+    source_column: rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_total
+    kind: measure
+    source_column: offensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebounds_per_game
+    kind: measure
+    source_column: offensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_total
+    kind: measure
+    source_column: defensive_rebounds_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebounds_per_game
+    kind: measure
+    source_column: defensive_rebounds_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_total
+    kind: measure
+    source_column: steals_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steals_per_game
+    kind: measure
+    source_column: steals_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_total
+    kind: measure
+    source_column: blocks_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: blocks_per_game
+    kind: measure
+    source_column: blocks_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_fouls_committed_total
+    kind: measure
+    source_column: offensive_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_total
+    kind: measure
+    source_column: personal_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: personal_fouls_committed_per_game
+    kind: measure
+    source_column: personal_fouls_committed_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: technical_fouls_committed_total
+    kind: measure
+    source_column: technical_fouls_committed_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: fouls_drawn_total
+    kind: measure
+    source_column: fouls_drawn_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_total
+    kind: measure
+    source_column: field_goals_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_made_per_game
+    kind: measure
+    source_column: field_goals_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_total
+    kind: measure
+    source_column: field_goals_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_attempted_per_game
+    kind: measure
+    source_column: field_goals_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: field_goals_percentage
+    kind: measure
+    source_column: field_goals_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_total
+    kind: measure
+    source_column: two_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_made_per_game
+    kind: measure
+    source_column: two_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_total
+    kind: measure
+    source_column: two_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_attempted_per_game
+    kind: measure
+    source_column: two_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: two_pointers_percentage
+    kind: measure
+    source_column: two_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_total
+    kind: measure
+    source_column: three_pointers_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_made_per_game
+    kind: measure
+    source_column: three_pointers_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_total
+    kind: measure
+    source_column: three_pointers_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_attempted_per_game
+    kind: measure
+    source_column: three_pointers_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_pointers_percentage
+    kind: measure
+    source_column: three_pointers_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_total
+    kind: measure
+    source_column: free_throws_made_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_made_per_game
+    kind: measure
+    source_column: free_throws_made_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_total
+    kind: measure
+    source_column: free_throws_attempted_total
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_attempted_per_game
+    kind: measure
+    source_column: free_throws_attempted_per_game
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throws_percentage
+    kind: measure
+    source_column: free_throws_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: possessions
+    kind: measure
+    source_column: possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_possessions
+    kind: measure
+    source_column: offensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_possessions
+    kind: measure
+    source_column: defensive_possessions
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: pace
+    kind: measure
+    source_column: pace
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rating
+    kind: measure
+    source_column: offensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rating
+    kind: measure
+    source_column: defensive_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: net_rating
+    kind: measure
+    source_column: net_rating
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_percentage
+    kind: measure
+    source_column: assist_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: assist_to_turnover_ratio
+    kind: measure
+    source_column: assist_to_turnover_ratio
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: offensive_rebound_percentage
+    kind: measure
+    source_column: offensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: defensive_rebound_percentage
+    kind: measure
+    source_column: defensive_rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: rebound_percentage
+    kind: measure
+    source_column: rebound_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: steal_percentage
+    kind: measure
+    source_column: steal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: block_percentage
+    kind: measure
+    source_column: block_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: effective_field_goal_percentage
+    kind: measure
+    source_column: effective_field_goal_percentage
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: three_point_attempt_rate
+    kind: measure
+    source_column: three_point_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: free_throw_attempt_rate
+    kind: measure
+    source_column: free_throw_attempt_rate
+    link_key: false
+    visibility: public
+    derivation: null
+  - name: true_shooting_percentage
+    kind: measure
+    source_column: true_shooting_percentage
     link_key: false
     visibility: public
     derivation: null

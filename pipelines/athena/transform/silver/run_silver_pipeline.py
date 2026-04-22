@@ -157,6 +157,7 @@ def main() -> None:
                 base_dir / "build_silver_possessions_ot_fallback.py",
                 base_dir / "build_silver_player_game_possession_context.py",
                 base_dir / "build_silver_player_game_defensive_shot_context.py",
+                base_dir / "build_silver_player_game_opportunity_context.py",
                 base_dir / "build_silver_team_game_possession_context.py",
                 base_dir / "build_silver_team_game_defensive_shot_context.py",
             ]

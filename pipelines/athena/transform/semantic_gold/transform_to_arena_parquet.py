@@ -32,6 +32,19 @@ load_dotenv(override=True)
 
 DESTINATION_KEY = "semantic_gold/arena/arena.parquet"
 
+ARENA_CITY_NORMALIZATION = {
+    "New York": "New York City",
+    "Mexico City, Mexico": "Mexico City",
+    "San Juan,Puerto Rico": "San Juan",
+    "Macao, China": "Macau",
+}
+
+
+def normalize_arena_city(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    return ARENA_CITY_NORMALIZATION.get(value, value)
+
 
 def finalize_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     public_columns = ARENA_SCHEMA.names
@@ -68,7 +81,7 @@ def build_arena_rows_from_tables(
         candidate = {
             "arena_id": arena_id,
             "arena_name": row.get("arena_name"),
-            "arena_city": row.get("arena_city"),
+            "arena_city": normalize_arena_city(row.get("arena_city")),
             "arena_state": row.get("arena_state"),
             "arena_country": row.get("arena_country"),
             "arena_timezone": row.get("arena_timezone"),

@@ -6,195 +6,2448 @@
       "table_name": "player",
       "object_name": "Player",
       "columns": [
-        {"name": "person_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "full_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "first_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "last_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "primary_position", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "position_group", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "latest_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "latest_jersey_number", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "birth_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "school", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "height_inches", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "weight_lbs", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "draft_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "draft_round", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "draft_pick_number", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {
+          "name": "person_id",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "full_name",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "first_name",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "last_name",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "primary_position",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "position_group",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "latest_team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "latest_jersey_number",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "birth_date",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "school",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "country",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "height_inches",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "weight_lbs",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "draft_year",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "draft_round",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "draft_pick_number",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "team",
       "object_name": "Team",
       "columns": [
-        {"name": "team_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "team_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_state", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_abbreviation", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "conference", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "division", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {
+          "name": "team_id",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_name",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_city",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_state",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_country",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_abbreviation",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "conference",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "division",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "arena",
       "object_name": "Arena",
       "columns": [
-        {"name": "arena_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "arena_name", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_city", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_state", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_country", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_timezone", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {
+          "name": "arena_id",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_name",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_city",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_state",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_country",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_timezone",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "game",
       "object_name": "Game",
       "columns": [
-        {"name": "game_id", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "game_start_time_utc", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "arena_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "home_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "away_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"}
+        {
+          "name": "game_id",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_date",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_start_time_utc",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "arena_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "home_team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "away_team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "player_game",
       "object_name": "PlayerGame",
       "columns": [
-        {"name": "game_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "person_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "team_home_or_away", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "game_start_time_utc", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_starter", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "did_play", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "minutes_played", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "plus_minus", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "assists", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "shots_blocked", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "shots_blocked_against", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "offensive_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "fouls_drawn", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "personal_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "technical_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "defensive_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "offensive_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "total_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "steals", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "turnovers", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "points", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "fast_break_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "points_in_paint", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "second_chance_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {
+          "name": "game_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "person_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_date",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_start_time_utc",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_home_or_away",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "is_starter",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "win_loss_result",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_played",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "plus_minus",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "total_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_blocks",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "technical_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fouls_drawn",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fast_break_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_in_paint",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "second_chance_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "pace",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "net_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_to_turnover_ratio",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "usage_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "block_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "effective_field_goal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "true_shooting_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_point_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throw_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "team_game",
       "object_name": "TeamGame",
       "columns": [
-        {"name": "game_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "team_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "opponent_team_id", "attribute_kind": "dimension", "link_key": true, "visibility": "public"},
-        {"name": "game_datetime_utc", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "game_date", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "team_home_or_away", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "score", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "opponent_score", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "point_differential", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "seconds_played_total", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "minutes_played_decimal", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "assists", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "shots_blocked", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "shots_blocked_against", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "field_goals_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "offensive_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "fouls_drawn", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "personal_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "technical_fouls_committed", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "free_throws_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "defensive_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "offensive_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "total_rebounds", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "steals", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "turnovers", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "three_pointers_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_attempted", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_made", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "two_pointers_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "points_fast_break", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "points_in_the_paint", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "points_second_chance", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "game_result", "attribute_kind": "dimension", "link_key": false, "visibility": "public"}
+        {
+          "name": "game_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "team_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_team_id",
+          "attribute_kind": "dimension",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_date",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "game_start_time_utc",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_home_or_away",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "win_loss_result",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_played",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "score",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_score",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "point_differential",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_assists",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_turnovers",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "total_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_total_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_offensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_defensive_rebounds",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_steals",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_blocks",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_offensive_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_personal_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "technical_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_technical_fouls_committed",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fouls_drawn",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_fouls_drawn",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fast_break_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_fast_break_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_in_paint",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_points_in_paint",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "second_chance_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_second_chance_points",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_off_turnovers",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_points_off_turnovers",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_field_goals_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_field_goals_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_two_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_two_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_three_pointers_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_three_pointers_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_free_throws_made",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_free_throws_attempted",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "pace",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "net_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_to_turnover_ratio",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "block_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "effective_field_goal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "true_shooting_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_point_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throw_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "player_season",
       "object_name": "PlayerSeason",
       "columns": [
-        {"name": "person_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "team_count", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "is_multi_team_season", "attribute_kind": "dimension", "link_key": false, "visibility": "public"},
-        {"name": "games_played", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "total_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "average_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {
+          "name": "person_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "age_on_jan_31",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "team_count",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "is_multi_team_season",
+          "attribute_kind": "dimension",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "games_played",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "games_started",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "plus_minus_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_blocks_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "technical_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fouls_drawn_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fast_break_points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_in_paint_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "second_chance_points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_possessions_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_possessions_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "pace",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "net_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_to_turnover_ratio",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "usage_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "block_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "effective_field_goal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_point_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throw_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "true_shooting_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "player_season_team",
       "object_name": "PlayerSeasonTeam",
       "columns": [
-        {"name": "person_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "team_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "games_played", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "total_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "average_points", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {
+          "name": "person_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "team_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "games_played",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "games_started",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "opponent_blocks_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "plus_minus_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "technical_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fouls_drawn_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fast_break_points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_in_paint_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "second_chance_points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_possessions_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_possessions_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "pace",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "net_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_to_turnover_ratio",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "usage_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "block_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "effective_field_goal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_point_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throw_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "true_shooting_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     },
     {
       "table_name": "team_season",
       "object_name": "TeamSeason",
       "columns": [
-        {"name": "team_id", "attribute_kind": "primary_key", "link_key": true, "visibility": "public"},
-        {"name": "season_year", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "season_type", "attribute_kind": "primary_key", "link_key": false, "visibility": "public"},
-        {"name": "games_played", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "wins", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "losses", "attribute_kind": "measure", "link_key": false, "visibility": "public"},
-        {"name": "win_percentage", "attribute_kind": "measure", "link_key": false, "visibility": "public"}
+        {
+          "name": "team_id",
+          "attribute_kind": "primary_key",
+          "link_key": true,
+          "visibility": "public"
+        },
+        {
+          "name": "season_year",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "season_type",
+          "attribute_kind": "primary_key",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "games_played",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "wins",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "losses",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "win_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "minutes_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "points_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assists_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "turnovers_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebounds_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steals_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "blocks_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "personal_fouls_committed_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "technical_fouls_committed_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "fouls_drawn_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "field_goals_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "two_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_pointers_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_made_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_total",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_attempted_per_game",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throws_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_possessions",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "pace",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "net_rating",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "assist_to_turnover_ratio",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "offensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "defensive_rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "rebound_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "steal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "block_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "effective_field_goal_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "three_point_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "free_throw_attempt_rate",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        },
+        {
+          "name": "true_shooting_percentage",
+          "attribute_kind": "measure",
+          "link_key": false,
+          "visibility": "public"
+        }
       ]
     }
   ]

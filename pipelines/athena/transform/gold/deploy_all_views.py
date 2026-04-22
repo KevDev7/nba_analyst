@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 try:
+    from pipelines.athena.transform.silver.deploy_player_game_opportunity_context_table import (
+        main as deploy_player_game_opportunity_context_table,
+    )
     from pipelines.athena.transform.silver.deploy_player_game_defensive_shot_context_table import (
         main as deploy_player_game_defensive_shot_context_table,
     )
@@ -29,6 +32,9 @@ try:
         load_settings,
     )
 except ModuleNotFoundError:
+    from pipelines.athena.transform.silver.deploy_player_game_opportunity_context_table import (  # type: ignore[no-redef]
+        main as deploy_player_game_opportunity_context_table,
+    )
     from pipelines.athena.transform.silver.deploy_player_game_defensive_shot_context_table import (  # type: ignore[no-redef]
         main as deploy_player_game_defensive_shot_context_table,
     )
@@ -68,6 +74,7 @@ def drop_non_supported_views() -> None:
 
 
 def deploy_all_views() -> None:
+    deploy_player_game_opportunity_context_table()
     deploy_player_game_possession_context_table()
     deploy_player_game_defensive_shot_context_table()
     deploy_player_season_provenance_debug_view()

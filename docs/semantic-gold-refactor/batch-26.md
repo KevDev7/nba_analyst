@@ -3,8 +3,8 @@
 ## Box score rename: clarify blocked-shot semantics
 
 Accepted change:
-- rename `blocks` to `shots_blocked`
-- rename `blocks_received` to `shots_blocked_against`
+- use `blocks`
+- use `opponent_blocks`
 
 Applies to:
 - `PlayerGame`
@@ -14,8 +14,8 @@ Reasoning:
 - `blocks` is a common stat name, but slightly vague in a semantic schema
 - `blocks_received` is understandable but awkward and less natural basketball language
 - the new pair makes the direction of the stat explicit:
-  - `shots_blocked` = shots blocked by the player or team
-  - `shots_blocked_against` = that player or team getting shots blocked
+  - `blocks` = shots blocked by the player or team
+  - `opponent_blocks` = that player or team getting shots blocked
 
 Downstream propagation in this batch:
 - update semantic_gold contract
