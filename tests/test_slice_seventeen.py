@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query, plan_question, run_cli
+from apps.cli.main import plan_question, run_cli
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceSeventeenTests(unittest.TestCase):
@@ -61,7 +62,7 @@ class SliceSeventeenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently require a positive LastNGames filter.",
@@ -96,7 +97,7 @@ class SliceSeventeenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently do not support time-grain trends.",
@@ -130,7 +131,7 @@ class SliceSeventeenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
         self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
 
@@ -162,7 +163,7 @@ class SliceSeventeenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently require a comparison identity dimension on the target object.",

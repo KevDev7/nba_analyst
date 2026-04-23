@@ -9,18 +9,16 @@ executable ontology-hs
   default-language: GHC2024
   ghc-options:      -Wall
   other-modules:
-      CapabilityDerivation
-    , GroundedPlanning.Compile
+      GroundedPlanning.Compile
     , GroundedPlanning.Plan
     , GroundedPlanning.Resolve
     , GroundedPlanning.Validation
     , OntologyLayer.Graph
     , OntologyLayer.Load
     , OntologyLayer.Types
-    , QueryModel.Build
-    , QueryModel.Ground
+    , OntologyLayer.Validation
     , QueryModel.IR
-    , QueryModel.Intent
+    , QueryModel.SemanticDraft
   build-depends:
       base >= 4.20 && < 5
     , aeson

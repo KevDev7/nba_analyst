@@ -33,7 +33,7 @@ from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
-from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_planner_query
+from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
 
@@ -41,18 +41,18 @@ ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 
 
-def call_haskell_planner_for_query(query_payload: dict) -> dict:
+def call_haskell_planner_for_semantic_draft(draft_payload: dict) -> dict:
     command = [
         "cabal",
         "run",
         "-v0",
         "ontology-hs",
         "--",
-        "plan-query-json",
+        "plan-semantic-draft-json",
         "--ontology",
         str(ONTOLOGY_PATH),
-        "--query-json",
-        json.dumps(query_payload),
+        "--draft-json",
+        json.dumps(draft_payload),
     ]
     result = subprocess.run(
         command,
@@ -63,7 +63,7 @@ def call_haskell_planner_for_query(query_payload: dict) -> dict:
     )
     payload_text = result.stdout.strip() or result.stderr.strip()
     if not payload_text:
-        raise RuntimeError("Haskell planner returned no output.")
+        raise RuntimeError("Haskell semantic draft planner returned no output.")
     payload = json.loads(payload_text)
     if result.returncode != 0:
         raise RuntimeError(payload.get("message", payload_text))
@@ -72,16 +72,16 @@ def call_haskell_planner_for_query(query_payload: dict) -> dict:
 
 def plan_question(question: str) -> tuple[dict, dict]:
     try:
-        interpreted_query = interpret_question_to_planner_query(question)
+        semantic_draft = interpret_question_to_semantic_draft(question)
     except SemanticInterpreterError as exc:
         raise RuntimeError(str(exc)) from exc
-    planner_output = call_haskell_planner_for_query(interpreted_query)
-    return interpreted_query, planner_output
+    planner_output = call_haskell_planner_for_semantic_draft(semantic_draft)
+    return semantic_draft, planner_output
 
 
 def run_cli(question: str, debug: bool = False) -> str:
     load_database()
-    interpreted_query, planner_output = plan_question(question)
+    semantic_draft, planner_output = plan_question(question)
     if hasattr(ExecutionPlan, "model_validate"):
         execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
     else:
@@ -96,7 +96,7 @@ def run_cli(question: str, debug: bool = False) -> str:
 
     debug_lines = [
         f"Query type: {planner_output['query_type']}",
-        f"Interpreted query: {json.dumps(interpreted_query, indent=2)}",
+        f"Semantic draft: {json.dumps(semantic_draft, indent=2)}",
         f"Query: {json.dumps(planner_output['query'], indent=2)}",
         f"Resolved query: {json.dumps(planner_output['resolved_query'], indent=2)}",
         f"Execution plan: {json.dumps(planner_output['execution_plan'], indent=2)}",

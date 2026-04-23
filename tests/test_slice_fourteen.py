@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query, plan_question, run_cli
+from apps.cli.main import plan_question, run_cli
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceFourteenTests(unittest.TestCase):
@@ -67,7 +68,7 @@ class SliceFourteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("descending ordering on the selected metric", str(context.exception))
 

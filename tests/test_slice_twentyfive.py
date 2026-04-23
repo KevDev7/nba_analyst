@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyFiveTests(unittest.TestCase):
@@ -27,7 +26,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         shared = planner_output["query"]["spec"]["sharedQuery"]
 
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
@@ -56,7 +55,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(
@@ -89,7 +88,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(
@@ -119,7 +118,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         message = str(context.exception)
         self.assertIn(
@@ -149,7 +148,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "last_n_games filters require a positive integer value.",
@@ -177,7 +176,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Metric queries currently require either a positive LastNGames filter or an exact season plus season type filter bundle.",
@@ -215,36 +214,12 @@ class SliceTwentyFiveTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently require a positive LastNGames filter.",
             str(context.exception),
         )
-
-    def test_capability_artifact_still_contains_truthful_filter_families(self) -> None:
-        artifact = _capability_artifact()
-
-        player_recent = next(
-            family
-            for family in artifact["families"]
-            if family["family_key"] == "player_game_recent_metric"
-        )
-        team_monthly = next(
-            family
-            for family in artifact["families"]
-            if family["family_key"] == "team_game_monthly_metric"
-        )
-        player_season = next(
-            family
-            for family in artifact["families"]
-            if family["family_key"] == "player_season_team_season_metric"
-        )
-
-        self.assertEqual(player_recent["required_filter_kinds"], ["last_n_games"])
-        self.assertEqual(team_monthly["required_filter_kinds"], ["past_year"])
-        self.assertEqual(player_season["required_filter_kinds"], ["exact_season", "season_type"])
-
 
 if __name__ == "__main__":
     unittest.main()

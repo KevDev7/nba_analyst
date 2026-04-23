@@ -26,7 +26,6 @@ from urllib.parse import urlparse
 
 import boto3
 import duckdb
-import pyarrow as pa
 import pyarrow.types as patypes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,15 +33,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipelines.athena.transform.semantic_gold.contracts import SEMANTIC_GOLD_TABLE_SPECS
-from pipelines.athena.transform.semantic_gold.transform_to_player_season_parquet import (
-    build_player_season_rows_from_player_game_rows,
-)
-from pipelines.athena.transform.semantic_gold.transform_to_player_season_team_parquet import (
-    build_player_season_team_rows_from_player_game_rows,
-)
-from pipelines.athena.transform.semantic_gold.transform_to_team_season_parquet import (
-    build_team_season_rows_from_team_game_rows,
-)
 
 DUCKDB_DIR = ROOT / "fixtures" / "duckdb"
 DUCKDB_PATH = DUCKDB_DIR / "gold_slice.duckdb"
@@ -53,15 +43,27 @@ DEFAULT_OUTPUT = os.getenv("ATHENA_OUTPUT_LOCATION", "s3://nba-analytics-lakehou
 DEFAULT_WORKGROUP = os.getenv("ATHENA_WORKGROUP", "primary")
 DEFAULT_CATALOG = os.getenv("ATHENA_CATALOG", "AwsDataCatalog")
 
+TABLE_SCHEMAS = {spec.table_name: spec.schema for spec in SEMANTIC_GOLD_TABLE_SPECS}
+ORDER_BY = {
+    "player": "full_name ASC",
+    "team": "team_name ASC",
+    "arena": "arena_name ASC",
+    "game": "game_date DESC, game_id ASC",
+    "player_game": "game_date DESC, person_id ASC",
+    "team_game": "game_date DESC, team_id ASC",
+    "player_season": "season_year DESC, season_type ASC, person_id ASC",
+    "player_season_team": "season_year DESC, season_type ASC, person_id ASC, team_id ASC",
+    "team_season": "season_year DESC, season_type ASC, team_id ASC",
+}
 SOURCE_QUERIES = {
-    "player": "SELECT * FROM player ORDER BY player_name ASC",
-    "team": "SELECT * FROM team ORDER BY team_name ASC",
-    "game": "SELECT * FROM game ORDER BY game_date DESC, game_id ASC",
-    "player_game": "SELECT * FROM player_game ORDER BY game_date DESC, person_id ASC",
-    "team_game": "SELECT * FROM team_game ORDER BY game_date DESC, team_id ASC",
+    spec.table_name: (
+        f"SELECT * FROM {spec.table_name} ORDER BY {ORDER_BY[spec.table_name]}"
+    )
+    for spec in SEMANTIC_GOLD_TABLE_SPECS
 }
 
-TABLE_SCHEMAS = {spec.table_name: spec.schema for spec in SEMANTIC_GOLD_TABLE_SPECS}
+if os.environ.get("AWS_PROFILE") == "":
+    os.environ.pop("AWS_PROFILE")
 
 
 def run_athena_query(
@@ -156,7 +158,6 @@ def build_snapshot(
                 conn.execute(
                     f'CREATE TABLE "{table_name}" AS SELECT {typed_projection(table_name)} FROM "{raw_table_name}"'
                 )
-            build_derived_season_tables(conn)
             conn.execute("DROP TABLE IF EXISTS snapshot_meta")
             conn.execute(
                 """
@@ -176,52 +177,6 @@ def build_snapshot(
         for table_name, row_count in row_counts.items():
             print(f"{table_name}: {row_count} rows")
         return db_path
-
-
-def build_derived_season_tables(conn: duckdb.DuckDBPyConnection) -> None:
-    player_rows = conn.execute("SELECT person_id, player_name FROM player").fetchall()
-    player_name_by_person_id = {
-        int(person_id): player_name
-        for person_id, player_name in player_rows
-        if person_id is not None and player_name is not None
-    }
-    team_rows = conn.execute(
-        "SELECT team_id, team_name, team_abbreviation FROM team"
-    ).fetchall()
-    team_identity_by_team_id = {
-        int(team_id): {"team_name": team_name, "team_abbreviation": team_abbreviation}
-        for team_id, team_name, team_abbreviation in team_rows
-        if team_id is not None
-    }
-    player_game_rows = conn.execute("SELECT * FROM player_game").fetch_arrow_table().to_pylist()
-    team_game_rows = conn.execute("SELECT * FROM team_game").fetch_arrow_table().to_pylist()
-
-    derived_tables = {
-        "player_season": pa.Table.from_pylist(
-            build_player_season_rows_from_player_game_rows(
-                player_game_rows, player_name_by_person_id
-            ),
-            schema=TABLE_SCHEMAS["player_season"],
-        ),
-        "player_season_team": pa.Table.from_pylist(
-            build_player_season_team_rows_from_player_game_rows(
-                player_game_rows, player_name_by_person_id, team_identity_by_team_id
-            ),
-            schema=TABLE_SCHEMAS["player_season_team"],
-        ),
-        "team_season": pa.Table.from_pylist(
-            build_team_season_rows_from_team_game_rows(team_game_rows),
-            schema=TABLE_SCHEMAS["team_season"],
-        ),
-    }
-
-    for table_name, arrow_table in derived_tables.items():
-        conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-        conn.register(f"{table_name}_arrow", arrow_table)
-        conn.execute(
-            f'CREATE TABLE "{table_name}" AS SELECT * FROM "{table_name}_arrow"'
-        )
-        conn.unregister(f"{table_name}_arrow")
 
 
 def typed_projection(table_name: str) -> str:

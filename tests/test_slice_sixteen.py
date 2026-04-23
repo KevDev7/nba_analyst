@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query, plan_question, run_cli
+from apps.cli.main import plan_question, run_cli
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceSixteenTests(unittest.TestCase):
@@ -56,7 +57,7 @@ class SliceSixteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         self.assertEqual(
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerGame"
@@ -90,7 +91,7 @@ class SliceSixteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         self.assertEqual(
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"],
@@ -125,7 +126,7 @@ class SliceSixteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Recent object queries with linked filters currently require a fact surface that exposes game_date.",

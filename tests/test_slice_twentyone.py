@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyOneTests(unittest.TestCase):
@@ -29,7 +28,7 @@ class SliceTwentyOneTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
         self.assertEqual(
             planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]["filterValue"],
@@ -58,7 +57,7 @@ class SliceTwentyOneTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         message = str(context.exception)
         self.assertIn(
@@ -93,7 +92,7 @@ class SliceTwentyOneTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         message = str(context.exception)
         self.assertIn(
@@ -101,24 +100,6 @@ class SliceTwentyOneTests(unittest.TestCase):
             message,
         )
         self.assertNotIn("currently support PlayerSeasonTeam only", message)
-
-    def test_derived_capabilities_do_not_include_player_game_season_team_filter_metric_family(self) -> None:
-        artifact = _capability_artifact()
-        matching = [
-            family
-            for family in artifact["families"]
-            if family["query_kind"] == "metric_query"
-            and family["core_fact_object"] == "PlayerGame"
-            and family["dimensions"] == ["player_name"]
-            and family["required_filter_kinds"] == ["exact_season", "season_type"]
-            and family["linked_filters"]
-            and family["linked_filters"][0]["target_object"] == "Team"
-            and family["linked_filters"][0]["attribute"] == "team_name"
-            and "average_points" in family["metrics"]
-        ]
-
-        self.assertEqual(matching, [])
-
 
 if __name__ == "__main__":
     unittest.main()

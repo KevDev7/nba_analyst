@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query, plan_question, run_cli
+from apps.cli.main import plan_question, run_cli
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceFifteenTests(unittest.TestCase):
@@ -64,7 +65,7 @@ class SliceFifteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Season-scoped metric queries with linked filters currently require a season-level fact surface rather than per-game rows.",

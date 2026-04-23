@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyFourTests(unittest.TestCase):
@@ -27,7 +26,7 @@ class SliceTwentyFourTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         shared = planner_output["query"]["spec"]["sharedQuery"]
 
         self.assertEqual(shared["dimensions"], ["player_name"])
@@ -57,7 +56,7 @@ class SliceTwentyFourTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "No valid ontology path from 'PlayerGame' reaches a displayed dimension attribute 'made_up_dimension'.",
@@ -85,7 +84,7 @@ class SliceTwentyFourTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Attribute 'person_id' has the wrong kind in the ontology.",
@@ -120,7 +119,7 @@ class SliceTwentyFourTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently require a comparison identity dimension on the target object.",
@@ -148,22 +147,9 @@ class SliceTwentyFourTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("No valid ontology path from 'TeamGame' reaches a displayed dimension attribute 'display_name'.", str(context.exception))
-
-    def test_capability_artifact_still_contains_truthful_core_dimension_families(self) -> None:
-        artifact = _capability_artifact()
-
-        matching = [
-            family
-            for family in artifact["families"]
-            if family["family_key"] == "player_game_recent_metric"
-        ]
-
-        self.assertEqual(len(matching), 1)
-        self.assertEqual(matching[0]["dimensions"], ["player_name"])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -117,6 +117,5 @@ When a batch is ready to propagate, update:
 - `pipelines/athena/metadata/semantic_gold_attribute_inventory.json`
 - `scripts/generate_semantic_ontology.py`
 - `fixtures/ontology/semantic-gold.yaml`
-- `fixtures/interpreter/semantic-capabilities.json`
 - semantic gold tests
-- planner/runtime/query-model assumptions that depend on the old object shape
+- planner/runtime assumptions that depend on the old object shape

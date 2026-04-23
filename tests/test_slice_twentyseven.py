@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact, _capability_prompt_summary
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentySevenTests(unittest.TestCase):
@@ -29,7 +28,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Team")
@@ -57,7 +56,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["filterColumn"], "division")
@@ -88,7 +87,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["filterColumn"], "team_abbreviation")
@@ -116,7 +115,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["filterColumn"], "team_name")
@@ -144,7 +143,7 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
@@ -174,7 +173,7 @@ class SliceTwentySevenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("Query currently supports at most one linked filter.", str(context.exception))
 
@@ -201,7 +200,7 @@ class SliceTwentySevenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("Trend queries currently do not support linked filters.", str(context.exception))
 
@@ -235,59 +234,12 @@ class SliceTwentySevenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently do not support linked filters.",
             str(context.exception),
         )
-
-    def test_capability_artifact_includes_team_dimensions_beyond_team_name(self) -> None:
-        artifact = _capability_artifact()
-        linked_filter_attributes = {
-            family["linked_filters"][0]["attribute"]
-            for family in artifact["families"]
-            if family["linked_filters"]
-        }
-        linked_filter_targets = {
-            family["linked_filters"][0]["target_object"]
-            for family in artifact["families"]
-            if family["linked_filters"]
-        }
-
-        self.assertIn("team_name", linked_filter_attributes)
-        self.assertIn("conference", linked_filter_attributes)
-        self.assertIn("division", linked_filter_attributes)
-        self.assertIn("Team", linked_filter_targets)
-        self.assertIn("Player", linked_filter_targets)
-        self.assertIn("Game", linked_filter_targets)
-
-    def test_prompt_summary_reflects_broader_team_linked_filter_surface(self) -> None:
-        summary = _capability_prompt_summary()
-
-        self.assertIn("Supported linked-filter targets and public dimensions:", summary)
-        self.assertIn("- Team: [", summary)
-        self.assertIn("- Player: [", summary)
-        self.assertIn("conference", summary)
-        self.assertIn("division", summary)
-        self.assertIn("team_name", summary)
-        self.assertIn("linked filters: Team public dimensions", summary)
-
-    def test_player_game_season_metric_linked_filters_remain_absent_for_game_targets(self) -> None:
-        artifact = _capability_artifact()
-        matching = [
-            family
-            for family in artifact["families"]
-            if family["query_kind"] == "metric_query"
-            and family["core_fact_object"] == "PlayerGame"
-            and family["required_filter_kinds"] == ["exact_season", "season_type"]
-            and family["linked_filters"]
-            and family["linked_filters"][0]["target_object"] == "Game"
-            and "average_points" in family["metrics"]
-        ]
-
-        self.assertEqual(matching, [])
-
 
 if __name__ == "__main__":
     unittest.main()

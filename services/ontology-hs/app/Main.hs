@@ -18,7 +18,6 @@
 
 module Main where
 
-import CapabilityDerivation (deriveCapabilitiesIO)
 import Data.Aeson (ToJSON, encode, eitherDecodeStrict')
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
@@ -28,10 +27,10 @@ import GroundedPlanning.Compile (compileExecutionPlan)
 import GroundedPlanning.Plan (ExecutionPlan)
 import GroundedPlanning.Resolve (ResolvedQuery, resolveQuery)
 import GroundedPlanning.Validation (validateQuery)
-import OntologyLayer.Load (loadOntology)
+import OntologyLayer.Load (loadOntologyEither)
 import OntologyLayer.Types (Ontology)
-import qualified QueryModel.Build as QB
 import QueryModel.IR (Query (MetricQuery, ObjectQuery))
+import QueryModel.SemanticDraft (SemanticDraft, semanticDraftToQuery)
 import System.Environment (getArgs)
 import System.Exit (die, exitFailure)
 
@@ -53,66 +52,58 @@ data PlannerError = PlannerError
 
 instance ToJSON PlannerError
 
-data QueryModelResponse
-  = QueryModelOk
-      { status :: Text
-      , query :: Query
-      }
-  | QueryModelUnsupported
-      { status :: Text
-      , reason :: Text
-      }
+data OntologyValidationResponse = OntologyValidationResponse
+  { status :: Text
+  }
   deriving (Show, Generic)
 
-instance ToJSON QueryModelResponse
+instance ToJSON OntologyValidationResponse
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["derive-capabilities-json", "--ontology", ontologyPath] -> do
-      ontology <- loadOntology ontologyPath
-      derived <- deriveCapabilitiesIO ontology
-      BL8.putStrLn (encode derived)
-    ["query-model-foundation-json", "metric"] ->
-      BL8.putStrLn (encode (QB.toIRQuery QB.exampleMetricSemanticQuery))
-    ["query-model-foundation-json", "object"] ->
-      BL8.putStrLn (encode (QB.toIRQuery QB.exampleObjectSemanticQuery))
-    ["query-model-json", "--ontology", ontologyPath, "--question", questionText] -> do
-      ontology <- loadOntology ontologyPath
-      builtQuery <- QB.buildQueryFromQuestionIO ontology (pack questionText)
-      case builtQuery of
-        Right queryValue ->
-          BL8.putStrLn
-            ( encode
-                QueryModelOk
-                  { status = "ok"
-                  , query = queryValue
-                  }
-            )
-        Left err ->
-          BL8.putStrLn
-            ( encode
-                QueryModelUnsupported
-                  { status = "unsupported"
-                  , reason = err
-                  }
-            )
+    ["validate-ontology-json", "--ontology", ontologyPath] ->
+      withOntology ontologyPath $ \_ontology ->
+        BL8.putStrLn
+          ( encode
+              OntologyValidationResponse
+                { status = "ok"
+                }
+          )
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
-      ontology <- loadOntology ontologyPath
-      runPlannerFromQueryJson ontology (pack queryJson)
+      withOntology ontologyPath $ \ontology ->
+        runPlannerFromQueryJson ontology (pack queryJson)
+    ["plan-semantic-draft-json", "--ontology", ontologyPath, "--draft-json", draftJson] -> do
+      withOntology ontologyPath $ \ontology ->
+        runPlannerFromSemanticDraftJson ontology (pack draftJson)
     _ ->
       die
-        "Usage: cabal run ontology-hs -- derive-capabilities-json --ontology <path>\n\
-        \   or: cabal run ontology-hs -- query-model-foundation-json metric|object\n\
-        \   or: cabal run ontology-hs -- query-model-json --ontology <path> --question <text>\n\
-        \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>"
+        "Usage: cabal run ontology-hs -- validate-ontology-json --ontology <path>\n\
+        \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>\n\
+        \   or: cabal run ontology-hs -- plan-semantic-draft-json --ontology <path> --draft-json <json>"
+
+withOntology :: FilePath -> (Ontology -> IO ()) -> IO ()
+withOntology ontologyPath action = do
+  loaded <- loadOntologyEither ontologyPath
+  case loaded of
+    Right ontology -> action ontology
+    Left err -> emitError "OntologyLayer.Validation" err
 
 runPlannerFromQueryJson :: Ontology -> Text -> IO ()
 runPlannerFromQueryJson ontology queryJson =
   case eitherDecodeStrict' (encodeUtf8 queryJson) of
     Left err -> emitError "Planner.Decode" (pack err)
     Right plannedQuery -> emitPlannedQuery ontology plannedQuery
+
+runPlannerFromSemanticDraftJson :: Ontology -> Text -> IO ()
+runPlannerFromSemanticDraftJson ontology draftJson =
+  case eitherDecodeStrict' (encodeUtf8 draftJson) of
+    Left err -> emitError "SemanticDraft.Decode" (pack err)
+    Right semanticDraft ->
+      case semanticDraftToQuery (semanticDraft :: SemanticDraft) of
+        Left err -> emitError "QueryModel.SemanticDraft" err
+        Right plannedQuery -> emitPlannedQuery ontology plannedQuery
 
 emitPlannedQuery :: Ontology -> Query -> IO ()
 emitPlannedQuery ontology plannedQuery =

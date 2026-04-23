@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyTests(unittest.TestCase):
@@ -28,7 +27,7 @@ class SliceTwentyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Ranking/aggregation metric queries currently require exactly one business grouping dimension.",
@@ -55,7 +54,7 @@ class SliceTwentyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Object queries currently require exactly one row dimension.",
@@ -83,7 +82,7 @@ class SliceTwentyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently support at most one business grouping dimension.",
@@ -111,7 +110,7 @@ class SliceTwentyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Ranking/aggregation metric queries currently require exactly one selected metric.",
@@ -139,20 +138,12 @@ class SliceTwentyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently require exactly one selected metric.",
             str(context.exception),
         )
-
-    def test_derived_capabilities_do_not_imply_multi_metric_or_multi_dimension_support(self) -> None:
-        artifact = _capability_artifact()
-
-        self.assertTrue(artifact["families"])
-        self.assertTrue(all(len(family["metrics"]) >= 1 for family in artifact["families"]))
-        self.assertTrue(all(len(family["dimensions"]) <= 1 for family in artifact["families"]))
-
 
 if __name__ == "__main__":
     unittest.main()

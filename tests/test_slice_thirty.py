@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 from runtime.AnalysisRuntime.models import ExecutionPlan
 from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
@@ -39,7 +38,7 @@ class SliceThirtyTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
         self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
         self.assertEqual(
@@ -73,7 +72,7 @@ class SliceThirtyTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         if hasattr(ExecutionPlan, "model_validate"):
             execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
         else:
@@ -114,7 +113,7 @@ class SliceThirtyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("Comparison queries currently do not support limit.", str(context.exception))
 
@@ -146,42 +145,12 @@ class SliceThirtyTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently require a comparison identity dimension on the target object.",
             str(context.exception),
         )
-
-    def test_capability_artifact_derives_generic_comparison_targets(self) -> None:
-        artifact = _capability_artifact()
-        comparison_families = [
-            family for family in artifact["families"] if family["comparison"]["enabled"]
-        ]
-
-        self.assertTrue(
-            any(
-                family["comparison"]["target_object"] == "Player"
-                and family["dimensions"] == ["player_name"]
-                and "average_points" in family["metrics"]
-                for family in comparison_families
-            )
-        )
-        self.assertTrue(
-            any(
-                family["comparison"]["target_object"] == "Team"
-                and family["dimensions"] == ["team_name"]
-                and "average_points" in family["metrics"]
-                for family in comparison_families
-            )
-        )
-        self.assertFalse(
-            any(
-                family["comparison"]["enabled"] and family["dimensions"] == ["conference"]
-                for family in comparison_families
-            )
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

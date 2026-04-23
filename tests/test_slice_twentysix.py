@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentySixTests(unittest.TestCase):
@@ -27,7 +26,7 @@ class SliceTwentySixTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         shared = planner_output["query"]["spec"]["sharedQuery"]
         resolved = planner_output["resolved_query"]["resolved"]
 
@@ -57,7 +56,7 @@ class SliceTwentySixTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         message = str(context.exception)
         self.assertIn("Trend queries currently support only the month time grain.", message)
@@ -84,7 +83,7 @@ class SliceTwentySixTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently require a PastYear filter.",
@@ -111,7 +110,7 @@ class SliceTwentySixTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Object queries currently do not support time-grain trends.",
@@ -146,37 +145,12 @@ class SliceTwentySixTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Comparison queries currently do not support time-grain trends.",
             str(context.exception),
         )
-
-    def test_capability_artifact_still_emits_only_truthful_monthly_trend_families(self) -> None:
-        artifact = _capability_artifact()
-        trend_families = [
-            family for family in artifact["families"] if family["time_grain"] is not None
-        ]
-
-        self.assertTrue(all(family["time_grain"] == "month" for family in trend_families))
-        self.assertTrue(
-            any(
-                family["core_fact_object"] == "PlayerGame"
-                and tuple(family["dimensions"]) == tuple()
-                and tuple(family["required_filter_kinds"]) == ("past_year",)
-                for family in trend_families
-            )
-        )
-        self.assertTrue(
-            any(
-                family["core_fact_object"] == "TeamGame"
-                and tuple(family["dimensions"]) == ("team_name",)
-                and tuple(family["required_filter_kinds"]) == ("past_year",)
-                for family in trend_families
-            )
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

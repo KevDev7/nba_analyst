@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceNineteenTests(unittest.TestCase):
@@ -26,7 +26,7 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
 
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
         shared = planner_output["query"]["spec"]["sharedQuery"]
@@ -58,7 +58,7 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
 
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
         shared = planner_output["query"]["spec"]["sharedQuery"]
@@ -90,7 +90,7 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["factTableName"], "player_game")
@@ -116,7 +116,7 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["seriesObjectName"], "Game")
@@ -145,7 +145,7 @@ class SliceNineteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently do not support linked filters.",
@@ -173,7 +173,7 @@ class SliceNineteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently do not accept explicit ordering.",
@@ -201,7 +201,7 @@ class SliceNineteenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently do not support limit.",

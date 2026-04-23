@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact, _capability_prompt_summary
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyEightTests(unittest.TestCase):
@@ -29,7 +28,7 @@ class SliceTwentyEightTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
@@ -57,7 +56,7 @@ class SliceTwentyEightTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Game")
@@ -89,7 +88,7 @@ class SliceTwentyEightTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
@@ -121,7 +120,7 @@ class SliceTwentyEightTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("No valid ontology path from 'TeamSeason' to 'Game'.", str(context.exception))
 
@@ -148,46 +147,12 @@ class SliceTwentyEightTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Linked filters currently support public dimension attributes on reachable ontology objects only.",
             str(context.exception),
         )
-
-    def test_capability_artifact_includes_non_team_linked_filter_targets(self) -> None:
-        artifact = _capability_artifact()
-        linked_filter_targets = {
-            family["linked_filters"][0]["target_object"]
-            for family in artifact["families"]
-            if family["linked_filters"]
-        }
-
-        self.assertIn("Team", linked_filter_targets)
-        self.assertIn("Player", linked_filter_targets)
-        self.assertIn("Game", linked_filter_targets)
-
-    def test_prompt_summary_groups_linked_filter_targets_and_dimensions(self) -> None:
-        summary = _capability_prompt_summary()
-
-        self.assertIn("Supported linked-filter targets and public dimensions:", summary)
-        self.assertIn("- Team: [", summary)
-        self.assertIn("- Player: [", summary)
-        self.assertIn("- Game: [", summary)
-        self.assertIn("linked filters: Player public dimensions", summary)
-
-    def test_team_season_does_not_derive_unreachable_game_linked_filters(self) -> None:
-        artifact = _capability_artifact()
-        matching = [
-            family
-            for family in artifact["families"]
-            if family["core_fact_object"] == "TeamSeason"
-            and family["linked_filters"]
-            and family["linked_filters"][0]["target_object"] == "Game"
-        ]
-
-        self.assertEqual(matching, [])
-
 
 if __name__ == "__main__":
     unittest.main()

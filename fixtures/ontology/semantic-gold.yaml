@@ -683,8 +683,8 @@ objects:
     aggregation: ratio
     source_attributes:
     - points
-    - minutes_played_decimal
-    expression: 36 * SUM(points) / NULLIF(SUM(minutes_played_decimal), 0)
+    - minutes_played
+    expression: 36 * SUM(points) / NULLIF(SUM(minutes_played), 0)
     executable: false
 - name: TeamGame
   backing_table: team_game
@@ -2619,8 +2619,8 @@ objects:
   - name: average_points
     aggregation: identity
     source_attributes:
-    - average_points
-    expression: average_points
+    - points_per_game
+    expression: points_per_game
     executable: true
 links:
 - name: game_arena

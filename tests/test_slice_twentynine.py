@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact, _capability_prompt_summary
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyNineTests(unittest.TestCase):
@@ -27,7 +26,7 @@ class SliceTwentyNineTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["factTableName"], "player_game")
@@ -54,7 +53,7 @@ class SliceTwentyNineTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["seriesObjectName"], "Player")
@@ -81,7 +80,7 @@ class SliceTwentyNineTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Trend queries currently require a fact surface that exposes game_date and a derived game_year_month time bucket.",
@@ -109,23 +108,9 @@ class SliceTwentyNineTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("Trend grouping currently supports reachable public dimension attributes only.", str(context.exception))
-
-    def test_capability_artifact_now_includes_player_game_trend_families(self) -> None:
-        artifact = _capability_artifact()
-        trend_families = [family for family in artifact["families"] if family["time_grain"] == "month"]
-
-        self.assertTrue(any(family["core_fact_object"] == "PlayerGame" for family in trend_families))
-        self.assertTrue(any(family["core_fact_object"] == "TeamGame" for family in trend_families))
-
-    def test_prompt_summary_reflects_broader_monthly_trend_support(self) -> None:
-        summary = _capability_prompt_summary()
-
-        self.assertIn("player_game_monthly_metric", summary)
-        self.assertIn("team_game_monthly_metric", summary)
-
 
 if __name__ == "__main__":
     unittest.main()

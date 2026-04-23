@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query
-from apps.cli.semantic_interpreter import _capability_artifact
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyThreeTests(unittest.TestCase):
@@ -27,7 +26,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         shared = planner_output["query"]["spec"]["sharedQuery"]
 
         self.assertEqual(shared["metrics"], ["average_points"])
@@ -57,7 +56,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn("Metric 'made_up_metric' not found in ontology.", str(context.exception))
 
@@ -82,7 +81,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(payload)
+            call_plan_query_json(payload)
 
         self.assertIn(
             "Metric 'points_per_36' is present in the ontology but not executable in this slice.",
@@ -116,23 +115,9 @@ class SliceTwentyThreeTests(unittest.TestCase):
             },
         }
 
-        planner_output = call_haskell_planner_for_query(payload)
+        planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
         self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
-
-    def test_capability_artifact_still_contains_truthful_core_metric_families(self) -> None:
-        artifact = _capability_artifact()
-
-        matching = [
-            family
-            for family in artifact["families"]
-            if family["family_key"] == "player_game_recent_metric"
-        ]
-
-        self.assertEqual(len(matching), 1)
-        self.assertEqual(matching[0]["metrics"], ["average_points", "total_points"])
-        self.assertNotIn("points_per_36", matching[0]["metrics"])
-
 
 if __name__ == "__main__":
     unittest.main()

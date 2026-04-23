@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_query, plan_question
+from apps.cli.main import plan_question
+from tests.planner_helpers import call_plan_query_json
 
 
 class SliceSevenTests(unittest.TestCase):
@@ -80,7 +81,7 @@ class SliceSevenTests(unittest.TestCase):
         }
 
         with self.assertRaises(RuntimeError) as context:
-            call_haskell_planner_for_query(impossible_query)
+            call_plan_query_json(impossible_query)
 
         self.assertIn("No valid ontology path from 'TeamGame' to 'Player'.", str(context.exception))
 

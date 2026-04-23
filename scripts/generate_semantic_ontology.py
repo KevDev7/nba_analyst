@@ -64,8 +64,8 @@ METRICS_BY_OBJECT = {
         {
             "name": "points_per_36",
             "aggregation": "ratio",
-            "source_attributes": ["points", "minutes_played_decimal"],
-            "expression": "36 * SUM(points) / NULLIF(SUM(minutes_played_decimal), 0)",
+            "source_attributes": ["points", "minutes_played"],
+            "expression": "36 * SUM(points) / NULLIF(SUM(minutes_played), 0)",
             "executable": False,
         },
     ],
@@ -170,8 +170,8 @@ METRICS_BY_OBJECT = {
         {
             "name": "average_points",
             "aggregation": "identity",
-            "source_attributes": ["average_points"],
-            "expression": "average_points",
+            "source_attributes": ["points_per_game"],
+            "expression": "points_per_game",
             "executable": True,
         },
     ],

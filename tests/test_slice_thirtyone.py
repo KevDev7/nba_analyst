@@ -8,20 +8,34 @@ from apps.cli.main import ROOT
 
 
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
+ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
+
+SAMPLE_DRAFT = {
+    "task": "rank",
+    "subject": "players",
+    "measure": "points",
+    "time_window": {"kind": "last_n_games", "value": 10},
+    "limit": 10,
+    "sort": "desc",
+    "assumptions": [],
+}
 
 
-def call_query_model_foundation_example(example_kind: str) -> dict:
-    command = [
-        "cabal",
-        "run",
-        "-v0",
-        "ontology-hs",
-        "--",
-        "query-model-foundation-json",
-        example_kind,
-    ]
+def call_semantic_draft_planner(draft: dict) -> dict:
     result = subprocess.run(
-        command,
+        [
+            "cabal",
+            "run",
+            "-v0",
+            "--builddir=/tmp/nba-analyst-slice31-cabal",
+            "ontology-hs",
+            "--",
+            "plan-semantic-draft-json",
+            "--ontology",
+            str(ONTOLOGY_PATH),
+            "--draft-json",
+            json.dumps(draft),
+        ],
         cwd=HASKELL_SERVICE_DIR,
         capture_output=True,
         text=True,
@@ -34,51 +48,31 @@ def call_query_model_foundation_example(example_kind: str) -> dict:
 
 
 class SliceThirtyOneTests(unittest.TestCase):
-    def test_query_model_modules_are_compiled_into_haskell_package(self) -> None:
+    def test_semantic_draft_module_is_compiled(self) -> None:
         cabal_contents = (HASKELL_SERVICE_DIR / "ontology-hs.cabal").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("QueryModel.Intent", cabal_contents)
-        self.assertIn("QueryModel.Ground", cabal_contents)
-        self.assertIn("QueryModel.Build", cabal_contents)
+        self.assertIn("QueryModel.IR", cabal_contents)
+        self.assertIn("QueryModel.SemanticDraft", cabal_contents)
 
-    def test_metric_query_foundation_example_normalizes_into_current_ir_shape(self) -> None:
-        payload = call_query_model_foundation_example("metric")
+    def test_semantic_draft_normalizes_into_current_ir_shape(self) -> None:
+        payload = call_semantic_draft_planner(SAMPLE_DRAFT)
 
-        self.assertEqual(payload["kind"], "metric_query")
-        self.assertEqual(payload["spec"]["sharedQuery"]["coreFactObject"], "PlayerGame")
-        self.assertEqual(payload["spec"]["sharedQuery"]["metrics"], ["total_points"])
-        self.assertEqual(payload["spec"]["sharedQuery"]["dimensions"], ["player_name"])
+        self.assertEqual(payload["kind"] if "kind" in payload else payload["query"]["kind"], "metric_query")
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["total_points"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
-            payload["spec"]["sharedQuery"]["filters"],
+            shared["filters"],
             [{"kind": "last_n_games", "value": 10}],
         )
         self.assertEqual(
-            payload["spec"]["sharedQuery"]["orders"],
+            shared["orders"],
             [{"kind": "desc", "metric": "total_points"}],
         )
-        self.assertEqual(payload["spec"]["sharedQuery"]["limit"], 10)
-        self.assertEqual(payload["spec"]["entityFilters"], [])
-        self.assertIsNone(payload["spec"]["comparison"])
-
-    def test_object_query_foundation_example_normalizes_into_current_ir_shape(self) -> None:
-        payload = call_query_model_foundation_example("object")
-
-        self.assertEqual(payload["kind"], "object_query")
-        self.assertEqual(payload["spec"]["rowObject"], "Player")
-        self.assertEqual(payload["spec"]["sharedQuery"]["coreFactObject"], "PlayerGame")
-        self.assertEqual(payload["spec"]["sharedQuery"]["metrics"], ["average_points"])
-        self.assertEqual(payload["spec"]["sharedQuery"]["dimensions"], ["player_name"])
-        self.assertEqual(
-            payload["spec"]["sharedQuery"]["filters"],
-            [{"kind": "last_n_games", "value": 10}],
-        )
-        self.assertEqual(
-            payload["spec"]["sharedQuery"]["orders"],
-            [{"kind": "desc", "metric": "average_points"}],
-        )
-        self.assertIsNone(payload["spec"]["sharedQuery"]["limit"])
+        self.assertEqual(shared["limit"], 10)
 
 
 if __name__ == "__main__":
