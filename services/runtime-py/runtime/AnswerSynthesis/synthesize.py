@@ -12,10 +12,7 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
-from .response_models import FinalAnswer
-from runtime.AnalysisRuntime.models import AggregateRow, ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
+from .response_models import FinalAnswer, SynthesisPayload
 
 
 def _human_metric(metric: str) -> str:
@@ -57,29 +54,28 @@ def _time_filter_phrase(time_filter: object, season_type: object = None) -> str:
     }.get(time_filter, f" with {str(time_filter).replace('_', ' ')}")
 
 
-def synthesize_answer(payload: Dict[str, object]) -> FinalAnswer:
-    query_kind = str(payload["query_kind"])
-    result_shape = str(payload["result_shape"])
-    rows = [RankingRow(**row) for row in payload["rows"]]
-    aggregate_rows = [AggregateRow(**row) for row in payload.get("aggregate_rows", [])]
-    object_rows = [ObjectRow(**row) for row in payload.get("object_rows", [])]
-    find_rows = list(payload.get("find_rows", []))
-    entity_label_singular = str(payload["entity_label_singular"])
-    entity_label_plural = str(payload["entity_label_plural"])
-    context_label = str(payload["context_label"])
-    metric = str(payload["metric"])
-    window_games = int(payload["window_games"])
-    time_grain = payload.get("time_grain")
-    time_filter = payload.get("time_filter")
-    season_label = payload.get("season_label")
-    season_type = payload.get("season_type")
-    limit = int(payload["limit"])
-    assumptions = list(payload.get("assumptions", []))
-    comparison_payload = payload.get("comparison")
-    time_series_rows = [TimeSeriesRow(**row) for row in payload.get("time_series_rows", [])]
+def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
+    query_kind = payload.query_kind
+    result_shape = payload.result_shape
+    rows = list(payload.rows)
+    aggregate_rows = list(payload.aggregate_rows)
+    object_rows = list(payload.object_rows)
+    find_rows = list(payload.find_rows)
+    entity_label_singular = payload.entity_label_singular
+    entity_label_plural = payload.entity_label_plural
+    context_label = payload.context_label
+    metric = payload.metric
+    window_games = payload.window_games
+    time_grain = payload.time_grain
+    time_filter = payload.time_filter
+    season_label = payload.season_label
+    season_type = payload.season_type
+    limit = payload.limit
+    assumptions = list(payload.assumptions)
+    comparison = payload.comparison
+    time_series_rows = list(payload.time_series_rows)
 
-    if comparison_payload is not None:
-        comparison = ComparisonResult(**comparison_payload)
+    if comparison is not None:
         differential_text = _format_metric_value(metric, comparison.metric_differential)
         compared_count = len(comparison.entities) if comparison.entities else 2
         comparison_scope = (

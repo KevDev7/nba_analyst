@@ -87,8 +87,26 @@ Run it with:
 python3 apps/cli/main.py "Show me the top 10 players by points over the last 10 games" --debug
 ```
 
-Run the slice-1 tests with:
+Run the localhost web app with:
 
 ```bash
-python3 -m unittest tests.test_slice_one
+uvicorn apps.web.server:app --reload --host 127.0.0.1 --port 8000
+```
+
+Or use the optional Portless helper for a stable local URL:
+
+```bash
+scripts/run_web_portless.sh
+```
+
+Then open:
+
+```text
+https://nba-analyst.localhost
+```
+
+Run a focused fast regression smoke test with:
+
+```bash
+python3 -m unittest tests.test_web_api tests.test_cli_pipeline tests.test_semantic_interpreter tests.test_semantic_draft_grounding
 ```

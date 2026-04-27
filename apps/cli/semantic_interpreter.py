@@ -14,16 +14,14 @@
 from __future__ import annotations
 
 import json
-import os
-import time
-import urllib.error
-import urllib.request
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError, model_validator
+
+from apps.cli.llm_transport import LlmTransportError, call_gemini
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -183,60 +181,10 @@ A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"scori
 
 
 def _call_gemini(prompt: str) -> str:
-    # Send the semantic-draft prompt to Gemini and return the model's text.
-    provider = os.getenv("LLM_INTERPRETER_PROVIDER", "google")
-    if provider != "google":
-        raise SemanticInterpreterError(
-            f"Unsupported LLM_INTERPRETER_PROVIDER '{provider}'. This CLI supports 'google' only."
-        )
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
-    temperature = float(os.getenv("LLM_INTERPRETER_TEMPERATURE", "0"))
-    if not api_key:
-        raise SemanticInterpreterError("Missing GEMINI_API_KEY for semantic interpretation.")
-
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        f"?key={api_key}"
-    )
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": temperature,
-            "maxOutputTokens": 2048,
-            "responseMimeType": "application/json",
-        },
-    }
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    body = ""
-    for attempt in range(4):
-        try:
-            # Retry temporary provider failures, but surface persistent errors.
-            with urllib.request.urlopen(request, timeout=60) as response:
-                body = response.read().decode("utf-8")
-            break
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            if exc.code in {429, 503} and attempt < 3:
-                time.sleep(1.5 * (attempt + 1))
-                continue
-            raise SemanticInterpreterError(
-                f"Gemini interpreter request failed with HTTP {exc.code}: {body[:500]}"
-            ) from exc
-        except Exception as exc:  # pragma: no cover - network exceptions are environment-specific
-            raise SemanticInterpreterError(f"Gemini interpreter request failed: {exc}") from exc
-
     try:
-        payload_json = json.loads(body)
-        return payload_json["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception as exc:
-        raise SemanticInterpreterError("Gemini response did not contain a text candidate.") from exc
+        return call_gemini(prompt)
+    except LlmTransportError as exc:
+        raise SemanticInterpreterError(str(exc)) from exc
 
 
 def _parse_interpreter_response(

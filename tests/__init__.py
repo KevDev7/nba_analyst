@@ -8,4 +8,4 @@
 # - importable test modules
 #
 # Next:
-# - test_slice_one.py
+# - start with tests/README.md for the behavior-based test map

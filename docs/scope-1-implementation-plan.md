@@ -114,7 +114,8 @@ Work:
 Files:
 
 - `tests/test_semantic_interpreter.py`
-- new or existing `tests/test_slice_*.py`
+- behavior-based test files such as `tests/test_ranking_cli_variants.py`,
+  `tests/test_trend_planning.py`, and `tests/test_comparison_planning.py`
 - shared helpers in `tests/planner_helpers.py`
 
 Work:
@@ -352,4 +353,3 @@ Done when:
 6. Restriction audit and Scope 1 closure
 
 Trend and compare come before aggregate/find because more lower-level planner/runtime support already exists for them.
-

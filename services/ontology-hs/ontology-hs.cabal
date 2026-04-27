@@ -10,9 +10,25 @@ executable ontology-hs
   ghc-options:      -Wall
   other-modules:
       GroundedPlanning.Compile
+    , GroundedPlanning.Compile.PlanBuilder
+    , GroundedPlanning.Compile.Sql.Aggregate
+    , GroundedPlanning.Compile.Sql.Common
+    , GroundedPlanning.Compile.Sql.Comparison
+    , GroundedPlanning.Compile.Sql.Find
+    , GroundedPlanning.Compile.Sql.Object
+    , GroundedPlanning.Compile.Sql.Ranking
+    , GroundedPlanning.Compile.Sql.Trend
     , GroundedPlanning.Plan
     , GroundedPlanning.Resolve
     , GroundedPlanning.Resolve.Common
+    , GroundedPlanning.Resolve.Common.Context
+    , GroundedPlanning.Resolve.Common.Dimensions
+    , GroundedPlanning.Resolve.Common.Filters
+    , GroundedPlanning.Resolve.Common.LinkedFilters
+    , GroundedPlanning.Resolve.Common.Metrics
+    , GroundedPlanning.Resolve.Common.Ontology
+    , GroundedPlanning.Resolve.Common.Trend
+    , GroundedPlanning.Resolve.Common.Types
     , GroundedPlanning.Resolve.Rank
     , GroundedPlanning.Resolve.Trend
     , GroundedPlanning.Resolve.Object
@@ -21,6 +37,15 @@ executable ontology-hs
     , GroundedPlanning.Resolve.Find
     , GroundedPlanning.Validation
     , GroundedPlanning.Validation.Common
+    , GroundedPlanning.Validation.Common.Comparison
+    , GroundedPlanning.Validation.Common.Dimensions
+    , GroundedPlanning.Validation.Common.Filters
+    , GroundedPlanning.Validation.Common.LinkedFilters
+    , GroundedPlanning.Validation.Common.Metrics
+    , GroundedPlanning.Validation.Common.Ontology
+    , GroundedPlanning.Validation.Common.Orders
+    , GroundedPlanning.Validation.Common.Trend
+    , GroundedPlanning.Validation.Common.Types
     , GroundedPlanning.Validation.Rank
     , GroundedPlanning.Validation.Trend
     , GroundedPlanning.Validation.Object
@@ -33,6 +58,15 @@ executable ontology-hs
     , OntologyLayer.Validation
     , QueryModel.IR
     , QueryModel.SemanticDraft
+    , QueryModel.SemanticDraft.Aggregate
+    , QueryModel.SemanticDraft.Compare
+    , QueryModel.SemanticDraft.Filters
+    , QueryModel.SemanticDraft.Find
+    , QueryModel.SemanticDraft.Match
+    , QueryModel.SemanticDraft.Normalize
+    , QueryModel.SemanticDraft.Rank
+    , QueryModel.SemanticDraft.Trend
+    , QueryModel.SemanticDraft.Types
   build-depends:
       base >= 4.20 && < 5
     , aeson

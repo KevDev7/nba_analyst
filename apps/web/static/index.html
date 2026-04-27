@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NBA Analyst</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Localhost assistant</p>
+        <h1>Ask the NBA analyst</h1>
+        <p class="lede">
+          Type one analytics question. The page sends it through the same semantic
+          pipeline as the CLI and renders the answer here.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="question-title">
+        <h2 id="question-title">Question</h2>
+        <form id="chat-form">
+          <label class="sr-only" for="question">NBA analytics question</label>
+          <textarea
+            id="question"
+            name="question"
+            rows="4"
+            placeholder="Show me the top 10 players by points over the last 10 games"
+          ></textarea>
+
+          <div class="controls">
+            <label class="debug-toggle">
+              <input id="debug" name="debug" type="checkbox" />
+              Show debug details
+            </label>
+            <button id="submit" type="submit">Ask analyst</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel output-panel" aria-live="polite">
+        <div class="output-header">
+          <h2>Response</h2>
+          <span id="status" class="status">Idle</span>
+        </div>
+        <pre id="answer" class="answer">Your answer will appear here.</pre>
+        <pre id="error" class="error" hidden></pre>
+        <details id="debug-details" hidden>
+          <summary>Debug</summary>
+          <pre id="debug-output"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
