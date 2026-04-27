@@ -67,7 +67,7 @@ class AggregateQueryTests(unittest.TestCase):
         mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": aggregate_draft()})
         database_path = load_database()
         with duckdb.connect(str(database_path), read_only=True) as conn:
-            expected_name, expected_average = conn.execute(
+            expected_name, expected_games, expected_date_start, expected_date_end, expected_average = conn.execute(
                 """
                 WITH recent_rows AS (
                   SELECT
@@ -82,7 +82,12 @@ class AggregateQueryTests(unittest.TestCase):
                   FROM team_game tg
                   JOIN team t ON tg.team_id = t.team_id
                 )
-                SELECT team_name, ROUND(AVG(score), 1) AS metric_value
+                SELECT
+                  team_name,
+                  COUNT(*) AS games_played,
+                  MIN(game_date) AS date_start,
+                  MAX(game_date) AS date_end,
+                  ROUND(AVG(score), 1) AS metric_value
                 FROM recent_rows
                 WHERE game_rank <= 10
                 GROUP BY team_id, team_name
@@ -94,9 +99,12 @@ class AggregateQueryTests(unittest.TestCase):
         output = run_cli("Calculate average points by team over the last 10 games")
 
         self.assertIn("Average points by team over the last 10 games are shown below.", output)
-        self.assertIn("Team | Average Points", output)
+        self.assertIn("Team | Games Played | Date Range | Average Points", output)
         self.assertNotIn("Rank |", output)
-        self.assertIn(f"{expected_name} | {expected_average:.1f}", output)
+        self.assertIn(
+            f"{expected_name} | {expected_games} | {expected_date_start} to {expected_date_end} | {expected_average:.1f}",
+            output,
+        )
 
 
 if __name__ == "__main__":

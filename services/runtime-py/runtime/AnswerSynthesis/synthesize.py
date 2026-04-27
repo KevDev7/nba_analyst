@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from .interpretation_summary import build_interpretation
 from .response_models import FinalAnswer, SynthesisPayload
 
 
@@ -54,6 +55,25 @@ def _time_filter_phrase(time_filter: object, season_type: object = None) -> str:
     }.get(time_filter, f" with {str(time_filter).replace('_', ' ')}")
 
 
+def _join_nonempty(parts: list[str]) -> str:
+    return " ".join(part for part in parts if part)
+
+
+def _season_scope_phrase(season_label: object, season_type: object) -> str:
+    if season_label and season_type:
+        return f"in the {season_label} {str(season_type).replace('_', ' ')}"
+    if season_label:
+        return f"in the {season_label} season"
+    if season_type:
+        return f"for {str(season_type).replace('_', ' ')}"
+    return ""
+
+
+def _result_time_phrase(window_games: int, season_label: object, season_type: object) -> str:
+    window_phrase = f"over the last {window_games} games" if window_games > 0 else ""
+    return _join_nonempty([window_phrase, _season_scope_phrase(season_label, season_type)])
+
+
 def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     query_kind = payload.query_kind
     result_shape = payload.result_shape
@@ -74,14 +94,20 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     assumptions = list(payload.assumptions)
     comparison = payload.comparison
     time_series_rows = list(payload.time_series_rows)
+    find_predicates = list(payload.find_predicates)
+    find_filters = list(payload.find_filters)
+    linked_filters = list(payload.linked_filters)
+    display_metadata = list(payload.display_metadata)
+    interpretation = build_interpretation(payload)
 
     if comparison is not None:
         differential_text = _format_metric_value(metric, comparison.metric_differential)
         compared_count = len(comparison.entities) if comparison.entities else 2
+        time_scope = _result_time_phrase(window_games, season_label, season_type)
         comparison_scope = (
-            f"among {compared_count} {entity_label_plural.lower()}"
+            _join_nonempty([f"among {compared_count} {entity_label_plural.lower()}", time_scope])
             if compared_count > 2
-            else f"over the last {window_games} games"
+            else time_scope
         )
         summary = (
             f"{comparison.leader} led in {_human_metric(metric)} {comparison_scope} "
@@ -89,6 +115,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
         )
         return FinalAnswer(
             summary=summary,
+            interpretation=interpretation,
             query_kind=query_kind,
             result_shape=result_shape,
             entity_label_singular=entity_label_singular,
@@ -107,13 +134,20 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
+            linked_filters=linked_filters,
+            display_metadata=display_metadata,
             comparison=comparison,
         )
 
-    if find_rows:
-        summary = f"Matching {entity_label_plural.lower()} are shown below."
+    if result_shape == "find_rows":
+        summary = (
+            f"Matching {entity_label_plural.lower()} are shown below."
+            if find_rows
+            else f"No matching {entity_label_plural.lower()} were returned."
+        )
         return FinalAnswer(
             summary=summary,
+            interpretation=interpretation,
             query_kind=query_kind,
             result_shape=result_shape,
             entity_label_singular=entity_label_singular,
@@ -132,22 +166,22 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=[],
             find_rows=find_rows,
+            find_predicates=find_predicates,
+            find_filters=find_filters,
+            linked_filters=linked_filters,
+            display_metadata=display_metadata,
             comparison=None,
         )
 
     if aggregate_rows:
-        if season_label and season_type:
-            summary = (
-                f"{_human_metric(metric).capitalize()} by {entity_label_singular.lower()} in the "
-                f"{season_label} {season_type.replace('_', ' ')} are shown below."
-            )
-        else:
-            summary = (
-                f"{_human_metric(metric).capitalize()} by {entity_label_singular.lower()} over the last "
-                f"{window_games} games are shown below."
-            )
+        time_scope = _result_time_phrase(window_games, season_label, season_type)
+        summary = (
+            f"{_human_metric(metric).capitalize()} by {entity_label_singular.lower()} "
+            f"{time_scope} are shown below."
+        )
         return FinalAnswer(
             summary=summary,
+            interpretation=interpretation,
             query_kind=query_kind,
             result_shape=result_shape,
             entity_label_singular=entity_label_singular,
@@ -166,25 +200,22 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
+            linked_filters=linked_filters,
+            display_metadata=display_metadata,
             comparison=None,
         )
 
     if object_rows:
         leader = object_rows[0]
-        if season_label and season_type:
-            summary = (
-                f"{entity_label_plural} ordered by {_human_metric(metric)} in the "
-                f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
-                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
-            )
-        else:
-            summary = (
-                f"{entity_label_plural} ordered by {_human_metric(metric)} over the last "
-                f"{window_games} games: {leader.entity_name} leads with "
-                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
-            )
+        time_scope = _result_time_phrase(window_games, season_label, season_type)
+        summary = (
+            f"{entity_label_plural} ordered by {_human_metric(metric)} {time_scope}: "
+            f"{leader.entity_name} leads with "
+            f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+        )
         return FinalAnswer(
             summary=summary,
+            interpretation=interpretation,
             query_kind=query_kind,
             result_shape=result_shape,
             entity_label_singular=entity_label_singular,
@@ -203,6 +234,8 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=object_rows,
             time_series_rows=[],
             find_rows=[],
+            linked_filters=linked_filters,
+            display_metadata=display_metadata,
             comparison=None,
         )
 
@@ -220,6 +253,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             )
         return FinalAnswer(
             summary=summary,
+            interpretation=interpretation,
             query_kind=query_kind,
             result_shape=result_shape,
             entity_label_singular=entity_label_singular,
@@ -238,34 +272,24 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=time_series_rows,
             find_rows=[],
+            linked_filters=linked_filters,
+            display_metadata=display_metadata,
             comparison=None,
         )
 
     if rows:
         leader = rows[0]
-        if season_label and season_type:
-            if limit > 0:
-                summary = (
-                    f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} in the "
-                    f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
-                    f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
-                )
-            else:
-                summary = (
-                    f"{entity_label_plural} ranked by {_human_metric(metric)} in the "
-                    f"{season_label} {season_type.replace('_', ' ')}: {leader.entity_name} leads with "
-                    f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
-                )
-        elif limit > 0:
+        time_scope = _result_time_phrase(window_games, season_label, season_type)
+        if limit > 0:
             summary = (
-                f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} over the last "
-                f"{window_games} games: {leader.entity_name} leads with "
+                f"Top {limit} {entity_label_plural.lower()} by {_human_metric(metric)} {time_scope}: "
+                f"{leader.entity_name} leads with "
                 f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
             )
         else:
             summary = (
-                f"{entity_label_plural} ranked by {_human_metric(metric)} over the last "
-                f"{window_games} games: {leader.entity_name} leads with "
+                f"{entity_label_plural} ranked by {_human_metric(metric)} {time_scope}: "
+                f"{leader.entity_name} leads with "
                 f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
             )
     else:
@@ -275,6 +299,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
 
     return FinalAnswer(
         summary=summary,
+        interpretation=interpretation,
         query_kind=query_kind,
         result_shape=result_shape,
         entity_label_singular=entity_label_singular,
@@ -293,5 +318,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
         object_rows=[],
         time_series_rows=[],
         find_rows=[],
+        linked_filters=linked_filters,
+        display_metadata=display_metadata,
         comparison=None,
     )

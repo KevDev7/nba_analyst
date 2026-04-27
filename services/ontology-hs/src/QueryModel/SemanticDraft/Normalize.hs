@@ -37,6 +37,10 @@ draftTask rawTask =
     "explore" -> DraftFind
     "compare" -> DraftCompare
     "comparison" -> DraftCompare
+    "object" -> DraftObject
+    "objects" -> DraftObject
+    "objectrows" -> DraftObject
+    "entityrows" -> DraftObject
     _ -> DraftUnknown rawTask
 
 normalizeTrendGrain :: Text -> Maybe Text

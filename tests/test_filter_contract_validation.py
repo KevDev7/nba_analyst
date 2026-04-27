@@ -68,6 +68,41 @@ class FilterContractValidationTests(unittest.TestCase):
         self.assertEqual(resolved["seasonLabel"], "2025-26")
         self.assertEqual(resolved["seasonType"], "regular_season")
 
+    def test_supported_recent_metric_query_can_be_scoped_to_exact_season(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["average_points"],
+                    "dimensions": ["full_name"],
+                    "timeGrain": None,
+                    "filters": [
+                        {"kind": "last_n_games", "value": 8},
+                        {"kind": "exact_season", "value": "2024-25"},
+                        {"kind": "season_type", "value": "regular_season"},
+                    ],
+                    "linkedFilters": [],
+                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "limit": 5,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": None,
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
+        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(resolved["windowGames"], 8)
+        self.assertEqual(resolved["seasonLabel"], "2024-25")
+        self.assertEqual(resolved["seasonType"], "regular_season")
+        self.assertIn("f.season_year = '2024-25'", sql)
+        self.assertIn("f.season_type = 'regular_season'", sql)
+        self.assertIn("WHERE game_rank <= 8", sql)
+
     def test_supported_trend_query_plans_with_past_year_filter_ref(self) -> None:
         payload = {
             "kind": "metric_query",
@@ -217,7 +252,7 @@ class FilterContractValidationTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries require a positive LastNGames filter.",
+            "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type.",
             str(context.exception),
         )
 

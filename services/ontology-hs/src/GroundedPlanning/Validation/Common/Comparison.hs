@@ -20,6 +20,7 @@ import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (AttributeKind (Dimension), MetricDef (aggregation, executable, source_attributes), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
+import GroundedPlanning.Validation.Common.Filters (hasSeasonFilters, isRecentWindowBundle)
 import GroundedPlanning.Validation.Common.Ontology
 
 requireComparisonRowObject :: Ontology -> Object -> [DimensionName] -> ComparisonIntent -> Either Text Object
@@ -38,6 +39,7 @@ requireComparisonDimension dimensionValues =
 validateComparisonQuery :: Ontology -> Object -> Object -> OT.MetricDef -> BaseQuery -> ComparisonIntent -> [EntityRef] -> Either Text ()
 validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entityRefs = do
   validateComparisonQueryShape base
+  validateComparisonSeasonAttributes factObject base
   validateLinkedFiltersForComparison ontology (objectName factObject) (linkedFilters base)
   validateComparisonPath ontology factObject rowObject comparisonIntent
   validateComparisonMetric metricDef
@@ -54,12 +56,9 @@ validateComparisonQueryShape base = do
   case timeGrain base of
     Nothing -> pure ()
     Just _ -> Left "Comparison queries do not support time-grain trends."
-  case filters base of
-    [filterValue]
-      | filterKindText filterValue == "last_n_games"
-      , Just gamesValue <- filterIntValue filterValue
-      , gamesValue > 0 -> pure ()
-    _ -> Left "Comparison queries require a positive LastNGames filter."
+  if isRecentWindowBundle (filters base)
+    then pure ()
+    else Left "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type."
   case dimensions base of
     [_] -> pure ()
     _ -> Left "Comparison queries require exactly one comparison identity dimension."
@@ -79,6 +78,14 @@ validateComparisonEntities :: [EntityRef] -> Either Text ()
 validateComparisonEntities entityRefs =
   if length entityRefs < 2 || length (nub (map entityId entityRefs)) /= length entityRefs
     then Left "Comparison requires at least two distinct supported entities."
+    else pure ()
+
+validateComparisonSeasonAttributes :: Object -> BaseQuery -> Either Text ()
+validateComparisonSeasonAttributes factObject base =
+  if hasSeasonFilters (filters base)
+    then do
+      requireFactAttribute factObject "season_year" "Season-scoped comparison queries require a season_year attribute on the fact object."
+      requireFactAttribute factObject "season_type" "Season-scoped comparison queries require a season_type attribute on the fact object."
     else pure ()
 
 requireComparisonDimensionOnObject :: Object -> DimensionName -> Either Text ()

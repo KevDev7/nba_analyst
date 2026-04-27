@@ -23,12 +23,18 @@ compileComparisonSql resolved =
         , metricSource = metricMetricSource
         , factTableName = metricFactTableName
         , windowGames = metricWindowGames
+        , seasonLabel = metricSeasonLabel
+        , seasonType = metricSeasonType
         , linkedFiltersResolved = metricLinkedFilters
         } = resolved
       entityList =
         T.intercalate
           ", "
           (map (\entityValue -> T.pack (show (entityIdValue entityValue))) resolvedComparisonEntities)
+      baseWhereConditions =
+        renderColumnRefWithContext "f" "r" "c" metricEntityId <> " IN (" <> entityList <> ")"
+          : renderSeasonFilterConditions "f" metricSeasonLabel metricSeasonType
+          <> renderLinkedFilterConditions "f" metricLinkedFilters
    in T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
@@ -46,7 +52,7 @@ compileComparisonSql resolved =
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
           <> renderLinkedFilterJoinClauses "f" metricLinkedFilters
-          <> [ "  WHERE " <> combineWhereClauses (renderColumnRefWithContext "f" "r" "c" metricEntityId <> " IN (" <> entityList <> ")" : renderLinkedFilterConditions "f" metricLinkedFilters)
+          <> [ "  WHERE " <> combineWhereClauses baseWhereConditions
         , ")"
         , "SELECT"
         , "  entity_id,"

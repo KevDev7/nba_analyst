@@ -77,6 +77,59 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             return str(int(numeric))
         return f"{numeric:.1f}"
 
+    def _display_number(self, value) -> str:
+        numeric = float(value)
+        if numeric.is_integer():
+            return str(int(numeric))
+        return f"{numeric:.1f}"
+
+    def _display_season_type(self, value: str) -> str:
+        return value.replace("_", " ").title()
+
+    def _time_cells(self, runtime_result) -> list[str]:
+        cells: list[str] = []
+        if runtime_result.season_label:
+            cells.append(runtime_result.season_label)
+        if runtime_result.season_type:
+            cells.append(self._display_season_type(runtime_result.season_type))
+        return cells
+
+    def _display_metadata_value(self, key: str, value) -> str:
+        if key == "games_played":
+            return self._display_number(value)
+        if key == "minutes":
+            return f"{float(value):.1f}"
+        return str(value)
+
+    def _metadata_cells(self, runtime_result, row) -> list[str]:
+        cells: list[str] = []
+        for metadata in runtime_result.display_metadata:
+            display_values = getattr(row, "display_values", {})
+            value = display_values.get(metadata.column_key)
+            if value is None:
+                value = getattr(row, metadata.column_key, None)
+            if value is not None:
+                cells.append(self._display_metadata_value(metadata.column_key, value))
+        return cells
+
+    def _rendered_ranking_row(self, runtime_result, row) -> str:
+        cells = [str(row.rank), row.entity_name]
+        if row.context_value:
+            cells.append(row.context_value)
+        cells.extend(self._time_cells(runtime_result))
+        cells.extend(self._metadata_cells(runtime_result, row))
+        cells.append(self._display_metric(row.metric_value))
+        return " | ".join(cells)
+
+    def _rendered_object_row(self, runtime_result, row) -> str:
+        cells = [row.entity_name]
+        if row.context_value:
+            cells.append(row.context_value)
+        cells.extend(self._time_cells(runtime_result))
+        cells.extend(self._metadata_cells(runtime_result, row))
+        cells.append(self._display_metric(row.metric_value))
+        return " | ".join(cells)
+
     def test_top_players_by_points_recent_matches_snapshot_truth(self) -> None:
         question = "Show me the top 10 players by points over the last 10 games"
         _interpreted_query, planner_output, runtime_result, formatted = self._run_question(question)
@@ -116,10 +169,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerGame"
         )
         self.assertEqual(self._ranking_rows(runtime_result, 10), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_team_average_points_recent_matches_snapshot_truth(self) -> None:
         question = "Show me teams by average points over the last 10 games"
@@ -133,8 +183,8 @@ class TruthEvalSnapshotTests(unittest.TestCase):
                     WITH recent_rows AS (
                       SELECT
                         tg.team_id,
-                        tg.team_name,
-                        tg.team_abbreviation,
+                        t.team_name,
+                        t.team_abbreviation,
                         tg.game_date,
                         tg.score,
                         ROW_NUMBER() OVER (
@@ -142,6 +192,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
                           ORDER BY tg.game_date DESC
                         ) AS game_rank
                       FROM team_game tg
+                      JOIN team t ON tg.team_id = t.team_id
                     )
                     SELECT team_name, team_abbreviation, AVG(score) AS metric_value
                     FROM recent_rows
@@ -158,10 +209,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "TeamGame"
         )
         self.assertEqual(self._ranking_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_player_object_totals_recent_matches_snapshot_truth(self) -> None:
         question = "Show me players and their total points over the last 10 games"
@@ -198,10 +246,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
 
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         self.assertEqual(self._object_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"{expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_object_row(runtime_result, runtime_result.object_rows[0]), formatted)
 
     def test_player_average_points_season_matches_snapshot_truth(self) -> None:
         question = "Show me players by average points in the 2025-26 regular season"
@@ -228,10 +273,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerSeason"
         )
         self.assertEqual(self._ranking_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_team_wins_season_matches_snapshot_truth(self) -> None:
         question = "Show me teams by wins in the 2025-26 regular season"
@@ -242,11 +284,12 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             for index, row in enumerate(
                 self._fetchall(
                     """
-                    SELECT team_name, team_abbreviation, wins
-                    FROM team_season
-                    WHERE season_year = '2025-26'
-                      AND season_type = 'regular_season'
-                    ORDER BY wins DESC, team_name ASC
+                    SELECT t.team_name, t.team_abbreviation, ts.wins
+                    FROM team_season ts
+                    JOIN team t ON ts.team_id = t.team_id
+                    WHERE ts.season_year = '2025-26'
+                      AND ts.season_type = 'regular_season'
+                    ORDER BY ts.wins DESC, t.team_name ASC
                     LIMIT 5
                     """
                 )
@@ -257,10 +300,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "TeamSeason"
         )
         self.assertEqual(self._ranking_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_lakers_recent_average_points_matches_snapshot_truth(self) -> None:
         question = "Show me players by average points for the Lakers over the last 10 games"
@@ -302,10 +342,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerGame"
         )
         self.assertEqual(self._ranking_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_knicks_recent_object_totals_matches_snapshot_truth(self) -> None:
         question = "Show me the top 5 players and their total points for the Knicks over the last 10 games"
@@ -343,10 +380,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
 
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         self.assertEqual(self._object_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"{expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_object_row(runtime_result, runtime_result.object_rows[0]), formatted)
 
     def test_lakers_season_average_points_matches_snapshot_truth(self) -> None:
         question = "Show me players by average points for the Lakers in the 2025-26 regular season"
@@ -376,10 +410,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             "PlayerSeasonTeam",
         )
         self.assertEqual(self._ranking_rows(runtime_result, 5), expected)
-        self.assertIn(
-            f"1 | {expected[0][1]} | {expected[0][2]} | {self._display_metric(expected[0][3])}",
-            formatted,
-        )
+        self.assertIn(self._rendered_ranking_row(runtime_result, runtime_result.rows[0]), formatted)
 
     def test_brunson_tatum_comparison_matches_snapshot_truth(self) -> None:
         question = "Compare Brunson and Tatum scoring over the last 10 games"
@@ -441,7 +472,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
         self.assertIsNotNone(runtime_result.comparison)
         self.assertEqual(runtime_result.comparison.leader, "Jalen Brunson")
-        self.assertEqual(self._metric_value(runtime_result.comparison.metric_differential), 74.0)
+        self.assertEqual(self._metric_value(runtime_result.comparison.metric_differential), 54.0)
         self.assertEqual(self._metric_value(runtime_result.comparison.entity_a.metric_value), self._metric_value(tatum_total))
         self.assertEqual(self._metric_value(runtime_result.comparison.entity_b.metric_value), self._metric_value(brunson_total))
         self.assertEqual(runtime_result.comparison.entity_a.games_count, tatum_games)
@@ -456,7 +487,7 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             for row in runtime_result.comparison.per_game_rows
         ]
         self.assertEqual(sorted(actual_rows), sorted(expected_rows))
-        self.assertIn("Jalen Brunson led in total points over the last 10 games by 74 total points.", formatted)
+        self.assertIn("Jalen Brunson led in total points over the last 10 games by 54 total points.", formatted)
 
     def test_monthly_team_trend_matches_snapshot_truth(self) -> None:
         question = "What are the monthly average points by team over the past year?"
@@ -469,9 +500,10 @@ class TruthEvalSnapshotTests(unittest.TestCase):
                 WITH monthly AS (
                   SELECT
                     STRFTIME(tg.game_date, '%Y-%m') AS time_bucket,
-                    tg.team_name,
+                    t.team_name,
                     AVG(tg.score) AS metric_value
                   FROM team_game tg
+                  JOIN team t ON tg.team_id = t.team_id
                   WHERE tg.game_date >= (
                     SELECT MAX(game_date) - INTERVAL '1 year'
                     FROM team_game

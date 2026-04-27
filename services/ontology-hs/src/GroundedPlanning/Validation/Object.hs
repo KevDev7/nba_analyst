@@ -23,4 +23,5 @@ validateObjectQuery ontology objectQuery = do
   requireObjectQueryDimension rowObjectValue (dimensions base)
   filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
   validateOrdinaryLinkedFilters ontology ObjectLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
+  validateOrdinaryMetricFilterSurface factObject (filters base)
   validateOptionalMetricOrder (orders base) (metrics base)

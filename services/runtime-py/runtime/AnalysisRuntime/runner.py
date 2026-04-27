@@ -22,6 +22,17 @@ from .query_engine import run_sql
 from .state import RuntimeState
 
 
+def _row_with_display_values(row: dict[str, object], plan: ExecutionPlan) -> dict[str, object]:
+    # Preserve display columns in a generic bag so answer formatting is driven
+    # by the execution plan instead of one Python field per possible column.
+    display_values = {
+        metadata.column_key: row.get(metadata.column_key)
+        for metadata in plan.display_metadata
+        if metadata.column_key in row
+    }
+    return {**row, "display_values": display_values}
+
+
 def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
     # Create a scratchpad for multi-step execution and placeholders for outputs.
     runtime_state = RuntimeState()
@@ -52,11 +63,11 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
     time_series_rows: List[TimeSeriesRow] = []
     find_rows = []
     if plan.plan_type == "single_sql" and plan.result_shape == "ranking":
-        rows = [RankingRow(**row) for row in raw_rows]
+        rows = [RankingRow(**_row_with_display_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "aggregate":
-        aggregate_rows = [AggregateRow(**row) for row in raw_rows]
+        aggregate_rows = [AggregateRow(**_row_with_display_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "object_rows":
-        object_rows = [ObjectRow(**row) for row in raw_rows]
+        object_rows = [ObjectRow(**_row_with_display_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "time_series":
         time_series_rows = [TimeSeriesRow(**row) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "find_rows":
@@ -81,6 +92,10 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         object_rows=object_rows,
         time_series_rows=time_series_rows,
         find_rows=find_rows,
+        find_predicates=plan.find_predicates,
+        find_filters=plan.find_filters,
+        linked_filters=plan.linked_filters,
+        display_metadata=plan.display_metadata,
         raw_rows=raw_rows,
         comparison=comparison_result,
     )

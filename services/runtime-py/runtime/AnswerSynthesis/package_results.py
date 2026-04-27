@@ -36,5 +36,9 @@ def package_results(result: RuntimeResult) -> SynthesisPayload:
         object_rows=result.object_rows,
         time_series_rows=result.time_series_rows,
         find_rows=result.find_rows,
+        find_predicates=result.find_predicates,
+        find_filters=result.find_filters,
+        linked_filters=result.linked_filters,
+        display_metadata=result.display_metadata,
         comparison=result.comparison,
     )

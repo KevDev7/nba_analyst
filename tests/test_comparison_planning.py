@@ -86,7 +86,7 @@ class ComparisonPlanningTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries require a positive LastNGames filter.",
+            "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type.",
             str(context.exception),
         )
 

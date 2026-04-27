@@ -10,6 +10,7 @@ import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Ontology (objects), Object)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
 import QueryModel.SemanticDraft.Types
@@ -63,6 +64,7 @@ groundFactCandidate ontology draft rawMeasure subjectObject rankingFilters maybe
   _ <- requireRankingFactSurface rankingFilters factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
   dimensionValue <- identityDimension subjectObject
+  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
   pure
     GroundedRanking
       { factObject = factObjectValue
@@ -70,6 +72,7 @@ groundFactCandidate ontology draft rawMeasure subjectObject rankingFilters maybe
       , metricDef = metricValue
       , displayDimension = dimensionValue
       , filterValues = rankingFilterValues rankingFilters
+      , linkedFilterValues = linkedFilterValue
       , limitValue = maybeLimit
       , assumptionValues = assumptions draft
       , matchScore = metricMatchScore rawMeasure metricValue
@@ -89,7 +92,7 @@ rankingQuery orderBuilder grounded =
             , QI.dimensions = [displayDimension grounded]
             , QI.timeGrain = Nothing
             , QI.filters = filterValues grounded
-            , QI.linkedFilters = []
+            , QI.linkedFilters = linkedFilterValues grounded
             , QI.orders = [orderBuilder (metricName (metricDef grounded))]
             , QI.limit = limitValue grounded
             , QI.assumptions = assumptionValues grounded

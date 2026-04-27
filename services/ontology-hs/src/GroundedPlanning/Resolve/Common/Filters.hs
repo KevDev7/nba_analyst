@@ -11,11 +11,9 @@ import QueryModel.IR
 
 requireLastNGames :: [Filter] -> Either Text Int
 requireLastNGames filterValues =
-  case filterValues of
-    [filterValue]
-      | filterKindText filterValue == "last_n_games"
-      , Just gamesValue <- filterIntValue filterValue -> Right gamesValue
-    _ -> Left "Only a single LastNGames filter is supported."
+  case [gamesValue | filterValue <- filterValues, filterKindText filterValue == "last_n_games", Just gamesValue <- [filterIntValue filterValue], gamesValue > 0] of
+    [gamesValue] -> Right gamesValue
+    _ -> Left "Exactly one positive LastNGames filter is required."
 
 seasonFilterPair :: [Filter] -> Maybe (Text, Text)
 seasonFilterPair filterValues = do

@@ -107,6 +107,7 @@ data GroundedRanking = GroundedRanking
   , metricDef :: OT.MetricDef
   , displayDimension :: Text
   , filterValues :: [QI.Filter]
+  , linkedFilterValues :: [QI.LinkedFilter]
   , limitValue :: Maybe Int
   , assumptionValues :: [Text]
   , matchScore :: Int
@@ -114,7 +115,7 @@ data GroundedRanking = GroundedRanking
   }
 
 data RankingFilterBundle
-  = RecentRanking Int
+  = RecentRanking Int [QI.Filter]
   | SeasonRanking Text Text
   deriving (Show, Eq)
 
@@ -127,6 +128,7 @@ data GroundedTrend = GroundedTrend
   , trendDisplayDimension :: Maybe Text
   , trendGrainValue :: Text
   , trendFilterValues :: [QI.Filter]
+  , trendLinkedFilterValues :: [QI.LinkedFilter]
   , trendAssumptions :: [Text]
   , trendMatchScore :: Int
   , trendSubjectAffinityScore :: Int
@@ -140,6 +142,7 @@ data GroundedComparison = GroundedComparison
   , comparisonMetricDef :: OT.MetricDef
   , comparisonDisplayDimension :: Text
   , comparisonFilterValues :: [QI.Filter]
+  , comparisonLinkedFilterValues :: [QI.LinkedFilter]
   , comparisonEntitiesValue :: [QI.EntityRef]
   , comparisonAssumptions :: [Text]
   , comparisonMatchScore :: Int
@@ -160,6 +163,7 @@ data GroundedAggregate = GroundedAggregate
   , aggregateMetricDef :: OT.MetricDef
   , aggregateDisplayDimension :: Text
   , aggregateFilterValues :: [QI.Filter]
+  , aggregateLinkedFilterValues :: [QI.LinkedFilter]
   , aggregateLimitValue :: Maybe Int
   , aggregateAssumptions :: [Text]
   , aggregateMatchScore :: Int
@@ -183,4 +187,5 @@ data DraftTask
   | DraftAggregate
   | DraftFind
   | DraftCompare
+  | DraftObject
   | DraftUnknown Text

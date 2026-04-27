@@ -16,7 +16,17 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from runtime.AnalysisRuntime.models import AggregateRow, ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
+from runtime.AnalysisRuntime.models import (
+    AggregateRow,
+    ComparisonResult,
+    ObjectRow,
+    PlanDisplayMetadata,
+    PlanFindFilter,
+    PlanFindPredicate,
+    PlanLinkedFilter,
+    RankingRow,
+    TimeSeriesRow,
+)
 
 
 class SynthesisPayload(BaseModel):
@@ -41,11 +51,16 @@ class SynthesisPayload(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
+    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
 
 
 class FinalAnswer(BaseModel):
     summary: str
+    interpretation: str
     query_kind: str
     result_shape: str
     entity_label_singular: str
@@ -64,4 +79,8 @@ class FinalAnswer(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
+    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

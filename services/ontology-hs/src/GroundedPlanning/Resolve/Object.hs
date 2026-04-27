@@ -30,12 +30,9 @@ resolveObjectQuery ontology objectQuery = do
   resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
   let maybeSeasonPair = seasonFilterPair (filters base)
       gamesValue =
-        case maybeSeasonPair of
-          Just _ -> 0
-          Nothing ->
-            case requireLastNGames (filters base) of
-              Right value -> value
-              Left _ -> 0
+        case requireLastNGames (filters base) of
+          Right value -> value
+          Left _ -> 0
   pure
     ResolvedObjectQuery
       { rowTableName = backing_table rowObjectValue
@@ -58,4 +55,5 @@ resolveObjectQuery ontology objectQuery = do
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
+      , displayMetadata = resolveDisplayMetadata factObject rowObjectValue gamesValue
       }

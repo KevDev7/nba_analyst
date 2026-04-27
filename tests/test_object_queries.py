@@ -40,13 +40,13 @@ class ObjectQueryTests(unittest.TestCase):
     def test_object_query_output(self) -> None:
         output = run_cli("Show me players and their total points over the last 10 games")
         self.assertIn("Players ordered by total points", output)
-        self.assertIn("Luka Dončić | LAL | 366", output)
-        self.assertIn("Jalen Brunson | NYK | 245", output)
+        self.assertRegex(output, r"Luka Dončić \| LAL \| 10 \| 38\.5 \| [0-9-]+ to [0-9-]+ \| 397")
+        self.assertRegex(output, r"Jalen Brunson \| NYK \| 10 \| 37\.1 \| [0-9-]+ to [0-9-]+ \| 269")
 
     def test_object_query_variant(self) -> None:
         output = run_cli("Show me players with their scoring totals over the last 10 games")
         self.assertIn("Interpreted 'scoring' as total points.", output)
-        self.assertIn("Shai Gilgeous-Alexander | OKC | 312", output)
+        self.assertRegex(output, r"Shai Gilgeous-Alexander \| OKC \| 10 \| 33\.9 \| [0-9-]+ to [0-9-]+ \| 312")
 
     def test_assists_rejected(self) -> None:
         with self.assertRaises(RuntimeError):

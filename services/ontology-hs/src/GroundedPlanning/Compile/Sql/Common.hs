@@ -16,9 +16,15 @@ module GroundedPlanning.Compile.Sql.Common
   , renderMaybeColumnRef
   , renderMaybePathJoinClauses
   , renderMetricValue
+  , renderMetadataAggregateSelectLines
+  , renderMetadataDirectSelectLines
+  , renderMetadataFinalSelectLines
+  , renderMetadataSourceSelectLines
   , renderPathJoinClauses
+  , renderSeasonFilterConditions
   , renderTrendFilterConditions
   , seasonWhereClause
+  , seasonWhereClauseForAlias
   , trendSeasonTypeFromFilters
   ) where
 
@@ -74,9 +80,59 @@ renderMetricValue columnRef =
     "context" -> "c." <> columnName columnRef
     _ -> error "Unsupported metric column role."
 
+renderMetadataSourceSelectLines :: Text -> Text -> Text -> [ResolvedDisplayMetadata] -> [Text]
+renderMetadataSourceSelectLines factAlias rowAlias contextAlias metadataValues =
+  [ "    " <> renderColumnRefWithContext factAlias rowAlias contextAlias sourceColumn
+      <> " AS __" <> metadataKey metadataValue <> "_source,"
+  | metadataValue <- metadataValues
+  , metadataAggregation metadataValue /= "count_rows"
+  , Just sourceColumn <- [metadataSource metadataValue]
+  ]
+
+renderMetadataDirectSelectLines :: Text -> Text -> Text -> [ResolvedDisplayMetadata] -> [Text]
+renderMetadataDirectSelectLines factAlias rowAlias contextAlias metadataValues =
+  [ "    " <> renderColumnRefWithContext factAlias rowAlias contextAlias sourceColumn
+      <> " AS " <> metadataKey metadataValue <> ","
+  | metadataValue <- metadataValues
+  , Just sourceColumn <- [metadataSource metadataValue]
+  ]
+
+renderMetadataAggregateSelectLines :: [ResolvedDisplayMetadata] -> [Text]
+renderMetadataAggregateSelectLines metadataValues =
+  map renderMetadata metadataValues
+  where
+    renderMetadata metadataValue =
+      case metadataAggregation metadataValue of
+        "count_rows" -> "    COUNT(*) AS " <> metadataKey metadataValue <> ","
+        "avg" -> "    ROUND(AVG(__" <> metadataKey metadataValue <> "_source), 1) AS " <> metadataKey metadataValue <> ","
+        "identity" -> "    MAX(__" <> metadataKey metadataValue <> "_source) AS " <> metadataKey metadataValue <> ","
+        "date_range" ->
+          "    CAST(MIN(__" <> metadataKey metadataValue <> "_source) AS VARCHAR)"
+            <> " || ' to ' || CAST(MAX(__" <> metadataKey metadataValue <> "_source) AS VARCHAR)"
+            <> " AS " <> metadataKey metadataValue <> ","
+        _ -> error "Unsupported display metadata aggregation."
+
+renderMetadataFinalSelectLines :: [ResolvedDisplayMetadata] -> [Text]
+renderMetadataFinalSelectLines metadataValues =
+  [ "  " <> metadataKey metadataValue <> ","
+  | metadataValue <- metadataValues
+  ]
+
 seasonWhereClause :: Text -> Text -> Text
 seasonWhereClause seasonLabelValue seasonTypeValue =
-  "f.season_year = '" <> seasonLabelValue <> "' AND f.season_type = '" <> seasonTypeValue <> "'"
+  seasonWhereClauseForAlias "f" seasonLabelValue seasonTypeValue
+
+seasonWhereClauseForAlias :: Text -> Text -> Text -> Text
+seasonWhereClauseForAlias factAlias seasonLabelValue seasonTypeValue =
+  factAlias <> ".season_year = '" <> escapeSqlLiteral seasonLabelValue <> "' AND "
+    <> factAlias <> ".season_type = '" <> escapeSqlLiteral seasonTypeValue <> "'"
+
+renderSeasonFilterConditions :: Text -> Maybe Text -> Maybe Text -> [Text]
+renderSeasonFilterConditions factAlias maybeSeasonLabel maybeSeasonType =
+  case (maybeSeasonLabel, maybeSeasonType) of
+    (Just seasonLabelValue, Just seasonTypeValue) ->
+      [seasonWhereClauseForAlias factAlias seasonLabelValue seasonTypeValue]
+    _ -> []
 
 combineWhereClauses :: [Text] -> Text
 combineWhereClauses clauseValues =

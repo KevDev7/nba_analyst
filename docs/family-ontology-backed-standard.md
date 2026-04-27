@@ -1,7 +1,7 @@
 # Family Ontology-Backed Standard
 
-This doc records the standard we decided to hold the five explicitly supported
-query families to after the comparison redesign in slice 30.
+This doc records the standard we decided to hold the six explicitly supported
+query families to after the family cleanup slices.
 
 The goal is to stop the endless loop of reopening families for smaller and
 smaller purity fixes, while still holding a high bar for ontology-backed
@@ -70,19 +70,20 @@ from:
 - honest restrictions caused by current planner, runtime, or answer-shape
   limits
 
-## The Five Explicitly Supported Families
+## The Six Explicitly Supported Families
 
-For the current repo, the five explicit supported families are:
+For the current repo, the six explicit supported families are:
 
 1. ranking / top-N
 2. aggregation
 3. filtering / joining
 4. trend
 5. comparison
+6. object rows
 
 ## Current Assessment
 
-Under the standard above, all five families now count as done for this phase.
+Under the standard above, all six families now count as done for this phase.
 
 ### 1. Ranking / Top-N
 
@@ -180,9 +181,29 @@ What still falls short of full ontology-backed behavior:
 - no limit
 - no time grain
 
+### 6. Object Rows
+
+Status: passes
+
+Why it passes:
+
+- object-row questions are now a first-class semantic draft family
+- object drafts ground into typed `ObjectQuery` IR instead of masquerading as
+  ranking or aggregate questions
+- row objects, metrics, identity dimensions, and paths are selected through
+  ontology grounding
+- runtime and answer synthesis preserve the `object_rows` result shape
+
+What still falls short of full ontology-backed behavior:
+
+- exactly one attached metric in the current happy path
+- current output is still table-shaped; presentation caps displayed rows at 50
+  when the underlying result is larger
+- linked filters are supported when each filter has a valid ontology path
+
 ## Why We Are Moving Forward
 
-We are moving forward because the five families now meet the phase standard.
+We are moving forward because the six families now meet the phase standard.
 
 That means:
 

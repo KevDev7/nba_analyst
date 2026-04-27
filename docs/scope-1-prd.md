@@ -2,7 +2,7 @@
 
 ## Goal
 
-Scope 1 makes the NBA analytics assistant work end to end from the terminal for the five chosen question families.
+Scope 1 makes the NBA analytics assistant work end to end from the terminal for the six chosen question families.
 
 The core promise is:
 
@@ -28,7 +28,7 @@ Website UI, chatbot memory, generative UI charts, long-lived thread state, and b
 
 ## Question Families
 
-Scope 1 supports these five families:
+Scope 1 supports these six families:
 
 ```text
 rank
@@ -36,6 +36,7 @@ trend
 aggregate
 find
 compare
+object
 ```
 
 Each family must work through the same high-level pipeline:
@@ -74,7 +75,7 @@ Scope 1 may fail when:
 
 - the ontology has no matching object, metric, dimension, attribute, or link
 - the local data snapshot does not contain the required field/path
-- the question is outside the five supported families
+- the question is outside the six supported families
 - the user question is ambiguous enough that the system cannot safely ground it
 
 Scope 1 should not fail because:
@@ -99,6 +100,8 @@ If that justification is weak, the restriction should be treated as a bug.
 ### Rank
 
 Rank questions ask for top/bottom or leaderboard-style results.
+The metric is the organizing idea, usually signaled by wording like `by points`,
+`rank`, `leaders`, or `leaderboard`.
 
 Example:
 
@@ -189,6 +192,34 @@ Expected behavior:
 
 The execution plan may contain multiple internal steps, such as SQL followed by Python analysis, as long as the user interaction remains one question to one answer.
 
+### Object
+
+Object questions ask for entity rows with attached attributes or measures.
+Object rows may still have ordering and limits; wording like `and their` or
+`with their` means the user wants one row per entity with attached columns, not
+a pure leaderboard.
+
+Example:
+
+```text
+Show me players and their total points over the last 10 games
+```
+
+Also in scope:
+
+```text
+Show me the top 5 players and their total points for the Knicks over the last 10 games
+Show me players with their scoring totals over the last 10 games
+```
+
+Expected behavior:
+
+- infer the row object
+- infer attached metrics or display fields
+- infer the time window or filter context
+- ground the row object, metric, and paths through the ontology
+- return an object-row terminal table
+
 ## Acceptance Tests
 
 Scope 1 is complete when each family has at least one terminal-level end-to-end test:
@@ -208,6 +239,9 @@ Find games where the Lakers scored over 120 points
 
 compare:
 Compare Brunson and Haliburton scoring over the last 10 games
+
+object:
+Show me players and their total points over the last 10 games
 ```
 
 Each acceptance test should prove:
@@ -233,4 +267,3 @@ Scope 1 does not include:
 - polished dashboard or artifact UX
 
 Those can build on Scope 1 after the terminal-first semantic pipeline is trustworthy.
-

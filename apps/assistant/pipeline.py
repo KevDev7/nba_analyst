@@ -36,6 +36,7 @@ from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
 from apps.cli.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
+from apps.cli.semantic_assumptions import apply_semantic_assumptions
 from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
@@ -91,6 +92,9 @@ def plan_question(question: str) -> tuple[dict[str, Any], dict[str, Any]]:
         semantic_draft = interpret_question_to_semantic_draft(question)
     except SemanticInterpreterError as exc:
         raise RuntimeError(str(exc)) from exc
+    # Apply explicit product defaults, like current season and regular season,
+    # before Haskell validates the draft against the ontology.
+    semantic_draft = apply_semantic_assumptions(question, semantic_draft)
     try:
         # Resolve raw comparison names like "Brunson" against the data snapshot.
         # Haskell should receive grounded entity IDs, not trust the LLM to invent them.

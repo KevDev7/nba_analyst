@@ -40,17 +40,22 @@ resolveFindGrounding ontology draft targetObject findTimeFilters limitValue =
         )
   where
     rankedCandidates =
+      -- Pick the fact surface using both ontology reachability and the role
+      -- implied by identity filters, like Team in "games where Lakers scored".
       sortOn findCandidateRank $
-        mapMaybe (groundFindFactCandidate ontology draft targetObject findTimeFilters limitValue) (objects ontology)
+        mapMaybe
+          (groundFindFactCandidate ontology draft targetObject actorObjects findTimeFilters limitValue)
+          (objects ontology)
+    actorObjects = findActorObjects ontology targetObject (filters draft)
 
 findCandidateRank :: GroundedFind -> (Down Int, Text)
 findCandidateRank candidate =
   (Down (findMatchScore candidate), objectName (findFactObject candidate))
 
-groundFindFactCandidate :: Ontology -> SemanticDraft -> Object -> [QI.Filter] -> Maybe Int -> Object -> Maybe GroundedFind
-groundFindFactCandidate ontology draft targetObject findTimeFilters limitValue factObjectValue = do
+groundFindFactCandidate :: Ontology -> SemanticDraft -> Object -> [Object] -> [QI.Filter] -> Maybe Int -> Object -> Maybe GroundedFind
+groundFindFactCandidate ontology draft targetObject actorObjects findTimeFilters limitValue factObjectValue = do
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName targetObject)
-  predicateValues <- mapM (resolveFindPredicateForFact ontology factObjectValue) (filters draft)
+  predicateValues <- mapM (resolveFindPredicateForFact ontology targetObject actorObjects factObjectValue) (filters draft)
   displayDimensionValue <- identityDimension targetObject
   pure
     GroundedFind
@@ -61,7 +66,7 @@ groundFindFactCandidate ontology draft targetObject findTimeFilters limitValue f
       , findFilterValues = findTimeFilters
       , findLimitValue = limitValue
       , findAssumptions = assumptions draft
-      , findMatchScore = findFactCandidateScore factObjectValue targetObject predicateValues
+      , findMatchScore = findFactCandidateScore factObjectValue targetObject actorObjects predicateValues
       }
 
 findDisplayDimensionsFor :: Object -> Text -> [Text]
@@ -84,17 +89,28 @@ publicDimensionsNamed dimensionNames objectValue =
   , attributeVisibility attributeValue == Public
   ]
 
-findFactCandidateScore :: Object -> Object -> [QI.FindPredicate] -> Int
-findFactCandidateScore factObjectValue targetObject predicateValues =
+findFactCandidateScore :: Object -> Object -> [Object] -> [QI.FindPredicate] -> Int
+findFactCandidateScore factObjectValue targetObject actorObjects predicateValues =
   subjectFactAffinity targetObject factObjectValue
+    + actorFactAffinity actorObjects factObjectValue
     + (10 * length [predicateValue | predicateValue <- predicateValues, QI.predicateTargetObject predicateValue == objectName factObjectValue])
 
-resolveFindPredicateForFact :: Ontology -> Object -> DraftFilter -> Maybe QI.FindPredicate
-resolveFindPredicateForFact ontology factObjectValue draftFilter = do
+actorFactAffinity :: [Object] -> Object -> Int
+actorFactAffinity actorObjects factObjectValue =
+  maximum
+    ( 0
+        : [ 75
+          | actorObject <- actorObjects
+          , normalizedKey (objectName actorObject) `T.isInfixOf` normalizedKey (objectName factObjectValue)
+          ]
+    )
+
+resolveFindPredicateForFact :: Ontology -> Object -> [Object] -> Object -> DraftFilter -> Maybe QI.FindPredicate
+resolveFindPredicateForFact ontology targetObject actorObjects factObjectValue draftFilter = do
   rawField <- filterField draftFilter
   rawValue <- filterValue draftFilter
   opValue <- normalizeFindOp (filterOp draftFilter)
-  (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology factObjectValue rawField
+  (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
   pure
     QI.FindPredicate
       { QI.predicateTargetObject = objectName predicateObject
@@ -103,11 +119,11 @@ resolveFindPredicateForFact ontology factObjectValue draftFilter = do
       , QI.predicateFilterValue = rawValue
       }
 
-resolveFindPredicateAttribute :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
-resolveFindPredicateAttribute ontology factObjectValue rawField =
+resolveFindPredicateAttribute :: Ontology -> Object -> [Object] -> Object -> Text -> Maybe (Object, OT.Attribute)
+resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField =
   case objectIdentityAttributeMatch ontology factObjectValue rawField of
     Just matchValue -> Just matchValue
-    Nothing -> bestReachableAttributeMatch ontology factObjectValue rawField
+    Nothing -> bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField
 
 objectIdentityAttributeMatch :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
 objectIdentityAttributeMatch ontology factObjectValue rawField =
@@ -122,8 +138,8 @@ objectIdentityAttributeMatch ontology factObjectValue rawField =
     matchValue : _ -> Just matchValue
     [] -> Nothing
 
-bestReachableAttributeMatch :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
-bestReachableAttributeMatch ontology factObjectValue rawField =
+bestReachableAttributeMatch :: Ontology -> Object -> [Object] -> Object -> Text -> Maybe (Object, OT.Attribute)
+bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField =
   case sortOn findAttributeRank matches of
     matchValue : _ -> Just matchValue
     [] -> Nothing
@@ -133,25 +149,81 @@ bestReachableAttributeMatch ontology factObjectValue rawField =
       | objectValue <- factObjectValue : reachableObjects ontology factObjectValue
       , attributeValue <- objectAttributes objectValue
       , attributeVisibility attributeValue == Public
-      , findAttributeScore rawField attributeValue > 0
+      , findAttributeScore targetObject actorObjects factObjectValue rawField attributeValue > 0
       ]
     findAttributeRank (objectValue, attributeValue) =
-      ( Down (findAttributeScore rawField attributeValue)
+      ( Down (findAttributeScore targetObject actorObjects factObjectValue rawField attributeValue)
       , if objectName objectValue == objectName factObjectValue then (0 :: Int) else 1
       , objectName objectValue
       , attributeName attributeValue
       )
 
-findAttributeScore :: Text -> OT.Attribute -> Int
-findAttributeScore rawField attributeValue
-  | rawKey == attributeKey = 100
-  | rawKey == T.replace "total" "" attributeKey = 90
-  | rawKey == T.replace "team" "" attributeKey = 85
-  | rawKey `T.isSuffixOf` attributeKey = 80
+findAttributeScore :: Object -> [Object] -> Object -> Text -> OT.Attribute -> Int
+findAttributeScore targetObject actorObjects factObjectValue rawField attributeValue
+  | attributeKey `elem` rawKeys = 100
+  | T.replace "total" "" attributeKey `elem` rawKeys = 90
+  | T.replace "team" "" attributeKey `elem` rawKeys = 85
+  | any (`T.isSuffixOf` attributeKey) rawKeys = 80
   | otherwise = 0
   where
-    rawKey = normalizedMeasureKey rawField
+    rawKeys = findFieldAliasKeys targetObject actorObjects factObjectValue rawField
     attributeKey = normalizedMeasureKey (attributeName attributeValue)
+
+findFieldAliasKeys :: Object -> [Object] -> Object -> Text -> [Text]
+findFieldAliasKeys targetObject actorObjects factObjectValue rawField =
+  nub $
+    [rawKey, T.replace "team" "" rawKey]
+      <> scoreAliases
+      <> teamGamePointsAliases
+  where
+    rawKey = normalizedMeasureKey rawField
+    scoreAliases =
+      if rawKey `elem` ["teamscore", "pointsscored", "scoredpoints"]
+        then ["score"]
+        else []
+    teamGamePointsAliases =
+      if isTeamGameScoringContext targetObject actorObjects factObjectValue
+          && rawKey `elem` ["points", "scored"]
+        then ["score"]
+        else []
+
+isTeamGameScoringContext :: Object -> [Object] -> Object -> Bool
+isTeamGameScoringContext targetObject actorObjects factObjectValue =
+  objectName targetObject == "Game"
+    && any ((== "Team") . objectName) actorObjects
+    && normalizedKey "Team" `T.isInfixOf` normalizedKey (objectName factObjectValue)
+
+findActorObjects :: Ontology -> Object -> [DraftFilter] -> [Object]
+findActorObjects ontology targetObject draftFilters =
+  nub
+    [ objectValue
+    | draftFilter <- draftFilters
+    , Just rawField <- [filterField draftFilter]
+    , isIdentityFilter draftFilter
+    , objectValue <- objects ontology
+    , objectName objectValue /= objectName targetObject
+    , filterNamesObject rawField objectValue
+    ]
+
+isIdentityFilter :: DraftFilter -> Bool
+isIdentityFilter draftFilter =
+  case (normalizeFindOp (filterOp draftFilter), filterValue draftFilter) of
+    (Just QI.OpEq, Just (QI.FilterText textValue)) -> T.strip textValue /= ""
+    _ -> False
+
+filterNamesObject :: Text -> Object -> Bool
+filterNamesObject rawField objectValue =
+  case identityDimension objectValue of
+    Nothing -> False
+    Just identityName ->
+      let rawSubjectKey = subjectMatchKey rawField
+          rawKey = normalizedKey rawField
+          objectKey = normalizedKey (objectName objectValue)
+          identityKey = normalizedKey identityName
+       in rawSubjectKey == subjectMatchKey (objectName objectValue)
+            || rawKey == objectKey
+            || rawKey == identityKey
+            || rawKey == objectKey <> "name"
 
 reachableObjects :: Ontology -> Object -> [Object]
 reachableObjects ontology objectValue =

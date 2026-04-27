@@ -75,7 +75,7 @@ class LinkedFilterCliQueryTests(unittest.TestCase):
 
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
-        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(shared["metrics"], ["points_per_game"])
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
@@ -109,22 +109,28 @@ class LinkedFilterCliQueryTests(unittest.TestCase):
     def test_player_recent_average_points_team_filter_output(self) -> None:
         output = run_cli("Show me players by average points for the Lakers over the last 10 games")
         self.assertIn("Players ranked by average points over the last 10 games", output)
-        self.assertIn("Rank | Player | Team | Average Points", output)
-        self.assertIn("1 | Luka Dončić | LAL | 36.6", output)
+        self.assertIn("Rank | Player | Team | Games Played | Minutes | Date Range | Average Points", output)
+        self.assertRegex(output, r"1 \| Luka Dončić \| LAL \| 10 \| 38\.5 \| [0-9-]+ to [0-9-]+ \| 39\.7")
+        self.assertNotIn("| GSW |", output)
 
     def test_player_recent_object_totals_team_filter_output(self) -> None:
         output = run_cli("Show me players and their total points for the Knicks over the last 10 games")
         self.assertIn("Players ordered by total points over the last 10 games", output)
-        self.assertIn("Player | Team | Total Points", output)
-        self.assertIn("Jalen Brunson | NYK | 245", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Total Points", output)
+        self.assertRegex(output, r"Jalen Brunson \| NYK \| 10 \| 37\.1 \| [0-9-]+ to [0-9-]+ \| 269")
+        self.assertNotIn("| LAL |", output)
 
     def test_player_season_team_average_points_team_filter_output(self) -> None:
         output = run_cli(
             "Show me players by average points for the Lakers in the 2025-26 regular season"
         )
         self.assertIn("Players ranked by average points in the 2025-26 regular season", output)
-        self.assertIn("Rank | Player | Team | Average Points", output)
-        self.assertIn("1 | Luka Dončić | LAL | 33.7", output)
+        self.assertIn(
+            "Rank | Player | Team | Season | Season Type | Games Played | Minutes | Average Points",
+            output,
+        )
+        self.assertIn("1 | Luka Dončić | LAL | 2025-26 | Regular Season | 62 | 36.0 | 33.7", output)
+        self.assertNotIn("| BOS |", output)
 
 
 if __name__ == "__main__":

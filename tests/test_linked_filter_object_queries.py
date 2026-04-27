@@ -40,7 +40,7 @@ class LinkedFilterObjectQueryTests(unittest.TestCase):
                 "rowObject": "Player",
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
-                    "metrics": ["points_total"],
+                    "metrics": ["total_points"],
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
@@ -50,7 +50,7 @@ class LinkedFilterObjectQueryTests(unittest.TestCase):
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "points_total"}],
+                    "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -137,8 +137,9 @@ class LinkedFilterObjectQueryTests(unittest.TestCase):
         output = run_cli("Show me players and their total points for the Knicks over the last 10 games")
 
         self.assertIn("Players ordered by total points over the last 10 games", output)
-        self.assertIn("Player | Team | Total Points", output)
-        self.assertIn("Jalen Brunson | NYK | 245", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Total Points", output)
+        self.assertRegex(output, r"Jalen Brunson \| NYK \| 10 \| 37\.1 \| [0-9-]+ to [0-9-]+ \| 269")
+        self.assertNotIn("| LAL |", output)
 
 
 if __name__ == "__main__":

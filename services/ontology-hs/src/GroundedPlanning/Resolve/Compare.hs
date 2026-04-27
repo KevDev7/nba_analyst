@@ -33,6 +33,11 @@ resolveCompareMetricQuery ontology metricQuery = do
         case comparison metricQuery of
           Just (CompareEntities _ entities) -> map resolveEntity entities
           Nothing -> []
+      maybeSeasonPair = seasonFilterPair (filters base)
+      gamesValue =
+        case requireLastNGames (filters base) of
+          Right value -> value
+          Left _ -> 0
   pure
     ResolvedMetricQuery
       { factTableName = backing_table factObject
@@ -48,12 +53,9 @@ resolveCompareMetricQuery ontology metricQuery = do
       , contextValue = selectedContextColumn contextSelection
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
-      , windowGames =
-          case requireLastNGames (filters base) of
-            Right value -> value
-            Left _ -> 0
-      , seasonLabel = Nothing
-      , seasonType = Nothing
+      , windowGames = gamesValue
+      , seasonLabel = fst <$> maybeSeasonPair
+      , seasonType = snd <$> maybeSeasonPair
       , queryLimit = Nothing
       , linkedFiltersResolved = resolvedLinkedFilters
       , comparisonEntities = entityValues
@@ -61,4 +63,5 @@ resolveCompareMetricQuery ontology metricQuery = do
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
       , filterLocation = "fact_table"
+      , displayMetadata = resolveDisplayMetadata factObject rowObject gamesValue
       }

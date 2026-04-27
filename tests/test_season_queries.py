@@ -17,7 +17,7 @@ class SeasonQueryTests(unittest.TestCase):
 
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
-        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(shared["metrics"], ["points_per_game"])
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
@@ -31,7 +31,7 @@ class SeasonQueryTests(unittest.TestCase):
         self.assertEqual(resolved["factTableName"], "player_season")
         self.assertEqual(resolved["rowObjectName"], "Player")
         self.assertEqual(resolved["rowPath"]["steps"][0]["linkName"], "player_season_player")
-        self.assertEqual(resolved["metricFormula"]["metricKey"], "average_points")
+        self.assertEqual(resolved["metricFormula"]["metricKey"], "points_per_game")
         self.assertEqual(resolved["seasonLabel"], "2025-26")
         self.assertEqual(resolved["seasonType"], "regular_season")
 
@@ -42,8 +42,8 @@ class SeasonQueryTests(unittest.TestCase):
     def test_player_season_average_points_output(self) -> None:
         output = run_cli("Show me players by average points in the 2025-26 regular season")
         self.assertIn("Players ranked by average points in the 2025-26 regular season", output)
-        self.assertIn("Rank | Player | Average Points", output)
-        self.assertIn("1 | Luka Dončić | 33.7", output)
+        self.assertIn("Rank | Player | Season | Season Type | Games Played | Minutes | Average Points", output)
+        self.assertIn("1 | Luka Dončić | 2025-26 | Regular Season | 62 | 36.0 | 33.7", output)
 
     def test_team_season_wins_query(self) -> None:
         _interpreted_query, planner_output = plan_question(
@@ -72,8 +72,8 @@ class SeasonQueryTests(unittest.TestCase):
     def test_team_season_wins_output(self) -> None:
         output = run_cli("Show me teams by wins in the 2025-26 regular season")
         self.assertIn("Teams ranked by wins in the 2025-26 regular season", output)
-        self.assertIn("Rank | Team | Abbrev | Wins", output)
-        self.assertIn("1 | Thunder | OKC | 60", output)
+        self.assertIn("Rank | Team | Abbrev | Season | Season Type | Games Played | Wins", output)
+        self.assertIn("1 | Thunder | OKC | 2025-26 | Regular Season | 76 | 60", output)
 
     def test_player_season_object_query(self) -> None:
         _interpreted_query, planner_output = plan_question(
@@ -84,14 +84,14 @@ class SeasonQueryTests(unittest.TestCase):
         self.assertEqual(resolved["factTableName"], "player_season")
         self.assertEqual(resolved["rowObjectName"], "Player")
         self.assertEqual(resolved["rowPath"]["steps"][0]["linkName"], "player_season_player")
-        self.assertEqual(resolved["metricFormula"]["metricKey"], "total_points")
+        self.assertEqual(resolved["metricFormula"]["metricKey"], "points_total")
         self.assertEqual(resolved["seasonLabel"], "2025-26")
         self.assertEqual(resolved["seasonType"], "regular_season")
 
         output = run_cli("Show me players and their total points in the 2025-26 regular season")
         self.assertIn("Players ordered by total points in the 2025-26 regular season", output)
-        self.assertIn("Player | Total Points", output)
-        self.assertIn("Luka Dončić | 2089", output)
+        self.assertIn("Player | Season | Season Type | Games Played | Minutes | Total Points", output)
+        self.assertIn("Luka Dončić | 2025-26 | Regular Season | 62 | 36.0 | 2089", output)
 
     def test_player_season_team_reconciliation_for_james_harden(self) -> None:
         database_path = load_database()

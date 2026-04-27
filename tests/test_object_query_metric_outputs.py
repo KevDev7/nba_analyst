@@ -73,15 +73,16 @@ class ObjectQueryMetricOutputTests(unittest.TestCase):
         output = run_cli("Show me players and their average points over the last 10 games")
 
         self.assertIn("Players ordered by average points", output)
-        self.assertIn("Player | Team | Average Points", output)
-        self.assertIn("Luka Dončić | LAL | 36.6", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Average Points", output)
+        self.assertRegex(output, r"Luka Dončić \| LAL \| 10 \| 38\.5 \| [0-9-]+ to [0-9-]+ \| 39\.7")
 
     def test_average_points_object_query_team_filter_output(self) -> None:
         output = run_cli("Show me players and their average points for the Lakers over the last 10 games")
 
         self.assertIn("Players ordered by average points", output)
-        self.assertIn("Player | Team | Average Points", output)
-        self.assertIn("Luka Dončić | LAL | 36.6", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Average Points", output)
+        self.assertRegex(output, r"Luka Dončić \| LAL \| 10 \| 38\.5 \| [0-9-]+ to [0-9-]+ \| 39\.7")
+        self.assertNotIn("| GSW |", output)
 
 
 if __name__ == "__main__":

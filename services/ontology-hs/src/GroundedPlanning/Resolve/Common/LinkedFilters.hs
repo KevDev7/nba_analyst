@@ -7,6 +7,7 @@ module GroundedPlanning.Resolve.Common.LinkedFilters
 import Data.Text (Text)
 import GroundedPlanning.Resolve.Common.Ontology
 import GroundedPlanning.Resolve.Common.Types
+import GroundedPlanning.Resolve.Common.ValueCanonicalization
 import OntologyLayer.Graph (findAttribute)
 import OntologyLayer.Types (Ontology)
 import QueryModel.IR
@@ -24,7 +25,9 @@ resolveLinkedFilter ontology factObjectName linkedFilterValue = do
       { targetObjectName = targetObject linkedFilterValue
       , filterPath = discoveredFilterPath
       , filterColumn = attribute linkedFilterValue
-      , filterValue =
-          case linkedFilterValue of
-            LinkedFilter {value = filterTextValue'} -> filterTextValue'
+      , filterValue = canonicalizeTextValue (targetObject linkedFilterValue) (attribute linkedFilterValue) rawFilterValue
       }
+  where
+    rawFilterValue =
+      case linkedFilterValue of
+        LinkedFilter {value = filterTextValue'} -> filterTextValue'

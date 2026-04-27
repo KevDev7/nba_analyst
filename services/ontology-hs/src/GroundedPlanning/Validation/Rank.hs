@@ -19,4 +19,5 @@ validateRankMetricQuery ontology metricQuery = do
   _ <- requireOrdinaryMetricRowObject ontology factObject (dimensions base)
   filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
   validateOrdinaryLinkedFilters ontology MetricLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
+  validateOrdinaryMetricFilterSurface factObject (filters base)
   validateMetricOrders Nothing (orders base) (metrics base)

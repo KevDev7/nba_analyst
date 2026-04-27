@@ -60,7 +60,7 @@ class SemanticDraft(BaseModel):
     measures: list[str] = Field(default_factory=list)
     dimensions: list[str] = Field(default_factory=list)
     filters: list[dict[str, Any]] = Field(default_factory=list)
-    time_window: DraftTimeWindow
+    time_window: Optional[DraftTimeWindow] = None
     grain: Optional[str] = None
     order: list[dict[str, Any]] = Field(default_factory=list)
     limit: Optional[int] = None
@@ -75,6 +75,8 @@ class SemanticDraft(BaseModel):
         # while Haskell remains the source of truth for semantic validity.
         if self.limit is not None and self.limit <= 0:
             raise ValueError("limit must be positive when provided.")
+        if self.time_window is None and self.task != "find":
+            raise ValueError("time_window is required except for find drafts.")
         return self
 
 
@@ -122,11 +124,22 @@ Rules:
 - If the question is supported, return:
   {"status":"ok","draft":{...}}
 
+Question family rules:
+- Use "rank" when the user wants entities ordered by a measure. This includes wording like top, highest, best, leaders, leaderboard, or "<entities> by <measure>".
+- Use "object" when the user wants entity rows with their attributes or measures, such as "players and their total points" or "teams with their wins".
+- If wording uses "and their" or "with their", prefer "object" even when it also includes a limit like "top 5"; preserve the limit/order inside the object draft.
+- Use "rank" for "top N <entities> by <measure>" because "by" makes the metric the organizing idea.
+- Use "aggregate" when the user asks for a grouped calculation or summary without ranking/order intent, such as "average points by team".
+- Use "trend" when the user asks for a metric over time or uses a time grain like by day, by week, monthly, or by season.
+- Use "find" when the user asks to find/list matching games, players, teams, or rows that satisfy filters.
+- Use "compare" when the user asks to compare named entities.
+- If a rank question does not explicitly ask for a limit, keep limit null but still include a descending order for positive performance metrics unless the user asks for ascending/lowest.
+
 JSON template for supported drafts:
 {
   "status": "ok",
   "draft": {
-    "task": "rank" | "trend" | "aggregate" | "find" | "compare",
+    "task": "rank" | "trend" | "aggregate" | "find" | "compare" | "object",
     "subject": "players" | "teams" | "<business subject from the user>",
     "measure": "<primary user-facing measure phrase or null>",
     "measures": ["<user-facing measure phrase>"],
@@ -142,7 +155,7 @@ JSON template for supported drafts:
     "entities": ["<raw entity names from user>"],
     "operations": [
       {
-        "kind": "aggregate" | "rank" | "trend" | "compare" | "filter",
+        "kind": "aggregate" | "rank" | "trend" | "compare" | "filter" | "object",
         "measure": "<user-facing measure phrase or null>",
         "dimensions": ["<user-facing dimension phrase>"],
         "order_by": "<user-facing measure/dimension phrase or null>",
@@ -171,6 +184,18 @@ A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"average p
 
 Q: Calculate average points by team over the last 10 games
 A: {"status":"ok","draft":{"task":"aggregate","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show me players by average points this season
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"season","value":null},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show me players and their total points over the last 10 games
+A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show me players with their scoring totals over the last 10 games
+A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"scoring totals","measures":["scoring totals"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":["Interpreted 'scoring' as total points."]}}
+
+Q: Show me the top 5 players and their total points for the Knicks over the last 10 games
+A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Knicks"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"total points","direction":"desc"}],"limit":5,"sort":"desc","entities":["Knicks"],"operations":[],"assumptions":[]}}
 
 Q: Find Lakers games over the last 10 games
 A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}

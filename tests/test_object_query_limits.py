@@ -44,9 +44,9 @@ class ObjectQueryLimitTests(unittest.TestCase):
         )
 
         self.assertIn("Players ordered by total points over the last 10 games", output)
-        self.assertIn("Player | Team | Total Points", output)
-        self.assertIn("Jalen Brunson | NYK | 245", output)
-        self.assertIn("RJ Barrett | NYK | 168", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Total Points", output)
+        self.assertRegex(output, r"Jalen Brunson \| NYK \| 10 \| 37\.1 \| [0-9-]+ to [0-9-]+ \| 269")
+        self.assertRegex(output, r"Julius Randle \| NYK \| 10 \| 34\.6 \| [0-9-]+ to [0-9-]+ \| 227")
         self.assertNotIn("Josh Hart | NYK |", output)
 
 

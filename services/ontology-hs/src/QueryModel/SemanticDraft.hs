@@ -18,6 +18,7 @@ import QueryModel.SemanticDraft.Aggregate (semanticAggregateDraftToQuery)
 import QueryModel.SemanticDraft.Compare (semanticCompareDraftToQuery)
 import QueryModel.SemanticDraft.Find (semanticFindDraftToQuery)
 import QueryModel.SemanticDraft.Normalize (draftTask)
+import QueryModel.SemanticDraft.Object (semanticObjectDraftToQuery)
 import QueryModel.SemanticDraft.Rank (semanticRankDraftToQuery)
 import QueryModel.SemanticDraft.Trend (semanticTrendDraftToQuery)
 import QueryModel.SemanticDraft.Types
@@ -32,9 +33,10 @@ semanticDraftToQuery ontology draft = do
     DraftAggregate -> semanticAggregateDraftToQuery ontology draft
     DraftFind -> semanticFindDraftToQuery ontology draft
     DraftCompare -> semanticCompareDraftToQuery ontology draft
+    DraftObject -> semanticObjectDraftToQuery ontology draft
     DraftUnknown rawTask ->
       Left
         ( "Unknown semantic draft task '"
             <> rawTask
-            <> "'. Expected one of rank, trend, aggregate, find, or compare."
+            <> "'. Expected one of rank, trend, aggregate, find, compare, or object."
         )

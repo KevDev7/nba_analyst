@@ -28,7 +28,7 @@ class LinkedFilterSeasonSurfaceTests(unittest.TestCase):
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
-        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(shared["metrics"], ["points_per_game"])
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
@@ -37,7 +37,7 @@ class LinkedFilterSeasonSurfaceTests(unittest.TestCase):
                 {"kind": "season_type", "value": "regular_season"},
             ],
         )
-        self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
+        self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "points_per_game"}])
 
     def test_player_game_season_team_filter_metric_query_is_rejected_with_compile_reason(self) -> None:
         payload = {
@@ -91,8 +91,11 @@ class LinkedFilterSeasonSurfaceTests(unittest.TestCase):
         )
 
         self.assertIn("Players ranked by average points in the 2025-26 regular season", output)
-        self.assertIn("Rank | Player | Team | Average Points", output)
-        self.assertIn("1 | Luka Dončić | LAL | 33.7", output)
+        self.assertIn(
+            "Rank | Player | Team | Season | Season Type | Games Played | Minutes | Average Points",
+            output,
+        )
+        self.assertIn("1 | Luka Dončić | LAL | 2025-26 | Regular Season | 62 | 36.0 | 33.7", output)
 
 
 if __name__ == "__main__":

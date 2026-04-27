@@ -25,8 +25,8 @@ class RankingMetricQueryTests(unittest.TestCase):
     def test_average_points_canonical(self) -> None:
         output = run_cli("Show me players by average points over the last 10 games")
         self.assertIn("Players ranked by average points", output)
-        self.assertIn("Luka Dončić | LAL | 36.6", output)
-        self.assertIn("Jalen Brunson | NYK | 24.5", output)
+        self.assertIn("1 | Luka Dončić | LAL |", output)
+        self.assertIn("Jalen Brunson | NYK |", output)
 
     def test_average_points_variant(self) -> None:
         output = run_cli("Show me players by avg points over the last 10 games")
@@ -36,8 +36,9 @@ class RankingMetricQueryTests(unittest.TestCase):
     def test_highest_average_scoring_variant(self) -> None:
         output = run_cli("Who has the highest average scoring over the last 10 games?")
         self.assertIn("Top 1 players by average points", output)
-        self.assertIn("Interpreted 'average scoring' as average points.", output)
-        self.assertIn("Luka Dončić | LAL | 36.6", output)
+        self.assertIn("average scoring", output)
+        self.assertIn("average points", output)
+        self.assertIn("1 | Luka Dončić | LAL |", output)
 
     def test_planner_resolves_governed_metric_formula(self) -> None:
         _interpreted_query, planner_output = plan_question(

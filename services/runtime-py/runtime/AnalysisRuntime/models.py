@@ -25,6 +25,38 @@ class PlanStep(BaseModel):
     analysis_spec: Optional[str] = None
 
 
+class PlanFindPredicate(BaseModel):
+    # Grounded predicate metadata for find-row answers.
+    # Plain English: "Team.team_name = Lakers" or "TeamGame.score > 120".
+    target_object: str
+    attribute: str
+    operator: str
+    value: object
+
+
+class PlanFindFilter(BaseModel):
+    # Grounded time/window metadata for find-row answers.
+    # Example: exact season, season type, or last-N games.
+    filter_kind: str
+    filter_value: Optional[object] = None
+
+
+class PlanLinkedFilter(BaseModel):
+    # Grounded linked-dimension metadata for non-find answers.
+    # Plain English: "Team.team_name = Lakers" after ontology resolution.
+    target_object: str
+    attribute: str
+    value: str
+
+
+class PlanDisplayMetadata(BaseModel):
+    # One display metadata column Haskell intentionally emitted.
+    # Example: Games Played or Minutes.
+    column_key: str
+    label: str
+    column_type: str
+
+
 class ExecutionPlan(BaseModel):
     # The full runtime instructions handed from Haskell to Python.
     # Plain English: what kind of answer is this, what labels/metadata go with it,
@@ -44,6 +76,10 @@ class ExecutionPlan(BaseModel):
     season_type: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
+    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
     steps: List[PlanStep]
 
 
@@ -52,6 +88,9 @@ class RankingRow(BaseModel):
     rank: int
     entity_name: str
     context_value: Optional[str] = None
+    games_played: Optional[float] = None
+    minutes: Optional[float] = None
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
 
 
@@ -59,6 +98,9 @@ class AggregateRow(BaseModel):
     # One grouped aggregate output row, like "Celtics - 110.6".
     entity_name: str
     context_value: Optional[str] = None
+    games_played: Optional[float] = None
+    minutes: Optional[float] = None
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
 
 
@@ -67,6 +109,9 @@ class ObjectRow(BaseModel):
     entity_id: int
     entity_name: str
     context_value: Optional[str] = None
+    games_played: Optional[float] = None
+    minutes: Optional[float] = None
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
 
 
@@ -126,5 +171,9 @@ class RuntimeResult(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, object]] = Field(default_factory=list)
+    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
     raw_rows: List[Dict[str, object]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

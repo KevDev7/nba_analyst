@@ -19,11 +19,14 @@ module QueryModel.SemanticDraft.Filters
   , seasonTypeFromFilter
   , seasonTypeFromFilters
   , seasonTypeFromWindow
+  , seasonYearFromFilter
+  , seasonYearFromFilters
   , trendSeasonTypeFilters
   , trendWindowFilters
   ) where
 
 import Control.Applicative ((<|>))
+import Data.Char (isDigit)
 import Data.List (nub)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
@@ -94,20 +97,24 @@ findWindowFilters window draftFilters =
     ("none", _) -> Right []
     ("unspecified", _) -> Right []
     ("lastngames", Just (QI.FilterInt gamesValue))
-      | gamesValue > 0 -> Right [QI.lastNGamesFilter gamesValue]
+      | gamesValue > 0 -> do
+          seasonFilters <- seasonConstraintFilters window draftFilters
+          Right (QI.lastNGamesFilter gamesValue : seasonFilters)
     ("pastyear", _) -> Right [QI.pastYearFilter]
     ("season", Just (QI.FilterText seasonLabel)) -> do
       seasonTypeLabel <- requireSeasonType window draftFilters
       Right [QI.exactSeasonFilter seasonLabel, QI.seasonTypeFilter seasonTypeLabel]
     _ -> Left ("Could not ground find time window '" <> kind window <> "' against ontology-backed find filters.")
 
-requireComparisonFilters :: DraftTimeWindow -> Either Text [QI.Filter]
-requireComparisonFilters window =
+requireComparisonFilters :: DraftTimeWindow -> [DraftFilter] -> Either Text [QI.Filter]
+requireComparisonFilters window draftFilters =
   -- Comparison uses a recent-games shape.
   -- The window can be any positive last-N value the user asked for.
   case (normalizedKey (kind window), value window) of
     ("lastngames", Just (QI.FilterInt gamesValue))
-      | gamesValue > 0 -> Right [QI.lastNGamesFilter gamesValue]
+      | gamesValue > 0 -> do
+          seasonFilters <- seasonConstraintFilters window draftFilters
+          Right (QI.lastNGamesFilter gamesValue : seasonFilters)
     _ -> Left ("Could not ground comparison time window '" <> kind window <> "' against ontology-backed comparison filters.")
 
 requireResolvedComparisonEntities :: SemanticDraft -> Either Text [QI.EntityRef]
@@ -126,7 +133,9 @@ requireRankingFilters window draftFilters =
   -- Recent rankings use last_n_games; season rankings use exact_season + season_type.
   case (normalizedKey (kind window), value window) of
     ("lastngames", Just (QI.FilterInt gamesValue))
-      | gamesValue > 0 -> Right (RecentRanking gamesValue)
+      | gamesValue > 0 -> do
+          seasonFilters <- seasonConstraintFilters window draftFilters
+          Right (RecentRanking gamesValue seasonFilters)
     ("season", Just (QI.FilterText seasonLabel)) -> do
       seasonTypeLabel <- requireSeasonType window draftFilters
       Right (SeasonRanking seasonLabel seasonTypeLabel)
@@ -135,9 +144,18 @@ requireRankingFilters window draftFilters =
 rankingFilterValues :: RankingFilterBundle -> [QI.Filter]
 rankingFilterValues rankingFilters =
   case rankingFilters of
-    RecentRanking gamesValue -> [QI.lastNGamesFilter gamesValue]
+    RecentRanking gamesValue seasonFilters -> QI.lastNGamesFilter gamesValue : seasonFilters
     SeasonRanking seasonLabel seasonTypeLabel ->
       [QI.exactSeasonFilter seasonLabel, QI.seasonTypeFilter seasonTypeLabel]
+
+seasonConstraintFilters :: DraftTimeWindow -> [DraftFilter] -> Either Text [QI.Filter]
+seasonConstraintFilters window draftFilters =
+  case seasonYearFromFilters draftFilters <|> seasonYearFromWindow window of
+    Just seasonLabel ->
+      do
+        seasonTypeLabel <- requireSeasonType window draftFilters
+        Right [QI.exactSeasonFilter seasonLabel, QI.seasonTypeFilter seasonTypeLabel]
+    Nothing -> Right []
 
 requireSeasonType :: DraftTimeWindow -> [DraftFilter] -> Either Text Text
 requireSeasonType window draftFilters =
@@ -151,6 +169,20 @@ seasonTypeFromFilters draftFilters =
   case mapMaybe seasonTypeFromFilter draftFilters of
     seasonTypeValue : _ -> Just seasonTypeValue
     [] -> Nothing
+
+seasonYearFromFilters :: [DraftFilter] -> Maybe Text
+seasonYearFromFilters draftFilters =
+  case mapMaybe seasonYearFromFilter draftFilters of
+    seasonYearValue : _ -> Just seasonYearValue
+    [] -> Nothing
+
+seasonYearFromFilter :: DraftFilter -> Maybe Text
+seasonYearFromFilter draftFilter = do
+  valueText <- draftFilterTextValue draftFilter
+  let fieldKey = maybe "" normalizedKey (filterField draftFilter)
+  if fieldKey `elem` ["season", "seasonyear", "seasons", "year"]
+    then normalizeSeasonYear valueText
+    else Nothing
 
 seasonTypeFromFilter :: DraftFilter -> Maybe Text
 seasonTypeFromFilter draftFilter = do
@@ -166,6 +198,24 @@ seasonTypeFromWindow window =
   case value window of
     Just (QI.FilterText textValue) -> normalizeSeasonType textValue
     _ -> normalizeSeasonType (kind window)
+
+seasonYearFromWindow :: DraftTimeWindow -> Maybe Text
+seasonYearFromWindow window =
+  case value window of
+    Just (QI.FilterText textValue) -> normalizeSeasonYear textValue
+    _ -> normalizeSeasonYear (kind window)
+
+normalizeSeasonYear :: Text -> Maybe Text
+normalizeSeasonYear rawValue =
+  let strippedValue = T.strip rawValue
+      normalizedValue = T.filter (\character -> isDigit character || character == '-') strippedValue
+      compactValue = T.filter isDigit strippedValue
+   in if T.length normalizedValue == 7 && T.index normalizedValue 4 == '-'
+        then Just normalizedValue
+        else
+          if T.length compactValue == 4
+            then Just ("20" <> T.take 2 compactValue <> "-" <> T.drop 2 compactValue)
+            else Nothing
 
 draftFilterTextValue :: DraftFilter -> Maybe Text
 draftFilterTextValue draftFilter =

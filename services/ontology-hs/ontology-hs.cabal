@@ -23,12 +23,14 @@ executable ontology-hs
     , GroundedPlanning.Resolve.Common
     , GroundedPlanning.Resolve.Common.Context
     , GroundedPlanning.Resolve.Common.Dimensions
+    , GroundedPlanning.Resolve.Common.DisplayMetadata
     , GroundedPlanning.Resolve.Common.Filters
     , GroundedPlanning.Resolve.Common.LinkedFilters
     , GroundedPlanning.Resolve.Common.Metrics
     , GroundedPlanning.Resolve.Common.Ontology
     , GroundedPlanning.Resolve.Common.Trend
     , GroundedPlanning.Resolve.Common.Types
+    , GroundedPlanning.Resolve.Common.ValueCanonicalization
     , GroundedPlanning.Resolve.Rank
     , GroundedPlanning.Resolve.Trend
     , GroundedPlanning.Resolve.Object
@@ -60,10 +62,12 @@ executable ontology-hs
     , QueryModel.SemanticDraft
     , QueryModel.SemanticDraft.Aggregate
     , QueryModel.SemanticDraft.Compare
+    , QueryModel.SemanticDraft.FilterGrounding
     , QueryModel.SemanticDraft.Filters
     , QueryModel.SemanticDraft.Find
     , QueryModel.SemanticDraft.Match
     , QueryModel.SemanticDraft.Normalize
+    , QueryModel.SemanticDraft.Object
     , QueryModel.SemanticDraft.Rank
     , QueryModel.SemanticDraft.Trend
     , QueryModel.SemanticDraft.Types

@@ -120,9 +120,14 @@ trendFactAffinity trendGrain subjectObject factObjectValue =
 requireRankingFactSurface :: RankingFilterBundle -> Object -> Maybe ()
 requireRankingFactSurface rankingFilters factObjectValue =
   case rankingFilters of
-    RecentRanking _ -> do
+    RecentRanking _ seasonFilters -> do
       _ <- findAttribute factObjectValue "game_date"
-      Just ()
+      case seasonFilters of
+        [] -> Just ()
+        _ -> do
+          _ <- findAttribute factObjectValue "season_year"
+          _ <- findAttribute factObjectValue "season_type"
+          Just ()
     SeasonRanking _ _ -> do
       _ <- findAttribute factObjectValue "season_year"
       _ <- findAttribute factObjectValue "season_type"
@@ -168,6 +173,10 @@ metricAliases metricValue =
           | "total" `T.isInfixOf` metricKey
           , T.replace "total" "" metricKey /= ""
           ]
+          <> [ ("total" <> T.dropEnd 5 metricKey, 95)
+             | "total" `T.isSuffixOf` metricKey
+             , T.dropEnd 5 metricKey /= ""
+             ]
     sourceAliases =
       [ (sourceKey, 80)
       | sourceKey <- sourceKeys
@@ -204,7 +213,17 @@ aliasesForAggregation aggregationKey metricKey sourceKey
         else []
     pointsTotalAliases =
       if sourceKey `elem` ["points", "score"] || "points" `T.isInfixOf` metricKey
-        then [("points", 85), ("pts", 85), ("scoring", 80)]
+        then
+          [ ("points", 85)
+          , ("pts", 85)
+          , ("scoring", 80)
+          , ("scoringtotal", 95)
+          , ("scoringtotals", 95)
+          , ("pointtotal", 95)
+          , ("pointtotals", 95)
+          , ("pointstotal", 95)
+          , ("pointstotals", 95)
+          ]
         else []
 
 identityDimension :: Object -> Maybe Text

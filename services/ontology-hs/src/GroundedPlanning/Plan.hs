@@ -12,17 +12,47 @@
 
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module GroundedPlanning.Plan where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import QueryModel.IR (FilterValue)
 
 data PlanStep = PlanStep
   { kind :: Text
   , sql :: Maybe Text
   , analysis_spec :: Maybe Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanFindPredicate = PlanFindPredicate
+  { target_object :: Text
+  , attribute :: Text
+  , operator :: Text
+  , value :: FilterValue
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanFindFilter = PlanFindFilter
+  { filter_kind :: Text
+  , filter_value :: Maybe FilterValue
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanLinkedFilter = PlanLinkedFilter
+  { target_object :: Text
+  , attribute :: Text
+  , value :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanDisplayMetadata = PlanDisplayMetadata
+  { column_key :: Text
+  , label :: Text
+  , column_type :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -42,6 +72,10 @@ data ExecutionPlan = ExecutionPlan
   , season_type :: Maybe Text
   , limit :: Int
   , assumptions :: [Text]
+  , find_predicates :: [PlanFindPredicate]
+  , find_filters :: [PlanFindFilter]
+  , linked_filters :: [PlanLinkedFilter]
+  , display_metadata :: [PlanDisplayMetadata]
   , steps :: [PlanStep]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)

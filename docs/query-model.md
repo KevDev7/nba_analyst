@@ -42,11 +42,15 @@ Important current distinction:
 Supported example:
 
 - `Show me players and their total points over the last 10 games`
+- `Show me players with their scoring totals over the last 10 games`
+- `Show me the top 5 players and their total points for the Knicks over the last 10 games`
 
 Important idea:
 
 - each row is a `Player`
 - the attached metric is still computed from linked `PlayerGame` rows
+- object rows can carry a limit/order; `and their` / `with their` keeps the
+  family as `ObjectQuery`, while `by <measure>` belongs to ranking
 
 ## Current Narrowness
 

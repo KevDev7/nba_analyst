@@ -11,6 +11,7 @@ import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeKind (Dimension), AttributeVisibility (Public), Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
 import QueryModel.SemanticDraft.Types
@@ -20,7 +21,7 @@ semanticCompareDraftToQuery ontology draft = do
   -- Turn a comparison draft into typed Query IR.
   -- Python has already resolved raw names into snapshot-backed EntityRefs.
   rawMeasure <- requireDraftMeasureForFamily "Comparison" draft
-  filtersForComparison <- requireComparisonFilters (timeWindow draft)
+  filtersForComparison <- requireComparisonFilters (timeWindow draft) (filters draft)
   resolvedEntityValues <- requireResolvedComparisonEntities draft
   subjectObject <- resolveSubjectObject ontology (subject draft)
   displayDimensionValue <- requireComparisonIdentityDimension subjectObject
@@ -87,6 +88,7 @@ groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDim
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
   _ <- requireComparisonFactSurface filtersForComparison factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
+  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
   pure
     GroundedComparison
       { comparisonFactObject = factObjectValue
@@ -94,6 +96,7 @@ groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDim
       , comparisonMetricDef = metricValue
       , comparisonDisplayDimension = displayDimensionValue
       , comparisonFilterValues = filtersForComparison
+      , comparisonLinkedFilterValues = linkedFilterValue
       , comparisonEntitiesValue = entityValues
       , comparisonAssumptions = assumptions draft
       , comparisonMatchScore = metricMatchScore rawMeasure metricValue
@@ -123,7 +126,7 @@ comparisonQuery grounded =
             , QI.dimensions = [comparisonDisplayDimension grounded]
             , QI.timeGrain = Nothing
             , QI.filters = comparisonFilterValues grounded
-            , QI.linkedFilters = []
+            , QI.linkedFilters = comparisonLinkedFilterValues grounded
             , QI.orders = []
             , QI.limit = Nothing
             , QI.assumptions = comparisonAssumptions grounded

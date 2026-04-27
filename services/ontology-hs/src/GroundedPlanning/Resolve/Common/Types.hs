@@ -33,6 +33,15 @@ data ResolvedMetricFormula = ResolvedMetricFormula
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data ResolvedDisplayMetadata = ResolvedDisplayMetadata
+  { metadataKey :: Text
+  , metadataLabel :: Text
+  , metadataColumnType :: Text
+  , metadataSource :: Maybe ColumnRef
+  , metadataAggregation :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data ResolvedLinkedFilter = ResolvedLinkedFilter
   { targetObjectName :: Text
   , filterPath :: DiscoveredPath
@@ -65,6 +74,7 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
   , filterLocation :: Text
+  , displayMetadata :: [ResolvedDisplayMetadata]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -108,6 +118,7 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
   , filterLocation :: Text
+  , displayMetadata :: [ResolvedDisplayMetadata]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -119,7 +130,8 @@ data ResolvedFindDisplay = ResolvedFindDisplay
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data ResolvedFindPredicate = ResolvedFindPredicate
-  { predicatePath :: DiscoveredPath
+  { predicateTargetObjectName :: Text
+  , predicatePath :: DiscoveredPath
   , predicateColumn :: Text
   , predicateLabel :: Text
   , predicateOp :: Text

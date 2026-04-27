@@ -6,7 +6,7 @@ The PRD defines what "done" means. This file defines the implementation path.
 
 ## Target
 
-Scope 1 is complete when the terminal can answer one-step questions across all five families:
+Scope 1 is complete when the terminal can answer one-step questions across all six families:
 
 ```text
 rank
@@ -14,6 +14,7 @@ trend
 aggregate
 find
 compare
+object
 ```
 
 Each family must work through:
@@ -43,7 +44,7 @@ Files:
 Work:
 
 - Keep the LLM output in user-facing semantic terms.
-- Normalize all five draft families into typed Query IR.
+- Normalize all six draft families into typed Query IR.
 - Avoid hardcoded phrase/path restrictions above the ontology layer.
 - Extend IR only when a family cannot be represented cleanly by the current model.
 
@@ -315,7 +316,7 @@ Done when:
 - find acceptance test passes end to end
 - unsupported find questions fail because the ontology/data cannot ground them
 
-## Slice 6: Restriction Audit And Scope 1 Closure
+## Slice 6: Restriction Audit
 
 Goal:
 
@@ -335,13 +336,50 @@ Work:
 - Search for "currently", "only", "unsupported", and hardcoded family restrictions.
 - For each restriction, either remove it or document why it is required.
 - Add negative tests for missing ontology/data paths.
-- Add wording-variation tests for the five families.
+- Add wording-variation tests for the six families.
 
 Done when:
 
-- all five acceptance tests pass
+- all six acceptance tests pass
 - failures align with the PRD failure contract
 - remaining restrictions have clear correctness or safety justification
+
+## Slice 7: Six-Family Object Lane
+
+Goal:
+
+Make object-row questions a first-class semantic draft family instead of letting them drift between ranking and aggregate behavior.
+
+Acceptance question:
+
+```text
+Show me players and their total points over the last 10 games
+```
+
+Primary files:
+
+- `apps/cli/semantic_interpreter.py`
+- `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
+- `services/ontology-hs/src/QueryModel/SemanticDraft/Object.hs`
+- `services/ontology-hs/src/QueryModel/SemanticDraft/Normalize.hs`
+- `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
+- `services/runtime-py/runtime/AnalysisRuntime/*`
+- `services/runtime-py/runtime/AnswerSynthesis/*`
+- `tests/*`
+
+Work:
+
+- Add `object` to the semantic draft family contract.
+- Ground object drafts into typed `ObjectQuery` IR.
+- Keep ranking, aggregate, and object responsibilities separate.
+- Verify natural-language object questions produce `ObjectQuery -> object_rows`.
+- Verify ranking-like wording still produces ranked output when the user asks for entities by a measure.
+
+Done when:
+
+- object acceptance tests pass end to end
+- object questions no longer need to masquerade as aggregate or rank questions
+- family selection is guided by the semantic contract rather than hardcoded question corridors
 
 ## Current Recommended Order
 
@@ -350,6 +388,7 @@ Done when:
 3. Compare end to end
 4. Aggregate end to end
 5. Find end to end
-6. Restriction audit and Scope 1 closure
+6. Restriction audit
+7. Six-family object lane
 
-Trend and compare come before aggregate/find because more lower-level planner/runtime support already exists for them.
+Trend and compare came before aggregate/find because more lower-level planner/runtime support already existed for them.

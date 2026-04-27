@@ -119,11 +119,12 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         output = run_cli("Show me the top 10 players by points over the last 10 games")
 
         self.assertIn("Top 10 players by total points over the last 10 games", output)
-        self.assertIn("Rank | Player | Team | Total Points", output)
+        self.assertIn("Rank | Player | Team | Games Played | Minutes | Date Range | Total Points", output)
         self.assertIn(
-            f"1 | {expected_name} | {expected_team} | {int(expected_points)}",
+            f"1 | {expected_name} | {expected_team} |",
             output,
         )
+        self.assertIn(f"| {int(expected_points)}", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_rank_wording_variation_uses_ontology_grounding(self, mock_call_gemini) -> None:
@@ -137,7 +138,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         output = run_cli("What are the top 7 nba players by points these last ten games")
 
         self.assertIn("Top 7 players by total points over the last 10 games", output)
-        self.assertIn("Rank | Player | Team | Total Points", output)
+        self.assertIn("Rank | Player | Team | Games Played | Minutes | Date Range | Total Points", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_rank_season_draft_reaches_existing_season_surface(self, mock_call_gemini) -> None:
@@ -156,7 +157,33 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         output = run_cli("Show me players by average points in the 2025-26 regular season")
 
         self.assertIn("Top 10 players by average points in the 2025-26 regular season", output)
-        self.assertIn("Rank | Player | Average Points", output)
+        self.assertIn("Rank | Player | Season | Season Type | Games Played | Minutes | Average Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_object_draft_runs_to_object_rows_answer(self, mock_call_gemini) -> None:
+        object_draft = {
+            "task": "object",
+            "subject": "players",
+            "measure": "total points",
+            "measures": ["total points"],
+            "dimensions": [],
+            "filters": [],
+            "time_window": {"kind": "last_n_games", "value": 10},
+            "grain": None,
+            "order": [],
+            "limit": None,
+            "sort": "desc",
+            "entities": [],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": object_draft})
+
+        output = run_cli("Show me players and their total points over the last 10 games")
+
+        self.assertIn("Interpreted as: Players and their total points over the last 10 games.", output)
+        self.assertIn("Players ordered by total points over the last 10 games", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Total Points", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_trend_draft_runs_to_time_series_answer(self, mock_call_gemini) -> None:

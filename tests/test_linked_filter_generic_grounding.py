@@ -33,7 +33,35 @@ class LinkedFilterGenericGroundingTests(unittest.TestCase):
 
         self.assertEqual(resolved_filter["targetObjectName"], "Team")
         self.assertEqual(resolved_filter["filterColumn"], "conference")
-        self.assertEqual(resolved_filter["filterValue"], "Western")
+        self.assertEqual(resolved_filter["filterValue"], "west")
+        self.assertIn("lf1.conference = 'west'", planner_output["execution_plan"]["steps"][0]["sql"])
+
+    def test_mixed_case_conference_alias_canonicalizes(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["average_points"],
+                    "dimensions": ["full_name"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "linkedFilters": [
+                        {"targetObject": "Team", "attribute": "conference", "value": "eAst"}
+                    ],
+                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": None,
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
+
+        self.assertEqual(resolved_filter["filterValue"], "east")
 
     def test_recent_object_query_with_team_division_linked_filter_succeeds(self) -> None:
         payload = {
@@ -177,7 +205,7 @@ class LinkedFilterGenericGroundingTests(unittest.TestCase):
 
         self.assertEqual(
             [(filter_value["filterColumn"], filter_value["filterValue"]) for filter_value in resolved_filters],
-            [("conference", "Western"), ("division", "Pacific")],
+            [("conference", "west"), ("division", "Pacific")],
         )
 
     def test_trend_accepts_ontology_grounded_linked_filters(self) -> None:
@@ -206,7 +234,9 @@ class LinkedFilterGenericGroundingTests(unittest.TestCase):
         resolved_filters = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"]
 
         self.assertEqual(resolved_filters[0]["filterColumn"], "conference")
+        self.assertEqual(resolved_filters[0]["filterValue"], "west")
         self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("lf1.conference = 'west'", planner_output["execution_plan"]["steps"][0]["sql"])
 
     def test_comparison_accepts_ontology_grounded_linked_filters(self) -> None:
         payload = {
@@ -241,7 +271,36 @@ class LinkedFilterGenericGroundingTests(unittest.TestCase):
         resolved_filters = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"]
 
         self.assertEqual(resolved_filters[0]["filterColumn"], "conference")
+        self.assertEqual(resolved_filters[0]["filterValue"], "west")
         self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
+
+    def test_team_name_alias_canonicalizes_for_linked_filter(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["average_points"],
+                    "dimensions": ["full_name"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "linkedFilters": [
+                        {"targetObject": "Team", "attribute": "team_name", "value": "LA Lakers"}
+                    ],
+                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": None,
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
+
+        self.assertEqual(resolved_filter["filterValue"], "Lakers")
+        self.assertIn("lf1.team_name = 'Lakers'", planner_output["execution_plan"]["steps"][0]["sql"])
 
 if __name__ == "__main__":
     unittest.main()

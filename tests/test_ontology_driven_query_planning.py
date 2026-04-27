@@ -66,7 +66,8 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
     def test_team_average_points_query_is_ontology_driven(self) -> None:
         output = run_cli("Show me teams by average points over the last 10 games")
         self.assertIn("Teams ranked by average points", output)
-        self.assertIn("Nuggets | DEN | 127.0", output)
+        self.assertIn("Rank | Team | Abbrev | Games Played | Date Range | Average Points", output)
+        self.assertRegex(output, r"Nuggets \| DEN \| 10 \| [0-9-]+ to [0-9-]+ \| 127\.0")
 
         _interpreted_query, planner_output = plan_question(
             "Show me teams by average points over the last 10 games"

@@ -10,6 +10,7 @@ import Data.Text (Text)
 import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (Ontology (objects), Object)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
 import QueryModel.SemanticDraft.Types
@@ -85,6 +86,7 @@ groundTrendFactCandidate ontology draft rawMeasure subjectObject maybeDimension 
   _ <- requireTrendFactSurface trendGrain filtersForTrend factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
   _ <- requireTrendDimensionReachable ontology factObjectValue maybeDimension
+  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
   pure
     GroundedTrend
       { trendFactObject = factObjectValue
@@ -92,6 +94,7 @@ groundTrendFactCandidate ontology draft rawMeasure subjectObject maybeDimension 
       , trendDisplayDimension = maybeDimension
       , trendGrainValue = trendGrain
       , trendFilterValues = filtersForTrend
+      , trendLinkedFilterValues = linkedFilterValue
       , trendAssumptions = assumptions draft
       , trendMatchScore = metricMatchScore rawMeasure metricValue
       , trendSubjectAffinityScore = trendFactAffinity trendGrain subjectObject factObjectValue
@@ -150,7 +153,7 @@ trendQuery grounded =
             , QI.dimensions = maybe [] pure (trendDisplayDimension grounded)
             , QI.timeGrain = Just (QI.TimeGrainRef (trendGrainValue grounded))
             , QI.filters = trendFilterValues grounded
-            , QI.linkedFilters = []
+            , QI.linkedFilters = trendLinkedFilterValues grounded
             , QI.orders = []
             , QI.limit = Nothing
             , QI.assumptions = trendAssumptions grounded

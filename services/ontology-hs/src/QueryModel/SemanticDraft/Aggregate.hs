@@ -10,6 +10,7 @@ import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Ontology (objects), Object)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
 import QueryModel.SemanticDraft.Types
@@ -110,6 +111,7 @@ groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDi
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName (aggregateDimensionObject aggregateDimension))
   _ <- requireRankingFactSurface aggregateFilters factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
+  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
   pure
     GroundedAggregate
       { aggregateFactObject = factObjectValue
@@ -117,6 +119,7 @@ groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDi
       , aggregateMetricDef = metricValue
       , aggregateDisplayDimension = aggregateDimensionName aggregateDimension
       , aggregateFilterValues = rankingFilterValues aggregateFilters
+      , aggregateLinkedFilterValues = linkedFilterValue
       , aggregateLimitValue = maybeLimit
       , aggregateAssumptions = assumptions draft
       , aggregateMatchScore = metricMatchScore rawMeasure metricValue
@@ -140,7 +143,7 @@ aggregateQuery grounded =
             , QI.dimensions = [aggregateDisplayDimension grounded]
             , QI.timeGrain = Nothing
             , QI.filters = aggregateFilterValues grounded
-            , QI.linkedFilters = []
+            , QI.linkedFilters = aggregateLinkedFilterValues grounded
             , QI.orders = []
             , QI.limit = aggregateLimitValue grounded
             , QI.assumptions = aggregateAssumptions grounded

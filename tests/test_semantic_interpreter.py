@@ -30,7 +30,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         prompt = _semantic_draft_prompt_preamble()
 
         self.assertIn("loose semantic draft", prompt)
-        self.assertIn('"rank" | "trend" | "aggregate" | "find" | "compare"', prompt)
+        self.assertIn('"rank" | "trend" | "aggregate" | "find" | "compare" | "object"', prompt)
         self.assertIn('"operations"', prompt)
         self.assertIn("positive integer", prompt)
         self.assertNotIn('"limit": 10 | 5 | 1 | null', prompt)
@@ -39,6 +39,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertNotIn('"coreFactObject"', prompt)
         self.assertNotIn('"query_kind"', prompt)
         self.assertNotIn("Capability summary", prompt)
+        self.assertIn('"task":"object"', prompt)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_interpreter_returns_basic_validated_semantic_draft(self, mock_call_gemini) -> None:
@@ -79,6 +80,43 @@ class SemanticInterpreterTests(unittest.TestCase):
         )
 
         self.assertEqual(interpreted["time_window"], {"kind": "last_month", "value": 1})
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_interpreter_allows_find_null_time_window_for_policy_normalization(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "find",
+            "subject": "games",
+            "measure": None,
+            "measures": [],
+            "dimensions": [],
+            "filters": [{"field": "team", "op": "=", "value": "Lakers"}],
+            "time_window": None,
+            "grain": None,
+            "order": [],
+            "limit": None,
+            "sort": None,
+            "entities": ["Lakers"],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Find games where the Lakers scored over 120 points"
+        )
+
+        self.assertIsNone(interpreted["time_window"])
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_interpreter_still_requires_non_find_time_window(self, mock_call_gemini) -> None:
+        draft = dict(SAMPLE_DRAFT)
+        draft["time_window"] = None
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        with self.assertRaises(SemanticInterpreterError) as context:
+            interpret_question_to_semantic_draft("Show me top 10 players by points")
+
+        self.assertIn("time_window is required except for find drafts", str(context.exception))
 
 
 if __name__ == "__main__":

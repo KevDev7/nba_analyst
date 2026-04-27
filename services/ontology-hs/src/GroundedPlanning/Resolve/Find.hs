@@ -56,9 +56,21 @@ resolveFindPredicate ontology factObjectName predicateValue = do
       (findAttribute predicateObject (predicateAttribute predicateValue))
   pure
     ResolvedFindPredicate
-      { predicatePath = predicatePathValue
+      { predicateTargetObjectName = predicateTargetObject predicateValue
+      , predicatePath = predicatePathValue
       , predicateColumn = source_column attributeValue
       , predicateLabel = predicateAttribute predicateValue
       , predicateOp = predicateOpText (predicateOperator predicateValue)
-      , predicateValue = predicateFilterValue predicateValue
+      , predicateValue =
+          canonicalizePredicateValue
+            (predicateTargetObject predicateValue)
+            (predicateAttribute predicateValue)
+            (predicateFilterValue predicateValue)
       }
+
+canonicalizePredicateValue :: Text -> Text -> FilterValue -> FilterValue
+canonicalizePredicateValue targetObjectName attributeName predicateValue =
+  case predicateValue of
+    FilterText textValue ->
+      FilterText (canonicalizeTextValue targetObjectName attributeName textValue)
+    FilterInt _ -> predicateValue
