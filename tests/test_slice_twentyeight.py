@@ -6,7 +6,7 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyEightTests(unittest.TestCase):
-    def test_recent_metric_query_with_player_display_name_linked_filter_succeeds(self) -> None:
+    def test_recent_metric_query_with_player_full_name_linked_filter_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -17,7 +17,7 @@ class SliceTwentyEightTests(unittest.TestCase):
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
-                        {"targetObject": "Player", "attribute": "display_name", "value": "sample"}
+                        {"targetObject": "Player", "attribute": "full_name", "value": "sample"}
                     ],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
@@ -32,10 +32,10 @@ class SliceTwentyEightTests(unittest.TestCase):
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
-        self.assertEqual(resolved_filter["filterColumn"], "display_name")
+        self.assertEqual(resolved_filter["filterColumn"], "full_name")
         self.assertEqual(resolved_filter["filterValue"], "sample")
 
-    def test_recent_object_query_with_game_label_linked_filter_succeeds(self) -> None:
+    def test_recent_object_query_with_game_date_linked_filter_succeeds(self) -> None:
         payload = {
             "kind": "object_query",
             "spec": {
@@ -47,7 +47,7 @@ class SliceTwentyEightTests(unittest.TestCase):
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
-                        {"targetObject": "Game", "attribute": "game_label", "value": "sample"}
+                        {"targetObject": "Game", "attribute": "game_date", "value": "2025-01-01"}
                     ],
                     "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": 5,
@@ -60,26 +60,26 @@ class SliceTwentyEightTests(unittest.TestCase):
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Game")
-        self.assertEqual(resolved_filter["filterColumn"], "game_label")
-        self.assertEqual(resolved_filter["filterValue"], "sample")
+        self.assertEqual(resolved_filter["filterColumn"], "game_date")
+        self.assertEqual(resolved_filter["filterValue"], "2025-01-01")
 
-    def test_season_metric_query_with_player_display_name_linked_filter_succeeds(self) -> None:
+    def test_season_metric_query_with_player_full_name_linked_filter_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeason",
-                    "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_per_game"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
                         {"kind": "season_type", "value": "regular_season"},
                     ],
                     "linkedFilters": [
-                        {"targetObject": "Player", "attribute": "display_name", "value": "sample"}
+                        {"targetObject": "Player", "attribute": "full_name", "value": "sample"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -92,7 +92,7 @@ class SliceTwentyEightTests(unittest.TestCase):
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
-        self.assertEqual(resolved_filter["filterColumn"], "display_name")
+        self.assertEqual(resolved_filter["filterColumn"], "full_name")
 
     def test_unreachable_linked_filter_target_fails_with_path_message(self) -> None:
         payload = {
@@ -108,7 +108,7 @@ class SliceTwentyEightTests(unittest.TestCase):
                         {"kind": "season_type", "value": "regular_season"},
                     ],
                     "linkedFilters": [
-                        {"targetObject": "Game", "attribute": "game_label", "value": "sample"}
+                        {"targetObject": "Game", "attribute": "game_date", "value": "2025-01-01"}
                     ],
                     "orders": [{"kind": "desc", "metric": "wins"}],
                     "limit": None,
@@ -150,7 +150,7 @@ class SliceTwentyEightTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Linked filters currently support public dimension attributes on reachable ontology objects only.",
+            "Linked filters support public dimension attributes on reachable ontology objects only.",
             str(context.exception),
         )
 

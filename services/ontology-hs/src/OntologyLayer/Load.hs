@@ -20,6 +20,7 @@ import OntologyLayer.Validation (validateOntology)
 
 loadOntology :: FilePath -> IO Ontology
 loadOntology path = do
+  -- Convenience wrapper for callers that want an Ontology or a thrown IO failure.
   loaded <- loadOntologyEither path
   case loaded of
     Right ontology -> pure ontology
@@ -27,11 +28,13 @@ loadOntology path = do
 
 loadOntologyEither :: FilePath -> IO (Either Text Ontology)
 loadOntologyEither path = do
+  -- Read semantic-gold.yaml and decode it into the Types.hs ontology structures.
   decoded <- decodeFileEither path
   pure $
     case decoded of
       Left err -> Left (T.pack (prettyPrintParseException err))
       Right ontology ->
+        -- Only return the ontology if it passes the semantic contract checks.
         case validateOntology ontology of
           Right () -> Right ontology
           Left validationErr -> Left validationErr

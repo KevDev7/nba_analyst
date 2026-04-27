@@ -33,6 +33,10 @@ def package_results(result: RuntimeResult) -> Dict[str, object]:
         "limit": result.limit,
         "assumptions": result.assumptions,
         "rows": [row.model_dump() if hasattr(row, "model_dump") else row.dict() for row in result.rows],
+        "aggregate_rows": [
+            row.model_dump() if hasattr(row, "model_dump") else row.dict()
+            for row in result.aggregate_rows
+        ],
         "object_rows": [
             row.model_dump() if hasattr(row, "model_dump") else row.dict()
             for row in result.object_rows
@@ -41,6 +45,7 @@ def package_results(result: RuntimeResult) -> Dict[str, object]:
             row.model_dump() if hasattr(row, "model_dump") else row.dict()
             for row in result.time_series_rows
         ],
+        "find_rows": result.find_rows,
     }
     if result.comparison is not None:
         payload["comparison"] = (

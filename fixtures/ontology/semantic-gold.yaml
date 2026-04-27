@@ -16,6 +16,7 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+    comparison_identity: true
   - name: first_name
     kind: dimension
     source_column: first_name
@@ -117,6 +118,7 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+    comparison_identity: true
   - name: team_city
     kind: dimension
     source_column: team_city

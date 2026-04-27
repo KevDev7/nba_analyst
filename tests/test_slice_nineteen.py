@@ -103,7 +103,7 @@ class SliceNineteenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["game_label"],
+                    "dimensions": ["game_date"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
                     "linkedFilters": [],
@@ -120,9 +120,9 @@ class SliceNineteenTests(unittest.TestCase):
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["seriesObjectName"], "Game")
-        self.assertEqual(resolved["seriesName"]["columnName"], "game_label")
+        self.assertEqual(resolved["seriesName"]["columnName"], "game_date")
 
-    def test_linked_filter_trend_is_rejected(self) -> None:
+    def test_linked_filter_trend_is_grounded(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -144,13 +144,11 @@ class SliceNineteenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
 
-        self.assertIn(
-            "Trend queries currently do not support linked filters.",
-            str(context.exception),
-        )
+        self.assertEqual(resolved["linkedFiltersResolved"][0]["filterColumn"], "team_name")
+        self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
 
     def test_explicit_order_trend_is_rejected(self) -> None:
         payload = {
@@ -176,7 +174,7 @@ class SliceNineteenTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently do not accept explicit ordering.",
+            "Trend queries do not accept explicit ordering.",
             str(context.exception),
         )
 
@@ -204,7 +202,7 @@ class SliceNineteenTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently do not support limit.",
+            "Trend queries do not support limit.",
             str(context.exception),
         )
 

@@ -23,6 +23,8 @@ import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
+-- A specific real-world entity the query cares about, like one player.
+-- Example: entityId = 1628973, entityName = "Jalen Brunson".
 data EntityRef = EntityRef
   { entityId :: Int
   , entityName :: Text
@@ -42,13 +44,17 @@ instance FromJSON EntityRef where
       <$> obj .: "entityId"
       <*> obj .: "entityName"
 
+-- These are semantic names, not raw database column names.
+-- Grounded planning later proves they exist in the ontology before SQL is built.
 type MetricName = Text
 
 type DimensionName = Text
 
+-- A time bucket for trend-style answers, like "month".
 newtype TimeGrain = TimeGrainRef Text
   deriving (Show, Eq, Generic)
 
+-- Convenience value for monthly trend queries.
 monthTimeGrain :: TimeGrain
 monthTimeGrain = TimeGrainRef "month"
 
@@ -66,6 +72,8 @@ timeGrainText timeGrainValue =
   case timeGrainValue of
     TimeGrainRef rawValue -> rawValue
 
+-- A filter value can be either a number or text.
+-- Example: last_n_games uses FilterInt 10, exact_season uses FilterText "2024-25".
 data FilterValue
   = FilterInt Int
   | FilterText Text
@@ -81,6 +89,8 @@ instance FromJSON FilterValue where
   parseJSON value =
     (FilterInt <$> parseJSON value) <|> (FilterText <$> parseJSON value)
 
+-- A named constraint on the query.
+-- Example: kind = "last_n_games", value = 10 means "only use the last 10 games."
 data Filter
   = FilterRef
       { kind :: Text
@@ -98,6 +108,7 @@ instance FromJSON Filter where
   parseJSON = withObject "Filter" $ \obj -> do
     kindValue <- obj .: "kind"
     case (kindValue :: Text) of
+      -- Some filter kinds get extra validation here so malformed JSON fails early.
       "last_n_games" -> do
         maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
         case maybeValue of
@@ -129,6 +140,7 @@ instance FromJSON Filter where
             , value = maybeValue
             }
 
+-- Build the canonical IR shape for "last N games" instead of repeating strings.
 lastNGamesFilter :: Int -> Filter
 lastNGamesFilter gamesValue =
   FilterRef
@@ -136,6 +148,7 @@ lastNGamesFilter gamesValue =
     , value = Just (FilterInt gamesValue)
     }
 
+-- Build the canonical IR shape for "past year".
 pastYearFilter :: Filter
 pastYearFilter =
   FilterRef
@@ -143,6 +156,7 @@ pastYearFilter =
     , value = Nothing
     }
 
+-- Build the canonical IR shape for a specific season label.
 exactSeasonFilter :: Text -> Filter
 exactSeasonFilter seasonLabel =
   FilterRef
@@ -150,6 +164,7 @@ exactSeasonFilter seasonLabel =
     , value = Just (FilterText seasonLabel)
     }
 
+-- Build the canonical IR shape for regular season, playoffs, etc.
 seasonTypeFilter :: Text -> Filter
 seasonTypeFilter seasonTypeLabel =
   FilterRef
@@ -179,20 +194,28 @@ filterTextValue filterValue =
     Just (FilterText textValue) -> Just textValue
     _ -> Nothing
 
+-- Sorting instructions for the final answer.
+-- Example: "top players by points" sorts descending; "bottom teams by wins"
+-- sorts ascending.
 data Order
-  = Desc MetricName
+  = Asc MetricName
+  | Desc MetricName
   deriving (Show, Eq, Generic)
 
 instance ToJSON Order where
+  toJSON (Asc metricName) = object ["kind" .= String "asc", "metric" .= metricName]
   toJSON (Desc metricName) = object ["kind" .= String "desc", "metric" .= metricName]
 
 instance FromJSON Order where
   parseJSON = withObject "Order" $ \obj -> do
     kindValue <- obj .: "kind"
     case (kindValue :: Text) of
+      "asc" -> Asc <$> obj .: "metric"
       "desc" -> Desc <$> obj .: "metric"
       _ -> fail ("Unknown order kind: " <> show kindValue)
 
+-- A filter that reaches through a relationship to another object.
+-- Example: filter PlayerGame rows by a Player attribute such as full_name.
 data LinkedFilter = LinkedFilter
   { targetObject :: Text
   , attribute :: Text
@@ -200,6 +223,59 @@ data LinkedFilter = LinkedFilter
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data PredicateOp
+  = OpEq
+  | OpGt
+  | OpGte
+  | OpLt
+  | OpLte
+  deriving (Show, Eq, Generic)
+
+instance ToJSON PredicateOp where
+  toJSON opValue =
+    String $
+      case opValue of
+        OpEq -> "="
+        OpGt -> ">"
+        OpGte -> ">="
+        OpLt -> "<"
+        OpLte -> "<="
+
+instance FromJSON PredicateOp where
+  parseJSON = withText "PredicateOp" $ \value ->
+    case value of
+      "=" -> pure OpEq
+      "eq" -> pure OpEq
+      ">" -> pure OpGt
+      "gt" -> pure OpGt
+      ">=" -> pure OpGte
+      "gte" -> pure OpGte
+      "<" -> pure OpLt
+      "lt" -> pure OpLt
+      "<=" -> pure OpLte
+      "lte" -> pure OpLte
+      _ -> fail ("Unknown predicate operator: " <> show value)
+
+predicateOpText :: PredicateOp -> Text
+predicateOpText opValue =
+  case opValue of
+    OpEq -> "="
+    OpGt -> ">"
+    OpGte -> ">="
+    OpLt -> "<"
+    OpLte -> "<="
+
+data FindPredicate = FindPredicate
+  { predicateTargetObject :: Text
+  , predicateAttribute :: Text
+  , predicateOperator :: PredicateOp
+  , predicateFilterValue :: FilterValue
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+-- The shared body of both object queries and metric queries.
+-- Plain English: what table/object is the query centered on, what measurements
+-- and breakdowns are involved, what filters apply, and how should results sort.
 data BaseQuery = BaseQuery
   { coreFactObject :: Text
   , metrics :: [MetricName]
@@ -213,6 +289,8 @@ data BaseQuery = BaseQuery
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+-- Extra intent for questions that compare named entities.
+-- Example: "compare Brunson and Haliburton" points at two player entities.
 data ComparisonIntent
   = CompareEntities Text [EntityRef]
   deriving (Show, Eq, Generic)
@@ -232,12 +310,16 @@ instance FromJSON ComparisonIntent where
       "compare_entities" -> CompareEntities <$> obj .: "targetObject" <*> obj .: "entities"
       _ -> fail ("Unknown comparison intent: " <> show kindValue)
 
+-- Object query = each answer row is mainly an entity.
+-- Example: "show players with their teams" is about rows of players.
 data ObjectQuerySpec = ObjectQuerySpec
   { sharedQuery :: BaseQuery
   , rowObject :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+-- Metric query = each answer row is mainly a measurement/breakdown.
+-- Example: "top 10 players by points" is about a points metric grouped by player.
 data MetricQuerySpec = MetricQuerySpec
   { sharedQuery :: BaseQuery
   , entityFilters :: [EntityRef]
@@ -245,14 +327,30 @@ data MetricQuerySpec = MetricQuerySpec
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data FindQuerySpec = FindQuerySpec
+  { findCoreFactObject :: Text
+  , findTargetObject :: Text
+  , findDisplayDimensions :: [DimensionName]
+  , findPredicates :: [FindPredicate]
+  , findFilters :: [Filter]
+  , findLimit :: Maybe Int
+  , findAssumptions :: [Text]
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+-- The top-level fork in the query model.
+-- By this point the messy language is gone; Haskell sees either an ObjectQuery
+-- or a MetricQuery with typed fields.
 data Query
   = ObjectQuery ObjectQuerySpec
   | MetricQuery MetricQuerySpec
+  | FindQuery FindQuerySpec
   deriving (Show, Eq, Generic)
 
 instance ToJSON Query where
   toJSON (ObjectQuery spec) = object ["kind" .= String "object_query", "spec" .= spec]
   toJSON (MetricQuery spec) = object ["kind" .= String "metric_query", "spec" .= spec]
+  toJSON (FindQuery spec) = object ["kind" .= String "find_query", "spec" .= spec]
 
 instance FromJSON Query where
   parseJSON = withObject "Query" $ \obj -> do
@@ -260,4 +358,5 @@ instance FromJSON Query where
     case (kindValue :: Text) of
       "object_query" -> ObjectQuery <$> obj .: "spec"
       "metric_query" -> MetricQuery <$> obj .: "spec"
+      "find_query" -> FindQuery <$> obj .: "spec"
       _ -> fail ("Unknown query kind: " <> show kindValue)

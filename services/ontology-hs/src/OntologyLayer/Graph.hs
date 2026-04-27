@@ -23,6 +23,8 @@ import GHC.Generics (Generic)
 import OntologyLayer.Types
 
 data PathStep = PathStep
+  -- One hop across an ontology link.
+  -- Grounded planning later turns these path steps into SQL joins.
   { linkName :: Text
   , stepSourceObjectName :: Text
   , stepTargetObjectName :: Text
@@ -34,6 +36,8 @@ data PathStep = PathStep
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data DiscoveredPath = DiscoveredPath
+  -- A discovered route from one ontology object to another.
+  -- Example: PlayerGame -> Player.
   { sourceObjectName :: Text
   , targetObjectName :: Text
   , steps :: [PathStep]
@@ -42,38 +46,45 @@ data DiscoveredPath = DiscoveredPath
 
 findObject :: Ontology -> Text -> Maybe Object
 findObject ontology objectName = find matchesObject (objects ontology)
+  -- Find a business object by its ontology name.
   where
     matchesObject Object {name = currentName} = currentName == objectName
 
 findAttribute :: Object -> Text -> Maybe Attribute
 findAttribute object attributeName = find matchesAttribute (attributes object)
+  -- Find an attribute by name inside one object.
   where
     matchesAttribute Attribute {name = currentName} = currentName == attributeName
 
 findMetric :: Object -> Text -> Maybe MetricDef
 findMetric object metricName = find matchesMetric (metrics object)
+  -- Find a metric by name inside one object.
   where
     matchesMetric MetricDef {name = currentName} = currentName == metricName
 
 findLink :: Ontology -> Text -> Text -> Maybe Link
 findLink ontology sourceName targetName = find matchesLink (links ontology)
+  -- Find a direct relationship from one object to another.
   where
     matchesLink Link {source_object = currentSource, target_object = currentTarget} =
       currentSource == sourceName && currentTarget == targetName
 
 findLinkByName :: Ontology -> Text -> Maybe Link
 findLinkByName ontology linkName = find matchesLinkName (links ontology)
+  -- Find a relationship by its configured link name.
   where
     matchesLinkName Link {name = currentName} = currentName == linkName
 
 findLinksFrom :: Ontology -> Text -> [Link]
 findLinksFrom ontology sourceName =
+  -- List all outgoing links from one object.
   filter matchesLink (links ontology)
   where
     matchesLink Link {source_object = currentSource} = currentSource == sourceName
 
 findPath :: Ontology -> Int -> Text -> Text -> Maybe DiscoveredPath
 findPath ontology maxDepth sourceName targetName
+  -- Find one path from source object to target object, up to maxDepth hops.
   | sourceName == targetName =
       Just
         DiscoveredPath
@@ -87,6 +98,8 @@ findPath ontology maxDepth sourceName targetName
 
 findPathsFrom :: Ontology -> Int -> Text -> [DiscoveredPath]
 findPathsFrom ontology maxDepth sourceName =
+  -- Breadth-first search over ontology links starting from one object.
+  -- This gives planners possible join paths without hardcoding table joins.
   bfs [(sourceName, [])] [sourceName] []
   where
     bfs :: [(Text, [PathStep])] -> [Text] -> [DiscoveredPath] -> [DiscoveredPath]
@@ -114,6 +127,7 @@ findPathsFrom ontology maxDepth sourceName =
 
     buildNextExpansions :: Text -> [PathStep] -> [Text] -> [(Text, [PathStep], Text)]
     buildNextExpansions currentObjectName currentSteps visited =
+      -- Expand to unvisited objects reachable by one outgoing link.
       [ (target_object linkValue, currentSteps ++ [pathStep], target_object linkValue)
       | linkValue <- findLinksFrom ontology currentObjectName
       , target_object linkValue `notElem` visited
@@ -122,6 +136,7 @@ findPathsFrom ontology maxDepth sourceName =
 
     buildPathStep :: Text -> Link -> Maybe PathStep
     buildPathStep currentObjectName Link {name = currentName, target_object = currentTarget, source_key = currentSourceKey, target_key = currentTargetKey} = do
+      -- Add table/key metadata to the link so SQL compilation has what it needs.
       sourceObject <- findObject ontology currentObjectName
       targetObject <- findObject ontology currentTarget
       pure

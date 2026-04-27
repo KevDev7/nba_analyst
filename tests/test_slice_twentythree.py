@@ -6,14 +6,14 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyThreeTests(unittest.TestCase):
-    def test_supported_metric_query_still_plans_with_string_metric_ref(self) -> None:
+    def test_supported_metric_query_plans_with_string_metric_ref(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -42,7 +42,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["made_up_metric"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -67,7 +67,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["points_per_36"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -95,7 +95,7 @@ class SliceTwentyThreeTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],

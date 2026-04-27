@@ -15,7 +15,7 @@ class SliceElevenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(
             shared["linkedFilters"],
@@ -47,7 +47,7 @@ class SliceElevenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["total_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(
             shared["linkedFilters"],
@@ -76,7 +76,7 @@ class SliceElevenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
             [

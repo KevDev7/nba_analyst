@@ -30,6 +30,10 @@ class SemanticInterpreterTests(unittest.TestCase):
         prompt = _semantic_draft_prompt_preamble()
 
         self.assertIn("loose semantic draft", prompt)
+        self.assertIn('"rank" | "trend" | "aggregate" | "find" | "compare"', prompt)
+        self.assertIn('"operations"', prompt)
+        self.assertIn("positive integer", prompt)
+        self.assertNotIn('"limit": 10 | 5 | 1 | null', prompt)
         self.assertIn("Do not output ontology object names", prompt)
         self.assertIn('"draft"', prompt)
         self.assertNotIn('"coreFactObject"', prompt)
@@ -44,34 +48,37 @@ class SemanticInterpreterTests(unittest.TestCase):
             "Show me the top 10 players by points over the last 10 games"
         )
 
-        self.assertEqual(draft, SAMPLE_DRAFT)
+        self.assertEqual(draft["task"], SAMPLE_DRAFT["task"])
+        self.assertEqual(draft["subject"], SAMPLE_DRAFT["subject"])
+        self.assertEqual(draft["measure"], SAMPLE_DRAFT["measure"])
+        self.assertEqual(draft["time_window"], SAMPLE_DRAFT["time_window"])
+        self.assertEqual(draft["limit"], SAMPLE_DRAFT["limit"])
         sent_prompt = mock_call_gemini.call_args.args[0]
         self.assertIn("User question:", sent_prompt)
         self.assertIn("top 10 players", sent_prompt)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_interpreter_raises_for_unsupported_draft_response(self, mock_call_gemini) -> None:
+    def test_interpreter_raises_for_non_analytics_unsupported_response(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
-            {"status": "unsupported", "reason": "team rankings are outside Slice 36"}
+            {"status": "unsupported", "reason": "not an NBA analytics request"}
         )
 
         with self.assertRaises(SemanticInterpreterError) as context:
-            interpret_question_to_semantic_draft("Show me teams by points over the last 10 games")
+            interpret_question_to_semantic_draft("Write me a birthday card")
 
-        self.assertIn("team rankings are outside Slice 36", str(context.exception))
+        self.assertIn("not an NBA analytics request", str(context.exception))
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_interpreter_rejects_invalid_basic_shape(self, mock_call_gemini) -> None:
-        invalid = dict(SAMPLE_DRAFT)
-        invalid["time_window"] = {"kind": "last_month", "value": 1}
-        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": invalid})
+    def test_interpreter_does_not_gate_time_window_capabilities(self, mock_call_gemini) -> None:
+        draft = dict(SAMPLE_DRAFT)
+        draft["time_window"] = {"kind": "last_month", "value": 1}
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
 
-        with self.assertRaises(SemanticInterpreterError) as context:
-            interpret_question_to_semantic_draft(
-                "Show me the top 10 players by points over the last month"
-            )
+        interpreted = interpret_question_to_semantic_draft(
+            "Show me the top 10 players by points over the last month"
+        )
 
-        self.assertIn("invalid semantic draft", str(context.exception))
+        self.assertEqual(interpreted["time_window"], {"kind": "last_month", "value": 1})
 
 
 if __name__ == "__main__":

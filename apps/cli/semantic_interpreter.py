@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Find the project root and load API/model configuration from .env.
 load_dotenv(ROOT / ".env", override=False)
 
 
@@ -36,45 +37,64 @@ class SemanticInterpreterError(RuntimeError):
 
 
 class DraftTimeWindow(BaseModel):
+    # The time part of the user's question.
+    # Examples: last 10 games, past year, 2025-26 season.
     kind: str
-    value: int
+    value: Optional[Union[int, str]] = None
 
     @model_validator(mode="after")
     def validate_time_window_shape(self) -> "DraftTimeWindow":
-        if self.kind != "last_n_games":
-            raise ValueError("Slice 36 only supports last_n_games time windows.")
-        if self.value <= 0:
-            raise ValueError("last_n_games requires a positive integer value.")
+        # Only validate basic shape here. Haskell decides whether the time
+        # window is actually supported by the ontology/planner.
+        if not self.kind:
+            raise ValueError("time_window.kind must be non-empty.")
+        if isinstance(self.value, str) and not self.value:
+            raise ValueError("time_window.value must be non-empty when provided as text.")
         return self
 
 
 class SemanticDraft(BaseModel):
+    # The loose, user-facing intent schema the LLM fills in.
+    # This should preserve meaning without using SQL, table names, or ontology keys.
     task: str
     subject: str
-    measure: str
+    measure: Optional[str] = None
+    measures: list[str] = Field(default_factory=list)
+    dimensions: list[str] = Field(default_factory=list)
+    filters: list[dict[str, Any]] = Field(default_factory=list)
     time_window: DraftTimeWindow
+    grain: Optional[str] = None
+    order: list[dict[str, Any]] = Field(default_factory=list)
     limit: Optional[int] = None
     sort: Optional[str] = None
+    entities: list[str] = Field(default_factory=list)
+    operations: list[dict[str, Any]] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_basic_draft_shape(self) -> "SemanticDraft":
+        # Keep Python validation lightweight. It checks obvious bad shapes,
+        # while Haskell remains the source of truth for semantic validity.
         if self.limit is not None and self.limit <= 0:
             raise ValueError("limit must be positive when provided.")
         return self
 
 
 class InterpreterUnsupported(BaseModel):
+    # Gemini can use this only when the request is not NBA analytics or cannot
+    # fit the draft schema at all.
     status: Literal["unsupported"]
     reason: str
 
 
 class InterpreterSupported(BaseModel):
+    # Gemini uses this when it can preserve the user's intent as a draft.
     status: Literal["ok"]
     draft: SemanticDraft
 
 
 def _strip_json_fences(raw_text: str) -> str:
+    # If the model wraps JSON in ``` fences, remove them before parsing.
     cleaned = raw_text.strip()
     if cleaned.startswith("```"):
         cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
@@ -85,6 +105,8 @@ def _strip_json_fences(raw_text: str) -> str:
 
 @lru_cache(maxsize=1)
 def _semantic_draft_prompt_preamble() -> str:
+    # These are Gemini's instructions. The key rule: preserve user intent,
+    # but do not invent SQL, ontology object names, metric keys, or planner IR.
     return """
 You map NBA analytics questions into a loose semantic draft.
 
@@ -94,9 +116,10 @@ Rules:
 - Never write prose outside the JSON.
 - Do not output ontology object names, table names, metric keys, dimension keys, SQL, or planner IR.
 - Your job is only to preserve the user's semantic intent in the draft schema.
-- Slice 36 supports exactly one family: ranking players by points/scoring over the last N games.
 - Set limit only when the user explicitly asks for a numeric top-N result or a singular highest/best result.
-- If the question cannot be represented by this Slice 36 family, return:
+- Return an ok draft for NBA analytics questions whenever you can preserve the user's intent in this schema.
+- Do not decide whether the ontology can answer the question; Haskell does ontology grounding and planning after you return the draft.
+- Return unsupported only when the question is not an NBA analytics request or cannot be represented in this draft schema at all:
   {"status":"unsupported","reason":"<short reason>"}
 - If the question is supported, return:
   {"status":"ok","draft":{...}}
@@ -105,39 +128,62 @@ JSON template for supported drafts:
 {
   "status": "ok",
   "draft": {
-    "task": "rank",
-    "subject": "players",
-    "measure": "points" | "scoring" | "pts",
-    "time_window": {"kind":"last_n_games","value":10},
-    "limit": 10 | 5 | 1 | null,
-    "sort": "desc",
+    "task": "rank" | "trend" | "aggregate" | "find" | "compare",
+    "subject": "players" | "teams" | "<business subject from the user>",
+    "measure": "<primary user-facing measure phrase or null>",
+    "measures": ["<user-facing measure phrase>"],
+    "dimensions": ["<user-facing grouping/display phrase>"],
+    "filters": [
+      {"field":"<user-facing filter field phrase>","op":"<operator or filter kind>","value":"<number, text, date, or object>"}
+    ],
+    "time_window": {"kind":"last_n_games" | "season" | "past_year" | "<time window from the user>","value":10},
+    "grain": "day" | "week" | "month" | "season" | null,
+    "order": [{"by":"<user-facing measure/dimension phrase>","direction":"asc" | "desc"}],
+    "limit": "<positive integer explicitly requested by the user, or null>",
+    "sort": "asc" | "desc" | null,
+    "entities": ["<raw entity names from user>"],
+    "operations": [
+      {
+        "kind": "aggregate" | "rank" | "trend" | "compare" | "filter",
+        "measure": "<user-facing measure phrase or null>",
+        "dimensions": ["<user-facing dimension phrase>"],
+        "order_by": "<user-facing measure/dimension phrase or null>",
+        "limit": 5
+      }
+    ],
     "assumptions": []
   }
 }
 
 Assumption rules:
-- Never invent assumptions the user did not trigger literally.
-- If the user uses the canonical phrase "points", assumptions must be [].
-- If the user says "pts", include: "Interpreted 'pts' as points."
-- If the user says "scoring", include: "Interpreted 'scoring' as points."
-- If the user says "scorer" or "scorers", include: "Interpreted 'scorers' as players ranked by points." or the singular equivalent.
+- Keep assumptions empty when the draft preserves the user's wording directly.
+- Add an assumption only when you normalize shorthand, ambiguous wording, or a user-facing synonym into clearer draft wording.
+- Do not add assumptions about whether the ontology can answer the question.
+- Keep each assumption short and grounded in words the user actually used.
 
 Examples:
 Q: Show me the top 10 players by points over the last 10 games
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","time_window":{"kind":"last_n_games","value":10},"limit":10,"sort":"desc","assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":10,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Who are the top 10 scorers over the last 10 games?
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","time_window":{"kind":"last_n_games","value":10},"limit":10,"sort":"desc","assumptions":["Interpreted 'scorers' as players ranked by points."]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"scoring","direction":"desc"}],"limit":10,"sort":"desc","entities":[],"operations":[],"assumptions":["Interpreted 'scorers' as players ranked by points."]}}
 
-Q: Show me the best scorer over the last 5 games
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","time_window":{"kind":"last_n_games","value":5},"limit":1,"sort":"desc","assumptions":["Interpreted 'scorer' as players ranked by points.","Interpreted 'scoring' as points."]}}
+Q: What are monthly team average points over the past year?
+A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
-Q: Show me teams by points over the last 10 games
-A: {"status":"unsupported","reason":"team rankings are outside Slice 36"}
+Q: Calculate average points by team over the last 10 games
+A: {"status":"ok","draft":{"task":"aggregate","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
+
+Q: Find Lakers games over the last 10 games
+A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
+
+Q: Compare Brunson and Tatum scoring over the last 10 games
+A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Brunson","Tatum"],"operations":[],"assumptions":["Interpreted 'scoring' as points."]}}
 """.strip()
 
 
 def _call_gemini(prompt: str) -> str:
+    # Send the semantic-draft prompt to Gemini and return the model's text.
     provider = os.getenv("LLM_INTERPRETER_PROVIDER", "google")
     if provider != "google":
         raise SemanticInterpreterError(
@@ -171,6 +217,7 @@ def _call_gemini(prompt: str) -> str:
     body = ""
     for attempt in range(4):
         try:
+            # Retry temporary provider failures, but surface persistent errors.
             with urllib.request.urlopen(request, timeout=60) as response:
                 body = response.read().decode("utf-8")
             break
@@ -195,6 +242,7 @@ def _call_gemini(prompt: str) -> str:
 def _parse_interpreter_response(
     raw_text: str,
 ) -> Union[InterpreterSupported, InterpreterUnsupported]:
+    # Turn Gemini's JSON text into either a supported draft or an unsupported reason.
     cleaned = _strip_json_fences(raw_text)
     try:
         parsed = json.loads(cleaned)
@@ -217,6 +265,8 @@ def _parse_interpreter_response(
 
 @lru_cache(maxsize=256)
 def interpret_question_to_semantic_draft(question: str) -> dict[str, Any]:
+    # Build the prompt, attach the user's question, call Gemini, and validate
+    # the basic draft shape before handing it back to main.py.
     prompt = (
         f"{_semantic_draft_prompt_preamble()}\n\n"
         f"User question:\n{question}\n\n"
@@ -226,4 +276,5 @@ def interpret_question_to_semantic_draft(question: str) -> dict[str, Any]:
     interpreted = _parse_interpreter_response(raw_text)
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
+    # Return a plain Python dict so main.py can JSON-encode it for Haskell.
     return interpreted.draft.model_dump()

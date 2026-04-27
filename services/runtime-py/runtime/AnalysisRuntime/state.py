@@ -18,5 +18,8 @@ from typing import Any, Dict
 
 @dataclass
 class RuntimeState:
+    # Small scratchpad shared across runtime steps.
+    # latest_result = whatever the most recent step produced
+    # artifacts = named derived outputs that later steps or answer synthesis may use
     latest_result: Any | None = None
     artifacts: Dict[str, Any] = field(default_factory=dict)

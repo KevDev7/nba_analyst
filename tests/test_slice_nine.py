@@ -18,7 +18,7 @@ class SliceNineTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
             [
@@ -99,21 +99,23 @@ class SliceNineTests(unittest.TestCase):
         try:
             season_rows = conn.execute(
                 """
-                SELECT player_name, games_played, total_points
-                FROM player_season
-                WHERE person_id = 201935
-                  AND season_year = '2025-26'
-                  AND season_type = 'regular_season'
+                SELECT p.full_name, ps.games_played, ps.points_total
+                FROM player_season ps
+                JOIN player p ON ps.person_id = p.person_id
+                WHERE ps.person_id = 201935
+                  AND ps.season_year = '2025-26'
+                  AND ps.season_type = 'regular_season'
                 """
             ).fetchall()
             team_rows = conn.execute(
                 """
-                SELECT team_abbreviation, games_played, total_points
-                FROM player_season_team
-                WHERE person_id = 201935
-                  AND season_year = '2025-26'
-                  AND season_type = 'regular_season'
-                ORDER BY team_abbreviation ASC
+                SELECT t.team_abbreviation, pst.games_played, pst.points_total
+                FROM player_season_team pst
+                JOIN team t ON pst.team_id = t.team_id
+                WHERE pst.person_id = 201935
+                  AND pst.season_year = '2025-26'
+                  AND pst.season_type = 'regular_season'
+                ORDER BY t.team_abbreviation ASC
                 """
             ).fetchall()
         finally:

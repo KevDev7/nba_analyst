@@ -22,12 +22,14 @@ from scripts.load_gold_snapshot import DB_PATH, load_database
 
 
 def ensure_database() -> Path:
+    # Make sure the local DuckDB snapshot exists before trying to query it.
     if not DB_PATH.exists():
         load_database()
     return DB_PATH
 
 
 def run_sql(sql: str) -> List[Dict[str, object]]:
+    # Open the local snapshot, run the SQL, and convert the result into plain dict rows.
     db_path = ensure_database()
     conn = duckdb.connect(str(db_path), read_only=True)
     try:

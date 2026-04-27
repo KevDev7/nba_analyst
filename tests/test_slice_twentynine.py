@@ -33,14 +33,14 @@ class SliceTwentyNineTests(unittest.TestCase):
         self.assertIsNone(resolved["seriesObjectName"])
         self.assertEqual(resolved["timeGrain"], "month")
 
-    def test_player_game_monthly_trend_by_player_name_now_succeeds(self) -> None:
+    def test_player_game_monthly_trend_by_full_name_now_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
                     "linkedFilters": [],
@@ -57,7 +57,7 @@ class SliceTwentyNineTests(unittest.TestCase):
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["seriesObjectName"], "Player")
-        self.assertEqual(resolved["seriesName"]["columnName"], "player_name")
+        self.assertEqual(resolved["seriesName"]["columnName"], "full_name")
 
     def test_fact_without_monthly_trend_surface_fails_with_fact_surface_reason(self) -> None:
         payload = {
@@ -65,7 +65,7 @@ class SliceTwentyNineTests(unittest.TestCase):
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeason",
-                    "metrics": ["average_points"],
+                    "metrics": ["points_per_game"],
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
@@ -83,7 +83,7 @@ class SliceTwentyNineTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently require a fact surface that exposes game_date and a derived game_year_month time bucket.",
+            "Past-year trend filters require an ontology-backed game_date attribute.",
             str(context.exception),
         )
 
@@ -110,7 +110,7 @@ class SliceTwentyNineTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             call_plan_query_json(payload)
 
-        self.assertIn("Trend grouping currently supports reachable public dimension attributes only.", str(context.exception))
+        self.assertIn("Trend grouping supports reachable public dimension attributes only.", str(context.exception))
 
 if __name__ == "__main__":
     unittest.main()

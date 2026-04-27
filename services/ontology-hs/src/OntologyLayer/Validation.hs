@@ -34,6 +34,7 @@ import qualified OntologyLayer.Types as OT
 
 validateOntology :: Ontology -> Either Text ()
 validateOntology ontology =
+  -- Run every ontology integrity check before query modeling/planning can use it.
   case validationErrors ontology of
     [] -> Right ()
     errors ->
@@ -45,6 +46,7 @@ validateOntology ontology =
 
 validationErrors :: Ontology -> [Text]
 validationErrors ontology =
+  -- Gather all validation errors at once so the YAML author gets a useful list.
   duplicateObjectErrors ontology
     ++ duplicateLinkErrors ontology
     ++ concatMap validateObject (objects ontology)
@@ -52,18 +54,21 @@ validationErrors ontology =
 
 duplicateObjectErrors :: Ontology -> [Text]
 duplicateObjectErrors ontology =
+  -- Object names are semantic IDs, so duplicates would make grounding ambiguous.
   [ "Duplicate object name '" <> objectNameValue <> "'."
   | objectNameValue <- duplicates [objectName objectValue | objectValue <- objects ontology]
   ]
 
 duplicateLinkErrors :: Ontology -> [Text]
 duplicateLinkErrors ontology =
+  -- Link names are used in discovered paths/debug output, so they must be unique.
   [ "Duplicate link name '" <> linkNameValue <> "'."
   | linkNameValue <- duplicates [linkName linkValue | linkValue <- links ontology]
   ]
 
 validateObject :: Object -> [Text]
 validateObject objectValue =
+  -- Check one object: its fields, metrics, and required identity shape.
   duplicateAttributeErrors objectValue
     ++ duplicateMetricErrors objectValue
     ++ primaryKeyErrors objectValue
@@ -72,18 +77,21 @@ validateObject objectValue =
 
 duplicateAttributeErrors :: Object -> [Text]
 duplicateAttributeErrors objectValue =
+  -- Attribute names must be unique inside an object so lookup by name is safe.
   [ "Object '" <> objectName objectValue <> "' has duplicate attribute '" <> attributeNameValue <> "'."
   | attributeNameValue <- duplicates [attributeName attributeValue | attributeValue <- attributes objectValue]
   ]
 
 duplicateMetricErrors :: Object -> [Text]
 duplicateMetricErrors objectValue =
+  -- Metric names must be unique inside an object so query grounding is unambiguous.
   [ "Object '" <> objectName objectValue <> "' has duplicate metric '" <> metricNameValue <> "'."
   | metricNameValue <- duplicates [metricName metricValue | metricValue <- metrics objectValue]
   ]
 
 primaryKeyErrors :: Object -> [Text]
 primaryKeyErrors objectValue =
+  -- Every object needs at least one primary key so links and row identity work.
   if null primaryKeys
     then ["Object '" <> objectName objectValue <> "' must define at least one primary-key attribute."]
     else []
@@ -96,11 +104,13 @@ primaryKeyErrors objectValue =
 
 validateAttribute :: Object -> Attribute -> [Text]
 validateAttribute objectValue attributeValue =
+  -- Check rules that apply to one attribute.
   comparisonIdentityErrors objectValue attributeValue
     ++ derivationErrors objectValue attributeValue
 
 comparisonIdentityErrors :: Object -> Attribute -> [Text]
 comparisonIdentityErrors objectValue attributeValue =
+  -- If an attribute can identify entities in comparisons, it must be safe to show.
   if comparison_identity attributeValue && not isPublicDimension
     then
       [ "Object '"
@@ -117,6 +127,7 @@ comparisonIdentityErrors objectValue attributeValue =
 
 derivationErrors :: Object -> Attribute -> [Text]
 derivationErrors objectValue attributeValue =
+  -- Derived attributes must point to an existing source attribute on the same object.
   case OT.derivation attributeValue of
     Nothing -> []
     Just derivationValue ->
@@ -134,11 +145,13 @@ derivationErrors objectValue attributeValue =
 
 validateMetric :: Object -> MetricDef -> [Text]
 validateMetric objectValue metricValue =
+  -- Check one metric definition before the planner can use it.
   emptyMetricExpressionErrors objectValue metricValue
     ++ metricSourceAttributeErrors objectValue metricValue
 
 emptyMetricExpressionErrors :: Object -> MetricDef -> [Text]
 emptyMetricExpressionErrors objectValue metricValue =
+  -- A metric must have a calculation expression, even if execution support is limited.
   if T.null (T.strip (expression metricValue))
     then
       [ "Object '"
@@ -151,6 +164,7 @@ emptyMetricExpressionErrors objectValue metricValue =
 
 metricSourceAttributeErrors :: Object -> MetricDef -> [Text]
 metricSourceAttributeErrors objectValue metricValue =
+  -- Metric source_attributes must exist on the same object that owns the metric.
   [ "Object '"
       <> objectName objectValue
       <> "' metric '"
@@ -164,6 +178,7 @@ metricSourceAttributeErrors objectValue metricValue =
 
 validateLink :: Ontology -> Link -> [Text]
 validateLink ontology linkValue =
+  -- Check that each relationship connects real objects through legal key fields.
   case (findObject ontology (source_object linkValue), findObject ontology (target_object linkValue)) of
     (Nothing, Nothing) ->
       [ "Link '"
@@ -193,6 +208,7 @@ validateLink ontology linkValue =
         ++ targetKeyErrors targetObject
   where
     sourceKeyErrors sourceObject =
+      -- The source side of a link must exist and be marked as a link_key.
       case findAttribute sourceObject (source_key linkValue) of
         Nothing ->
           [ "Link '"
@@ -217,6 +233,7 @@ validateLink ontology linkValue =
               ]
 
     targetKeyErrors targetObject =
+      -- The target side of a link must point at a primary key.
       case findAttribute targetObject (target_key linkValue) of
         Nothing ->
           [ "Link '"
@@ -242,6 +259,7 @@ validateLink ontology linkValue =
 
 duplicates :: Ord a => [a] -> [a]
 duplicates =
+  -- Return each value that appears more than once.
   mapMaybe duplicatedValue . group . sort
   where
     duplicatedValue currentGroup =

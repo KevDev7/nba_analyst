@@ -32,6 +32,7 @@ class SliceSixTests(unittest.TestCase):
                 "PlayerSeason",
                 "PlayerSeasonTeam",
                 "TeamSeason",
+                "Arena",
             },
         )
 
@@ -100,10 +101,6 @@ class SliceSixTests(unittest.TestCase):
         self.assertEqual(resolved["contextPath"]["steps"][0]["sourceKey"], "team_id")
         self.assertEqual(resolved["contextValue"]["tableRole"], "context")
         self.assertEqual(resolved["contextValue"]["columnName"], "team_abbreviation")
-
-    def test_old_manual_ontology_is_removed(self) -> None:
-        self.assertFalse((ROOT / "fixtures" / "ontology" / "minimal-nba.yaml").exists())
-
 
 if __name__ == "__main__":
     unittest.main()

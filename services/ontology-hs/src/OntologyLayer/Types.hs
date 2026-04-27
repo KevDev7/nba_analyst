@@ -22,6 +22,9 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 
 data AttributeKind
+  -- The three roles an ontology attribute can play.
+  -- primary_key identifies rows, dimension groups/filters/labels data,
+  -- and measure is a numeric value used by metrics.
   = PrimaryKey
   | Dimension
   | Measure
@@ -36,6 +39,9 @@ instance FromJSON AttributeKind where
       _ -> fail ("Unknown attribute kind: " <> show value)
 
 data Attribute = Attribute
+  -- One field on an ontology object.
+  -- This maps a semantic attribute name to a real source column and classifies
+  -- how the planner is allowed to use it.
   { name :: Text
   , kind :: AttributeKind
   , source_column :: Text
@@ -58,12 +64,16 @@ instance FromJSON Attribute where
       <*> obj .: "derivation"
 
 data AttributeDerivation = AttributeDerivation
+  -- A derived attribute computed from another attribute.
+  -- Example: game_year_month is derived from game_date with a SQL expression.
   { source_attribute :: Text
   , sql_expression :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data AttributeVisibility
+  -- Public attributes can be used for user-facing grouping/display/filtering.
+  -- Internal attributes are available to the system but should not be surfaced directly.
   = Public
   | Internal
   deriving (Show, Eq, Generic, ToJSON)
@@ -76,6 +86,9 @@ instance FromJSON AttributeVisibility where
       _ -> fail ("Unknown attribute visibility: " <> show value)
 
 data MetricDef = MetricDef
+  -- A named calculation defined on one object.
+  -- source_attributes must refer to attributes on the same object; the metric
+  -- name itself does not need to be a physical database column.
   { name :: Text
   , aggregation :: Text
   , source_attributes :: [Text]
@@ -85,6 +98,7 @@ data MetricDef = MetricDef
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data LinkRelation
+  -- Cardinality metadata for relationships between ontology objects.
   = OneToOne
   | OneToMany
   | ManyToOne
@@ -101,6 +115,8 @@ instance FromJSON LinkRelation where
       _ -> fail ("Unknown link relation: " <> show value)
 
 data Object = Object
+  -- A business-facing wrapper around one backing SQL table.
+  -- It owns attributes and metrics that the planner can ground queries against.
   { name :: Text
   , backing_table :: Text
   , description :: Text
@@ -110,6 +126,8 @@ data Object = Object
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data Link = Link
+  -- A relationship between two ontology objects.
+  -- The graph/path helpers use these links to discover safe join paths.
   { name :: Text
   , source_object :: Text
   , target_object :: Text
@@ -120,6 +138,8 @@ data Link = Link
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data Ontology = Ontology
+  -- The full semantic model after semantic-gold.yaml is decoded.
+  -- Objects describe business entities/facts; links describe how they connect.
   { objects :: [Object]
   , links :: [Link]
   }

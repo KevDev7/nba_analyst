@@ -89,7 +89,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                     WITH recent_rows AS (
                       SELECT
                         pg.person_id,
-                        p.player_name,
+                        p.full_name,
                         t.team_abbreviation,
                         pg.game_date,
                         pg.points,
@@ -101,11 +101,11 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                       JOIN player p ON pg.person_id = p.person_id
                       LEFT JOIN team t ON pg.team_id = t.team_id
                     )
-                    SELECT player_name, team_abbreviation, SUM(points) AS metric_value
+                    SELECT full_name, team_abbreviation, SUM(points) AS metric_value
                     FROM recent_rows
                     WHERE game_rank <= 10
-                    GROUP BY person_id, player_name, team_abbreviation
-                    ORDER BY metric_value DESC, player_name ASC
+                    GROUP BY person_id, full_name, team_abbreviation
+                    ORDER BY metric_value DESC, full_name ASC
                     LIMIT 10
                     """
                 )
@@ -174,7 +174,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                 WITH recent_rows AS (
                   SELECT
                     pg.person_id,
-                    p.player_name,
+                    p.full_name,
                     t.team_abbreviation,
                     pg.game_date,
                     pg.points,
@@ -186,11 +186,11 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                   JOIN player p ON pg.person_id = p.person_id
                   LEFT JOIN team t ON pg.team_id = t.team_id
                 )
-                SELECT person_id, player_name, team_abbreviation, SUM(points) AS metric_value
+                SELECT person_id, full_name, team_abbreviation, SUM(points) AS metric_value
                 FROM recent_rows
                 WHERE game_rank <= 10
-                GROUP BY person_id, player_name, team_abbreviation
-                ORDER BY metric_value DESC, player_name ASC
+                GROUP BY person_id, full_name, team_abbreviation
+                ORDER BY metric_value DESC, full_name ASC
                 LIMIT 5
                 """
             )
@@ -212,11 +212,12 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
             for index, row in enumerate(
                 self._fetchall(
                     """
-                    SELECT player_name, average_points
-                    FROM player_season
-                    WHERE season_year = '2025-26'
-                      AND season_type = 'regular_season'
-                    ORDER BY average_points DESC, player_name ASC
+                    SELECT p.full_name, ps.points_per_game AS average_points
+                    FROM player_season ps
+                    JOIN player p ON ps.person_id = p.person_id
+                    WHERE ps.season_year = '2025-26'
+                      AND ps.season_type = 'regular_season'
+                    ORDER BY ps.points_per_game DESC, p.full_name ASC
                     LIMIT 5
                     """
                 )
@@ -273,7 +274,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                     WITH recent_rows AS (
                       SELECT
                         pg.person_id,
-                        p.player_name,
+                        p.full_name,
                         t.team_abbreviation,
                         pg.game_date,
                         pg.points,
@@ -286,11 +287,11 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                       JOIN team t ON pg.team_id = t.team_id
                       WHERE t.team_name = 'Lakers'
                     )
-                    SELECT player_name, team_abbreviation, AVG(points) AS metric_value
+                    SELECT full_name, team_abbreviation, AVG(points) AS metric_value
                     FROM recent_rows
                     WHERE game_rank <= 10
-                    GROUP BY person_id, player_name, team_abbreviation
-                    ORDER BY metric_value DESC, player_name ASC
+                    GROUP BY person_id, full_name, team_abbreviation
+                    ORDER BY metric_value DESC, full_name ASC
                     LIMIT 5
                     """
                 )
@@ -317,7 +318,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                 WITH recent_rows AS (
                   SELECT
                     pg.person_id,
-                    p.player_name,
+                    p.full_name,
                     t.team_abbreviation,
                     pg.game_date,
                     pg.points,
@@ -330,11 +331,11 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                   JOIN team t ON pg.team_id = t.team_id
                   WHERE t.team_name = 'Knicks'
                 )
-                SELECT person_id, player_name, team_abbreviation, SUM(points) AS metric_value
+                SELECT person_id, full_name, team_abbreviation, SUM(points) AS metric_value
                 FROM recent_rows
                 WHERE game_rank <= 10
-                GROUP BY person_id, player_name, team_abbreviation
-                ORDER BY metric_value DESC, player_name ASC
+                GROUP BY person_id, full_name, team_abbreviation
+                ORDER BY metric_value DESC, full_name ASC
                 LIMIT 5
                 """
             )
@@ -356,12 +357,14 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
             for index, row in enumerate(
                 self._fetchall(
                     """
-                    SELECT player_name, team_abbreviation, average_points
-                    FROM player_season_team
-                    WHERE season_year = '2025-26'
-                      AND season_type = 'regular_season'
-                      AND team_name = 'Lakers'
-                    ORDER BY average_points DESC, player_name ASC
+                    SELECT p.full_name, t.team_abbreviation, pst.points_per_game AS average_points
+                    FROM player_season_team pst
+                    JOIN player p ON pst.person_id = p.person_id
+                    JOIN team t ON pst.team_id = t.team_id
+                    WHERE pst.season_year = '2025-26'
+                      AND pst.season_type = 'regular_season'
+                      AND t.team_name = 'Lakers'
+                    ORDER BY pst.points_per_game DESC, p.full_name ASC
                     LIMIT 5
                     """
                 )
@@ -388,7 +391,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                 """
                 WITH recent_rows AS (
                   SELECT
-                    p.player_name,
+                    p.full_name,
                     t.team_abbreviation,
                     pg.game_date,
                     pg.points,
@@ -399,12 +402,12 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
                   FROM player_game pg
                   JOIN player p ON pg.person_id = p.person_id
                   LEFT JOIN team t ON pg.team_id = t.team_id
-                  WHERE p.player_name IN ('Jalen Brunson', 'Jayson Tatum')
+                  WHERE p.full_name IN ('Jalen Brunson', 'Jayson Tatum')
                 )
-                SELECT player_name, team_abbreviation, game_date, points
+                SELECT full_name, team_abbreviation, game_date, points
                 FROM recent_rows
                 WHERE game_rank <= 10
-                ORDER BY player_name ASC, game_date DESC
+                ORDER BY full_name ASC, game_date DESC
                 """
             )
         ]
@@ -414,7 +417,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
               SELECT pg.points
               FROM player_game pg
               JOIN player p ON pg.person_id = p.person_id
-              WHERE p.player_name = 'Jalen Brunson'
+              WHERE p.full_name = 'Jalen Brunson'
               ORDER BY pg.game_date DESC
               LIMIT 10
             )
@@ -427,7 +430,7 @@ class SliceThirtyFiveTruthEvalTests(unittest.TestCase):
               SELECT pg.points
               FROM player_game pg
               JOIN player p ON pg.person_id = p.person_id
-              WHERE p.player_name = 'Jayson Tatum'
+              WHERE p.full_name = 'Jayson Tatum'
               ORDER BY pg.game_date DESC
               LIMIT 10
             )

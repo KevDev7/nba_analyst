@@ -132,7 +132,8 @@ Why it passes:
 What still falls short of full ontology-backed behavior:
 
 - ordinary queries still use a narrow recent-or-season filter-family box
-- at most one linked filter
+- multiple linked filters are supported when each filter has a valid ontology
+  path to a public dimension
 - path traversal is still capped at depth 2
 
 ### 4. Trend
@@ -148,9 +149,9 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- `past_year` only
-- `month` only
-- no linked filters
+- trend filters are still mostly calendar-window shaped
+- supported grains are day, week, month, and season
+- linked filters are supported when each filter has a valid ontology path
 - no explicit ordering
 - no limit
 - at most one grouping dimension
@@ -173,8 +174,8 @@ Why it passes:
 What still falls short of full ontology-backed behavior:
 
 - recent-window only
-- exactly two entities
-- no linked filters
+- comparisons support two or more distinct resolved entities
+- linked filters are supported when each filter has a valid ontology path
 - no explicit ordering
 - no limit
 - no time grain

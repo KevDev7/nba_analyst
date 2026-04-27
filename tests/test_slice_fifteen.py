@@ -16,7 +16,7 @@ class SliceFifteenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
 
@@ -29,7 +29,7 @@ class SliceFifteenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             shared["filters"],
             [
@@ -46,7 +46,7 @@ class SliceFifteenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -68,7 +68,7 @@ class SliceFifteenTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Season-scoped metric queries with linked filters currently require a season-level fact surface rather than per-game rows.",
+            "Season-scoped metric queries with linked filters require a season-level fact surface rather than per-game rows.",
             str(context.exception),
         )
 

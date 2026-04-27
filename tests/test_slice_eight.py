@@ -9,9 +9,6 @@
 # Produces:
 # - regression coverage for monthly trend analysis over the past year
 #
-# Next:
-# - future grouped aggregations and linked-filter slices
-
 from __future__ import annotations
 
 import unittest
@@ -30,17 +27,20 @@ def _trend_gemini_response(prompt: str) -> str:
         return """
         {
           "status": "ok",
-          "query": {
-            "query_kind": "metric_query",
-            "core_fact_object": "TeamGame",
-            "metrics": ["average_points"],
+          "draft": {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "average points",
+            "measures": ["average points"],
             "dimensions": [],
-            "time_grain": "month",
-            "filters": [{"kind": "past_year"}],
-            "orders": [],
+            "filters": [],
+            "time_window": {"kind": "past_year", "value": null},
+            "grain": "month",
+            "order": [],
             "limit": null,
-            "entity_filters": [],
-            "comparison": null,
+            "sort": null,
+            "entities": [],
+            "operations": [],
             "assumptions": []
           }
         }
@@ -49,17 +49,20 @@ def _trend_gemini_response(prompt: str) -> str:
         return """
         {
           "status": "ok",
-          "query": {
-            "query_kind": "metric_query",
-            "core_fact_object": "TeamGame",
-            "metrics": ["average_points"],
-            "dimensions": ["team_name"],
-            "time_grain": "month",
-            "filters": [{"kind": "past_year"}],
-            "orders": [],
+          "draft": {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "average points",
+            "measures": ["average points"],
+            "dimensions": ["team"],
+            "filters": [],
+            "time_window": {"kind": "past_year", "value": null},
+            "grain": "month",
+            "order": [],
             "limit": null,
-            "entity_filters": [],
-            "comparison": null,
+            "sort": null,
+            "entities": [],
+            "operations": [],
             "assumptions": []
           }
         }
@@ -67,8 +70,23 @@ def _trend_gemini_response(prompt: str) -> str:
     if question == "What is the trend in points over the last month?":
         return """
         {
-          "status": "unsupported",
-          "reason": "last month trend is not supported by the current live contract"
+          "status": "ok",
+          "draft": {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "points",
+            "measures": ["points"],
+            "dimensions": [],
+            "filters": [],
+            "time_window": {"kind": "last_month", "value": 1},
+            "grain": "day",
+            "order": [],
+            "limit": null,
+            "sort": null,
+            "entities": [],
+            "operations": [],
+            "assumptions": []
+          }
         }
         """
     raise AssertionError(f"Unexpected trend prompt: {prompt}")
@@ -133,7 +151,7 @@ class SliceEightTests(unittest.TestCase):
         self.assertIn("Month | Team | Average Points", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_last_month_trend_is_still_unsupported(self, mock_call_gemini) -> None:
+    def test_last_month_trend_is_outside_supported_trend_filters(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         with self.assertRaises(RuntimeError):
             run_cli("What is the trend in points over the last month?")

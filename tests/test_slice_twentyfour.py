@@ -6,14 +6,14 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyFourTests(unittest.TestCase):
-    def test_supported_metric_query_still_plans_with_string_dimension_ref(self) -> None:
+    def test_supported_metric_query_plans_with_string_dimension_ref(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -29,10 +29,10 @@ class SliceTwentyFourTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         shared = planner_output["query"]["spec"]["sharedQuery"]
 
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(
             planner_output["resolved_query"]["resolved"]["displayName"]["columnName"],
-            "player_name",
+            "full_name",
         )
 
     def test_nonexistent_dimension_fails_with_ontology_resolution_error(self) -> None:
@@ -98,7 +98,7 @@ class SliceTwentyFourTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["display_name"],
+                    "dimensions": ["primary_position"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -122,7 +122,7 @@ class SliceTwentyFourTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries currently require a comparison identity dimension on the target object.",
+            "Comparison queries require a comparison identity dimension on the target object.",
             str(context.exception),
         )
 
@@ -133,7 +133,7 @@ class SliceTwentyFourTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["display_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
                     "linkedFilters": [],
@@ -149,7 +149,7 @@ class SliceTwentyFourTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             call_plan_query_json(payload)
 
-        self.assertIn("No valid ontology path from 'TeamGame' reaches a displayed dimension attribute 'display_name'.", str(context.exception))
+        self.assertIn("No valid ontology path from 'TeamGame' reaches a displayed dimension attribute 'full_name'.", str(context.exception))
 
 if __name__ == "__main__":
     unittest.main()

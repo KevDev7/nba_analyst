@@ -6,14 +6,14 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyFiveTests(unittest.TestCase):
-    def test_supported_recent_metric_query_still_plans_with_filter_refs(self) -> None:
+    def test_supported_recent_metric_query_plans_with_filter_refs(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -32,21 +32,21 @@ class SliceTwentyFiveTests(unittest.TestCase):
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(planner_output["resolved_query"]["resolved"]["windowGames"], 10)
 
-    def test_supported_season_metric_query_still_plans_with_filter_refs(self) -> None:
+    def test_supported_season_metric_query_plans_with_filter_refs(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_per_game"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
                         {"kind": "season_type", "value": "regular_season"},
                     ],
                     "linkedFilters": [],
-                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -68,7 +68,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
         self.assertEqual(resolved["seasonLabel"], "2025-26")
         self.assertEqual(resolved["seasonType"], "regular_season")
 
-    def test_supported_trend_query_still_plans_with_past_year_filter_ref(self) -> None:
+    def test_supported_trend_query_plans_with_past_year_filter_ref(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -104,7 +104,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "made_up_filter", "value": "anything"}],
                     "linkedFilters": [],
@@ -122,7 +122,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
 
         message = str(context.exception)
         self.assertIn(
-            "Metric queries currently require either a positive LastNGames filter or an exact season plus season type filter bundle.",
+            "Metric queries require either a positive LastNGames filter or an exact season plus season type filter bundle.",
             message,
         )
         self.assertNotIn("Unknown filter kind", message)
@@ -134,7 +134,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": "ten"}],
                     "linkedFilters": [],
@@ -155,18 +155,18 @@ class SliceTwentyFiveTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_missing_season_type_still_fails_with_current_season_bundle_message(self) -> None:
+    def test_missing_season_type_fails_with_season_bundle_message(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_per_game"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "exact_season", "value": "2025-26"}],
                     "linkedFilters": [],
-                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -179,18 +179,18 @@ class SliceTwentyFiveTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Metric queries currently require either a positive LastNGames filter or an exact season plus season type filter bundle.",
+            "Metric queries require either a positive LastNGames filter or an exact season plus season type filter bundle.",
             str(context.exception),
         )
 
-    def test_comparison_still_only_accepts_recent_window_filter_family(self) -> None:
+    def test_comparison_requires_recent_window_filter_family(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -217,7 +217,7 @@ class SliceTwentyFiveTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries currently require a positive LastNGames filter.",
+            "Comparison queries require a positive LastNGames filter.",
             str(context.exception),
         )
 

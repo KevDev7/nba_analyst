@@ -285,6 +285,11 @@ DERIVED_ATTRIBUTES_BY_OBJECT = {
     ],
 }
 
+COMPARISON_IDENTITIES_BY_OBJECT = {
+    "Player": {"full_name"},
+    "Team": {"team_name"},
+}
+
 LINKS = [
     {
         "name": "game_arena",
@@ -391,6 +396,20 @@ def object_name_for_table(table_name: str) -> str:
     }[table_name]
 
 
+def build_attribute_payload(object_name: str, column: dict[str, object]) -> dict[str, object]:
+    payload = {
+        "name": column["name"],
+        "kind": column["attribute_kind"],
+        "source_column": column["name"],
+        "link_key": column["link_key"],
+        "visibility": column["visibility"],
+        "derivation": None,
+    }
+    if column["name"] in COMPARISON_IDENTITIES_BY_OBJECT.get(object_name, set()):
+        payload["comparison_identity"] = True
+    return payload
+
+
 def build_ontology_payload() -> dict[str, object]:
     inventory = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
     objects = []
@@ -401,14 +420,7 @@ def build_ontology_payload() -> dict[str, object]:
             "backing_table": table["table_name"],
             "description": OBJECT_DESCRIPTIONS[object_name],
             "attributes": [
-                {
-                    "name": column["name"],
-                    "kind": column["attribute_kind"],
-                    "source_column": column["name"],
-                    "link_key": column["link_key"],
-                    "visibility": column["visibility"],
-                    "derivation": None,
-                }
+                build_attribute_payload(object_name, column)
                 for column in table["columns"]
             ]
             + DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, []),

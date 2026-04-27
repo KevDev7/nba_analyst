@@ -8,9 +8,6 @@
 # Produces:
 # - regression coverage that discovered ontology paths now drive planning
 #
-# Next:
-# - future deeper graph-search slices
-
 from __future__ import annotations
 
 import unittest
@@ -69,7 +66,7 @@ class SliceSevenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "total_points"}],

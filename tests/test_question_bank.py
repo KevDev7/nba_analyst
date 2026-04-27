@@ -9,9 +9,6 @@
 # Produces:
 # - one place to remember canonical questions across slices
 #
-# Next:
-# - future eval harnesses can execute this bank directly
-
 from __future__ import annotations
 
 import json

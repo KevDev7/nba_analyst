@@ -1,16 +1,41 @@
 from __future__ import annotations
 
+import json
 import unittest
+from unittest.mock import patch
 
 from apps.cli.main import plan_question, run_cli
+from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+
+
+def compare_draft(*entities: str) -> str:
+    return json.dumps(
+        {
+            "status": "ok",
+            "draft": {
+                "task": "compare",
+                "subject": "players",
+                "measure": "scoring",
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "entities": list(entities),
+                "assumptions": ["Interpreted 'scoring' as points."],
+            },
+        }
+    )
 
 
 class SliceThirteenTests(unittest.TestCase):
-    def test_family_name_alias_comparison_query(self) -> None:
-        interpreted_query, planner_output = plan_question(
+    def setUp(self) -> None:
+        interpret_question_to_semantic_draft.cache_clear()
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_family_name_alias_comparison_query(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = compare_draft("Brunson", "Tatum")
+        semantic_draft, planner_output = plan_question(
             "Compare Brunson and Tatum scoring over the last 10 games"
         )
 
+        interpreted_query = planner_output["query"]
         self.assertEqual(interpreted_query["kind"], "metric_query")
         self.assertEqual(
             interpreted_query["spec"]["sharedQuery"]["filters"],
@@ -21,6 +46,10 @@ class SliceThirteenTests(unittest.TestCase):
         self.assertEqual(
             [entity["entityId"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
             [1628973, 1628369],
+        )
+        self.assertEqual(
+            [entity["entityName"] for entity in semantic_draft["resolved_entities"]],
+            ["Jalen Brunson", "Jayson Tatum"],
         )
 
         resolved = planner_output["resolved_query"]["resolved"]
@@ -33,25 +62,32 @@ class SliceThirteenTests(unittest.TestCase):
         self.assertIn("entity_id", sql)
         self.assertIn("IN (1628973, 1628369)", sql)
 
-    def test_first_name_alias_comparison_query(self) -> None:
-        interpreted_query, _planner_output = plan_question(
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_first_name_alias_comparison_query(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = compare_draft("Ja", "Tatum")
+        semantic_draft, planner_output = plan_question(
             "Compare Ja and Tatum scoring over the last 10 games"
         )
 
+        interpreted_query = planner_output["query"]
         self.assertEqual(interpreted_query["spec"]["entityFilters"], [])
         self.assertEqual(
-            [entity["entityName"] for entity in interpreted_query["spec"]["comparison"]["entities"]],
+            [entity["entityName"] for entity in semantic_draft["resolved_entities"]],
             ["Ja Morant", "Jayson Tatum"],
         )
 
-    def test_family_name_alias_comparison_output(self) -> None:
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_family_name_alias_comparison_output(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = compare_draft("Brunson", "Tatum")
         output = run_cli("Compare Brunson and Tatum scoring over the last 10 games")
 
         self.assertIn("Jalen Brunson", output)
         self.assertIn("Jayson Tatum", output)
         self.assertIn("Differential:", output)
 
-    def test_ambiguous_alias_rejected(self) -> None:
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_ambiguous_alias_rejected(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = compare_draft("Jalen", "Tatum")
         with self.assertRaises(RuntimeError) as context:
             run_cli("Compare Jalen and Tatum scoring over the last 10 games")
 

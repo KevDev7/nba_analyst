@@ -33,6 +33,7 @@ from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
+from apps.cli.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
 from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
@@ -42,6 +43,9 @@ HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 
 
 def call_haskell_planner_for_semantic_draft(draft_payload: dict) -> dict:
+    # Send the LLM's loose semantic draft to Haskell.
+    # Haskell is responsible for turning that draft into a grounded query,
+    # validating it against the ontology, and compiling an execution plan.
     command = [
         "cabal",
         "run",
@@ -72,20 +76,32 @@ def call_haskell_planner_for_semantic_draft(draft_payload: dict) -> dict:
 
 def plan_question(question: str) -> tuple[dict, dict]:
     try:
+        # Ask the LLM to turn messy user language into a loose semantic draft.
         semantic_draft = interpret_question_to_semantic_draft(question)
     except SemanticInterpreterError as exc:
         raise RuntimeError(str(exc)) from exc
+    try:
+        # Resolve raw comparison names like "Brunson" against the data snapshot.
+        # Haskell should receive grounded entity IDs, not trust the LLM to invent them.
+        semantic_draft = enrich_semantic_draft_with_resolved_entities(semantic_draft)
+    except EntityResolutionError as exc:
+        raise RuntimeError(str(exc)) from exc
+    # Ask Haskell to turn the draft into a safe, ontology-grounded plan.
     planner_output = call_haskell_planner_for_semantic_draft(semantic_draft)
     return semantic_draft, planner_output
 
 
 def run_cli(question: str, debug: bool = False) -> str:
+    # Make sure the local DuckDB snapshot exists before anything tries to query it.
     load_database()
+    # Turn the user question into a semantic draft, then into a Haskell plan.
     semantic_draft, planner_output = plan_question(question)
+    # Validate the Haskell execution plan on the Python side before running it.
     if hasattr(ExecutionPlan, "model_validate"):
         execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
     else:
         execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
+    # Execute the plan, package the result, synthesize an answer, and format it for the terminal.
     runtime_result = execute_plan(execution_plan)
     packaged = package_results(runtime_result)
     answer = synthesize_answer(packaged)
@@ -94,6 +110,7 @@ def run_cli(question: str, debug: bool = False) -> str:
     if not debug:
         return formatted
 
+    # In debug mode, show each major transformation stage before the final answer.
     debug_lines = [
         f"Query type: {planner_output['query_type']}",
         f"Semantic draft: {json.dumps(semantic_draft, indent=2)}",
@@ -107,10 +124,13 @@ def run_cli(question: str, debug: bool = False) -> str:
 
 
 def main() -> None:
+    # Take the terminal question.
     parser = argparse.ArgumentParser(description="Run the gold-first NBA analyst CLI.")
     parser.add_argument("question", help="Natural-language analytics question.")
+    # Check whether --debug was passed.
     parser.add_argument("--debug", action="store_true", help="Print IR and plan details.")
     args = parser.parse_args()
+    # Call run_cli(...) and print whatever it returns.
     print(run_cli(args.question, debug=args.debug))
 
 

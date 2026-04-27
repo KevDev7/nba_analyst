@@ -7,7 +7,7 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceSixteenTests(unittest.TestCase):
-    def test_recent_metric_linked_filter_still_validates(self) -> None:
+    def test_recent_metric_linked_filter_validates(self) -> None:
         _interpreted_query, planner_output = plan_question(
             "Show me players by average points for the Lakers over the last 10 games"
         )
@@ -20,7 +20,7 @@ class SliceSixteenTests(unittest.TestCase):
             [{"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}],
         )
 
-    def test_season_metric_linked_filter_still_validates(self) -> None:
+    def test_season_metric_linked_filter_validates(self) -> None:
         _interpreted_query, planner_output = plan_question(
             "Show me players by average points for the Lakers in the 2025-26 regular season"
         )
@@ -40,8 +40,8 @@ class SliceSixteenTests(unittest.TestCase):
                 "rowObject": "Player",
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
-                    "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_total"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -50,7 +50,7 @@ class SliceSixteenTests(unittest.TestCase):
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "total_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_total"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -74,8 +74,8 @@ class SliceSixteenTests(unittest.TestCase):
                 "rowObject": "Player",
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_total"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -84,7 +84,7 @@ class SliceSixteenTests(unittest.TestCase):
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "total_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_total"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -109,8 +109,8 @@ class SliceSixteenTests(unittest.TestCase):
                 "rowObject": "Player",
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_total"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "last_n_games", "value": 10},
@@ -118,7 +118,7 @@ class SliceSixteenTests(unittest.TestCase):
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "total_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_total"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -129,11 +129,11 @@ class SliceSixteenTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Recent object queries with linked filters currently require a fact surface that exposes game_date.",
+            "Recent object queries with linked filters require a fact surface that exposes game_date.",
             str(context.exception),
         )
 
-    def test_linked_filter_output_regression_still_green(self) -> None:
+    def test_linked_filter_output_regression_is_green(self) -> None:
         output = run_cli("Show me players and their total points for the Knicks over the last 10 games")
 
         self.assertIn("Players ordered by total points over the last 10 games", output)

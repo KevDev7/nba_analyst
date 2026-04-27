@@ -12,11 +12,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from runtime.AnalysisRuntime.models import ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
+from runtime.AnalysisRuntime.models import AggregateRow, ComparisonResult, ObjectRow, RankingRow, TimeSeriesRow
 
 
 class FinalAnswer(BaseModel):
@@ -35,6 +35,8 @@ class FinalAnswer(BaseModel):
     limit: int
     assumptions: List[str] = Field(default_factory=list)
     rows: List[RankingRow]
+    aggregate_rows: List[AggregateRow] = Field(default_factory=list)
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
+    find_rows: List[Dict[str, Any]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

@@ -9,9 +9,6 @@
 # Produces:
 # - regression coverage for the first executed ObjectQuery slice
 #
-# Next:
-# - future broader linked-object slices
-
 from __future__ import annotations
 
 import unittest

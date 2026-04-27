@@ -1,5 +1,5 @@
 # Purpose:
-# Verify the gold-first governed-metric cutover and stale-architecture cleanup.
+# Verify the gold-first governed-metric path.
 #
 # Uses:
 # - the CLI entrypoint
@@ -9,12 +9,8 @@
 # Produces:
 # - regression coverage for average_points and the architecture cutover
 #
-# Next:
-# - future governed-metric slices
-
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
 
 import yaml
@@ -78,11 +74,11 @@ class SliceFourTests(unittest.TestCase):
 
         self.assertEqual(player_attrs["person_id"]["kind"], "primary_key")
         self.assertTrue(player_attrs["latest_team_id"]["link_key"])
-        self.assertEqual(player_attrs["player_name"]["kind"], "dimension")
+        self.assertEqual(player_attrs["full_name"]["kind"], "dimension")
         self.assertEqual(player_game_attrs["game_id"]["kind"], "primary_key")
         self.assertEqual(player_game_attrs["person_id"]["kind"], "primary_key")
         self.assertEqual(player_game_attrs["points"]["kind"], "measure")
-        self.assertEqual(player_game_attrs["minutes_played_decimal"]["kind"], "measure")
+        self.assertEqual(player_game_attrs["minutes_played"]["kind"], "measure")
 
         self.assertEqual(metrics["average_points"]["aggregation"], "avg")
         self.assertEqual(metrics["average_points"]["source_attributes"], ["points"])
@@ -95,21 +91,6 @@ class SliceFourTests(unittest.TestCase):
         self.assertEqual(links["player_game_player"]["target_key"], "person_id")
         self.assertEqual(links["team_game_team"]["source_key"], "team_id")
         self.assertEqual(links["team_game_opponent_team"]["source_key"], "opponent_team_id")
-
-    def test_stale_synthetic_loader_is_removed(self) -> None:
-        self.assertFalse((ROOT / "scripts" / "load_first_slice.py").exists())
-        for path in [
-            ROOT / "apps" / "cli" / "main.py",
-            ROOT
-            / "services"
-            / "runtime-py"
-            / "runtime"
-            / "AnalysisRuntime"
-            / "query_engine.py",
-        ]:
-            contents = path.read_text(encoding="utf-8")
-            self.assertNotIn("load_first_slice", contents)
-
 
 if __name__ == "__main__":
     unittest.main()

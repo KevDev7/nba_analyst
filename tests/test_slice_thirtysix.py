@@ -70,7 +70,7 @@ class SliceThirtySixTests(unittest.TestCase):
         self.assertEqual(payload["execution_plan"]["result_shape"], "ranking")
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_interpreter_returns_draft_without_legacy_haskell_question_parser(
+    def test_interpreter_returns_semantic_draft(
         self, mock_call_gemini
     ) -> None:
         mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": SAMPLE_DRAFT})
@@ -79,7 +79,11 @@ class SliceThirtySixTests(unittest.TestCase):
             "Show me the top 10 players by points over the last 10 games"
         )
 
-        self.assertEqual(draft, SAMPLE_DRAFT)
+        self.assertEqual(draft["task"], SAMPLE_DRAFT["task"])
+        self.assertEqual(draft["subject"], SAMPLE_DRAFT["subject"])
+        self.assertEqual(draft["measure"], SAMPLE_DRAFT["measure"])
+        self.assertEqual(draft["time_window"], SAMPLE_DRAFT["time_window"])
+        self.assertEqual(draft["limit"], SAMPLE_DRAFT["limit"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_runs_draft_to_haskell_to_runtime_end_to_end(self, mock_call_gemini) -> None:
@@ -120,6 +124,96 @@ class SliceThirtySixTests(unittest.TestCase):
             f"1 | {expected_name} | {expected_team} | {int(expected_points)}",
             output,
         )
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_rank_wording_variation_uses_ontology_grounding(self, mock_call_gemini) -> None:
+        varied_draft = {
+            **SAMPLE_DRAFT,
+            "subject": "nba players",
+            "limit": 7,
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": varied_draft})
+
+        output = run_cli("What are the top 7 nba players by points these last ten games")
+
+        self.assertIn("Top 7 players by total points over the last 10 games", output)
+        self.assertIn("Rank | Player | Team | Total Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_rank_season_draft_reaches_existing_season_surface(self, mock_call_gemini) -> None:
+        season_draft = {
+            "task": "rank",
+            "subject": "players",
+            "measure": "average points",
+            "time_window": {"kind": "season", "value": "2025-26"},
+            "filters": [{"field": "season type", "op": "=", "value": "regular season"}],
+            "limit": 10,
+            "sort": "desc",
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": season_draft})
+
+        output = run_cli("Show me players by average points in the 2025-26 regular season")
+
+        self.assertIn("Top 10 players by average points in the 2025-26 regular season", output)
+        self.assertIn("Rank | Player | Average Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_trend_draft_runs_to_time_series_answer(self, mock_call_gemini) -> None:
+        trend_draft = {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "average points",
+            "dimensions": ["team"],
+            "filters": [],
+            "time_window": {"kind": "past_year", "value": None},
+            "grain": "month",
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": trend_draft})
+
+        output = run_cli("What are the monthly average points by team over the past year?")
+
+        self.assertIn("Monthly average points by team over the past year are shown below.", output)
+        self.assertIn("Month | Team | Average Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_weekly_trend_uses_calendar_week_bucket(self, mock_call_gemini) -> None:
+        trend_draft = {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "average points",
+            "dimensions": ["team"],
+            "filters": [],
+            "time_window": {"kind": "past_year", "value": None},
+            "grain": "week",
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": trend_draft})
+
+        output = run_cli("Show weekly average points by team over the past year")
+
+        self.assertIn("Weekly average points by team over the past year are shown below.", output)
+        self.assertIn("Week | Team | Average Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_compare_resolves_entities_and_runs_multi_step_plan(self, mock_call_gemini) -> None:
+        compare_draft = {
+            "task": "compare",
+            "subject": "players",
+            "measure": "points",
+            "time_window": {"kind": "last_n_games", "value": 10},
+            "entities": ["Brunson", "Tatum"],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": compare_draft})
+
+        output = run_cli("Compare Brunson and Tatum scoring over the last 10 games")
+
+        self.assertIn("led in total points over the last 10 games", output)
+        self.assertIn("Comparison", output)
+        self.assertIn("Jalen Brunson", output)
+        self.assertIn("Jayson Tatum", output)
 
 
 if __name__ == "__main__":

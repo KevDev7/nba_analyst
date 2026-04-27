@@ -30,7 +30,7 @@ class SliceTwentyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Ranking/aggregation metric queries currently require exactly one business grouping dimension.",
+            "Ranking/aggregation metric queries require exactly one business grouping dimension.",
             str(context.exception),
         )
 
@@ -57,7 +57,7 @@ class SliceTwentyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Object queries currently require exactly one row dimension.",
+            "Object queries require exactly one row dimension.",
             str(context.exception),
         )
 
@@ -68,7 +68,7 @@ class SliceTwentyTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["team_name", "player_name"],
+                    "dimensions": ["team_name", "full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
                     "linkedFilters": [],
@@ -85,7 +85,7 @@ class SliceTwentyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently support at most one business grouping dimension.",
+            "Trend queries support at most one business grouping dimension.",
             str(context.exception),
         )
 
@@ -96,7 +96,7 @@ class SliceTwentyTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points", "average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -113,7 +113,7 @@ class SliceTwentyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Ranking/aggregation metric queries currently require exactly one selected metric.",
+            "Ranking/aggregation metric queries require exactly one selected metric.",
             str(context.exception),
         )
 
@@ -141,7 +141,7 @@ class SliceTwentyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently require exactly one selected metric.",
+            "Trend queries require exactly one selected metric.",
             str(context.exception),
         )
 

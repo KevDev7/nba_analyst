@@ -18,7 +18,7 @@ class SliceThirtyTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -85,14 +85,14 @@ class SliceThirtyTests(unittest.TestCase):
         self.assertIn("Lakers (LAL)", formatted)
         self.assertIn("Differential: 10.9 average points", formatted)
 
-    def test_comparison_still_rejects_limit(self) -> None:
+    def test_comparison_rejects_limit(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -115,7 +115,7 @@ class SliceThirtyTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             call_plan_query_json(payload)
 
-        self.assertIn("Comparison queries currently do not support limit.", str(context.exception))
+        self.assertIn("Comparison queries do not support limit.", str(context.exception))
 
     def test_comparison_rejects_non_identity_team_dimension(self) -> None:
         payload = {
@@ -148,7 +148,7 @@ class SliceThirtyTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries currently require a comparison identity dimension on the target object.",
+            "Comparison queries require a comparison identity dimension on the target object.",
             str(context.exception),
         )
 

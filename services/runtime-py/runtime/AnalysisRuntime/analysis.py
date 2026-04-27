@@ -1,11 +1,11 @@
 # Purpose:
-# Hold Python-side analysis hooks for future execution-plan steps.
+# Hold Python-side analysis hooks for execution-plan steps.
 #
 # Uses:
 # - intermediate results from earlier runtime steps
 #
 # Produces:
-# - derived analytical outputs for future slices
+# - derived analytical outputs
 #
 # Next:
 # - runner.py
@@ -17,6 +17,7 @@ from collections import defaultdict
 from .models import ComparisonEntityStats, ComparisonResult, ComparisonRow
 
 def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) -> float:
+    # Re-aggregate the per-row metric values the SQL step returned.
     metric_values = [float(row["metric_value"]) for row in rows]
     if metric_aggregation == "sum":
         return float(sum(metric_values))
@@ -28,19 +29,22 @@ def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) ->
 
 
 def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> object:
+    # Dispatch to the matching Python-side analysis routine.
     if analysis_spec != "CompareEntities":
         raise NotImplementedError(
             f"Python analysis step '{analysis_spec}' is not implemented."
         )
 
+    # Read the latest SQL output from runtime state and group rows by compared entity.
     raw_rows = runtime_state.latest_result or []
     grouped = defaultdict(list)
     for row in raw_rows:
         grouped[int(row["entity_id"])].append(row)
 
-    if len(grouped) != 2:
-        raise ValueError("CompareEntities expects exactly two entities in runtime state.")
+    if len(grouped) < 2:
+        raise ValueError("CompareEntities expects at least two entities in runtime state.")
 
+    # Build one summary record per entity plus the full per-game comparison rows.
     stats = []
     comparison_rows = []
     for entity_id, rows in sorted(grouped.items()):
@@ -70,19 +74,21 @@ def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> obj
             for row in rows
         )
 
-    entity_a, entity_b = stats
-    if entity_a.metric_value >= entity_b.metric_value:
-      leader = entity_a.entity_name
-      differential = entity_a.metric_value - entity_b.metric_value
-    else:
-      leader = entity_b.entity_name
-      differential = entity_b.metric_value - entity_a.metric_value
+    # Decide who led the comparison and the gap to the nearest runner-up.
+    sorted_stats = sorted(stats, key=lambda entity: entity.metric_value, reverse=True)
+    leader_entity = sorted_stats[0]
+    runner_up = sorted_stats[1]
+    entity_a, entity_b = stats[0], stats[1]
+    leader = leader_entity.entity_name
+    differential = leader_entity.metric_value - runner_up.metric_value
 
+    # Save the structured comparison artifact for later answer synthesis.
     result = ComparisonResult(
         leader=leader,
         metric_differential=round(differential, 1),
         entity_a=entity_a,
         entity_b=entity_b,
+        entities=stats,
         per_game_rows=comparison_rows,
     )
     runtime_state.artifacts["comparison"] = result

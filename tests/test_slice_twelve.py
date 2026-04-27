@@ -7,19 +7,15 @@ from apps.cli.main import plan_question, run_cli
 
 class SliceTwelveTests(unittest.TestCase):
     def test_player_recent_object_totals_team_filter_limit_query(self) -> None:
-        interpreted_query, planner_output = plan_question(
+        _semantic_draft, planner_output = plan_question(
             "Show me the top 5 players and their total points for the Knicks over the last 10 games"
         )
-
-        self.assertEqual(interpreted_query["kind"], "object_query")
-        self.assertEqual(interpreted_query["spec"]["rowObject"], "Player")
-        self.assertEqual(interpreted_query["spec"]["sharedQuery"]["limit"], 5)
 
         self.assertEqual(planner_output["query"]["kind"], "object_query")
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["total_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(
             shared["linkedFilters"],

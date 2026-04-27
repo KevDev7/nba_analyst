@@ -9,9 +9,6 @@
 # Produces:
 # - regression coverage for the total-points MetricQuery slice
 #
-# Next:
-# - future broader slice tests
-
 from __future__ import annotations
 
 import json
@@ -79,12 +76,12 @@ class SliceOneTests(unittest.TestCase):
         self.assertNotIn("6 | Tyrese Maxey | PHI | 285", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_unsupported_shape(self, _call_gemini) -> None:
+    def test_non_analytics_request_is_rejected(self, _call_gemini) -> None:
         _call_gemini.return_value = (
-            '{"status":"unsupported","reason":"monthly trends are outside Slice 36"}'
+            '{"status":"unsupported","reason":"not an NBA analytics request"}'
         )
         with self.assertRaises(RuntimeError):
-            run_cli("What is the trend in points over the last month?")
+            run_cli("Write me a birthday card")
 
 
 if __name__ == "__main__":

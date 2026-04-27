@@ -6,14 +6,14 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentyOneTests(unittest.TestCase):
-    def test_recent_metric_linked_filter_shape_still_succeeds(self) -> None:
+    def test_recent_metric_linked_filter_shape_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -42,14 +42,14 @@ class SliceTwentyOneTests(unittest.TestCase):
                 "rowObject": "Player",
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_total"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "total_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_total"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -61,19 +61,19 @@ class SliceTwentyOneTests(unittest.TestCase):
 
         message = str(context.exception)
         self.assertIn(
-            "Recent object queries with linked filters currently require a fact surface that exposes game_date.",
+            "Recent object queries with linked filters require a fact surface that exposes game_date.",
             message,
         )
-        self.assertNotIn("currently support PlayerGame only", message)
+        self.assertNotIn("support PlayerGame only", message)
 
-    def test_player_game_season_metric_linked_filter_is_rejected_for_compile_truth_not_allowlist(self) -> None:
+    def test_player_game_season_metric_linked_filter_fails_for_compile_truth_not_allowlist(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -96,10 +96,10 @@ class SliceTwentyOneTests(unittest.TestCase):
 
         message = str(context.exception)
         self.assertIn(
-            "Season-scoped metric queries with linked filters currently require a season-level fact surface rather than per-game rows.",
+            "Season-scoped metric queries with linked filters require a season-level fact surface rather than per-game rows.",
             message,
         )
-        self.assertNotIn("currently support PlayerSeasonTeam only", message)
+        self.assertNotIn("support PlayerSeasonTeam only", message)
 
 if __name__ == "__main__":
     unittest.main()

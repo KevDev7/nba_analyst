@@ -13,7 +13,7 @@ class SliceTwentySevenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -43,7 +43,7 @@ class SliceTwentySevenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -68,8 +68,8 @@ class SliceTwentySevenTests(unittest.TestCase):
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerSeasonTeam",
-                    "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "metrics": ["points_per_game"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
@@ -78,7 +78,7 @@ class SliceTwentySevenTests(unittest.TestCase):
                     "linkedFilters": [
                         {"targetObject": "Team", "attribute": "team_abbreviation", "value": "LAL"}
                     ],
-                    "orders": [{"kind": "desc", "metric": "average_points"}],
+                    "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
                 },
@@ -93,14 +93,14 @@ class SliceTwentySevenTests(unittest.TestCase):
         self.assertEqual(resolved_filter["filterColumn"], "team_abbreviation")
         self.assertEqual(resolved_filter["filterValue"], "LAL")
 
-    def test_team_name_linked_filter_still_works(self) -> None:
+    def test_team_name_linked_filter_works(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -121,18 +121,18 @@ class SliceTwentySevenTests(unittest.TestCase):
         self.assertEqual(resolved_filter["filterColumn"], "team_name")
         self.assertEqual(resolved_filter["filterValue"], "Lakers")
 
-    def test_non_team_target_player_display_name_now_succeeds(self) -> None:
+    def test_non_team_target_player_full_name_now_succeeds(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
-                        {"targetObject": "Player", "attribute": "display_name", "value": "sample"}
+                        {"targetObject": "Player", "attribute": "full_name", "value": "sample"}
                     ],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
@@ -147,16 +147,16 @@ class SliceTwentySevenTests(unittest.TestCase):
         resolved_filter = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"][0]
 
         self.assertEqual(resolved_filter["targetObjectName"], "Player")
-        self.assertEqual(resolved_filter["filterColumn"], "display_name")
+        self.assertEqual(resolved_filter["filterColumn"], "full_name")
 
-    def test_more_than_one_linked_filter_still_fails(self) -> None:
+    def test_more_than_one_linked_filter_is_grounded(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -172,12 +172,15 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        resolved_filters = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"]
 
-        self.assertIn("Query currently supports at most one linked filter.", str(context.exception))
+        self.assertEqual(
+            [(filter_value["filterColumn"], filter_value["filterValue"]) for filter_value in resolved_filters],
+            [("conference", "Western"), ("division", "Pacific")],
+        )
 
-    def test_trend_still_rejects_linked_filters(self) -> None:
+    def test_trend_accepts_ontology_grounded_linked_filters(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -199,19 +202,20 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        resolved_filters = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"]
 
-        self.assertIn("Trend queries currently do not support linked filters.", str(context.exception))
+        self.assertEqual(resolved_filters[0]["filterColumn"], "conference")
+        self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
 
-    def test_comparison_still_rejects_linked_filters(self) -> None:
+    def test_comparison_accepts_ontology_grounded_linked_filters(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [
@@ -233,13 +237,11 @@ class SliceTwentySevenTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        resolved_filters = planner_output["resolved_query"]["resolved"]["linkedFiltersResolved"]
 
-        self.assertIn(
-            "Comparison queries currently do not support linked filters.",
-            str(context.exception),
-        )
+        self.assertEqual(resolved_filters[0]["filterColumn"], "conference")
+        self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
 
 if __name__ == "__main__":
     unittest.main()

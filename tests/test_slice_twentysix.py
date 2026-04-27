@@ -6,7 +6,7 @@ from tests.planner_helpers import call_plan_query_json
 
 
 class SliceTwentySixTests(unittest.TestCase):
-    def test_supported_monthly_trend_still_plans_with_string_time_grain_ref(self) -> None:
+    def test_supported_monthly_trend_plans_with_string_time_grain_ref(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -35,7 +35,7 @@ class SliceTwentySixTests(unittest.TestCase):
         self.assertEqual(resolved["timeFilterKind"], "past_year")
         self.assertIn("game_date", resolved["timeBucketExpression"])
 
-    def test_unsupported_time_grain_fails_in_planner_not_ir_deserialization(self) -> None:
+    def test_weekly_trend_plans_from_same_ontology_date_surface(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -55,14 +55,13 @@ class SliceTwentySixTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
 
-        message = str(context.exception)
-        self.assertIn("Trend queries currently support only the month time grain.", message)
-        self.assertNotIn("Unknown time grain", message)
+        self.assertEqual(resolved["timeGrain"], "week")
+        self.assertIn("DATE_TRUNC('week'", resolved["timeBucketExpression"])
 
-    def test_trend_still_only_accepts_past_year_filter(self) -> None:
+    def test_trend_rejects_non_calendar_window_filter(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -86,18 +85,18 @@ class SliceTwentySixTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Trend queries currently require a PastYear filter.",
+            "Unsupported trend filter kind 'last_n_games'.",
             str(context.exception),
         )
 
-    def test_object_queries_still_reject_time_grain_usage(self) -> None:
+    def test_object_queries_reject_time_grain_usage(self) -> None:
         payload = {
             "kind": "object_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -113,18 +112,18 @@ class SliceTwentySixTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Object queries currently do not support time-grain trends.",
+            "Object queries do not support time-grain trends.",
             str(context.exception),
         )
 
-    def test_comparison_queries_still_reject_time_grain_usage(self) -> None:
+    def test_comparison_queries_reject_time_grain_usage(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["total_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],
@@ -148,7 +147,7 @@ class SliceTwentySixTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Comparison queries currently do not support time-grain trends.",
+            "Comparison queries do not support time-grain trends.",
             str(context.exception),
         )
 

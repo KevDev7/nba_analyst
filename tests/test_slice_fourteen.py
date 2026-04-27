@@ -9,9 +9,6 @@
 # Produces:
 # - regression coverage for average_points object queries and their legality
 #
-# Next:
-# - future slices can broaden object-query composition further
-
 from __future__ import annotations
 
 import unittest
@@ -30,7 +27,7 @@ class SliceFourteenTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points"])
-        self.assertEqual(shared["dimensions"], ["player_name"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
 
@@ -56,7 +53,7 @@ class SliceFourteenTests(unittest.TestCase):
                 "sharedQuery": {
                     "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["player_name"],
+                    "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
                     "linkedFilters": [],

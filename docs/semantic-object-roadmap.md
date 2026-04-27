@@ -65,7 +65,7 @@ Likely core links:
 
 Likely dimensions:
 - `person_id`
-- `player_name`
+- `full_name`
 - `season_year`
 - `season_type`
 - team identity for that season

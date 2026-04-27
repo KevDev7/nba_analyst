@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Persistent regression bank for supported and intentionally unsupported ontology questions. Keep old questions here unless the product contract changes on purpose.",
+  "description": "Persistent regression bank for supported and intentionally unsupported ontology questions. Keep cases here unless the product contract changes on purpose.",
   "cases": [
     {
       "id": "slice1_top10_points_canonical",
@@ -134,10 +134,13 @@
       "id": "slice2_three_player_rejection",
       "slice_introduced": 2,
       "question": "Compare Brunson, Haliburton, and Tatum scoring over the last 10 games",
-      "status": "unsupported",
+      "status": "supported",
       "query_kind": "metric_query",
       "capability": "multi_entity_comparison",
-      "notes": "Retained narrow failure case until broader comparison is intentionally implemented."
+      "core_fact_object": "PlayerGame",
+      "metrics": ["total_points"],
+      "filters": ["last_n_games:10"],
+      "notes": "Broader comparison is now supported for two or more grounded entities."
     },
     {
       "id": "slice2_object_hydration_rejection",
@@ -369,7 +372,7 @@
       "row_object": "Player",
       "metrics": ["total_points"],
       "filters": ["last_n_games:10", "linked_team:team_name=Knicks"],
-      "notes": "Planner-derived capability proof that removes the old object-query no-limit training wheel for linked team filters."
+      "notes": "Planner-derived capability proof for object-query limits combined with linked team filters."
     },
     {
       "id": "slice11_player_season_team_average_points_team_filter_canonical",

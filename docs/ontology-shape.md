@@ -1,6 +1,6 @@
 # Ontology Shape
 
-This doc defines the live ontology after the gold-first slice-4 cutover.
+This doc defines the live ontology used by the Scope 1 semantic-draft path.
 
 ## Live Objects
 
@@ -15,8 +15,9 @@ Attributes:
 - primary key:
   - `person_id`
 - dimensions:
-  - `player_name`
-  - `display_name`
+  - `full_name`
+  - `first_name`
+  - `last_name`
   - `primary_position`
 
 ### `PlayerGame`
@@ -37,7 +38,7 @@ Attributes:
   - `season_type`
 - measures:
   - `points`
-  - `minutes_played_decimal`
+  - `minutes_played`
 
 ## Live Link
 

@@ -12,7 +12,21 @@ executable ontology-hs
       GroundedPlanning.Compile
     , GroundedPlanning.Plan
     , GroundedPlanning.Resolve
+    , GroundedPlanning.Resolve.Common
+    , GroundedPlanning.Resolve.Rank
+    , GroundedPlanning.Resolve.Trend
+    , GroundedPlanning.Resolve.Object
+    , GroundedPlanning.Resolve.Compare
+    , GroundedPlanning.Resolve.Aggregate
+    , GroundedPlanning.Resolve.Find
     , GroundedPlanning.Validation
+    , GroundedPlanning.Validation.Common
+    , GroundedPlanning.Validation.Rank
+    , GroundedPlanning.Validation.Trend
+    , GroundedPlanning.Validation.Object
+    , GroundedPlanning.Validation.Compare
+    , GroundedPlanning.Validation.Aggregate
+    , GroundedPlanning.Validation.Find
     , OntologyLayer.Graph
     , OntologyLayer.Load
     , OntologyLayer.Types

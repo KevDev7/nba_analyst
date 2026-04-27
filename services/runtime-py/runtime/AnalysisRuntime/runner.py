@@ -4,7 +4,7 @@
 # Uses:
 # - ExecutionPlan models from models.py
 # - SQL execution from query_engine.py
-# - optional future Python analysis from analysis.py
+# - optional Python analysis from analysis.py
 #
 # Produces:
 # - RuntimeResult objects for answer synthesis
@@ -17,39 +17,51 @@ from __future__ import annotations
 from typing import List
 
 from .analysis import run_analysis
-from .models import ExecutionPlan, ObjectRow, RankingRow, RuntimeResult, TimeSeriesRow
+from .models import AggregateRow, ExecutionPlan, ObjectRow, RankingRow, RuntimeResult, TimeSeriesRow
 from .query_engine import run_sql
 from .state import RuntimeState
 
 
 def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
+    # Create a scratchpad for multi-step execution and placeholders for outputs.
     runtime_state = RuntimeState()
     raw_rows = []
     comparison_result = None
 
+    # Walk through the steps Haskell compiled and execute them in order.
     for step in plan.steps:
         if step.kind == "run_sql":
             if not step.sql:
                 raise ValueError("SQL step missing sql text.")
+            # Run the SQL and remember its rows in runtime state for later steps.
             raw_rows = run_sql(step.sql)
             runtime_state.latest_result = raw_rows
         elif step.kind == "run_python":
             if not step.analysis_spec:
                 raise ValueError("Python analysis step missing analysis spec.")
+            # Let Python analysis inspect the latest SQL result and derive something richer.
             comparison_result = run_analysis(step.analysis_spec, runtime_state, plan)
             runtime_state.latest_result = comparison_result
         else:
             raise ValueError(f"Unsupported plan step kind: {step.kind}")
 
+    # Convert raw runtime rows into the final typed result shape the rest of the app expects.
     rows: List[RankingRow] = []
+    aggregate_rows: List[AggregateRow] = []
     object_rows: List[ObjectRow] = []
     time_series_rows: List[TimeSeriesRow] = []
+    find_rows = []
     if plan.plan_type == "single_sql" and plan.result_shape == "ranking":
         rows = [RankingRow(**row) for row in raw_rows]
+    elif plan.plan_type == "single_sql" and plan.result_shape == "aggregate":
+        aggregate_rows = [AggregateRow(**row) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "object_rows":
         object_rows = [ObjectRow(**row) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "time_series":
         time_series_rows = [TimeSeriesRow(**row) for row in raw_rows]
+    elif plan.plan_type == "single_sql" and plan.result_shape == "find_rows":
+        find_rows = raw_rows
+    # Return one unified result object for answer synthesis.
     return RuntimeResult(
         query_kind=plan.query_kind,
         result_shape=plan.result_shape,
@@ -65,8 +77,10 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         limit=plan.limit,
         assumptions=plan.assumptions,
         rows=rows,
+        aggregate_rows=aggregate_rows,
         object_rows=object_rows,
         time_series_rows=time_series_rows,
+        find_rows=find_rows,
         raw_rows=raw_rows,
         comparison=comparison_result,
     )

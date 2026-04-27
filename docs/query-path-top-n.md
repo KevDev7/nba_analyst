@@ -11,7 +11,7 @@ Question:
 The ontology provides:
 
 - object: `PlayerGame`
-- dimension: `player_name`
+- dimension: `full_name`
 - measure: `points`
 - metric: `total_points`
 
@@ -22,7 +22,7 @@ The query model interprets the question as:
 - query type: `MetricQuery`
 - core fact object: `PlayerGame`
 - metric: `total_points`
-- dimension: `player_name`
+- dimension: `full_name`
 - filter: `LastNGames 10`
 - order: descending by `total_points`
 - limit: `10`
