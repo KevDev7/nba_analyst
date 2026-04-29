@@ -17,6 +17,7 @@ from runtime.AnalysisRuntime.models import (
     PlanDisplayMetadata,
     PlanDisplayMetric,
     PlanFindFilter,
+    PlanFindOrder,
     RankingRow,
     TimeSeriesRow,
 )
@@ -409,6 +410,53 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertEqual(
             build_interpretation(payload),
             "Games where team name equals Lakers and score is greater than 120 across all available data.",
+        )
+
+    def test_find_rows_interpretation_includes_order_intent(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="find_query",
+            result_shape="find_rows",
+            entity_label_singular="Game",
+            entity_label_plural="Games",
+            context_label="",
+            metric="",
+            window_games=0,
+            limit=5,
+            find_rows=[{"game_date": "2025-12-01", "score": 131}],
+            find_predicate_tree={
+                "kind": "leaf",
+                "field": {"targetObject": "TeamGame", "attribute": "score", "location": "row"},
+                "operator": "greater_than",
+                "value": {"kind": "scalar", "value": 120},
+            },
+            find_orders=[PlanFindOrder(order_field="score", order_direction="descending")],
+        )
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Games where score is greater than 120 across all available data sorted by score descending.",
+        )
+
+    def test_find_rows_interpretation_includes_multiple_order_fields(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="find_query",
+            result_shape="find_rows",
+            entity_label_singular="Game",
+            entity_label_plural="Games",
+            context_label="",
+            metric="",
+            window_games=0,
+            limit=5,
+            find_rows=[{"game_date": "2025-12-01", "opponent": "Warriors"}],
+            find_orders=[
+                PlanFindOrder(order_field="opponent", order_direction="ascending"),
+                PlanFindOrder(order_field="game_date", order_direction="descending"),
+            ],
+        )
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Games matching the selected filters across all available data sorted by opponent ascending and game date descending.",
         )
 
     def test_find_rows_interpretation_includes_predicate_tree_logic(self) -> None:

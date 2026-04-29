@@ -64,7 +64,7 @@ class QueryShapeValidationTests(unittest.TestCase):
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
-                    "coreFactObject": "TeamGame",
+                    "coreFactObject": "PlayerGame",
                     "metrics": ["average_points"],
                     "dimensions": ["team_name", "season_type"],
                     "timeGrain": "month",
@@ -112,18 +112,18 @@ class QueryShapeValidationTests(unittest.TestCase):
         self.assertEqual(
             planner_output["execution_plan"]["display_metrics"],
             [
-                {"column_key": "metric_value", "label": "total_points", "metric": "total_points"},
-                {"column_key": "metric_2", "label": "average_points", "metric": "average_points"},
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "average_points", "metric": "average_points", "aggregation": "avg"},
             ],
         )
 
-    def test_multi_metric_trend_query_is_rejected_with_trend_specific_reason(self) -> None:
+    def test_multi_metric_trend_query_is_supported_with_display_metric_columns(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
-                    "coreFactObject": "TeamGame",
-                    "metrics": ["total_points", "average_points"],
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["total_points", "total_assists", "total_rebounds"],
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
@@ -136,13 +136,23 @@ class QueryShapeValidationTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
 
-        self.assertIn(
-            "Trend queries require exactly one selected metric.",
-            str(context.exception),
+        self.assertEqual(
+            execution_plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
+                {"column_key": "metric_3", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
+            ],
         )
+        self.assertIn("f.assists AS __metric_2_source", sql)
+        self.assertIn("f.total_rebounds AS __metric_3_source", sql)
+        self.assertIn("SUM(__metric_2_source) AS metric_2", sql)
+        self.assertIn("SUM(__metric_3_source) AS metric_3", sql)
+        self.assertIn("  metric_2,\n  metric_3,\n  metric_value", sql)
 
 if __name__ == "__main__":
     unittest.main()

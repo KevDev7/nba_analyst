@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
-from runtime.AnalysisRuntime.models import PlanFindFilter
+from runtime.AnalysisRuntime.models import PlanFindFilter, PlanFindOrder
 from runtime.AnswerSynthesis.response_models import SynthesisPayload
 
 
@@ -295,6 +295,16 @@ def _find_time_phrase(payload: SynthesisPayload) -> str:
     return _join_nonempty(phrases) or "across all available data"
 
 
+def _find_order_phrase(find_orders: list[PlanFindOrder]) -> str:
+    if not find_orders:
+        return ""
+    order_phrases = [
+        f"{_field_phrase(find_order.order_field)} {find_order.order_direction}"
+        for find_order in find_orders
+    ]
+    return f"sorted by {_join_phrase(order_phrases)}"
+
+
 def _comparison_entities(payload: SynthesisPayload) -> str:
     if payload.comparison is None:
         return _plural_lower(payload)
@@ -328,7 +338,7 @@ def build_interpretation(payload: SynthesisPayload) -> str:
         )
         return _join_nonempty(
             [
-                f"{_comparison_entities(payload)} compared by {metric}",
+                f"{_comparison_entities(payload)} compared by {display_metric_phrase}",
                 breakdown_phrase,
                 _grain_phrase(payload.time_grain) if payload.time_grain else "",
                 row_filters_phrase,
@@ -348,6 +358,7 @@ def build_interpretation(payload: SynthesisPayload) -> str:
             [
                 f"{payload.entity_label_plural} {where_phrase}",
                 _find_time_phrase(payload),
+                _find_order_phrase(payload.find_orders),
             ]
         ) + "."
 
@@ -361,7 +372,7 @@ def build_interpretation(payload: SynthesisPayload) -> str:
         )
         return _join_nonempty(
             [
-                metric.capitalize(),
+                display_metric_phrase.capitalize(),
                 series_phrase,
                 row_filters_phrase,
                 result_predicate_clause,

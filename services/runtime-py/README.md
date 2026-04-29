@@ -16,5 +16,7 @@ Initial implementation target:
 Current live responsibility:
 
 - execute the gold-snapshot execution plans in DuckDB
-- return structured ranking, object-row, and comparison results
+- return structured ranking, aggregate, object-row, find-row, time-series, and
+  comparison results
+- run the current Python comparison analysis step when a plan requires it
 - feed grounded answer synthesis

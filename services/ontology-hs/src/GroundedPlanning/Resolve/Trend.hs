@@ -20,8 +20,12 @@ resolveTrendQuery ontology metricQuery = do
           BaseQuery {timeGrain = currentTimeGrain} -> currentTimeGrain
   trendTimeGrain <- requireTrendTimeGrainValue maybeTrendTimeGrain
   factObject <- requireObject ontology (coreFactObject base)
-  selectedMetric <- requireTrendMetricName (metrics base)
-  metricDef <- requireMetric factObject selectedMetric
+  selectedMetrics <- requireTrendMetricNames (metrics base)
+  metricDefs <- mapM (requireMetric factObject) selectedMetrics
+  metricDef <-
+    case metricDefs of
+      selectedMetric : _ -> Right selectedMetric
+      [] -> Left "Trend queries require at least one selected metric."
   resolvedGroupingDimensionValues <- resolveTrendGroupingDimensions ontology (coreFactObject base) (dimensions base)
   let resolvedGroupingDimensions =
         map (\(_, _, groupingDimension) -> groupingDimension) resolvedGroupingDimensionValues
@@ -47,6 +51,7 @@ resolveTrendQuery ontology metricQuery = do
       , timeBucketExpression = timeBucketExpressionFor trendTimeGrain
       , metricSource = ColumnRef "fact" metricSourceColumn
       , metricFormula = resolveMetricFormula metricDef
+      , trendDisplayMetricFormulas = resolveMetricFormulas metricDefs
       , filterLocation = "fact_table"
       , timeFilterKind = trendFilterKindText (filters base)
       , trendFilters = filters base

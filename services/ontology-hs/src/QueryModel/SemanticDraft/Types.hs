@@ -4,6 +4,7 @@
 module QueryModel.SemanticDraft.Types
   ( DraftFilter(..)
   , DraftFreeformObject(..)
+  , DraftOrder(..)
   , DraftPredicate(..)
   , DraftTask(..)
   , DraftTimeWindow(..)
@@ -54,7 +55,7 @@ data SemanticDraft = SemanticDraft
   , resultPredicate :: Maybe DraftPredicate
   , timeWindow :: DraftTimeWindow
   , grain :: Maybe Text
-  , order :: [DraftFreeformObject]
+  , order :: [DraftOrder]
   , limit :: Maybe Int
   , sort :: Maybe Text
   , entities :: [Text]
@@ -69,6 +70,20 @@ newtype DraftFreeformObject = DraftFreeformObject ()
 
 instance FromJSON DraftFreeformObject where
   parseJSON = withObject "DraftFreeformObject" $ \_obj -> pure (DraftFreeformObject ())
+
+data DraftOrder = DraftOrder
+  -- A loose user-facing ordering instruction captured by the LLM.
+  -- Example: {"by":"game date","direction":"desc"}.
+  { orderBy :: Maybe Text
+  , orderDirection :: Maybe Text
+  }
+  deriving (Show, Eq)
+
+instance FromJSON DraftOrder where
+  parseJSON = withObject "DraftOrder" $ \obj ->
+    DraftOrder
+      <$> ((obj .:? "by") <|> (obj .:? "field") <|> (obj .:? "metric") <|> (obj .:? "dimension"))
+      <*> ((obj .:? "direction") <|> (obj .:? "sort") <|> (obj .:? "kind"))
 
 data DraftPredicate
   = DraftPredicateLeaf
@@ -180,6 +195,7 @@ data GroundedTrend = GroundedTrend
   -- and filters needed to build a typed time-series Query IR.
   { trendFactObject :: Object
   , trendMetricDef :: OT.MetricDef
+  , trendMetricDefs :: [OT.MetricDef]
   , trendDisplayDimensions :: [Text]
   , trendGrainValue :: Text
   , trendFilterValues :: [QI.Filter]
@@ -196,6 +212,7 @@ data GroundedComparison = GroundedComparison
   { comparisonFactObject :: Object
   , comparisonSubjectObject :: Object
   , comparisonMetricDef :: OT.MetricDef
+  , comparisonMetricDefs :: [OT.MetricDef]
   , comparisonDisplayDimension :: Text
   , comparisonDisplayDimensions :: [Text]
   , comparisonGrainValue :: Maybe Text
@@ -233,7 +250,8 @@ data GroundedAggregate = GroundedAggregate
 data GroundedFind = GroundedFind
   { findFactObject :: Object
   , findTargetObject :: Object
-  , findDisplayDimensions :: [Text]
+  , findDisplayDimensions :: [QI.FindDisplaySpec]
+  , findOrderValues :: [QI.FindOrderSpec]
   , findPredicateTreeValue :: Maybe QI.Predicate
   , findFilterValues :: [QI.Filter]
   , findLimitValue :: Maybe Int

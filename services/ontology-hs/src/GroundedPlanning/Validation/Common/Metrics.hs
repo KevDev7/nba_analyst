@@ -2,10 +2,12 @@
 
 module GroundedPlanning.Validation.Common.Metrics
   ( requireComparisonSelectedMetric
+  , requireComparisonSelectedMetrics
   , requireFamilySelectedMetric
   , requireObjectQuerySelectedMetric
   , requireOrdinaryMetricSelectedMetric
   , requireTrendSelectedMetric
+  , requireTrendSelectedMetrics
   , validateMetricAttributes
   ) where
 
@@ -24,15 +26,15 @@ requireOrdinaryMetricSelectedMetric factObject metricValues =
 
 requireTrendSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
 requireTrendSelectedMetric factObject metricValues =
-  requireFamilySelectedMetric
-    "Trend queries require exactly one selected metric."
+  requireAtLeastOneSelectedMetric
+    "Trend queries require at least one selected metric."
     factObject
     metricValues
 
-requireObjectQuerySelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
-requireObjectQuerySelectedMetric factObject metricValues =
-  requireAtLeastOneSelectedMetric
-    "Object queries require at least one selected metric."
+requireTrendSelectedMetrics :: Object -> [MetricName] -> Either Text [OT.MetricDef]
+requireTrendSelectedMetrics factObject metricValues =
+  requireExecutableMetrics
+    "Trend queries require at least one selected metric."
     factObject
     metricValues
 
@@ -40,6 +42,20 @@ requireComparisonSelectedMetric :: Object -> [MetricName] -> Either Text OT.Metr
 requireComparisonSelectedMetric factObject metricValues =
   requireFamilySelectedMetric
     "Comparison queries require exactly one selected metric."
+    factObject
+    metricValues
+
+requireComparisonSelectedMetrics :: Object -> [MetricName] -> Either Text [OT.MetricDef]
+requireComparisonSelectedMetrics factObject metricValues =
+  requireExecutableMetrics
+    "Comparison queries require at least one selected metric."
+    factObject
+    metricValues
+
+requireObjectQuerySelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
+requireObjectQuerySelectedMetric factObject metricValues =
+  requireAtLeastOneSelectedMetric
+    "Object queries require at least one selected metric."
     factObject
     metricValues
 
@@ -55,13 +71,16 @@ requireFamilySelectedMetric cardinalityMessage factObject metricValues =
 
 requireAtLeastOneSelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.MetricDef
 requireAtLeastOneSelectedMetric cardinalityMessage factObject metricValues =
+  case requireExecutableMetrics cardinalityMessage factObject metricValues of
+    Right (selectedMetric : _) -> Right selectedMetric
+    Right [] -> Left cardinalityMessage
+    Left message -> Left message
+
+requireExecutableMetrics :: Text -> Object -> [MetricName] -> Either Text [OT.MetricDef]
+requireExecutableMetrics cardinalityMessage factObject metricValues =
   case metricValues of
     [] -> Left cardinalityMessage
-    _ : _ -> do
-      metricDefs <- mapM (requireExecutableMetric factObject) metricValues
-      case metricDefs of
-        selectedMetric : _ -> pure selectedMetric
-        [] -> Left cardinalityMessage
+    _ : _ -> mapM (requireExecutableMetric factObject) metricValues
 
 requireExecutableMetric :: Object -> MetricName -> Either Text OT.MetricDef
 requireExecutableMetric factObject metricValue = do

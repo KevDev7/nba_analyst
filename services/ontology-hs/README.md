@@ -17,5 +17,7 @@ Initial implementation target:
 Current live responsibility:
 
 - load the gold-first NBA ontology fixture
-- interpret the supported metric and object query families
+- interpret supported semantic drafts into typed query IR
+- validate, resolve, and compile metric, object, and find query families
+- ground metrics, dimensions, predicates, values, links, and time scopes
 - emit typed IR and execution plans as JSON

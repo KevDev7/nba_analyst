@@ -1,8 +1,9 @@
 # Contracts
 
-This folder is for the shared boundaries between the semantic core, orchestrator, and analysis runtime.
+This folder is for the shared boundaries between the semantic core, assistant
+pipeline, analysis runtime, and answer synthesis.
 
-Planned contract areas:
+Contract areas:
 
 - semantic query IR
 - validated execution plan

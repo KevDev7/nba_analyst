@@ -257,6 +257,26 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("Player | Team | Season Type | Games | Average Points", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_multi_metric_grouped_comparison_end_to_end(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": compare_draft(
+                    measure="points",
+                    measures=["points", "assists", "rebounds"],
+                    resolved_entities=[],
+                ),
+            }
+        )
+
+        output = run_cli("Compare Brunson and Tatum by points, assists, and rebounds by season type over the last 10 games")
+
+        self.assertIn("compared by total points, assists, and rebounds by season type over the last 10 games.", output)
+        self.assertIn("Total points, assists, and rebounds comparison by season type over the last 10 games is shown below.", output)
+        self.assertIn("Player | Team | Season Type | Games | Total Points | Assists | Rebounds", output)
+        self.assertNotIn("Differential:", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_runs_time_bucketed_comparison_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -278,3 +298,26 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         )
         self.assertIn("Average points comparison by month over the past year is shown below.", output)
         self.assertIn("Month | Player | Team | Games | Average Points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_multi_metric_time_bucketed_comparison_end_to_end(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": compare_draft(
+                    measure="points",
+                    measures=["points", "assists"],
+                    resolved_entities=[],
+                    dimensions=[],
+                    time_window={"kind": "past_year", "value": None},
+                    grain="month",
+                ),
+            }
+        )
+
+        output = run_cli("Compare Brunson and Tatum by points and assists by month over the past year")
+
+        self.assertIn("compared by total points and assists by month over the past year.", output)
+        self.assertIn("Total points and assists comparison by month over the past year is shown below.", output)
+        self.assertIn("Month | Player | Team | Games | Total Points | Assists", output)
+        self.assertNotIn("Differential:", output)

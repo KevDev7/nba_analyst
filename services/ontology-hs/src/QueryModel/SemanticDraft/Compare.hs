@@ -102,6 +102,7 @@ groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDim
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
   _ <- requireTimeScopeFactSurface timeScopeValue factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
+  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
   displayDimensionValues <- resolveComparisonDisplayDimensions ontology draft subjectObject displayDimensionValue maybeGrainValue factObjectValue
   pure
@@ -109,6 +110,7 @@ groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDim
       { comparisonFactObject = factObjectValue
       , comparisonSubjectObject = subjectObject
       , comparisonMetricDef = metricValue
+      , comparisonMetricDefs = metricValues
       , comparisonDisplayDimension = displayDimensionValue
       , comparisonDisplayDimensions = displayDimensionValues
       , comparisonGrainValue = maybeGrainValue
@@ -149,7 +151,7 @@ comparisonQuery grounded =
       { QI.sharedQuery =
           QI.BaseQuery
             { QI.coreFactObject = objectName (comparisonFactObject grounded)
-            , QI.metrics = [metricName (comparisonMetricDef grounded)]
+            , QI.metrics = map metricName (comparisonMetricDefs grounded)
             , QI.dimensions = comparisonDisplayDimensions grounded
             , QI.timeGrain = QI.TimeGrainRef <$> comparisonGrainValue grounded
             , QI.filters = comparisonFilterValues grounded

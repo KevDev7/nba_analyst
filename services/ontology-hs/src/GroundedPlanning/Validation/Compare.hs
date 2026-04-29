@@ -18,8 +18,8 @@ validateCompareMetricQuery ontology metricQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   case comparison metricQuery of
     Just comparisonIntent@(CompareEntities _ entities) -> do
-      metricDef <- requireComparisonSelectedMetric factObject (metrics base)
-      validateMetricAttributes metricDef
+      metricDefs <- requireComparisonSelectedMetrics factObject (metrics base)
+      mapM_ validateMetricAttributes metricDefs
       rowObject <- requireComparisonRowObject ontology factObject (dimensions base) comparisonIntent
-      validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entities
+      validateComparisonQuery ontology factObject rowObject metricDefs base comparisonIntent entities
     Nothing -> Left "Comparison validation requires a comparison intent."

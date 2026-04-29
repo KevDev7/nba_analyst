@@ -34,6 +34,12 @@ data PlanFindFilter = PlanFindFilter
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data PlanFindOrder = PlanFindOrder
+  { order_field :: Text
+  , order_direction :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data PlanDisplayMetadata = PlanDisplayMetadata
   { column_key :: Text
   , label :: Text
@@ -45,6 +51,7 @@ data PlanDisplayMetric = PlanDisplayMetric
   { column_key :: Text
   , metric :: Text
   , label :: Text
+  , aggregation :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -75,6 +82,7 @@ data ExecutionPlan = ExecutionPlan
   , assumptions :: [Text]
   , find_predicate_tree :: Maybe Predicate
   , find_filters :: [PlanFindFilter]
+  , find_orders :: [PlanFindOrder]
   , row_predicate :: Maybe Predicate
   , result_predicate :: Maybe Predicate
   , grouping_columns :: [PlanGroupingColumn]

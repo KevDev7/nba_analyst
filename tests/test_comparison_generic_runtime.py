@@ -83,6 +83,101 @@ class ComparisonGenericRuntimeTests(unittest.TestCase):
         self.assertIn("Lakers (LAL)", formatted)
         self.assertIn("Differential: 10.9 average points", formatted)
 
+    def test_player_multi_metric_comparison_runtime_aggregates_each_metric(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["total_points", "total_assists", "total_rebounds"],
+                    "dimensions": ["full_name"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": {
+                    "kind": "compare_entities",
+                    "targetObject": "Player",
+                    "entities": [
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
+                    ],
+                },
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+        formatted = format_response(synthesize_answer(package_results(runtime_result)))
+
+        self.assertIsNotNone(runtime_result.comparison)
+        assert runtime_result.comparison is not None
+        self.assertTrue(
+            all("metric_2" in entity.display_values for entity in runtime_result.comparison.entities)
+        )
+        self.assertTrue(
+            all("metric_3" in entity.display_values for entity in runtime_result.comparison.entities)
+        )
+        self.assertIn("Player | Team | Games | Total Points | Assists | Rebounds", formatted)
+        self.assertIn("Jalen Brunson", formatted)
+        self.assertIn("Jayson Tatum", formatted)
+        self.assertNotIn("Differential:", formatted)
+
+    def test_player_multi_metric_grouped_comparison_runtime_aggregates_each_metric(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["total_points", "total_assists", "total_rebounds"],
+                    "dimensions": ["full_name", "season_type"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": {
+                    "kind": "compare_entities",
+                    "targetObject": "Player",
+                    "entities": [
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
+                    ],
+                },
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+        formatted = format_response(synthesize_answer(package_results(runtime_result)))
+
+        self.assertIsNotNone(runtime_result.comparison)
+        assert runtime_result.comparison is not None
+        self.assertTrue(runtime_result.comparison.breakdown_rows)
+        self.assertTrue(
+            all("metric_2" in row.display_values for row in runtime_result.comparison.breakdown_rows)
+        )
+        self.assertTrue(
+            all("metric_3" in row.display_values for row in runtime_result.comparison.breakdown_rows)
+        )
+        self.assertIn("Player | Team | Season Type | Games | Total Points | Assists | Rebounds", formatted)
+        self.assertIn("Total points, assists, and rebounds comparison by season type over the last 10 games is shown below.", formatted)
+        self.assertNotIn("Overall,", formatted)
+        self.assertNotIn("Differential:", formatted)
+
     def test_comparison_rejects_limit(self) -> None:
         payload = {
             "kind": "metric_query",

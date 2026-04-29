@@ -36,7 +36,7 @@ def rank_draft() -> str:
     )
 
 
-def compare_draft(*entities: str, measure: str = "scoring") -> str:
+def compare_draft(*entities: str, measure: str = "scoring", measures: list[str] | None = None) -> str:
     return json.dumps(
         {
             "status": "ok",
@@ -44,6 +44,7 @@ def compare_draft(*entities: str, measure: str = "scoring") -> str:
                 "task": "compare",
                 "subject": "players",
                 "measure": measure,
+                "measures": measures or [measure],
                 "time_window": {"kind": "last_n_games", "value": 10},
                 "entities": list(entities),
                 "assumptions": [],
@@ -94,6 +95,25 @@ class ComparisonCliVariantTests(unittest.TestCase):
         self.assertIn("Jalen Brunson led in total points", output)
         self.assertIn("Tyrese Haliburton", output)
         self.assertIn("Jayson Tatum", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_multi_metric_comparison_outputs_one_row_per_entity(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = compare_draft(
+            "Brunson",
+            "Tatum",
+            measure="points",
+            measures=["points", "assists", "rebounds"],
+        )
+
+        output = run_cli("Compare Brunson and Tatum by points, assists, and rebounds over the last 10 games")
+
+        self.assertIn("Interpreted as:", output)
+        self.assertIn("Jalen Brunson", output)
+        self.assertIn("Jayson Tatum", output)
+        self.assertIn("compared by total points, assists, and rebounds over the last 10 games.", output)
+        self.assertIn("Total points, assists, and rebounds comparison over the last 10 games is shown below.", output)
+        self.assertIn("Player | Team | Games | Total Points | Assists | Rebounds", output)
+        self.assertNotIn("Differential:", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_object_style_question_rejected(self, mock_call_gemini) -> None:

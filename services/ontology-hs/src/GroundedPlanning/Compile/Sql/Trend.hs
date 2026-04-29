@@ -19,16 +19,19 @@ compileTrendSql resolved =
       , timeBucketExpression = trendTimeBucketExpression
       , metricSource = trendMetricSource
       , metricFormula = trendMetricFormula
+      , trendDisplayMetricFormulas = trendMetricFormulas
       , trendFilters = trendFilterValues
       , trendRowPredicateResolved = trendRowPredicate
       , trendResultPredicateResolved = trendResultPredicate
       , trendGroupingDimensions = groupingDimensions
       } = resolved
     trendWhereConditions = renderTrendFilterConditions trendFactTableName trendFilterValues <> renderRowPredicateConditions "f" trendRowPredicate
-    resultFilterSourceLines = stripLastTrailingComma (renderResultPredicateSourceSelectLines "f" trendResultPredicate)
-    metricSourceLine =
-      "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source"
-        <> if null resultFilterSourceLines then "" else ","
+    metricSourceLines =
+      stripLastTrailingComma $
+        [ "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source,"
+        ]
+          <> renderDisplayMetricSourceSelectLines "f" trendMetricFormulas
+          <> renderResultPredicateSourceSelectLines "f" trendResultPredicate
     resultFilterWhereClause =
       case renderResultPredicateConditions trendResultPredicate of
         [] -> []
@@ -41,9 +44,8 @@ compileTrendSql resolved =
     ]
       <> renderGroupingSourceSelectLines groupingDimensions
       <> [ "    " <> renderTrendSeriesName groupingDimensions <> " AS series_name,"
-      , metricSourceLine
-     ]
-      <> resultFilterSourceLines
+      ]
+      <> metricSourceLines
       <> [ "  FROM " <> trendFactTableName <> " f" ]
       <> renderGroupingJoinClauses groupingDimensions
       <> renderRowPredicateJoinClauses "f" trendRowPredicate
@@ -54,6 +56,7 @@ compileTrendSql resolved =
          ]
       <> renderGroupingAggregateSelectLines groupingDimensions
       <> [ "    MIN(series_name) AS series_name," ]
+      <> renderDisplayMetricAggregateSelectLines trendMetricFormulas
       <> renderResultPredicateAggregateSelectLines trendResultPredicate
       <> [ "    " <> compileMetricAggregation trendMetricFormula <> " AS metric_value"
          , "  FROM filtered_rows"
@@ -64,6 +67,7 @@ compileTrendSql resolved =
          , "  series_name,"
          ]
       <> renderGroupingFinalSelectLines groupingDimensions
+      <> renderDisplayMetricFinalSelectLines trendMetricFormulas
       <> [ "  metric_value"
          , "FROM aggregated_series"
          ]

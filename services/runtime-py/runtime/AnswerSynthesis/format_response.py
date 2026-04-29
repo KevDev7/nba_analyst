@@ -204,6 +204,18 @@ def _append_row_table(lines: list[str], answer: FinalAnswer, rows: Sequence[Any]
         lines.append(" | ".join(getter(row) for _header, getter in columns))
 
 
+def _time_series_metric_columns(answer: FinalAnswer) -> list[tuple[str, Callable[[Any], str]]]:
+    if answer.display_metrics:
+        return [
+            (
+                _metric_header(display_metric.metric),
+                lambda row, key=display_metric.column_key, metric=display_metric.metric: _display_metric_value(row, key, metric),
+            )
+            for display_metric in answer.display_metrics
+        ]
+    return [(_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value))]
+
+
 def _append_comparison_breakdown_table(lines: list[str], answer: FinalAnswer) -> None:
     if answer.comparison is None:
         return
@@ -223,7 +235,44 @@ def _append_comparison_breakdown_table(lines: list[str], answer: FinalAnswer) ->
             )
         )
     columns.append(("Games", lambda row: str(row.games_count)))
-    columns.append((_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value)))
+    if answer.display_metrics:
+        for display_metric in answer.display_metrics:
+            columns.append(
+                (
+                    _metric_header(display_metric.metric),
+                    lambda row, key=display_metric.column_key, metric=display_metric.metric: _display_metric_value(row, key, metric),
+                )
+            )
+    else:
+        columns.append((_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value)))
+    lines.append(" | ".join(header for header, _getter in columns))
+    lines.append(" | ".join("---" for _header, _getter in columns))
+    for row in rows_to_display:
+        lines.append(" | ".join(getter(row) for _header, getter in columns))
+
+
+def _append_comparison_entity_table(lines: list[str], answer: FinalAnswer) -> None:
+    if answer.comparison is None:
+        return
+    rows_to_display, total_rows = _display_rows(answer.comparison.entities)
+    _append_display_notice(lines, total_rows)
+    columns: list[tuple[str, Callable[[Any], str]]] = [
+        (answer.entity_label_singular, lambda row: _cell_value(row.entity_name))
+    ]
+    if answer.context_label and any(row.context_value for row in rows_to_display):
+        columns.append((answer.context_label, lambda row: _cell_value(row.context_value)))
+    if answer.season_label:
+        columns.append(("Season", lambda _row: _cell_value(answer.season_label)))
+    if answer.season_type:
+        columns.append(("Season Type", lambda _row: _cell_value(answer.season_type)))
+    columns.append(("Games", lambda row: str(row.games_count)))
+    for display_metric in answer.display_metrics:
+        columns.append(
+            (
+                _metric_header(display_metric.metric),
+                lambda row, key=display_metric.column_key, metric=display_metric.metric: _display_metric_value(row, key, metric),
+            )
+        )
     lines.append(" | ".join(header for header, _getter in columns))
     lines.append(" | ".join("---" for _header, _getter in columns))
     for row in rows_to_display:
@@ -242,6 +291,9 @@ def format_response(answer: FinalAnswer) -> str:
         lines.append("---")
         if answer.comparison.breakdown_rows:
             _append_comparison_breakdown_table(lines, answer)
+            return "\n".join(lines)
+        if answer.display_metrics:
+            _append_comparison_entity_table(lines, answer)
             return "\n".join(lines)
         compared_entities = answer.comparison.entities or [
             answer.comparison.entity_a,
@@ -286,6 +338,7 @@ def format_response(answer: FinalAnswer) -> str:
         rows_to_display, total_rows = _display_rows(answer.time_series_rows)
         _append_display_notice(lines, total_rows)
         time_header = _time_header(answer.time_grain)
+        metric_columns = _time_series_metric_columns(answer)
         if answer.grouping_columns:
             group_columns = [
                 (
@@ -294,26 +347,27 @@ def format_response(answer: FinalAnswer) -> str:
                 )
                 for grouping in answer.grouping_columns
             ]
-            headers = [time_header] + [header for header, _getter in group_columns] + [_metric_header(answer.metric)]
+            headers = [time_header] + [header for header, _getter in group_columns] + [header for header, _getter in metric_columns]
             lines.append(" | ".join(headers))
             lines.append(" | ".join("---" for _header in headers))
             for row in rows_to_display:
                 group_values = [getter(row) for _header, getter in group_columns]
-                lines.append(" | ".join([_cell_value(row.time_bucket)] + group_values + [_metric_value(answer.metric, row.metric_value)]))
+                metric_values = [getter(row) for _header, getter in metric_columns]
+                lines.append(" | ".join([_cell_value(row.time_bucket)] + group_values + metric_values))
         elif any(row.series_name for row in rows_to_display):
-            lines.append(f"{time_header} | {answer.entity_label_singular} | {_metric_header(answer.metric)}")
-            lines.append("--- | --- | ---")
+            headers = [time_header, answer.entity_label_singular] + [header for header, _getter in metric_columns]
+            lines.append(" | ".join(headers))
+            lines.append(" | ".join("---" for _header in headers))
             for row in rows_to_display:
-                lines.append(
-                    f"{row.time_bucket} | {(row.series_name or '')} | {_metric_value(answer.metric, row.metric_value)}"
-                )
+                metric_values = [getter(row) for _header, getter in metric_columns]
+                lines.append(" | ".join([_cell_value(row.time_bucket), _cell_value(row.series_name or "")] + metric_values))
         else:
-            lines.append(f"{time_header} | {_metric_header(answer.metric)}")
-            lines.append("--- | ---")
+            headers = [time_header] + [header for header, _getter in metric_columns]
+            lines.append(" | ".join(headers))
+            lines.append(" | ".join("---" for _header in headers))
             for row in rows_to_display:
-                lines.append(
-                    f"{row.time_bucket} | {_metric_value(answer.metric, row.metric_value)}"
-                )
+                metric_values = [getter(row) for _header, getter in metric_columns]
+                lines.append(" | ".join([_cell_value(row.time_bucket)] + metric_values))
         return "\n".join(lines)
 
     rows_to_display, total_rows = _display_rows(answer.rows)

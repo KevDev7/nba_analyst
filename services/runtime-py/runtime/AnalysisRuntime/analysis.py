@@ -13,12 +13,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from types import SimpleNamespace
 
 from .models import ComparisonBreakdownRow, ComparisonEntityStats, ComparisonResult, ComparisonRow
 
-def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) -> float:
+
+def _aggregate_metric_column(metric_aggregation: str, rows: list[dict[str, object]], column_key: str) -> float:
     # Re-aggregate the per-row metric values the SQL step returned.
-    metric_values = [float(row["metric_value"]) for row in rows]
+    metric_values = [float(row[column_key]) for row in rows if row.get(column_key) is not None]
     if metric_aggregation == "sum":
         return float(sum(metric_values))
     if metric_aggregation == "avg":
@@ -28,6 +30,35 @@ def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) ->
     raise ValueError(
         f"Comparison analysis does not support metric aggregation '{metric_aggregation}'."
     )
+
+
+def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) -> float:
+    return _aggregate_metric_column(metric_aggregation, rows, "metric_value")
+
+
+def _comparison_metric_specs(plan: object) -> list[object]:
+    display_metrics = list(getattr(plan, "display_metrics", []) or [])
+    if display_metrics:
+        return display_metrics
+    return [
+        SimpleNamespace(
+            column_key="metric_value",
+            metric=getattr(plan, "metric", ""),
+            aggregation=getattr(plan, "metric_aggregation", ""),
+        )
+    ]
+
+
+def _comparison_display_values(rows: list[dict[str, object]], plan: object) -> dict[str, object]:
+    display_values: dict[str, object] = {}
+    for metric_spec in _comparison_metric_specs(plan):
+        column_key = str(metric_spec.column_key)
+        display_values[column_key] = _aggregate_metric_column(
+            str(metric_spec.aggregation or getattr(plan, "metric_aggregation", "")),
+            rows,
+            column_key,
+        )
+    return display_values
 
 
 def _games_count(rows: list[dict[str, object]]) -> int:
@@ -86,12 +117,18 @@ def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> obj
         entity_name = str(rows[0]["entity_name"]) if rows else ""
         games_count = _games_count(rows)
         context_value = str(rows[0]["context_value"]) if rows and rows[0]["context_value"] is not None else None
-        metric_value = _aggregate_metric(str(plan.metric_aggregation), rows)
+        display_values = _comparison_display_values(rows, plan)
+        metric_value = (
+            float(display_values["metric_value"])
+            if "metric_value" in display_values
+            else _aggregate_metric(str(plan.metric_aggregation), rows)
+        )
         stats.append(
             ComparisonEntityStats(
                 entity_id=entity_id,
                 entity_name=entity_name,
                 context_value=context_value,
+                display_values=display_values,
                 metric_value=metric_value,
                 games_count=games_count,
             )
@@ -128,6 +165,12 @@ def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> obj
             ),
         ):
             first_row = rows[0]
+            display_values = _comparison_display_values(rows, plan)
+            metric_value = (
+                float(display_values["metric_value"])
+                if "metric_value" in display_values
+                else _aggregate_metric(str(plan.metric_aggregation), rows)
+            )
             breakdown_rows.append(
                 ComparisonBreakdownRow(
                     entity_id=int(first_row["entity_id"]),
@@ -143,7 +186,8 @@ def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> obj
                         else None
                     ),
                     group_values=_comparison_group_values(first_row, plan),
-                    metric_value=_aggregate_metric(str(plan.metric_aggregation), rows),
+                    display_values=display_values,
+                    metric_value=metric_value,
                     games_count=_games_count(rows),
                 )
             )

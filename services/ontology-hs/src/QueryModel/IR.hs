@@ -50,6 +50,78 @@ type MetricName = Text
 
 type DimensionName = Text
 
+data FindDisplaySpec = FindDisplaySpec
+  { findDisplayAttribute :: DimensionName
+  , findDisplayTargetObject :: Maybe Text
+  , findDisplayLinkRole :: Maybe Text
+  , findDisplayLabel :: Maybe Text
+  }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON FindDisplaySpec where
+  toJSON displaySpec =
+    case displaySpec of
+      FindDisplaySpec attributeValue Nothing Nothing Nothing -> String attributeValue
+      FindDisplaySpec attributeValue maybeTargetObject maybeLinkRole maybeLabel ->
+        object
+          [ "attribute" .= attributeValue
+          , "targetObject" .= maybeTargetObject
+          , "linkRole" .= maybeLinkRole
+          , "label" .= maybeLabel
+          ]
+
+instance FromJSON FindDisplaySpec where
+  parseJSON value =
+    (withText "FindDisplaySpec" (\attributeValue -> pure (simpleFindDisplaySpec attributeValue)) value)
+      <|> withObject
+        "FindDisplaySpec"
+        ( \obj ->
+            FindDisplaySpec
+              <$> obj .: "attribute"
+              <*> obj .:? "targetObject"
+              <*> obj .:? "linkRole"
+              <*> obj .:? "label"
+        )
+        value
+
+simpleFindDisplaySpec :: DimensionName -> FindDisplaySpec
+simpleFindDisplaySpec attributeValue =
+  FindDisplaySpec
+    { findDisplayAttribute = attributeValue
+    , findDisplayTargetObject = Nothing
+    , findDisplayLinkRole = Nothing
+    , findDisplayLabel = Nothing
+    }
+
+data FindOrderDirection
+  = FindOrderAsc
+  | FindOrderDesc
+  deriving (Show, Eq, Generic)
+
+instance ToJSON FindOrderDirection where
+  toJSON directionValue =
+    String $
+      case directionValue of
+        FindOrderAsc -> "asc"
+        FindOrderDesc -> "desc"
+
+instance FromJSON FindOrderDirection where
+  parseJSON = withText "FindOrderDirection" $ \value ->
+    case value of
+      "asc" -> pure FindOrderAsc
+      "ascending" -> pure FindOrderAsc
+      "oldest" -> pure FindOrderAsc
+      "desc" -> pure FindOrderDesc
+      "descending" -> pure FindOrderDesc
+      "newest" -> pure FindOrderDesc
+      _ -> fail ("Unknown find order direction: " <> show value)
+
+data FindOrderSpec = FindOrderSpec
+  { findOrderField :: FindDisplaySpec
+  , findOrderDirection :: FindOrderDirection
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 -- A time bucket for trend-style answers, like "month".
 newtype TimeGrain = TimeGrainRef Text
   deriving (Show, Eq, Generic)
@@ -537,13 +609,26 @@ data MetricQuerySpec = MetricQuerySpec
 data FindQuerySpec = FindQuerySpec
   { findCoreFactObject :: Text
   , findTargetObject :: Text
-  , findDisplayDimensions :: [DimensionName]
+  , findDisplayDimensions :: [FindDisplaySpec]
+  , findOrders :: [FindOrderSpec]
   , findPredicateTree :: Maybe Predicate
   , findFilters :: [Filter]
   , findLimit :: Maybe Int
   , findAssumptions :: [Text]
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic, ToJSON)
+
+instance FromJSON FindQuerySpec where
+  parseJSON = withObject "FindQuerySpec" $ \obj ->
+    FindQuerySpec
+      <$> obj .: "findCoreFactObject"
+      <*> obj .: "findTargetObject"
+      <*> obj .: "findDisplayDimensions"
+      <*> obj .:? "findOrders" .!= []
+      <*> obj .:? "findPredicateTree"
+      <*> obj .: "findFilters"
+      <*> obj .:? "findLimit"
+      <*> obj .:? "findAssumptions" .!= []
 
 -- The top-level fork in the query model.
 -- By this point the messy language is gone; Haskell sees either an ObjectQuery

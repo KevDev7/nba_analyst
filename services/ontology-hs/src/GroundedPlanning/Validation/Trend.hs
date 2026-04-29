@@ -16,8 +16,12 @@ validateTrendMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  metricDef <- requireTrendSelectedMetric factObject (metrics base)
-  validateMetricAttributes metricDef
+  metricDefs <- requireTrendSelectedMetrics factObject (metrics base)
+  mapM_ validateMetricAttributes metricDefs
+  metricDef <-
+    case metricDefs of
+      selectedMetric : _ -> Right selectedMetric
+      [] -> Left "Trend queries require at least one selected metric."
   mapM_ (validateResultPredicateTree factObject metricDef) (resultPredicate base)
   case timeGrain base of
     Just timeGrainValue -> GroundedPlanning.Validation.Common.validateTrendMetricQuery ontology factObject metricDef timeGrainValue base

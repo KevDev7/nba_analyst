@@ -64,7 +64,7 @@ def _time_series_row_values(row: dict[str, object], plan: ExecutionPlan) -> dict
         for grouping in plan.grouping_columns
         if grouping.column_key in row
     }
-    return {**row, "group_values": group_values}
+    return {**_row_with_display_values(row, plan), "group_values": group_values}
 
 
 def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
@@ -131,6 +131,7 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         find_rows=find_rows,
         find_predicate_tree=plan.find_predicate_tree,
         find_filters=plan.find_filters,
+        find_orders=plan.find_orders,
         row_predicate=plan.row_predicate,
         result_predicate=plan.result_predicate,
         grouping_columns=plan.grouping_columns,

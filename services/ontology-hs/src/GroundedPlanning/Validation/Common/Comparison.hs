@@ -39,8 +39,8 @@ requireComparisonDimension dimensionValues =
     dimensionValue : _ -> Right dimensionValue
     [] -> Left "Comparison queries require a comparison identity dimension."
 
-validateComparisonQuery :: Ontology -> Object -> Object -> OT.MetricDef -> BaseQuery -> ComparisonIntent -> [EntityRef] -> Either Text ()
-validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entityRefs = do
+validateComparisonQuery :: Ontology -> Object -> Object -> [OT.MetricDef] -> BaseQuery -> ComparisonIntent -> [EntityRef] -> Either Text ()
+validateComparisonQuery ontology factObject rowObject metricDefs base comparisonIntent entityRefs = do
   validateComparisonQueryShape base
   validateComparisonSeasonAttributes factObject base
   validateComparisonTimeGrain factObject (timeGrain base)
@@ -48,7 +48,7 @@ validateComparisonQuery ontology factObject rowObject metricDef base comparisonI
   mapM_ (validateRowPredicateTree ontology (objectName factObject)) (rowPredicate base)
   validateNoComparisonResultPredicate (resultPredicate base)
   validateComparisonPath ontology factObject rowObject comparisonIntent
-  validateComparisonMetric base metricDef
+  mapM_ (validateComparisonMetric base) metricDefs
   validateComparisonEntities entityRefs
 
 validateComparisonQueryShape :: BaseQuery -> Either Text ()

@@ -14,7 +14,7 @@ The product goal is narrow and clear:
 
 ## Repo Layout
 
-This repo is being shaped around four main parts:
+This repo is shaped around five main parts:
 
 1. `services/ontology-hs`
 Haskell semantic core for:
@@ -38,7 +38,19 @@ Thin orchestration layer for:
 - invoking the analysis runtime
 - returning final answers
 
-4. `contracts`
+The current local product path uses `apps/assistant/pipeline.py` as the shared
+orchestration boundary for CLI and web. `services/orchestrator` remains a
+placeholder for a future service split.
+
+4. `apps`
+
+Product adapters:
+- `apps/cli`
+  - terminal surface over the shared assistant pipeline
+- `apps/web`
+  - localhost FastAPI + simple HTML/JS surface over the same pipeline
+
+5. `contracts`
 Shared contract surface for:
 - semantic/query IR
 - plan/result payload shapes
@@ -46,10 +58,6 @@ Shared contract surface for:
 
 Additional repo structure:
 
-- `apps/cli`
-  - first product surface for proving the core loop
-- `apps/web`
-  - optional later UI surface once the core works
 - `fixtures`
   - local data snapshots, example ontology configs, sample inputs
 - `evals`
@@ -68,18 +76,24 @@ Not part of the first build:
 - large infra/platform sophistication
 - multimodal dashboard recreation
 
-## Vertical Slice 1
+## Current Local Product Path
 
-The first working slice supports:
+The current one-step assistant supports six query families:
 
-- `Show me the top 10 players by points over the last 10 games`
+- ranking / top-N
+- aggregation
+- filtering / joining
+- trend
+- comparison
+- object rows
 
 It uses:
 
-- a minimal NBA ontology fixture
-- a Haskell semantic core for query modeling and grounded planning
+- a generated NBA semantic ontology fixture
+- Gemini for a loose semantic draft
+- a Haskell semantic core for query modeling, grounding, validation, and plan compilation
 - a Python runtime over DuckDB
-- templated answer synthesis
+- grounded answer synthesis and formatting
 
 Run it with:
 
@@ -105,8 +119,18 @@ Then open:
 https://nba-analyst.localhost
 ```
 
-Run a focused fast regression smoke test with:
+Run the assistant test suite with:
+
+```bash
+python3 -m pytest tests -q
+```
+
+Run a smaller focused smoke test with:
 
 ```bash
 python3 -m unittest tests.test_web_api tests.test_cli_pipeline tests.test_semantic_interpreter tests.test_semantic_draft_grounding
 ```
+
+Note: full repository-wide `pytest` discovery also collects optional ingestion
+and Athena pipeline tests. Those may require extra packages such as `nba_api`
+or `pbpstats`; use `python3 -m pytest tests -q` for the current assistant suite.

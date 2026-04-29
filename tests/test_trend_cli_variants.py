@@ -89,6 +89,28 @@ def _trend_gemini_response(prompt: str) -> str:
           }
         }
         """
+    if question == "Trend points, assists, and rebounds by team over the past year":
+        return """
+        {
+          "status": "ok",
+          "draft": {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "points",
+            "measures": ["points", "assists", "rebounds"],
+            "dimensions": ["team"],
+            "filters": [],
+            "time_window": {"kind": "past_year", "value": null},
+            "grain": "month",
+            "order": [],
+            "limit": null,
+            "sort": null,
+            "entities": [],
+            "operations": [],
+            "assumptions": []
+          }
+        }
+        """
     raise AssertionError(f"Unexpected trend prompt: {prompt}")
 
 
@@ -155,6 +177,44 @@ class TrendCliVariantTests(unittest.TestCase):
         mock_call_gemini.side_effect = _trend_gemini_response
         output = run_cli("What is the trend in points over the last month?")
         self.assertIn("over the last 30 days", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_monthly_multi_metric_trend_query(self, mock_call_gemini) -> None:
+        mock_call_gemini.side_effect = _trend_gemini_response
+        _interpreted_query, planner_output = plan_question(
+            "Trend points, assists, and rebounds by team over the past year"
+        )
+
+        shared = planner_output["query"]["spec"]["sharedQuery"]
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["metrics"], ["total_points", "total_assists", "total_rebounds"])
+        self.assertEqual(
+            execution_plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
+                {"column_key": "metric_3", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
+            ],
+        )
+        self.assertIn("SUM(__metric_2_source) AS metric_2", sql)
+        self.assertIn("SUM(__metric_3_source) AS metric_3", sql)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_monthly_multi_metric_trend_output(self, mock_call_gemini) -> None:
+        mock_call_gemini.side_effect = _trend_gemini_response
+        output = run_cli("Trend points, assists, and rebounds by team over the past year")
+
+        self.assertIn(
+            "Interpreted as: Total points, assists, and rebounds by team by month over the past year.",
+            output,
+        )
+        self.assertIn(
+            "Monthly total points, assists, and rebounds by team over the past year are shown below.",
+            output,
+        )
+        self.assertIn("Month | Team | Total Points | Assists | Rebounds", output)
 
 
 if __name__ == "__main__":

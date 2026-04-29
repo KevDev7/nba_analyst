@@ -104,6 +104,189 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("JOIN team", execution_plan["steps"][0]["sql"])
         self.assertIn("f.score > 120", execution_plan["steps"][0]["sql"])
 
+    def test_haskell_uses_requested_find_display_dimensions(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(dimensions=["game date", "score", "point differential"])
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findDisplayDimensions"], ["game_date", "score", "point_differential"])
+        self.assertIn("r.game_date AS game_date", sql)
+        self.assertIn("f.score AS score", sql)
+        self.assertIn("f.point_differential AS point_differential", sql)
+        self.assertIn("pt1.team_name AS team_name", sql)
+
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(payload["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(payload["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+
+        self.assertTrue(runtime_result.find_rows)
+        self.assertEqual(
+            list(runtime_result.find_rows[0].keys()),
+            ["game_date", "score", "point_differential", "team_name"],
+        )
+
+    def test_haskell_uses_role_aware_opponent_find_display(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(dimensions=["game date", "opponent", "score"])
+        )
+
+        spec = payload["query"]["spec"]
+        resolved_displays = payload["resolved_query"]["resolved"]["resolvedFindDisplays"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(
+            spec["findDisplayDimensions"],
+            [
+                "game_date",
+                {
+                    "attribute": "team_name",
+                    "targetObject": "Team",
+                    "linkRole": "team_game_opponent_team",
+                    "label": "opponent",
+                },
+                "score",
+            ],
+        )
+        self.assertEqual(resolved_displays[1]["displayLabel"], "opponent")
+        self.assertEqual(resolved_displays[1]["displayPath"]["steps"][0]["linkName"], "team_game_opponent_team")
+        self.assertIn("d2.team_name AS opponent", sql)
+        self.assertIn("ON f.opponent_team_id = d2.team_id", sql)
+
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(payload["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(payload["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+
+        self.assertTrue(runtime_result.find_rows)
+        self.assertEqual(
+            list(runtime_result.find_rows[0].keys()),
+            ["game_date", "opponent", "score", "team_name"],
+        )
+
+    def test_haskell_uses_requested_find_order_by_score_descending(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                dimensions=["game date", "opponent", "score"],
+                order=[{"by": "score", "direction": "desc"}],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        resolved_orders = payload["resolved_query"]["resolved"]["resolvedFindOrders"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(
+            spec["findOrders"],
+            [{"findOrderField": "score", "findOrderDirection": "desc"}],
+        )
+        self.assertEqual(resolved_orders[0]["orderLabel"], "score")
+        self.assertEqual(resolved_orders[0]["orderDirection"], "desc")
+        self.assertIn("ORDER BY f.score DESC", sql)
+
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(payload["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(payload["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+
+        scores = [row["score"] for row in runtime_result.find_rows]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_haskell_uses_role_aware_find_order_by_opponent(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                dimensions=["game date", "score"],
+                order=[{"by": "opponent", "direction": "asc"}],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        resolved_orders = payload["resolved_query"]["resolved"]["resolvedFindOrders"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(
+            spec["findOrders"],
+            [
+                {
+                    "findOrderField": {
+                        "attribute": "team_name",
+                        "targetObject": "Team",
+                        "linkRole": "team_game_opponent_team",
+                        "label": "opponent",
+                    },
+                    "findOrderDirection": "asc",
+                }
+            ],
+        )
+        self.assertEqual(resolved_orders[0]["orderLabel"], "opponent")
+        self.assertEqual(resolved_orders[0]["orderPath"]["steps"][0]["linkName"], "team_game_opponent_team")
+        self.assertIn("JOIN team o1", sql)
+        self.assertIn("ON f.opponent_team_id = o1.team_id", sql)
+        self.assertIn("ORDER BY o1.team_name ASC", sql)
+
+    def test_haskell_applies_find_order_after_last_n_games_selection(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                dimensions=["game date", "score"],
+                time_window={"kind": "last_n_games", "value": 10},
+                order=[{"by": "game date", "direction": "asc"}],
+                limit=None,
+            )
+        )
+
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertIn("ROW_NUMBER() OVER (ORDER BY f.game_date DESC)", sql)
+        self.assertIn("WHERE __find_row_rank <= 10", sql)
+        self.assertIn("ORDER BY __find_order_1 ASC", sql)
+
+        if hasattr(ExecutionPlan, "model_validate"):
+            execution_plan = ExecutionPlan.model_validate(payload["execution_plan"])
+        else:
+            execution_plan = ExecutionPlan.parse_obj(payload["execution_plan"])
+        runtime_result = execute_plan(execution_plan)
+
+        dates = [row["game_date"] for row in runtime_result.find_rows]
+        self.assertLessEqual(len(dates), 10)
+        self.assertEqual(dates, sorted(dates))
+
+    def test_haskell_uses_requested_find_display_from_fact_and_reachable_objects(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": ["player", "team", "minutes"],
+                "filters": [{"field": "minutes", "op": ">", "value": 30}],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "PlayerGame")
+        self.assertEqual(spec["findTargetObject"], "Player")
+        self.assertEqual(spec["findDisplayDimensions"], ["full_name", "team_name", "minutes_played"])
+        self.assertIn("r.full_name AS full_name", sql)
+        self.assertIn("JOIN team d2", sql)
+        self.assertIn("d2.team_name AS team_name", sql)
+        self.assertIn("f.minutes_played AS minutes_played", sql)
+
     def test_haskell_preserves_find_last_n_games_time_window(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
             lakers_games_draft(time_window={"kind": "last_n_games", "value": 10})
@@ -315,7 +498,9 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("f.points > 40", payload["execution_plan"]["steps"][0]["sql"])
 
     def test_runtime_packages_find_predicate_metadata_for_synthesis(self) -> None:
-        payload = call_haskell_planner_for_semantic_draft(lakers_games_draft())
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(order=[{"by": "score", "direction": "desc"}])
+        )
         if hasattr(ExecutionPlan, "model_validate"):
             execution_plan = ExecutionPlan.model_validate(payload["execution_plan"])
         else:
@@ -340,6 +525,9 @@ class FindQueryTests(unittest.TestCase):
             operator="greater_than",
             value=120,
         )
+        self.assertEqual(len(packaged.find_orders), 1)
+        self.assertEqual(packaged.find_orders[0].order_field, "score")
+        self.assertEqual(packaged.find_orders[0].order_direction, "descending")
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_runs_find_end_to_end(self, mock_call_gemini) -> None:
@@ -365,6 +553,59 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("Matching games are shown below.", output)
         self.assertIn("Game Date | Season Year | Season Type | Team Name | Score", output)
         self.assertIn(f"{expected_date} | 2025-26 | Regular Season | Lakers | {expected_score}", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_find_with_requested_display_columns(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": lakers_games_draft(
+                    dimensions=["game date", "score", "point differential"],
+                ),
+            }
+        )
+
+        output = run_cli("Find Lakers games over 120 points and show date, score, point differential")
+
+        self.assertIn("Matching games are shown below.", output)
+        self.assertIn("Game Date | Score | Point Differential | Team Name", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_find_with_role_aware_opponent_display(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": lakers_games_draft(
+                    dimensions=["game date", "opponent", "score"],
+                ),
+            }
+        )
+
+        output = run_cli("Find Lakers games over 120 points and show date, opponent, score")
+
+        self.assertIn("Matching games are shown below.", output)
+        self.assertIn("Game Date | Opponent | Score | Team Name", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_find_with_requested_order(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": lakers_games_draft(
+                    dimensions=["game date", "opponent", "score"],
+                    order=[{"by": "score", "direction": "desc"}],
+                ),
+            }
+        )
+
+        output = run_cli("Find Lakers games over 120 points and show date, opponent, score, sorted by score descending")
+
+        self.assertIn("Matching games are shown below.", output)
+        self.assertIn(
+            "Interpreted as: Games where team name equals Lakers and score is greater than 120 across all available data sorted by score descending.",
+            output,
+        )
+        self.assertIn("Game Date | Opponent | Score | Team Name", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_normalizes_find_null_time_window_to_all_available_data(self, mock_call_gemini) -> None:

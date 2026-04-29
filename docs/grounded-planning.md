@@ -1,6 +1,6 @@
 # Grounded Planning
 
-This doc pins down the live grounded-planning behavior after slice 7.
+This doc pins down the current live grounded-planning behavior.
 
 For the explicit supported ontology graph that current path resolution is
 expected to use, see:
@@ -13,6 +13,7 @@ Grounded planning accepts:
 
 - `MetricQuery`
 - `ObjectQuery`
+- `FindQuery`
 
 ## Validation
 
@@ -24,8 +25,10 @@ Validation now checks the ontology contract directly:
 - a valid context path exists when the selected output needs linked context
 - requested metric exists in the ontology
 - metric is executable in this slice
-- filter placement is valid on the fact side
-- ordering matches the selected metric
+- time scopes are valid for the selected fact surface
+- row predicate placement is valid before grouping
+- result predicate placement is valid after grouping
+- ordering/limit requests are valid for the result shape
 
 ## Resolution
 
@@ -36,7 +39,9 @@ Resolution now produces:
 - discovered row path
 - optional discovered context path
 - governed metric formula
-- filter location
+- grouped dimensions and display metadata
+- grounded row/result/find predicate trees
+- time scope and optional time grain
 - required columns for execution
 
 Example for `average_points`:
@@ -56,9 +61,13 @@ Example for `average_points`:
 
 The runtime plan contract now distinguishes:
 
-- ranking over `total_points`
-- ranking over `average_points`
-- object rows with attached `total_points`
-- comparison over `total_points`
+- ranking/top-N
+- grouped aggregate
+- object rows
+- find rows
+- time-series trend
+- comparison, including grouped comparison breakdowns
 
-The important change is that grounded planning now resolves governed metric formulas and graph-derived paths, not just a small set of hand-picked joins.
+The important change is that grounded planning resolves governed metric
+formulas, graph-derived paths, grouping columns, display metadata, predicates,
+and time scopes before Python executes anything.

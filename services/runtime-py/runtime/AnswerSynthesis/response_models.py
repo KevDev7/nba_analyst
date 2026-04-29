@@ -23,6 +23,7 @@ from runtime.AnalysisRuntime.models import (
     PlanDisplayMetadata,
     PlanDisplayMetric,
     PlanFindFilter,
+    PlanFindOrder,
     PlanGroupingColumn,
     RankingRow,
     TimeSeriesRow,
@@ -56,6 +57,7 @@ class SynthesisPayload(BaseModel):
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
     find_predicate_tree: Optional[Dict[str, Any]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    find_orders: List[PlanFindOrder] = Field(default_factory=list)
     row_predicate: Optional[Dict[str, Any]] = None
     result_predicate: Optional[Dict[str, Any]] = None
     grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
@@ -90,6 +92,7 @@ class FinalAnswer(BaseModel):
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
     find_predicate_tree: Optional[Dict[str, Any]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    find_orders: List[PlanFindOrder] = Field(default_factory=list)
     row_predicate: Optional[Dict[str, Any]] = None
     result_predicate: Optional[Dict[str, Any]] = None
     grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)

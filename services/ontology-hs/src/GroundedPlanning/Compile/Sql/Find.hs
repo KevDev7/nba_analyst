@@ -9,7 +9,7 @@ import GroundedPlanning.Compile.Sql.Common
 import GroundedPlanning.Resolve
 import OntologyLayer.Graph (DiscoveredPath)
 import qualified OntologyLayer.Graph as OG
-import QueryModel.IR (Filter, FilterValue (FilterText), PredicateOperator (..), PredicateValue (..), filterIntValue, filterKindText)
+import QueryModel.IR (Filter, FilterValue (FilterText), FindOrderDirection (..), PredicateOperator (..), PredicateValue (..), filterIntValue, filterKindText)
 
 data IndexedFindPredicateTree
   = IndexedFindPredicateLeaf Int ResolvedFindPredicateLeaf
@@ -24,6 +24,7 @@ compileFindSql resolved =
       { resolvedFindFactTableName = factTableNameValue
       , resolvedFindTargetPath = targetPathValue
       , resolvedFindDisplays = displayValues
+      , resolvedFindOrders = orderValues
       , resolvedFindPredicateTree = maybePredicateTree
       , resolvedFindFilters = findFilterValues
       , resolvedFindLimit = maybeFindLimit
@@ -33,7 +34,10 @@ compileFindSql resolved =
       case indexedPredicateTree of
         Nothing -> []
         Just predicateTree -> indexedFindPredicateTreeLeaves predicateTree
-    selectLines = renderFindSelectLines displayValues predicateTreeLeaves
+    selectLines = renderFindSelectLines targetPathValue displayValues predicateTreeLeaves
+    orderSelectLines = renderFindOrderSelectLines targetPathValue orderValues
+    displayJoinLines = concatMap (renderIndexedFindDisplayJoin targetPathValue) (zip [1 :: Int ..] displayValues)
+    orderJoinLines = concatMap (renderIndexedFindOrderJoin targetPathValue) (zip [1 :: Int ..] orderValues)
     predicateTreeJoinLines =
       concatMap renderIndexedFindPredicateLeafJoin predicateTreeLeaves
     whereConditions =
@@ -48,11 +52,14 @@ compileFindSql resolved =
         , "  SELECT"
         ]
           <> indentFindSelectLines selectLines
+          <> indentFindSelectLines orderSelectLines
           <> [ "    f.game_date AS __find_game_date,"
              , "    ROW_NUMBER() OVER (ORDER BY f.game_date DESC) AS __find_row_rank"
              , "  FROM " <> factTableNameValue <> " f"
              ]
           <> renderPathJoinClauses "JOIN" "f" "r" "fp" targetPathValue
+          <> displayJoinLines
+          <> orderJoinLines
           <> predicateTreeJoinLines
           <> renderWhereLines "  " whereConditions
           <> [ ")"
@@ -60,7 +67,7 @@ compileFindSql resolved =
              , "FROM filtered_find_rows"
              ]
           <> renderWhereLines "" ["__find_row_rank <= " <> T.pack (show gamesValue)]
-          <> [ "ORDER BY " <> findOrderColumn displayValues ]
+          <> [ "ORDER BY " <> findOrderColumn targetPathValue displayValues orderValues True ]
           <> limitClause maybeFindLimit
     Nothing ->
       T.unlines $
@@ -69,9 +76,11 @@ compileFindSql resolved =
           <> selectLines
           <> [ "FROM " <> factTableNameValue <> " f" ]
           <> renderPathJoinClauses "JOIN" "f" "r" "fp" targetPathValue
+          <> displayJoinLines
+          <> orderJoinLines
           <> predicateTreeJoinLines
           <> renderWhereLines "" whereConditions
-          <> [ "ORDER BY " <> findOrderColumn displayValues ]
+          <> [ "ORDER BY " <> findOrderColumn targetPathValue displayValues orderValues False ]
           <> limitClause maybeFindLimit
 
 renderWhereLines :: Text -> [Text] -> [Text]
@@ -80,13 +89,13 @@ renderWhereLines prefix conditions =
     [] -> []
     _ -> [prefix <> "WHERE " <> combineWhereClauses conditions]
 
-renderFindSelectLines :: [ResolvedFindDisplay] -> [(Int, ResolvedFindPredicateLeaf)] -> [Text]
-renderFindSelectLines displayValues predicateTreeLeaves =
+renderFindSelectLines :: DiscoveredPath -> [ResolvedFindDisplay] -> [(Int, ResolvedFindPredicateLeaf)] -> [Text]
+renderFindSelectLines targetPathValue displayValues predicateTreeLeaves =
   map renderDisplay (markLast (displaySelections <> predicateTreeSelections))
   where
     displaySelections =
-      [ (displayLabel displayValue, findPathAlias "r" (displayPath displayValue), displayColumn displayValue)
-      | displayValue <- displayValues
+      [ (displayLabel displayValue, findDisplayAlias targetPathValue indexValue displayValue, displayColumn displayValue)
+      | (indexValue, displayValue) <- zip [1 :: Int ..] displayValues
       ]
     predicateTreeSelections =
       uniqueSelectionsByLabel
@@ -96,6 +105,13 @@ renderFindSelectLines displayValues predicateTreeLeaves =
         ]
     renderDisplay (isLastValue, (labelValue, aliasValue, columnValue)) =
       "  " <> aliasValue <> "." <> columnValue <> " AS " <> labelValue <> if isLastValue then "" else ","
+
+renderFindOrderSelectLines :: DiscoveredPath -> [ResolvedFindOrder] -> [Text]
+renderFindOrderSelectLines targetPathValue orderValues =
+  map renderOrderSelect (zip [1 :: Int ..] orderValues)
+  where
+    renderOrderSelect (indexValue, orderValue) =
+      "  " <> findOrderAlias targetPathValue indexValue orderValue <> "." <> orderColumn orderValue <> " AS __find_order_" <> T.pack (show indexValue) <> ","
 
 uniqueSelectionsByLabel :: [(Text, Text, Text)] -> [(Text, Text, Text)]
 uniqueSelectionsByLabel selections =
@@ -144,6 +160,42 @@ renderIndexedFindPredicateLeafJoin (indexValue, predicateValue) =
   if null (OG.steps (treePredicatePath predicateValue))
     then []
     else renderPathJoinClauses "JOIN" "f" (findPredicateTreeAlias indexValue predicateValue) ("pt" <> T.pack (show indexValue) <> "p") (treePredicatePath predicateValue)
+
+renderIndexedFindDisplayJoin :: DiscoveredPath -> (Int, ResolvedFindDisplay) -> [Text]
+renderIndexedFindDisplayJoin targetPathValue (indexValue, displayValue)
+  | null (OG.steps (displayPath displayValue)) = []
+  | displayPath displayValue == targetPathValue = []
+  | otherwise =
+      renderPathJoinClauses
+        "JOIN"
+        "f"
+        (findDisplayAlias targetPathValue indexValue displayValue)
+        ("dp" <> T.pack (show indexValue) <> "p")
+        (displayPath displayValue)
+
+renderIndexedFindOrderJoin :: DiscoveredPath -> (Int, ResolvedFindOrder) -> [Text]
+renderIndexedFindOrderJoin targetPathValue (indexValue, orderValue)
+  | null (OG.steps (orderPath orderValue)) = []
+  | orderPath orderValue == targetPathValue = []
+  | otherwise =
+      renderPathJoinClauses
+        "JOIN"
+        "f"
+        (findOrderAlias targetPathValue indexValue orderValue)
+        ("op" <> T.pack (show indexValue) <> "p")
+        (orderPath orderValue)
+
+findDisplayAlias :: DiscoveredPath -> Int -> ResolvedFindDisplay -> Text
+findDisplayAlias targetPathValue indexValue displayValue
+  | null (OG.steps (displayPath displayValue)) = "f"
+  | displayPath displayValue == targetPathValue = "r"
+  | otherwise = "d" <> T.pack (show indexValue)
+
+findOrderAlias :: DiscoveredPath -> Int -> ResolvedFindOrder -> Text
+findOrderAlias targetPathValue indexValue orderValue
+  | null (OG.steps (orderPath orderValue)) = "f"
+  | orderPath orderValue == targetPathValue = "r"
+  | otherwise = "o" <> T.pack (show indexValue)
 
 findPredicateTreeAlias :: Int -> ResolvedFindPredicateLeaf -> Text
 findPredicateTreeAlias indexValue predicateValue =
@@ -227,11 +279,25 @@ findPathAlias nonFactAlias pathValue =
     then "f"
     else nonFactAlias
 
-findOrderColumn :: [ResolvedFindDisplay] -> Text
-findOrderColumn displayValues =
-  case displayValues of
-    displayValue : _ -> displayLabel displayValue <> " DESC"
-    [] -> "1"
+findOrderColumn :: DiscoveredPath -> [ResolvedFindDisplay] -> [ResolvedFindOrder] -> Bool -> Text
+findOrderColumn targetPathValue displayValues orderValues useHiddenOrderAliases =
+  case orderValues of
+    [] ->
+      case displayValues of
+        displayValue : _ -> displayLabel displayValue <> " DESC"
+        [] -> "1"
+    _ -> T.intercalate ", " (map renderOrder (zip [1 :: Int ..] orderValues))
+  where
+    renderOrder (indexValue, orderValue) =
+      orderExpression indexValue orderValue <> " " <> directionText (orderDirection orderValue)
+    orderExpression indexValue orderValue =
+      if useHiddenOrderAliases
+        then "__find_order_" <> T.pack (show indexValue)
+        else findOrderAlias targetPathValue indexValue orderValue <> "." <> orderColumn orderValue
+    directionText directionValue =
+      case directionValue of
+        FindOrderAsc -> "ASC"
+        FindOrderDesc -> "DESC"
 
 findLastNGames :: [Filter] -> Maybe Int
 findLastNGames filterValues =

@@ -97,6 +97,12 @@ def _join_phrase(values: list[str]) -> str:
     return f"{', '.join(values[:-1])}, and {values[-1]}"
 
 
+def _display_metric_phrase(payload: SynthesisPayload) -> str:
+    if not payload.display_metrics:
+        return _human_metric(payload.metric)
+    return _join_phrase([_human_metric(display_metric.metric) for display_metric in payload.display_metrics])
+
+
 def _grouping_phrase(payload: SynthesisPayload) -> str:
     if not payload.grouping_columns:
         return payload.entity_label_singular.lower()
@@ -171,6 +177,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     time_series_rows = list(payload.time_series_rows)
     find_predicate_tree = payload.find_predicate_tree
     find_filters = list(payload.find_filters)
+    find_orders = list(payload.find_orders)
     row_predicate = payload.row_predicate
     result_predicate = payload.result_predicate
     grouping_columns = list(payload.grouping_columns)
@@ -179,6 +186,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     interpretation = build_interpretation(payload)
 
     if comparison is not None:
+        metric_phrase = _display_metric_phrase(payload)
         differential_text = _format_metric_value(metric, comparison.metric_differential)
         compared_count = len(comparison.entities) if comparison.entities else 2
         time_scope = _result_time_phrase(window_games, season_label, season_type, time_window_days, time_start_date, time_end_date)
@@ -195,7 +203,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             if compared_count > 2
             else time_scope
         )
-        if comparison.breakdown_rows:
+        if display_metrics:
+            summary = _join_nonempty(
+                [
+                    f"{metric_phrase.capitalize()} comparison{breakdown_scope}{grain_scope}",
+                    comparison_scope,
+                    "is shown below.",
+                ]
+            )
+        elif comparison.breakdown_rows:
             summary = (
                 f"{_human_metric(metric).capitalize()} comparison{breakdown_scope}{grain_scope} "
                 f"{comparison_scope} is shown below. Overall, {comparison.leader} led by "
@@ -230,6 +246,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
+            find_orders=find_orders,
             row_predicate=row_predicate,
             result_predicate=result_predicate,
             grouping_columns=grouping_columns,
@@ -267,6 +284,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             find_rows=find_rows,
             find_predicate_tree=find_predicate_tree,
             find_filters=find_filters,
+            find_orders=find_orders,
             row_predicate=row_predicate,
             result_predicate=result_predicate,
             grouping_columns=grouping_columns,
@@ -302,6 +320,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
+            find_orders=find_orders,
             row_predicate=row_predicate,
             result_predicate=result_predicate,
             grouping_columns=grouping_columns,
@@ -339,6 +358,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             object_rows=object_rows,
             time_series_rows=[],
             find_rows=[],
+            find_orders=find_orders,
             row_predicate=row_predicate,
             result_predicate=result_predicate,
             grouping_columns=grouping_columns,
@@ -349,6 +369,7 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
 
     if time_series_rows:
         grain_label = _grain_adjective(time_grain)
+        metric_phrase = _display_metric_phrase(payload)
         filter_phrase = _time_filter_phrase(
             time_filter,
             season_label,
@@ -359,17 +380,17 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
         )
         if grouping_columns:
             summary = (
-                f"{grain_label} {_human_metric(metric)} by {_grouping_phrase(payload)}{filter_phrase} "
+                f"{grain_label} {metric_phrase} by {_grouping_phrase(payload)}{filter_phrase} "
                 f"are shown below."
             )
         elif any(row.series_name for row in time_series_rows):
             summary = (
-                f"{grain_label} {_human_metric(metric)} by {entity_label_singular.lower()}{filter_phrase} "
+                f"{grain_label} {metric_phrase} by {entity_label_singular.lower()}{filter_phrase} "
                 f"are shown below."
             )
         else:
             summary = (
-                f"{grain_label} {_human_metric(metric)}{filter_phrase} are shown below."
+                f"{grain_label} {metric_phrase}{filter_phrase} are shown below."
             )
         return FinalAnswer(
             summary=summary,

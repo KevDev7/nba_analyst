@@ -71,6 +71,7 @@ groundTrendFactCandidate ontology draft rawMeasure subjectObject trendDimensions
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
   _ <- requireTrendFactSurface trendGrain trendTimeScopeValue factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
+  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
   mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) trendDimensions
   let predicateDraftFilters = filter (not . draftFilterIsTimeScopeFilter) (filters draft)
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue predicateDraftFilters (predicate draft)
@@ -80,6 +81,7 @@ groundTrendFactCandidate ontology draft rawMeasure subjectObject trendDimensions
     GroundedTrend
       { trendFactObject = factObjectValue
       , trendMetricDef = metricValue
+      , trendMetricDefs = metricValues
       , trendDisplayDimensions = map groupingDimensionName trendDimensions
       , trendGrainValue = trendGrain
       , trendFilterValues = filtersForTrend
@@ -130,7 +132,7 @@ trendQuery grounded =
       { QI.sharedQuery =
           QI.BaseQuery
             { QI.coreFactObject = objectName (trendFactObject grounded)
-            , QI.metrics = [metricName (trendMetricDef grounded)]
+            , QI.metrics = map metricName (trendMetricDefs grounded)
             , QI.dimensions = trendDisplayDimensions grounded
             , QI.timeGrain = Just (QI.TimeGrainRef (trendGrainValue grounded))
             , QI.filters = trendFilterValues grounded

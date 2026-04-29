@@ -149,3 +149,59 @@ findPathsFrom ontology maxDepth sourceName =
           , sourceKey = currentSourceKey
           , targetKey = currentTargetKey
           }
+
+findAllPathsFrom :: Ontology -> Int -> Text -> [DiscoveredPath]
+findAllPathsFrom ontology maxDepth sourceName =
+  -- Like findPathsFrom, but keeps distinct relationship roles even when they
+  -- point to the same target object. Example: TeamGame -> Team can mean the
+  -- team or the opponent team depending on the link.
+  bfs [(sourceName, [], [sourceName])] []
+  where
+    bfs :: [(Text, [PathStep], [Text])] -> [DiscoveredPath] -> [DiscoveredPath]
+    bfs [] discovered = discovered
+    bfs ((currentObjectName, currentSteps, visitedPathObjects) : remaining) discovered =
+      let currentDepth = length currentSteps
+          currentDiscovered =
+            case currentSteps of
+              [] -> discovered
+              _ ->
+                discovered
+                  ++ [ DiscoveredPath
+                        { sourceObjectName = sourceName
+                        , targetObjectName = currentObjectName
+                        , steps = currentSteps
+                        }
+                     ]
+          nextExpansions =
+            if currentDepth >= maxDepth
+              then []
+              else buildNextExpansions currentObjectName currentSteps visitedPathObjects
+          nextQueue =
+            remaining
+              ++ [ (nextObjectName, nextSteps, visitedPathObjects ++ [nextObjectName])
+                 | (nextObjectName, nextSteps) <- nextExpansions
+                 ]
+       in bfs nextQueue currentDiscovered
+
+    buildNextExpansions :: Text -> [PathStep] -> [Text] -> [(Text, [PathStep])]
+    buildNextExpansions currentObjectName currentSteps visitedPathObjects =
+      [ (target_object linkValue, currentSteps ++ [pathStep])
+      | linkValue <- findLinksFrom ontology currentObjectName
+      , target_object linkValue `notElem` visitedPathObjects
+      , Just pathStep <- [buildPathStep currentObjectName linkValue]
+      ]
+
+    buildPathStep :: Text -> Link -> Maybe PathStep
+    buildPathStep currentObjectName Link {name = currentName, target_object = currentTarget, source_key = currentSourceKey, target_key = currentTargetKey} = do
+      sourceObject <- findObject ontology currentObjectName
+      targetObject <- findObject ontology currentTarget
+      pure
+        PathStep
+          { linkName = currentName
+          , stepSourceObjectName = currentObjectName
+          , stepTargetObjectName = currentTarget
+          , stepSourceTableName = backing_table sourceObject
+          , stepTargetTableName = backing_table targetObject
+          , sourceKey = currentSourceKey
+          , targetKey = currentTargetKey
+          }

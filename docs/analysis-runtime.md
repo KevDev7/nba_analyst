@@ -1,6 +1,7 @@
 # Analysis Runtime
 
-This doc pins down the live runtime behavior after vertical slice 4.
+This doc pins down the current live runtime behavior for the one-step NBA
+analyst.
 
 ## Input
 
@@ -19,17 +20,20 @@ The runtime now:
 
 - ensures the gold snapshot exists locally
 - executes SQL plans over the gold snapshot
-- preserves structured ranking rows, object rows, and comparison inputs
+- preserves structured ranking, aggregate, object-row, find-row, time-series,
+  and comparison inputs/results
 - stores the latest result in runtime state for follow-up Python analysis
 
 ## Live Plan Shapes
 
 - SQL-only single-step plans
-  - total-points ranking
-  - average-points ranking
-  - player-row object query
+  - ranking/top-N
+  - grouped aggregates
+  - object rows
+  - find rows
+  - time-series trends
 - SQL + Python multi-step plans
-  - player comparison over recent games
+  - comparison summaries and grouped comparison breakdowns
 
 ## What Still Stays Thin
 
@@ -39,4 +43,5 @@ Not implemented yet:
 
 - chart generation
 - richer artifact persistence
-- broad multi-step branching beyond the comparison path
+- broad multi-step branching beyond the current comparison-analysis path
+- Python sandboxing for arbitrary generated analysis code

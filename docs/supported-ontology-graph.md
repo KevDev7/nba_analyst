@@ -10,9 +10,13 @@ broaden graph search further.
 
 - `Player`
 - `Team`
+- `Arena`
 - `Game`
 - `PlayerGame`
 - `TeamGame`
+- `PlayerSeason`
+- `PlayerSeasonTeam`
+- `TeamSeason`
 
 ## Live Directed Links
 
@@ -26,15 +30,19 @@ These are the ontology links the planner is expected to reason over today.
 | `team_game_team` | `TeamGame` | `Team` | `many_to_one` | `team_game.team_id -> team.team_id` |
 | `team_game_game` | `TeamGame` | `Game` | `many_to_one` | `team_game.game_id -> game.game_id` |
 | `team_game_opponent_team` | `TeamGame` | `Team` | `many_to_one` | `team_game.opponent_team_id -> team.team_id` |
+| `game_arena` | `Game` | `Arena` | `many_to_one` | `game.arena_id -> arena.arena_id` |
+| `player_season_player` | `PlayerSeason` | `Player` | `many_to_one` | `player_season.person_id -> player.person_id` |
+| `player_season_team_player` | `PlayerSeasonTeam` | `Player` | `many_to_one` | `player_season_team.person_id -> player.person_id` |
+| `player_season_team_team` | `PlayerSeasonTeam` | `Team` | `many_to_one` | `player_season_team.team_id -> team.team_id` |
+| `team_season_team` | `TeamSeason` | `Team` | `many_to_one` | `team_season.team_id -> team.team_id` |
 
 ## Current Planning Scope
 
 Generic path resolution should currently be bounded to this live graph only.
 
-That means slice-7 path search should assume:
+That means current path search should assume:
 
-- only these 5 objects are in scope
-- only these 6 directed links are in scope
+- only these objects and links are in scope
 - only direct and short derived paths over this graph are required
 - no arbitrary deep graph traversal yet
 - no many-to-many reasoning yet
@@ -80,29 +88,44 @@ Example:
 
 - `Show me players and their total points over the last 10 games`
 
-### Comparison over player fact rows
+### Season-surface metric ranking
 
-- fact object: `PlayerGame`
-- row object: `Player`
+- fact object: `PlayerSeason` or `TeamSeason`
+- row object: `Player` or `Team`
+- row path:
+  - `PlayerSeason -> Player`
+  - `TeamSeason -> Team`
+
+Examples:
+
+- `Show me players by average points in the 2025-26 regular season`
+- `Show me teams by wins in the 2025-26 regular season`
+
+### Comparison over player or team fact rows
+
+- fact object: `PlayerGame`, `TeamGame`, or a compatible season surface
+- row object: `Player` or `Team`
 - row path:
   - `PlayerGame -> Player`
+  - `TeamGame -> Team`
 - optional context path:
   - `PlayerGame -> Team`
 
 Example:
 
-- `Compare Brunson and Haliburton scoring over the last 10 games`
+- `Compare Brunson and Tatum average points by season type over the last 10 games`
+- `Compare Lakers and Warriors average points by month over the past year`
 
-## Slice-7 Expectation
+## Current Expectation
 
-The point of this artifact is to make the next planning step explicit:
+The point of this artifact is to keep path resolution explicit:
 
 - planning should stop choosing from a few hand-approved object branches
 - planning should instead discover valid paths from this graph
 - validation should prove the requested path exists
 - resolution should carry the chosen path explicitly into compilation
 
-So the live target is:
+So the live target remains:
 
 - not `hardcoded player path`
 - not `hardcoded team path`

@@ -1,6 +1,6 @@
 # CLI App
 
-This is the first product surface for `nba_analyst`.
+This is the terminal product surface for `nba_analyst`.
 
 Why CLI first:
 
@@ -8,10 +8,14 @@ Why CLI first:
 - keep iteration fast
 - make evaluation and debugging straightforward
 
-Target flow:
+Live flow:
 
-`question -> Gemini semantic interpretation -> plan/IR -> execution -> analysis -> answer`
+`question -> Gemini semantic draft -> Haskell grounding/planning -> Python runtime -> answer synthesis -> terminal output`
 
-Current slice:
+Current scope:
 
-- `Show me the top 10 players by points over the last 10 games`
+- one user question
+- one grounded execution plan
+- one terminal answer
+- six supported query families: ranking, aggregation, filtering/find,
+  trend, comparison, and object rows

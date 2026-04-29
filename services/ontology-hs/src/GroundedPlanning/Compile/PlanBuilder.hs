@@ -69,6 +69,7 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , assumptions = metricAssumptions
     , find_predicate_tree = Nothing
     , find_filters = []
+    , find_orders = []
     , row_predicate = planRowPredicateTree <$> metricRowPredicate
     , result_predicate = planResultPredicateTree <$> metricResultPredicate
     , grouping_columns = map planGroupingColumn metricGroupingDimensions
@@ -80,7 +81,7 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
 -- Build the top-level execution plan for trend/time-series questions.
 -- Trend plans are a single SQL step in the current runtime shape.
 compileTrendExecutionPlan :: ResolvedTrendQuery -> ExecutionPlan
-compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = trendAssumptions, seriesObjectName = maybeSeriesObjectName, metricFormula = formula, timeGrain = trendTimeGrain, timeFilterKind = trendTimeFilter, trendFilters = trendFilterValues, trendSeasonLabel = maybeTrendSeasonLabel, trendSeasonType = maybeTrendSeasonType, trendRowPredicateResolved = trendRowPredicate, trendResultPredicateResolved = trendResultPredicate, trendGroupingDimensions = groupingDimensions} =
+compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = trendAssumptions, seriesObjectName = maybeSeriesObjectName, metricFormula = formula, trendDisplayMetricFormulas = trendMetricFormulas, timeGrain = trendTimeGrain, timeFilterKind = trendTimeFilter, trendFilters = trendFilterValues, trendSeasonLabel = maybeTrendSeasonLabel, trendSeasonType = maybeTrendSeasonType, trendRowPredicateResolved = trendRowPredicate, trendResultPredicateResolved = trendResultPredicate, trendGroupingDimensions = groupingDimensions} =
   let (singularLabel, pluralLabel, contextValueLabel) =
         case maybeSeriesObjectName of
           Just seriesObjectName ->
@@ -108,11 +109,12 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     , assumptions = trendAssumptions
     , find_predicate_tree = Nothing
     , find_filters = []
+    , find_orders = []
     , row_predicate = planRowPredicateTree <$> trendRowPredicate
     , result_predicate = planResultPredicateTree <$> trendResultPredicate
     , grouping_columns = map planGroupingColumn groupingDimensions
     , display_metadata = []
-    , display_metrics = []
+    , display_metrics = planDisplayMetrics trendMetricFormulas
     , steps =
         [ PlanStep
             { kind = "run_sql"
@@ -152,6 +154,7 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , assumptions = objectAssumptions
     , find_predicate_tree = Nothing
     , find_filters = []
+    , find_orders = []
     , row_predicate = planRowPredicateTree <$> objectRowPredicate
     , result_predicate = planResultPredicateTree <$> objectResultPredicate
     , grouping_columns = []
@@ -167,7 +170,7 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     }
 
 compileFindExecutionPlan :: ResolvedFindQuery -> ExecutionPlan
-compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectName = targetObjectNameValue, resolvedFindLimit = maybeFindLimit, resolvedFindAssumptions = findAssumptions, resolvedFindPredicateTree = maybePredicateTree, resolvedFindFilters = filterValues} =
+compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectName = targetObjectNameValue, resolvedFindLimit = maybeFindLimit, resolvedFindAssumptions = findAssumptions, resolvedFindPredicateTree = maybePredicateTree, resolvedFindFilters = filterValues, resolvedFindOrders = orderValues} =
   let (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject targetObjectNameValue
    in ExecutionPlan
         { plan_type = "single_sql"
@@ -190,6 +193,7 @@ compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectNam
         , assumptions = findAssumptions
         , find_predicate_tree = planFindPredicateTree <$> maybePredicateTree
         , find_filters = map planFindFilter filterValues
+        , find_orders = map planFindOrder orderValues
         , row_predicate = Nothing
         , result_predicate = Nothing
         , grouping_columns = []
@@ -229,6 +233,19 @@ planFindFilter filterValue =
     { filter_kind = filterKindText filterValue
     , filter_value = filterValueRef filterValue
     }
+
+planFindOrder :: ResolvedFindOrder -> PlanFindOrder
+planFindOrder orderValue =
+  PlanFindOrder
+    { order_field = orderLabel orderValue
+    , order_direction = findOrderDirectionText (orderDirection orderValue)
+    }
+
+findOrderDirectionText :: QI.FindOrderDirection -> Text
+findOrderDirectionText directionValue =
+  case directionValue of
+    QI.FindOrderAsc -> "ascending"
+    QI.FindOrderDesc -> "descending"
 
 timeWindowDaysFromFilters :: [Filter] -> Maybe Int
 timeWindowDaysFromFilters filterValues =
@@ -277,6 +294,7 @@ planDisplayMetric formula =
     { column_key = resultColumn formula
     , metric = metricKey formula
     , label = metricKey formula
+    , aggregation = aggregationKind formula
     }
 
 planDisplayMetadata :: ResolvedDisplayMetadata -> PlanDisplayMetadata

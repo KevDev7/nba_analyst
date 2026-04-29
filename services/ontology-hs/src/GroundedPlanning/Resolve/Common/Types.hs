@@ -129,6 +129,7 @@ data ResolvedTrendQuery = ResolvedTrendQuery
   , timeBucketExpression :: Text
   , metricSource :: ColumnRef
   , metricFormula :: ResolvedMetricFormula
+  , trendDisplayMetricFormulas :: [ResolvedMetricFormula]
   , filterLocation :: Text
   , timeFilterKind :: Text
   , trendFilters :: [Filter]
@@ -178,6 +179,14 @@ data ResolvedFindDisplay = ResolvedFindDisplay
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+data ResolvedFindOrder = ResolvedFindOrder
+  { orderPath :: DiscoveredPath
+  , orderColumn :: Text
+  , orderLabel :: Text
+  , orderDirection :: FindOrderDirection
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 data ResolvedFindPredicateLeaf = ResolvedFindPredicateLeaf
   { treePredicateTargetObjectName :: Text
   , treePredicatePath :: DiscoveredPath
@@ -201,6 +210,7 @@ data ResolvedFindQuery = ResolvedFindQuery
   , resolvedFindTargetObjectName :: Text
   , resolvedFindTargetPath :: DiscoveredPath
   , resolvedFindDisplays :: [ResolvedFindDisplay]
+  , resolvedFindOrders :: [ResolvedFindOrder]
   , resolvedFindPredicateTree :: Maybe ResolvedFindPredicateTree
   , resolvedFindFilters :: [Filter]
   , resolvedFindLimit :: Maybe Int

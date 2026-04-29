@@ -196,6 +196,91 @@ class ComparisonPlanningTests(unittest.TestCase):
         self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
         self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
 
+    def test_multi_metric_recent_player_comparison_is_supported(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["total_points", "total_assists", "total_rebounds"],
+                    "dimensions": ["full_name"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": {
+                    "kind": "compare_entities",
+                    "targetObject": "Player",
+                    "entities": [
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
+                    ],
+                },
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(execution_plan["metric"], "total_points")
+        self.assertEqual(
+            execution_plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
+                {"column_key": "metric_3", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
+            ],
+        )
+        self.assertIn("f.assists AS metric_2", sql)
+        self.assertIn("f.total_rebounds AS metric_3", sql)
+        self.assertIn("  metric_value,\n  metric_2,\n  metric_3", sql)
+
+    def test_multi_metric_comparison_breakdown_is_supported(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "PlayerGame",
+                    "metrics": ["total_points", "total_assists"],
+                    "dimensions": ["full_name", "season_type"],
+                    "timeGrain": None,
+                    "filters": [{"kind": "last_n_games", "value": 10}],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": {
+                    "kind": "compare_entities",
+                    "targetObject": "Player",
+                    "entities": [
+                        {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                        {"entityId": 1628369, "entityName": "Jayson Tatum"},
+                    ],
+                },
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(
+            execution_plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
+            ],
+        )
+        self.assertEqual(execution_plan["grouping_columns"], [{"column_key": "group_1", "label": "season_type"}])
+        self.assertIn("f.season_type AS group_1", sql)
+        self.assertIn("f.assists AS metric_2", sql)
+        self.assertIn("  metric_value,\n  metric_2", sql)
+
     def test_non_full_name_dimension_comparison_is_rejected(self) -> None:
         payload = {
             "kind": "metric_query",

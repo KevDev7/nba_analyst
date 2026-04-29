@@ -32,6 +32,13 @@ class PlanFindFilter(BaseModel):
     filter_value: Optional[object] = None
 
 
+class PlanFindOrder(BaseModel):
+    # Grounded user-facing ordering metadata for find-row answers.
+    # Example: score descending, opponent ascending.
+    order_field: str
+    order_direction: str
+
+
 class PlanDisplayMetadata(BaseModel):
     # One display metadata column Haskell intentionally emitted.
     # Example: Games Played or Minutes.
@@ -46,6 +53,7 @@ class PlanDisplayMetric(BaseModel):
     column_key: str
     metric: str
     label: str
+    aggregation: str = ""
 
 
 class PlanGroupingColumn(BaseModel):
@@ -79,6 +87,7 @@ class ExecutionPlan(BaseModel):
     assumptions: List[str] = Field(default_factory=list)
     find_predicate_tree: Optional[Dict[str, object]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    find_orders: List[PlanFindOrder] = Field(default_factory=list)
     row_predicate: Optional[Dict[str, object]] = None
     result_predicate: Optional[Dict[str, object]] = None
     grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
@@ -137,6 +146,7 @@ class ComparisonEntityStats(BaseModel):
     entity_id: int
     entity_name: str
     context_value: Optional[str] = None
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
     games_count: int
 
@@ -148,6 +158,7 @@ class ComparisonBreakdownRow(BaseModel):
     context_value: Optional[str] = None
     time_bucket: Optional[str] = None
     group_values: Dict[str, object] = Field(default_factory=dict)
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
     games_count: int
 
@@ -168,6 +179,7 @@ class TimeSeriesRow(BaseModel):
     time_bucket: str
     series_name: Optional[str] = None
     group_values: Dict[str, object] = Field(default_factory=dict)
+    display_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
 
 
@@ -197,6 +209,7 @@ class RuntimeResult(BaseModel):
     find_rows: List[Dict[str, object]] = Field(default_factory=list)
     find_predicate_tree: Optional[Dict[str, object]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
+    find_orders: List[PlanFindOrder] = Field(default_factory=list)
     row_predicate: Optional[Dict[str, object]] = None
     result_predicate: Optional[Dict[str, object]] = None
     grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)

@@ -33,6 +33,7 @@ compileRecentComparisonSql resolved =
         , timeFilters = metricTimeFilters
         , rowPredicateResolved = metricRowPredicate
         , groupingDimensions = metricGroupingDimensions
+        , displayMetricFormulas = comparisonMetricFormulas
         } = resolved
       entityList =
         T.intercalate
@@ -62,6 +63,15 @@ compileRecentComparisonSql resolved =
         case renderGroupingOrder metricGroupingDimensions of
           "" -> ""
           orderValue -> ", " <> orderValue
+      metricSourceLines =
+        [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
+        ]
+          <> renderDisplayMetricDirectSelectLines "f" comparisonMetricFormulas
+      metricFinalSelectLines =
+        stripLastTrailingComma $
+          [ "  metric_value,"
+          ]
+            <> renderDisplayMetricFinalSelectLines comparisonMetricFormulas
    in T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
@@ -72,13 +82,14 @@ compileRecentComparisonSql resolved =
           <> timeBucketSourceSelectLines
           <> renderGroupingSourceSelectLines metricGroupingDimensions
           <> [ "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
-        , "    ROW_NUMBER() OVER ("
-        , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
-        , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
-        , "    ) AS game_rank"
-        , "  FROM " <> metricFactTableName <> " f"
-        ]
+             ]
+          <> metricSourceLines
+          <> [ "    ROW_NUMBER() OVER ("
+             , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
+             , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
+             , "    ) AS game_rank"
+             , "  FROM " <> metricFactTableName <> " f"
+             ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
           <> renderGroupingJoinClauses metricGroupingDimensions
@@ -93,9 +104,10 @@ compileRecentComparisonSql resolved =
           <> timeBucketFinalSelectLines
           <> renderGroupingFinalSelectLines metricGroupingDimensions
           <> [ "  game_date,"
-        , "  metric_value"
-        , "FROM recent_rows"
-        ]
+             ]
+          <> metricFinalSelectLines
+          <> [ "FROM recent_rows"
+             ]
           <> renderWhereLines "" gameRankWhereConditions
           <> [ "ORDER BY entity_id ASC" <> timeBucketOrder <> groupingOrder <> ", game_date DESC" ]
 
@@ -122,6 +134,7 @@ compileSeasonComparisonSql resolved =
         , seasonType = metricSeasonType
         , rowPredicateResolved = metricRowPredicate
         , displayMetadata = metricDisplayMetadata
+        , displayMetricFormulas = comparisonMetricFormulas
         , groupingDimensions = metricGroupingDimensions
         } = resolved
       entityList =
@@ -158,6 +171,16 @@ compileSeasonComparisonSql resolved =
         case renderGroupingOrder metricGroupingDimensions of
           "" -> ""
           orderValue -> ", " <> orderValue
+      metricSourceLines =
+        stripLastTrailingComma $
+          [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
+          ]
+            <> renderDisplayMetricDirectSelectLines "f" comparisonMetricFormulas
+      metricFinalSelectLines =
+        stripLastTrailingComma $
+          [ "  metric_value,"
+          ]
+            <> renderDisplayMetricFinalSelectLines comparisonMetricFormulas
    in T.unlines $
         [ "WITH season_rows AS ("
         , "  SELECT"
@@ -169,9 +192,10 @@ compileSeasonComparisonSql resolved =
           <> renderGroupingSourceSelectLines metricGroupingDimensions
           <> gamesPlayedSelectLines
           <> [ "    NULL AS game_date,"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value"
-        , "  FROM " <> metricFactTableName <> " f"
-        ]
+             ]
+          <> metricSourceLines
+          <> [ "  FROM " <> metricFactTableName <> " f"
+             ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
           <> renderGroupingJoinClauses metricGroupingDimensions
@@ -186,8 +210,20 @@ compileSeasonComparisonSql resolved =
           <> timeBucketFinalSelectLines
           <> renderGroupingFinalSelectLines metricGroupingDimensions
           <> [ "  games_played,"
-        , "  game_date,"
-        , "  metric_value"
-        , "FROM season_rows"
-        , "ORDER BY entity_id ASC" <> timeBucketOrder <> groupingOrder
-        ]
+             , "  game_date,"
+             ]
+          <> metricFinalSelectLines
+          <> [ "FROM season_rows"
+             , "ORDER BY entity_id ASC" <> timeBucketOrder <> groupingOrder
+             ]
+
+stripLastTrailingComma :: [Text] -> [Text]
+stripLastTrailingComma sourceLines =
+  case reverse sourceLines of
+    [] -> []
+    lastLine : earlierLines ->
+      reverse earlierLines
+        <> [ case T.stripSuffix "," lastLine of
+               Just strippedLine -> strippedLine
+               Nothing -> lastLine
+           ]

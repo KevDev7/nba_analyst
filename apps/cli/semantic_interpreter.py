@@ -144,6 +144,7 @@ Question family rules:
 - When the user asks for multiple measures, put every requested measure phrase in "measures" in user-facing order.
 - Keep "measure" as the primary measure used for ranking, ordering, and summary. For object/aggregate questions without an explicit primary measure, use the first requested measure.
 - Do not invent multi-sort. Extra measures are display measures unless the user clearly names one as the ranking/order measure.
+- For find questions, put requested display fields after words like "show" in dimensions, and put requested sort fields in order using user-facing phrases. Example: "show date and score, sorted newest first" should use dimensions ["date","score"] and order [{"by":"date","direction":"desc"}].
 
 Filter rules:
 - Put row-level constraints in filters using the user's field phrase, operator, and value.
@@ -253,6 +254,9 @@ A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"wins","mea
 
 Q: Find Lakers games over the last 10 games
 A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
+
+Q: Find Lakers games over 120 points and show date, opponent, score, sorted newest first
+A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":["date","opponent","score"],"filters":[{"field":"team","op":"=","value":"Lakers"},{"field":"points","op":">","value":120}],"time_window":{"kind":"all","value":null},"grain":null,"order":[{"by":"date","direction":"desc"}],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
 
 Q: Compare Brunson and Tatum scoring over the last 10 games
 A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Brunson","Tatum"],"operations":[],"assumptions":["Interpreted 'scoring' as points."]}}

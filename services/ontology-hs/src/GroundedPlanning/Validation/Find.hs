@@ -7,7 +7,8 @@ module GroundedPlanning.Validation.Find where
 
 import Data.Text (Text)
 import GroundedPlanning.Validation.Common
-import OntologyLayer.Graph (findAttribute)
+import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathsFrom)
+import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (AttributeKind (Dimension, Measure, PrimaryKey), AttributeVisibility (Public), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
@@ -17,27 +18,99 @@ validateFindQuery ontology findQuery = do
   factObject <- requireObject ontology (findCoreFactObject findQuery)
   targetObjectValue <- requireObject ontology (findTargetObject findQuery)
   _ <- requirePath ontology (objectName factObject) (objectName targetObjectValue)
-  validateFindDisplays targetObjectValue (findDisplayDimensions findQuery)
+  validateFindDisplays ontology factObject targetObjectValue (findDisplayDimensions findQuery)
+  validateFindOrders ontology factObject targetObjectValue (findOrders findQuery)
   validateFindPredicateShape ontology (objectName factObject) (findPredicateTree findQuery) (findFilters findQuery)
   validateFindFilters factObject (findFilters findQuery)
   validateFindLimit (findLimit findQuery)
 
-validateFindDisplays :: OT.Object -> [DimensionName] -> Either Text ()
-validateFindDisplays targetObjectValue displayValues =
+validateFindDisplays :: Ontology -> OT.Object -> OT.Object -> [FindDisplaySpec] -> Either Text ()
+validateFindDisplays ontology factObjectValue targetObjectValue displayValues =
   case displayValues of
     [] -> Left "Find queries require at least one display dimension."
-    _ -> mapM_ (validateFindDisplay targetObjectValue) displayValues
+    _ -> mapM_ (validateFindDisplay ontology factObjectValue targetObjectValue) displayValues
 
-validateFindDisplay :: OT.Object -> DimensionName -> Either Text ()
-validateFindDisplay targetObjectValue displayName = do
+validateFindDisplay :: Ontology -> OT.Object -> OT.Object -> FindDisplaySpec -> Either Text ()
+validateFindDisplay ontology factObjectValue targetObjectValue displaySpec = do
   attributeValue <-
     maybe
-      (Left ("Find display dimension '" <> displayName <> "' not found on target object."))
+      (Left ("Find display attribute '" <> findDisplayAttribute displaySpec <> "' not found on the selected fact object, target object, or reachable ontology links."))
       Right
-      (findAttribute targetObjectValue displayName)
+      (findFindDisplayAttribute ontology factObjectValue targetObjectValue displaySpec)
   if OT.kind attributeValue == PrimaryKey || OT.visibility attributeValue /= Public
-    then Left "Find display dimensions must be public non-primary attributes."
+    then Left "Find display attributes must be public non-primary attributes."
     else pure ()
+
+validateFindOrders :: Ontology -> OT.Object -> OT.Object -> [FindOrderSpec] -> Either Text ()
+validateFindOrders ontology factObjectValue targetObjectValue orderValues =
+  mapM_ (validateFindOrder ontology factObjectValue targetObjectValue) orderValues
+
+validateFindOrder :: Ontology -> OT.Object -> OT.Object -> FindOrderSpec -> Either Text ()
+validateFindOrder ontology factObjectValue targetObjectValue orderSpec = do
+  attributeValue <-
+    maybe
+      (Left ("Find order attribute '" <> findDisplayAttribute (findOrderField orderSpec) <> "' not found on the selected fact object, target object, or reachable ontology links."))
+      Right
+      (findFindDisplayAttribute ontology factObjectValue targetObjectValue (findOrderField orderSpec))
+  if OT.kind attributeValue == PrimaryKey || OT.visibility attributeValue /= Public
+    then Left "Find order attributes must be public non-primary attributes."
+    else pure ()
+
+findFindDisplayAttribute :: Ontology -> OT.Object -> OT.Object -> FindDisplaySpec -> Maybe OT.Attribute
+findFindDisplayAttribute ontology factObjectValue targetObjectValue displaySpec =
+  case findFindDisplayAttributes ontology factObjectValue targetObjectValue displaySpec of
+    attributeValue : _ -> Just attributeValue
+    [] -> Nothing
+
+findFindDisplayAttributes :: Ontology -> OT.Object -> OT.Object -> FindDisplaySpec -> [OT.Attribute]
+findFindDisplayAttributes ontology factObjectValue targetObjectValue displaySpec =
+  case findDisplayLinkRole displaySpec of
+    Just linkRoleValue -> roleLinkedAttributes linkRoleValue
+    Nothing -> targetAttributes <> factAttributes <> linkedAttributes
+  where
+    displayName = findDisplayAttribute displaySpec
+    targetAttributes =
+      [ attributeValue
+      | Just attributeValue <- [findAttribute targetObjectValue displayName]
+      , isPublicFindDisplayAttribute attributeValue
+      , findDisplayTargetObject displaySpec `elem` [Nothing, Just (objectName targetObjectValue)]
+      ]
+    factAttributes =
+      [ attributeValue
+      | findPath ontology 2 (objectName factObjectValue) (objectName factObjectValue) /= Nothing
+      , Just attributeValue <- [findAttribute factObjectValue displayName]
+      , isPublicFindDisplayAttribute attributeValue
+      , findDisplayTargetObject displaySpec `elem` [Nothing, Just (objectName factObjectValue)]
+      ]
+    linkedAttributes =
+      [ attributeValue
+      | discoveredPath <- findPathsFrom ontology 2 (objectName factObjectValue)
+      , OG.targetObjectName discoveredPath /= objectName targetObjectValue
+      , Just linkedObject <- [findObject ontology (OG.targetObjectName discoveredPath)]
+      , Just attributeValue <- [findAttribute linkedObject displayName]
+      , isPublicFindDisplayAttribute attributeValue
+      , findDisplayTargetObject displaySpec `elem` [Nothing, Just (objectName linkedObject)]
+      ]
+    roleLinkedAttributes linkRoleValue =
+      [ attributeValue
+      | discoveredPath <- findAllPathsFrom ontology 2 (objectName factObjectValue)
+      , lastLinkName discoveredPath == linkRoleValue
+      , Just linkedObject <- [findObject ontology (OG.targetObjectName discoveredPath)]
+      , findDisplayTargetObject displaySpec `elem` [Nothing, Just (objectName linkedObject)]
+      , Just attributeValue <- [findAttribute linkedObject displayName]
+      , isPublicFindDisplayAttribute attributeValue
+      ]
+
+lastLinkName :: DiscoveredPath -> Text
+lastLinkName pathValue =
+  case reverse (OG.steps pathValue) of
+    stepValue : _ -> OG.linkName stepValue
+    [] -> ""
+
+isPublicFindDisplayAttribute :: OT.Attribute -> Bool
+isPublicFindDisplayAttribute attributeValue =
+  OT.kind attributeValue `elem` [Dimension, Measure]
+    && OT.visibility attributeValue == Public
 
 validateFindPredicateShape :: Ontology -> Text -> Maybe Predicate -> [Filter] -> Either Text ()
 validateFindPredicateShape ontology factObjectName maybePredicateTree filterValues =

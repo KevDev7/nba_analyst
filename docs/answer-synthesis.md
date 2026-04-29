@@ -38,6 +38,7 @@ Answer synthesis should:
 - stay fully grounded in runtime output
 - mention the metric and time window used
 - include assumptions when aliases or synonyms were interpreted
+- mention Find ordering when the execution plan carries grounded sort intent
 - render display columns from execution-plan metadata rather than prompt-specific rules
 - avoid inventing any analysis not present in runtime results
 

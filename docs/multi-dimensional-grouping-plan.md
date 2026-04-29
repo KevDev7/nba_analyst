@@ -27,12 +27,14 @@ natural language
 
 Do not solve this by adding freeform SQL generation.
 
-## Current Limitation
+## Historical Starting Limitation
 
-The IR already represents dimensions as a list, but the implemented planner
-mostly assumes exactly one displayed/grouped dimension.
+This was the limitation before the multi-dimensional grouping slices.
 
-Current assumptions appear in several layers:
+The IR already represented dimensions as a list, but the implemented planner
+mostly assumed exactly one displayed/grouped dimension.
+
+The old assumptions appeared in several layers:
 
 - semantic draft grounding rejects aggregate drafts with more than one grouping
   dimension
@@ -43,8 +45,10 @@ Current assumptions appear in several layers:
 - runtime result models expose one `entity_name` plus optional `context_value`
 - answer formatting assumes one entity column plus optional context column
 
-So this should not be implemented by simply removing the `exactly one dimension`
-checks. That would risk wrong SQL and misleading output.
+This is why the implementation did not simply remove the `exactly one
+dimension` checks. It added explicit grouped-dimension structures across
+grounding, validation, resolution, SQL compilation, runtime models, and answer
+formatting.
 
 ## Design Principle
 

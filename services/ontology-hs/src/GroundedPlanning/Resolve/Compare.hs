@@ -23,8 +23,12 @@ resolveCompareMetricQuery ontology metricQuery = do
       Nothing -> Right Nothing
   (rowObject, discoveredRowPath) <-
     resolveComparisonRowObject ontology (coreFactObject base) (dimensions base) comparisonTargetObjectName
-  selectedMetric <- requireComparisonMetricName (metrics base)
-  metricDef <- requireMetric factObject selectedMetric
+  selectedMetrics <- requireComparisonMetricNames (metrics base)
+  metricDefs <- mapM (requireMetric factObject) selectedMetrics
+  metricDef <-
+    case metricDefs of
+      selectedMetric : _ -> Right selectedMetric
+      [] -> Left "Comparison queries require at least one selected metric."
   displayColumn <- requireComparisonDimensionName (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
@@ -74,7 +78,7 @@ resolveCompareMetricQuery ontology metricQuery = do
       , comparisonRequestedValue = True
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
-      , displayMetricFormulas = [resolveMetricFormula metricDef]
+      , displayMetricFormulas = resolveMetricFormulas metricDefs
       , filterLocation = "fact_table"
       , groupingDimensions = groupingDimensionValues
       , displayMetadata = resolveDisplayMetadata factObject rowObject gamesValue

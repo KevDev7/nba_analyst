@@ -69,9 +69,9 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(
             execution_plan["display_metrics"],
             [
-                {"column_key": "metric_value", "label": "average_points", "metric": "average_points"},
-                {"column_key": "metric_2", "label": "average_assists", "metric": "average_assists"},
-                {"column_key": "metric_3", "label": "average_rebounds", "metric": "average_rebounds"},
+                {"column_key": "metric_value", "label": "average_points", "metric": "average_points", "aggregation": "avg"},
+                {"column_key": "metric_2", "label": "average_assists", "metric": "average_assists", "aggregation": "avg"},
+                {"column_key": "metric_3", "label": "average_rebounds", "metric": "average_rebounds", "aggregation": "avg"},
             ],
         )
         self.assertIn("ROUND(AVG(__metric_2_source), 1) AS metric_2", sql)

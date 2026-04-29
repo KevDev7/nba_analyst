@@ -41,6 +41,7 @@ def package_results(result: RuntimeResult) -> SynthesisPayload:
         find_rows=result.find_rows,
         find_predicate_tree=result.find_predicate_tree,
         find_filters=result.find_filters,
+        find_orders=result.find_orders,
         row_predicate=result.row_predicate,
         result_predicate=result.result_predicate,
         grouping_columns=result.grouping_columns,

@@ -4,10 +4,12 @@ module GroundedPlanning.Resolve.Common.Metrics
   ( metricSourceAttribute
   , orderDirectionText
   , requireComparisonMetricName
+  , requireComparisonMetricNames
   , requireExactlyOneMetricName
   , requireObjectQueryMetricName
   , requireOrdinaryMetricName
   , requireTrendMetricName
+  , requireTrendMetricNames
   , resolveEntity
   , resolveMetricFormula
   , resolveMetricFormulaWithColumn
@@ -74,8 +76,14 @@ requireOrdinaryMetricName metricValues =
 
 requireTrendMetricName :: [MetricName] -> Either Text MetricName
 requireTrendMetricName metricValues =
-  requireExactlyOneMetricName
-    "Trend queries require exactly one selected metric."
+  requireAtLeastOneMetricName
+    "Trend queries require at least one selected metric."
+    metricValues
+
+requireTrendMetricNames :: [MetricName] -> Either Text [MetricName]
+requireTrendMetricNames metricValues =
+  requireAtLeastOneMetricNames
+    "Trend queries require at least one selected metric."
     metricValues
 
 requireObjectQueryMetricName :: [MetricName] -> Either Text MetricName
@@ -90,6 +98,12 @@ requireComparisonMetricName metricValues =
     "Comparison queries require exactly one selected metric."
     metricValues
 
+requireComparisonMetricNames :: [MetricName] -> Either Text [MetricName]
+requireComparisonMetricNames metricValues =
+  requireAtLeastOneMetricNames
+    "Comparison queries require at least one selected metric."
+    metricValues
+
 requireExactlyOneMetricName :: Text -> [MetricName] -> Either Text MetricName
 requireExactlyOneMetricName cardinalityMessage metricValues =
   case metricValues of
@@ -101,3 +115,9 @@ requireAtLeastOneMetricName cardinalityMessage metricValues =
   case metricValues of
     metricValue : _ -> Right metricValue
     [] -> Left cardinalityMessage
+
+requireAtLeastOneMetricNames :: Text -> [MetricName] -> Either Text [MetricName]
+requireAtLeastOneMetricNames cardinalityMessage metricValues =
+  case metricValues of
+    [] -> Left cardinalityMessage
+    _ : _ -> Right metricValues

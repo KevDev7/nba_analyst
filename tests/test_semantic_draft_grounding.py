@@ -121,9 +121,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(
             plan["display_metrics"],
             [
-                {"column_key": "metric_value", "label": "total_points", "metric": "total_points"},
-                {"column_key": "metric_2", "label": "total_rebounds", "metric": "total_rebounds"},
-                {"column_key": "metric_3", "label": "total_assists", "metric": "total_assists"},
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
+                {"column_key": "metric_3", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
             ],
         )
         self.assertIn("f.total_rebounds AS __metric_2_source", sql)
@@ -161,9 +161,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(
             plan["display_metrics"],
             [
-                {"column_key": "metric_value", "label": "total_points", "metric": "total_points"},
-                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists"},
-                {"column_key": "metric_3", "label": "total_rebounds", "metric": "total_rebounds"},
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
+                {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
+                {"column_key": "metric_3", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
             ],
         )
         self.assertIn("ORDER BY metric_value DESC", sql)
