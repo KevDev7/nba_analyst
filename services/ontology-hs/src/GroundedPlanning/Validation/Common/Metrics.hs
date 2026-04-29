@@ -17,8 +17,8 @@ import GroundedPlanning.Validation.Common.Ontology (requireMetric)
 
 requireOrdinaryMetricSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
 requireOrdinaryMetricSelectedMetric factObject metricValues =
-  requireFamilySelectedMetric
-    "Ranking/aggregation metric queries require exactly one selected metric."
+  requireAtLeastOneSelectedMetric
+    "Ranking/aggregation metric queries require at least one selected metric."
     factObject
     metricValues
 
@@ -31,8 +31,8 @@ requireTrendSelectedMetric factObject metricValues =
 
 requireObjectQuerySelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
 requireObjectQuerySelectedMetric factObject metricValues =
-  requireFamilySelectedMetric
-    "Object queries require exactly one selected metric."
+  requireAtLeastOneSelectedMetric
+    "Object queries require at least one selected metric."
     factObject
     metricValues
 
@@ -52,6 +52,23 @@ requireFamilySelectedMetric cardinalityMessage factObject metricValues =
         then pure metricDef
         else Left ("Metric '" <> name metricDef <> "' is present in the ontology but not executable in this slice.")
     _ -> Left cardinalityMessage
+
+requireAtLeastOneSelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.MetricDef
+requireAtLeastOneSelectedMetric cardinalityMessage factObject metricValues =
+  case metricValues of
+    [] -> Left cardinalityMessage
+    _ : _ -> do
+      metricDefs <- mapM (requireExecutableMetric factObject) metricValues
+      case metricDefs of
+        selectedMetric : _ -> pure selectedMetric
+        [] -> Left cardinalityMessage
+
+requireExecutableMetric :: Object -> MetricName -> Either Text OT.MetricDef
+requireExecutableMetric factObject metricValue = do
+  metricDef <- requireMetric factObject metricValue
+  if executable metricDef
+    then pure metricDef
+    else Left ("Metric '" <> name metricDef <> "' is present in the ontology but not executable in this slice.")
 
 validateMetricAttributes :: OT.MetricDef -> Either Text ()
 validateMetricAttributes metricDef =

@@ -16,7 +16,6 @@ class DimensionContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": 5,
                     "assumptions": [],
@@ -45,7 +44,6 @@ class DimensionContractValidationTests(unittest.TestCase):
                     "dimensions": ["made_up_dimension"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -63,7 +61,7 @@ class DimensionContractValidationTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_wrong_kind_attribute_fails_with_attribute_kind_error(self) -> None:
+    def test_public_primary_key_dimension_is_valid_grouping_context(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -73,7 +71,6 @@ class DimensionContractValidationTests(unittest.TestCase):
                     "dimensions": ["person_id"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -83,13 +80,15 @@ class DimensionContractValidationTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
 
-        self.assertIn(
-            "Attribute 'person_id' has the wrong kind in the ontology.",
-            str(context.exception),
+        self.assertEqual(
+            planner_output["execution_plan"]["grouping_columns"],
+            [{"column_key": "group_1", "label": "person_id"}],
         )
+        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        self.assertIn("f.person_id AS group_1", sql)
+        self.assertIn("PARTITION BY f.person_id", sql)
 
     def test_comparison_requires_identity_dimension_on_target_object(self) -> None:
         payload = {
@@ -101,7 +100,6 @@ class DimensionContractValidationTests(unittest.TestCase):
                     "dimensions": ["primary_position"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -136,7 +134,6 @@ class DimensionContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],

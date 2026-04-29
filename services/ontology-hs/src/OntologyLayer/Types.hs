@@ -18,6 +18,7 @@
 module OntologyLayer.Types where
 
 import Data.Aeson ((.:), (.:?), (.!=), FromJSON (parseJSON), ToJSON, withObject, withText)
+import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -49,6 +50,7 @@ data Attribute = Attribute
   , visibility :: AttributeVisibility
   , comparison_identity :: Bool
   , derivation :: Maybe AttributeDerivation
+  , value_aliases :: Map Text [Text]
   }
   deriving (Show, Eq, Generic, ToJSON)
 
@@ -62,6 +64,7 @@ instance FromJSON Attribute where
       <*> obj .: "visibility"
       <*> obj .:? "comparison_identity" .!= False
       <*> obj .: "derivation"
+      <*> obj .:? "value_aliases" .!= mempty
 
 data AttributeDerivation = AttributeDerivation
   -- A derived attribute computed from another attribute.

@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module QueryModel.SemanticDraft.Types
-  ( AggregateDimension(..)
-  , DraftFilter(..)
+  ( DraftFilter(..)
   , DraftFreeformObject(..)
+  , DraftPredicate(..)
   , DraftTask(..)
   , DraftTimeWindow(..)
   , GroundedAggregate(..)
@@ -12,11 +12,15 @@ module QueryModel.SemanticDraft.Types
   , GroundedFind(..)
   , GroundedRanking(..)
   , GroundedTrend(..)
-  , RankingFilterBundle(..)
   , SemanticDraft(..)
+  , SemanticGroupingDimension(..)
+  , TimeScope(..)
   ) where
 
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?), (.!=))
+import Control.Applicative ((<|>))
+import Data.Aeson (FromJSON (parseJSON), Value (Array, Object), withObject, (.:), (.:?), (.!=))
+import qualified Data.Aeson.KeyMap as KeyMap
+import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import OntologyLayer.Types (Object)
 import qualified OntologyLayer.Types as OT
@@ -45,6 +49,9 @@ data SemanticDraft = SemanticDraft
   , measures :: [Text]
   , dimensions :: [Text]
   , filters :: [DraftFilter]
+  , resultFilters :: [DraftFilter]
+  , predicate :: Maybe DraftPredicate
+  , resultPredicate :: Maybe DraftPredicate
   , timeWindow :: DraftTimeWindow
   , grain :: Maybe Text
   , order :: [DraftFreeformObject]
@@ -62,6 +69,43 @@ newtype DraftFreeformObject = DraftFreeformObject ()
 
 instance FromJSON DraftFreeformObject where
   parseJSON = withObject "DraftFreeformObject" $ \_obj -> pure (DraftFreeformObject ())
+
+data DraftPredicate
+  = DraftPredicateLeaf
+      { draftPredicateField :: Text
+      , draftPredicateOp :: Maybe Text
+      , draftPredicateValue :: QI.PredicateValue
+      }
+  | DraftPredicateAnd [DraftPredicate]
+  | DraftPredicateOr [DraftPredicate]
+  | DraftPredicateNot DraftPredicate
+  deriving (Show, Eq)
+
+instance FromJSON DraftPredicate where
+  parseJSON = withObject "DraftPredicate" $ \obj -> do
+    kindValue <- obj .: "kind"
+    case (kindValue :: Text) of
+      "leaf" -> do
+        operatorValue <- obj .:? "operator"
+        opValue <- obj .:? "op"
+        DraftPredicateLeaf
+          <$> obj .: "field"
+          <*> pure (operatorValue <|> opValue)
+          <*> (obj .: "value" >>= parseDraftPredicateValue)
+      "and" -> DraftPredicateAnd <$> obj .: "predicates"
+      "or" -> DraftPredicateOr <$> obj .: "predicates"
+      "not" -> DraftPredicateNot <$> obj .: "predicate"
+      _ -> fail ("Unknown draft predicate kind: " <> show kindValue)
+
+parseDraftPredicateValue :: Value -> Parser QI.PredicateValue
+parseDraftPredicateValue rawValue =
+  case rawValue of
+    Object objectValue
+      | KeyMap.member "kind" objectValue -> parseJSON rawValue
+      | KeyMap.member "lower" objectValue || KeyMap.member "upper" objectValue ->
+          withObject "DraftPredicateRangeValue" (\obj -> QI.PredicateRange <$> obj .: "lower" <*> obj .: "upper") rawValue
+    Array _ -> QI.PredicateList <$> parseJSON rawValue
+    _ -> QI.PredicateScalar <$> parseJSON rawValue
 
 data DraftFilter = DraftFilter
   -- A loose user-facing filter captured by the LLM.
@@ -88,6 +132,9 @@ instance FromJSON SemanticDraft where
       <*> obj .:? "measures" .!= []
       <*> obj .:? "dimensions" .!= []
       <*> obj .:? "filters" .!= []
+      <*> obj .:? "result_filters" .!= []
+      <*> obj .:? "predicate"
+      <*> obj .:? "result_predicate"
       <*> obj .: "time_window"
       <*> obj .:? "grain"
       <*> obj .:? "order" .!= []
@@ -105,18 +152,26 @@ data GroundedRanking = GroundedRanking
   { factObject :: Object
   , subjectObject :: Object
   , metricDef :: OT.MetricDef
+  , metricDefs :: [OT.MetricDef]
   , displayDimension :: Text
+  , displayDimensions :: [Text]
   , filterValues :: [QI.Filter]
-  , linkedFilterValues :: [QI.LinkedFilter]
+  , rowPredicateValue :: Maybe QI.Predicate
+  , resultPredicateValue :: Maybe QI.Predicate
   , limitValue :: Maybe Int
   , assumptionValues :: [Text]
   , matchScore :: Int
   , subjectAffinityScore :: Int
   }
 
-data RankingFilterBundle
-  = RecentRanking Int [QI.Filter]
-  | SeasonRanking Text Text
+data TimeScope
+  = RecentGames Int [QI.Filter]
+  | LastNDays Int
+  | ExactSeason Text Text
+  | SeasonTypeOnly Text
+  | PastYear
+  | DateRange (Maybe Text) (Maybe Text)
+  | AllAvailable
   deriving (Show, Eq)
 
 data GroundedTrend = GroundedTrend
@@ -125,10 +180,11 @@ data GroundedTrend = GroundedTrend
   -- and filters needed to build a typed time-series Query IR.
   { trendFactObject :: Object
   , trendMetricDef :: OT.MetricDef
-  , trendDisplayDimension :: Maybe Text
+  , trendDisplayDimensions :: [Text]
   , trendGrainValue :: Text
   , trendFilterValues :: [QI.Filter]
-  , trendLinkedFilterValues :: [QI.LinkedFilter]
+  , trendRowPredicateValue :: Maybe QI.Predicate
+  , trendResultPredicateValue :: Maybe QI.Predicate
   , trendAssumptions :: [Text]
   , trendMatchScore :: Int
   , trendSubjectAffinityScore :: Int
@@ -141,29 +197,33 @@ data GroundedComparison = GroundedComparison
   , comparisonSubjectObject :: Object
   , comparisonMetricDef :: OT.MetricDef
   , comparisonDisplayDimension :: Text
+  , comparisonDisplayDimensions :: [Text]
+  , comparisonGrainValue :: Maybe Text
   , comparisonFilterValues :: [QI.Filter]
-  , comparisonLinkedFilterValues :: [QI.LinkedFilter]
+  , comparisonRowPredicateValue :: Maybe QI.Predicate
   , comparisonEntitiesValue :: [QI.EntityRef]
   , comparisonAssumptions :: [Text]
   , comparisonMatchScore :: Int
   , comparisonSubjectAffinityScore :: Int
   }
 
-data AggregateDimension = AggregateDimension
-  { aggregateDimensionObject :: Object
-  , aggregateDimensionName :: Text
+data SemanticGroupingDimension = SemanticGroupingDimension
+  { groupingDimensionObject :: Object
+  , groupingDimensionName :: Text
   }
 
 data GroundedAggregate = GroundedAggregate
   -- An aggregate draft after ontology grounding.
-  -- It identifies the fact surface, metric, and public grouping dimension
+  -- It identifies the fact surface, metric, and public grouping dimensions
   -- needed to build grouped metric-query IR without adding a ranking shape.
   { aggregateFactObject :: Object
-  , aggregateGroupObject :: Object
+  , aggregateGroupObjects :: [Object]
   , aggregateMetricDef :: OT.MetricDef
-  , aggregateDisplayDimension :: Text
+  , aggregateMetricDefs :: [OT.MetricDef]
+  , aggregateDisplayDimensions :: [Text]
   , aggregateFilterValues :: [QI.Filter]
-  , aggregateLinkedFilterValues :: [QI.LinkedFilter]
+  , aggregateRowPredicateValue :: Maybe QI.Predicate
+  , aggregateResultPredicateValue :: Maybe QI.Predicate
   , aggregateLimitValue :: Maybe Int
   , aggregateAssumptions :: [Text]
   , aggregateMatchScore :: Int
@@ -174,7 +234,7 @@ data GroundedFind = GroundedFind
   { findFactObject :: Object
   , findTargetObject :: Object
   , findDisplayDimensions :: [Text]
-  , findPredicateValues :: [QI.FindPredicate]
+  , findPredicateTreeValue :: Maybe QI.Predicate
   , findFilterValues :: [QI.Filter]
   , findLimitValue :: Maybe Int
   , findAssumptions :: [Text]

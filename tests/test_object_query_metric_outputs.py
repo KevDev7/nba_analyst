@@ -13,8 +13,29 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import plan_question, run_cli
+from apps.cli.main import call_haskell_planner_for_semantic_draft, plan_question, run_cli
 from tests.planner_helpers import call_plan_query_json
+
+
+def object_draft(**overrides: object) -> dict[str, object]:
+    draft: dict[str, object] = {
+        "task": "object",
+        "subject": "players",
+        "measure": "average points",
+        "measures": ["average points"],
+        "dimensions": [],
+        "filters": [],
+        "time_window": {"kind": "last_n_games", "value": 10},
+        "grain": None,
+        "order": [],
+        "limit": None,
+        "sort": "desc",
+        "entities": [],
+        "operations": [],
+        "assumptions": [],
+    }
+    draft.update(overrides)
+    return draft
 
 
 class ObjectQueryMetricOutputTests(unittest.TestCase):
@@ -41,9 +62,40 @@ class ObjectQueryMetricOutputTests(unittest.TestCase):
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points"])
         self.assertEqual(
-            shared["linkedFilters"],
-            [{"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}],
+            shared["rowPredicate"],
+            {
+                "kind": "leaf",
+                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                "operator": "equals",
+                "value": {"kind": "scalar", "value": "Lakers"},
+            },
         )
+
+    def test_average_minutes_object_query_with_team_filter_is_accepted(self) -> None:
+        planner_output = call_haskell_planner_for_semantic_draft(
+            object_draft(
+                measure="average minutes",
+                measures=["average minutes"],
+                filters=[{"field": "team", "op": "=", "value": "Lakers"}],
+                entities=["Lakers"],
+            )
+        )
+
+        shared = planner_output["query"]["spec"]["sharedQuery"]
+        execution_plan = planner_output["execution_plan"]
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["average_minutes"])
+        self.assertEqual(
+            shared["rowPredicate"],
+            {
+                "kind": "leaf",
+                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                "operator": "equals",
+                "value": {"kind": "scalar", "value": "Lakers"},
+            },
+        )
+        self.assertEqual(execution_plan["metric"], "average_minutes")
+        self.assertIn("AVG(metric_source)", execution_plan["steps"][0]["sql"])
 
     def test_object_query_mismatched_order_is_rejected(self) -> None:
         payload = {
@@ -56,7 +108,6 @@ class ObjectQueryMetricOutputTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": None,
                     "assumptions": [],

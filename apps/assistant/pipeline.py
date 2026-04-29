@@ -35,6 +35,8 @@ from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
+from apps.assistant.predicate_observability import build_predicate_trace
+from apps.assistant.value_resolution_observability import build_value_resolution_trace
 from apps.cli.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
 from apps.cli.semantic_assumptions import apply_semantic_assumptions
 from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
@@ -134,6 +136,8 @@ def run_assistant(question: str, debug: bool = False) -> AssistantResult:
             "query": planner_output.get("query"),
             "resolved_query": planner_output.get("resolved_query"),
             "execution_plan": planner_output.get("execution_plan"),
+            "predicate_trace": build_predicate_trace(semantic_draft, planner_output),
+            "value_resolution_trace": build_value_resolution_trace(semantic_draft, planner_output),
             "answer": formatted,
         },
     )

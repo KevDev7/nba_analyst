@@ -66,6 +66,13 @@ class CliPipelineTests(unittest.TestCase):
                 "query": {"kind": "MetricQuery"},
                 "resolved_query": {"kind": "ResolvedMetric"},
                 "execution_plan": SAMPLE_EXECUTION_PLAN,
+                "predicate_trace": {"sql_predicates": [{"clauses": ["WHERE metric_value > 20"]}]},
+                "value_resolution_trace": {
+                    "entity_resolutions": [],
+                    "predicate_value_resolutions": [
+                        {"raw_value": "Western", "canonical_value": "west"},
+                    ],
+                },
                 "answer": "formatted output",
             },
         ),
@@ -78,6 +85,10 @@ class CliPipelineTests(unittest.TestCase):
 
         self.assertIn("Query type: metric_query", output)
         self.assertIn("Semantic draft:", output)
+        self.assertIn("Predicate trace:", output)
+        self.assertIn("Value resolution trace:", output)
+        self.assertIn("Western", output)
+        self.assertIn("WHERE metric_value > 20", output)
         self.assertIn("Execution plan:", output)
         self.assertTrue(output.endswith("formatted output"))
         mock_run_assistant.assert_called_once_with(

@@ -2,8 +2,6 @@
 
 module QueryModel.SemanticDraft.Normalize
   ( draftTask
-  , normalizeFindOp
-  , normalizeFindWordOp
   , normalizeSeasonType
   , normalizeTrendGrain
   , normalizedKey
@@ -15,7 +13,6 @@ module QueryModel.SemanticDraft.Normalize
 import Data.Char (isAlphaNum)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified QueryModel.IR as QI
 import QueryModel.SemanticDraft.Types
 
 draftTask :: Text -> DraftTask
@@ -50,47 +47,17 @@ normalizeTrendGrain rawGrain =
     "daily" -> Just "day"
     "date" -> Just "day"
     "game" -> Just "day"
+    "gameday" -> Just "day"
     "week" -> Just "week"
     "weekly" -> Just "week"
     "calendarweek" -> Just "week"
+    "gameweek" -> Just "week"
     "month" -> Just "month"
     "monthly" -> Just "month"
     "calendarmonth" -> Just "month"
+    "gamemonth" -> Just "month"
     "season" -> Just "season"
     "seasonal" -> Just "season"
-    _ -> Nothing
-
-normalizeFindOp :: Maybe Text -> Maybe QI.PredicateOp
-normalizeFindOp maybeRawOp =
-  case T.strip <$> maybeRawOp of
-    Just "=" -> Just QI.OpEq
-    Just ">" -> Just QI.OpGt
-    Just ">=" -> Just QI.OpGte
-    Just "<" -> Just QI.OpLt
-    Just "<=" -> Just QI.OpLte
-    _ -> normalizeFindWordOp maybeRawOp
-
-normalizeFindWordOp :: Maybe Text -> Maybe QI.PredicateOp
-normalizeFindWordOp maybeRawOp =
-  case normalizedKey <$> maybeRawOp of
-    Nothing -> Just QI.OpEq
-    Just "" -> Just QI.OpEq
-    Just "eq" -> Just QI.OpEq
-    Just "equals" -> Just QI.OpEq
-    Just "is" -> Just QI.OpEq
-    Just "over" -> Just QI.OpGt
-    Just "above" -> Just QI.OpGt
-    Just "greaterthan" -> Just QI.OpGt
-    Just "gt" -> Just QI.OpGt
-    Just "morethan" -> Just QI.OpGt
-    Just "atleast" -> Just QI.OpGte
-    Just "gte" -> Just QI.OpGte
-    Just "under" -> Just QI.OpLt
-    Just "below" -> Just QI.OpLt
-    Just "lessthan" -> Just QI.OpLt
-    Just "lt" -> Just QI.OpLt
-    Just "atmost" -> Just QI.OpLte
-    Just "lte" -> Just QI.OpLte
     _ -> Nothing
 
 normalizeSeasonType :: Text -> Maybe Text

@@ -76,6 +76,7 @@ timeGrainText timeGrainValue =
 -- Example: last_n_games uses FilterInt 10, exact_season uses FilterText "2024-25".
 data FilterValue
   = FilterInt Int
+  | FilterDouble Double
   | FilterText Text
   deriving (Show, Eq, Generic)
 
@@ -83,11 +84,204 @@ instance ToJSON FilterValue where
   toJSON filterValue =
     case filterValue of
       FilterInt intValue -> toJSON intValue
+      FilterDouble doubleValue -> toJSON doubleValue
       FilterText textValue -> toJSON textValue
 
 instance FromJSON FilterValue where
   parseJSON value =
-    (FilterInt <$> parseJSON value) <|> (FilterText <$> parseJSON value)
+    (FilterInt <$> parseJSON value) <|> (FilterDouble <$> parseJSON value) <|> (FilterText <$> parseJSON value)
+
+-- A predicate field is a future-proof reference to a grounded ontology field.
+-- Plain English: which object's attribute is being filtered, and is that
+-- filter applied before grouping (row) or after grouping (result)?
+data PredicateFieldLocation
+  = PredicateRowField
+  | PredicateResultField
+  deriving (Show, Eq, Generic)
+
+instance ToJSON PredicateFieldLocation where
+  toJSON locationValue =
+    String $
+      case locationValue of
+        PredicateRowField -> "row"
+        PredicateResultField -> "result"
+
+instance FromJSON PredicateFieldLocation where
+  parseJSON = withText "PredicateFieldLocation" $ \value ->
+    case value of
+      "row" -> pure PredicateRowField
+      "result" -> pure PredicateResultField
+      _ -> fail ("Unknown predicate field location: " <> show value)
+
+data PredicateField = PredicateField
+  { predicateFieldTargetObject :: Text
+  , predicateFieldAttribute :: Text
+  , predicateLocation :: PredicateFieldLocation
+  }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON PredicateField where
+  toJSON fieldValue =
+    object
+      [ "targetObject" .= predicateFieldTargetObject fieldValue
+      , "attribute" .= predicateFieldAttribute fieldValue
+      , "location" .= predicateLocation fieldValue
+      ]
+
+instance FromJSON PredicateField where
+  parseJSON = withObject "PredicateField" $ \obj ->
+    PredicateField
+      <$> obj .: "targetObject"
+      <*> obj .: "attribute"
+      <*> obj .: "location"
+
+data PredicateOperator
+  = PredicateEquals
+  | PredicateNotEquals
+  | PredicateGreaterThan
+  | PredicateGreaterThanOrEqual
+  | PredicateLessThan
+  | PredicateLessThanOrEqual
+  | PredicateIn
+  | PredicateNotIn
+  | PredicateBetween
+  | PredicateContains
+  deriving (Show, Eq, Generic)
+
+instance ToJSON PredicateOperator where
+  toJSON operatorValue =
+    String $
+      case operatorValue of
+        PredicateEquals -> "equals"
+        PredicateNotEquals -> "not_equals"
+        PredicateGreaterThan -> "greater_than"
+        PredicateGreaterThanOrEqual -> "greater_than_or_equal"
+        PredicateLessThan -> "less_than"
+        PredicateLessThanOrEqual -> "less_than_or_equal"
+        PredicateIn -> "in"
+        PredicateNotIn -> "not_in"
+        PredicateBetween -> "between"
+        PredicateContains -> "contains"
+
+instance FromJSON PredicateOperator where
+  parseJSON = withText "PredicateOperator" $ \value ->
+    case value of
+      "=" -> pure PredicateEquals
+      "equals" -> pure PredicateEquals
+      "eq" -> pure PredicateEquals
+      "!=" -> pure PredicateNotEquals
+      "<>" -> pure PredicateNotEquals
+      "not_equals" -> pure PredicateNotEquals
+      "neq" -> pure PredicateNotEquals
+      ">" -> pure PredicateGreaterThan
+      "greater_than" -> pure PredicateGreaterThan
+      "gt" -> pure PredicateGreaterThan
+      ">=" -> pure PredicateGreaterThanOrEqual
+      "greater_than_or_equal" -> pure PredicateGreaterThanOrEqual
+      "gte" -> pure PredicateGreaterThanOrEqual
+      "<" -> pure PredicateLessThan
+      "less_than" -> pure PredicateLessThan
+      "lt" -> pure PredicateLessThan
+      "<=" -> pure PredicateLessThanOrEqual
+      "less_than_or_equal" -> pure PredicateLessThanOrEqual
+      "lte" -> pure PredicateLessThanOrEqual
+      "in" -> pure PredicateIn
+      "not_in" -> pure PredicateNotIn
+      "between" -> pure PredicateBetween
+      "contains" -> pure PredicateContains
+      _ -> fail ("Unknown predicate operator: " <> show value)
+
+predicateOperatorText :: PredicateOperator -> Text
+predicateOperatorText operatorValue =
+  case operatorValue of
+    PredicateEquals -> "="
+    PredicateNotEquals -> "<>"
+    PredicateGreaterThan -> ">"
+    PredicateGreaterThanOrEqual -> ">="
+    PredicateLessThan -> "<"
+    PredicateLessThanOrEqual -> "<="
+    PredicateIn -> "in"
+    PredicateNotIn -> "not_in"
+    PredicateBetween -> "between"
+    PredicateContains -> "contains"
+
+data PredicateValue
+  = PredicateScalar FilterValue
+  | PredicateList [FilterValue]
+  | PredicateRange FilterValue FilterValue
+  deriving (Show, Eq, Generic)
+
+instance ToJSON PredicateValue where
+  toJSON value =
+    case value of
+      PredicateScalar scalarValue ->
+        object
+          [ "kind" .= String "scalar"
+          , "value" .= scalarValue
+          ]
+      PredicateList listValues ->
+        object
+          [ "kind" .= String "list"
+          , "values" .= listValues
+          ]
+      PredicateRange lowerValue upperValue ->
+        object
+          [ "kind" .= String "range"
+          , "lower" .= lowerValue
+          , "upper" .= upperValue
+          ]
+
+instance FromJSON PredicateValue where
+  parseJSON = withObject "PredicateValue" $ \obj -> do
+    kindValue <- obj .: "kind"
+    case (kindValue :: Text) of
+      "scalar" -> PredicateScalar <$> obj .: "value"
+      "list" -> PredicateList <$> obj .: "values"
+      "range" -> PredicateRange <$> obj .: "lower" <*> obj .: "upper"
+      _ -> fail ("Unknown predicate value kind: " <> show kindValue)
+
+data Predicate
+  = PredicateLeaf PredicateField PredicateOperator PredicateValue
+  | PredicateAnd [Predicate]
+  | PredicateOr [Predicate]
+  | PredicateNot Predicate
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Predicate where
+  toJSON predicateValue =
+    case predicateValue of
+      PredicateLeaf fieldValue operatorValue valueValue ->
+        object
+          [ "kind" .= String "leaf"
+          , "field" .= fieldValue
+          , "operator" .= operatorValue
+          , "value" .= valueValue
+          ]
+      PredicateAnd predicateValues ->
+        object
+          [ "kind" .= String "and"
+          , "predicates" .= predicateValues
+          ]
+      PredicateOr predicateValues ->
+        object
+          [ "kind" .= String "or"
+          , "predicates" .= predicateValues
+          ]
+      PredicateNot nestedPredicate ->
+        object
+          [ "kind" .= String "not"
+          , "predicate" .= nestedPredicate
+          ]
+
+instance FromJSON Predicate where
+  parseJSON = withObject "Predicate" $ \obj -> do
+    kindValue <- obj .: "kind"
+    case (kindValue :: Text) of
+      "leaf" -> PredicateLeaf <$> obj .: "field" <*> obj .: "operator" <*> obj .: "value"
+      "and" -> PredicateAnd <$> obj .: "predicates"
+      "or" -> PredicateOr <$> obj .: "predicates"
+      "not" -> PredicateNot <$> obj .: "predicate"
+      _ -> fail ("Unknown predicate kind: " <> show kindValue)
 
 -- A named constraint on the query.
 -- Example: kind = "last_n_games", value = 10 means "only use the last 10 games."
@@ -115,11 +309,29 @@ instance FromJSON Filter where
           Just (FilterInt gamesValue) | gamesValue > 0 ->
             pure (lastNGamesFilter gamesValue)
           _ -> fail "last_n_games filters require a positive integer value."
+      "last_n_days" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterInt daysValue) | daysValue > 0 ->
+            pure (lastNDaysFilter daysValue)
+          _ -> fail "last_n_days filters require a positive integer value."
       "past_year" -> do
         maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
         case maybeValue of
           Nothing -> pure pastYearFilter
           Just _ -> fail "past_year filters must not provide a value."
+      "date_from" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterText startDate) | startDate /= ("" :: Text) ->
+            pure (dateFromFilter startDate)
+          _ -> fail "date_from filters require a non-empty string value."
+      "date_to" -> do
+        maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
+        case maybeValue of
+          Just (FilterText endDate) | endDate /= ("" :: Text) ->
+            pure (dateToFilter endDate)
+          _ -> fail "date_to filters require a non-empty string value."
       "exact_season" -> do
         maybeValue <- obj .:? "value" :: Parser (Maybe FilterValue)
         case maybeValue of
@@ -148,12 +360,36 @@ lastNGamesFilter gamesValue =
     , value = Just (FilterInt gamesValue)
     }
 
+-- Build the canonical IR shape for "last N calendar days".
+lastNDaysFilter :: Int -> Filter
+lastNDaysFilter daysValue =
+  FilterRef
+    { kind = "last_n_days"
+    , value = Just (FilterInt daysValue)
+    }
+
 -- Build the canonical IR shape for "past year".
 pastYearFilter :: Filter
 pastYearFilter =
   FilterRef
     { kind = "past_year"
     , value = Nothing
+    }
+
+-- Build the canonical IR shape for an inclusive lower game-date bound.
+dateFromFilter :: Text -> Filter
+dateFromFilter startDate =
+  FilterRef
+    { kind = "date_from"
+    , value = Just (FilterText startDate)
+    }
+
+-- Build the canonical IR shape for an inclusive upper game-date bound.
+dateToFilter :: Text -> Filter
+dateToFilter endDate =
+  FilterRef
+    { kind = "date_to"
+    , value = Just (FilterText endDate)
     }
 
 -- Build the canonical IR shape for a specific season label.
@@ -214,65 +450,6 @@ instance FromJSON Order where
       "desc" -> Desc <$> obj .: "metric"
       _ -> fail ("Unknown order kind: " <> show kindValue)
 
--- A filter that reaches through a relationship to another object.
--- Example: filter PlayerGame rows by a Player attribute such as full_name.
-data LinkedFilter = LinkedFilter
-  { targetObject :: Text
-  , attribute :: Text
-  , value :: Text
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
-data PredicateOp
-  = OpEq
-  | OpGt
-  | OpGte
-  | OpLt
-  | OpLte
-  deriving (Show, Eq, Generic)
-
-instance ToJSON PredicateOp where
-  toJSON opValue =
-    String $
-      case opValue of
-        OpEq -> "="
-        OpGt -> ">"
-        OpGte -> ">="
-        OpLt -> "<"
-        OpLte -> "<="
-
-instance FromJSON PredicateOp where
-  parseJSON = withText "PredicateOp" $ \value ->
-    case value of
-      "=" -> pure OpEq
-      "eq" -> pure OpEq
-      ">" -> pure OpGt
-      "gt" -> pure OpGt
-      ">=" -> pure OpGte
-      "gte" -> pure OpGte
-      "<" -> pure OpLt
-      "lt" -> pure OpLt
-      "<=" -> pure OpLte
-      "lte" -> pure OpLte
-      _ -> fail ("Unknown predicate operator: " <> show value)
-
-predicateOpText :: PredicateOp -> Text
-predicateOpText opValue =
-  case opValue of
-    OpEq -> "="
-    OpGt -> ">"
-    OpGte -> ">="
-    OpLt -> "<"
-    OpLte -> "<="
-
-data FindPredicate = FindPredicate
-  { predicateTargetObject :: Text
-  , predicateAttribute :: Text
-  , predicateOperator :: PredicateOp
-  , predicateFilterValue :: FilterValue
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
 -- The shared body of both object queries and metric queries.
 -- Plain English: what table/object is the query centered on, what measurements
 -- and breakdowns are involved, what filters apply, and how should results sort.
@@ -282,12 +459,42 @@ data BaseQuery = BaseQuery
   , dimensions :: [DimensionName]
   , timeGrain :: Maybe TimeGrain
   , filters :: [Filter]
-  , linkedFilters :: [LinkedFilter]
+  , rowPredicate :: Maybe Predicate
+  , resultPredicate :: Maybe Predicate
   , orders :: [Order]
   , limit :: Maybe Int
   , assumptions :: [Text]
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic)
+
+instance ToJSON BaseQuery where
+  toJSON base =
+    object
+      [ "coreFactObject" .= coreFactObject base
+      , "metrics" .= metrics base
+      , "dimensions" .= dimensions base
+      , "timeGrain" .= timeGrain base
+      , "filters" .= filters base
+      , "rowPredicate" .= rowPredicate base
+      , "resultPredicate" .= resultPredicate base
+      , "orders" .= orders base
+      , "limit" .= limit base
+      , "assumptions" .= assumptions base
+      ]
+
+instance FromJSON BaseQuery where
+  parseJSON = withObject "BaseQuery" $ \obj ->
+    BaseQuery
+      <$> obj .: "coreFactObject"
+      <*> obj .: "metrics"
+      <*> obj .: "dimensions"
+      <*> obj .:? "timeGrain"
+      <*> obj .: "filters"
+      <*> obj .:? "rowPredicate"
+      <*> obj .:? "resultPredicate"
+      <*> obj .: "orders"
+      <*> obj .:? "limit"
+      <*> obj .:? "assumptions" .!= []
 
 -- Extra intent for questions that compare named entities.
 -- Example: "compare Brunson and Haliburton" points at two player entities.
@@ -331,7 +538,7 @@ data FindQuerySpec = FindQuerySpec
   { findCoreFactObject :: Text
   , findTargetObject :: Text
   , findDisplayDimensions :: [DimensionName]
-  , findPredicates :: [FindPredicate]
+  , findPredicateTree :: Maybe Predicate
   , findFilters :: [Filter]
   , findLimit :: Maybe Int
   , findAssumptions :: [Text]

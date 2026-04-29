@@ -17,7 +17,7 @@ module QueryModel.SemanticDraft.Match
   , objectAttributes
   , objectMetrics
   , objectName
-  , requireRankingFactSurface
+  , requireTimeScopeFactSurface
   , resolveSubjectObject
   , subjectFactAffinity
   , trendDimensionMatchesSubject
@@ -36,8 +36,9 @@ import OntologyLayer.Types
   , Ontology (objects)
   )
 import qualified OntologyLayer.Types as OT
+import QueryModel.SemanticDraft.MeasureMatch
 import QueryModel.SemanticDraft.Normalize
-import QueryModel.SemanticDraft.Types (RankingFilterBundle (RecentRanking, SeasonRanking))
+import QueryModel.SemanticDraft.Types (TimeScope (AllAvailable, DateRange, ExactSeason, LastNDays, PastYear, RecentGames, SeasonTypeOnly))
 
 bestPublicDimensionMatch :: Text -> Object -> Maybe Text
 bestPublicDimensionMatch rawDimension objectValue =
@@ -117,10 +118,10 @@ trendFactAffinity trendGrain subjectObject factObjectValue =
         (_, Just _) -> 50
         _ -> 0
 
-requireRankingFactSurface :: RankingFilterBundle -> Object -> Maybe ()
-requireRankingFactSurface rankingFilters factObjectValue =
-  case rankingFilters of
-    RecentRanking _ seasonFilters -> do
+requireTimeScopeFactSurface :: TimeScope -> Object -> Maybe ()
+requireTimeScopeFactSurface timeScopeValue factObjectValue =
+  case timeScopeValue of
+    RecentGames _ seasonFilters -> do
       _ <- findAttribute factObjectValue "game_date"
       case seasonFilters of
         [] -> Just ()
@@ -128,103 +129,31 @@ requireRankingFactSurface rankingFilters factObjectValue =
           _ <- findAttribute factObjectValue "season_year"
           _ <- findAttribute factObjectValue "season_type"
           Just ()
-    SeasonRanking _ _ -> do
+    ExactSeason _ _ -> do
       _ <- findAttribute factObjectValue "season_year"
       _ <- findAttribute factObjectValue "season_type"
       case findAttribute factObjectValue "game_date" of
         Nothing -> Just ()
         Just _ -> Nothing
+    SeasonTypeOnly _ -> do
+      _ <- findAttribute factObjectValue "season_type"
+      Just ()
+    LastNDays _ -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    PastYear -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    DateRange _ _ -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    AllAvailable -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
 
 bestMetricMatch :: Text -> Object -> Maybe OT.MetricDef
-bestMetricMatch rawMeasure objectValue =
-  -- Choose the highest-scoring executable ontology metric for the user's measure phrase.
-  case rankedExecutableMatches of
-    metricValue : _ -> Just metricValue
-    [] -> Nothing
-  where
-    rankedExecutableMatches =
-      sortOn
-        (\metricValue -> Down (metricMatchScore rawMeasure metricValue))
-        [ metricValue
-        | metricValue <- objectMetrics objectValue
-        , metricExecutable metricValue
-        , metricMatchScore rawMeasure metricValue > 0
-        ]
-
-metricMatchScore :: Text -> OT.MetricDef -> Int
-metricMatchScore rawMeasure metricValue =
-  -- Score how well a user-facing measure phrase maps to one ontology metric.
-  maximum (0 : [score | (aliasKey, score) <- metricAliases metricValue, aliasKey == measureKey])
-  where
-    measureKey = normalizedMeasureKey rawMeasure
-
-metricAliases :: OT.MetricDef -> [(Text, Int)]
-metricAliases metricValue =
-  -- Generate lexical aliases for a metric from its name, aggregation, and source attributes.
-  -- Example: total_points can match "points", "pts", "scoring", or "total points".
-  baseAliases <> aggregationAliases <> sourceAliases
-  where
-    metricKey = normalizedMeasureKey (metricName metricValue)
-    sourceKeys = map normalizedMeasureKey (metricSourceAttributes metricValue)
-    aggregationKey = normalizedKey (metricAggregation metricValue)
-    baseAliases =
-      (metricKey, 100)
-        : [ (T.replace "total" "" metricKey, 75)
-          | "total" `T.isInfixOf` metricKey
-          , T.replace "total" "" metricKey /= ""
-          ]
-          <> [ ("total" <> T.dropEnd 5 metricKey, 95)
-             | "total" `T.isSuffixOf` metricKey
-             , T.dropEnd 5 metricKey /= ""
-             ]
-    sourceAliases =
-      [ (sourceKey, 80)
-      | sourceKey <- sourceKeys
-      , aggregationKey `elem` ["sum", "identity"]
-      ]
-    aggregationAliases =
-      concatMap (aliasesForAggregation aggregationKey metricKey) sourceKeys
-
-aliasesForAggregation :: Text -> Text -> Text -> [(Text, Int)]
-aliasesForAggregation aggregationKey metricKey sourceKey
-  -- Add measure aliases based on aggregation style, like avg points -> average_points.
-  | aggregationKey == "avg" =
-      [ ("average" <> sourceKey, 95)
-      , ("avg" <> sourceKey, 95)
-      , (sourceKey <> "pergame", 90)
-      , ("pergame" <> sourceKey, 85)
-      ]
-        <> pointsAverageAliases
-  | aggregationKey == "sum" =
-      [ ("total" <> sourceKey, 95)
-      ]
-        <> pointsTotalAliases
-  | "pergame" `T.isSuffixOf` metricKey =
-      [ ("average" <> sourceKey, 95)
-      , ("avg" <> sourceKey, 95)
-      , (sourceKey <> "pergame", 95)
-      ]
-        <> pointsAverageAliases
-  | otherwise = []
-  where
-    pointsAverageAliases =
-      if sourceKey `elem` ["points", "score"] || "points" `T.isInfixOf` metricKey
-        then [("ppg", 95), ("averagepoints", 95), ("avgpoints", 95), ("averagescoring", 90)]
-        else []
-    pointsTotalAliases =
-      if sourceKey `elem` ["points", "score"] || "points" `T.isInfixOf` metricKey
-        then
-          [ ("points", 85)
-          , ("pts", 85)
-          , ("scoring", 80)
-          , ("scoringtotal", 95)
-          , ("scoringtotals", 95)
-          , ("pointtotal", 95)
-          , ("pointtotals", 95)
-          , ("pointstotal", 95)
-          , ("pointstotals", 95)
-          ]
-        else []
+bestMetricMatch =
+  bestExecutableMetricMatch
 
 identityDimension :: Object -> Maybe Text
 identityDimension objectValue =

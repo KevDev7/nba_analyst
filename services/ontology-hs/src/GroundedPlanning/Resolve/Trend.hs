@@ -22,16 +22,27 @@ resolveTrendQuery ontology metricQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   selectedMetric <- requireTrendMetricName (metrics base)
   metricDef <- requireMetric factObject selectedMetric
-  resolvedSeries <- resolveTrendSeries ontology factObject (dimensions base)
+  resolvedGroupingDimensionValues <- resolveTrendGroupingDimensions ontology (coreFactObject base) (dimensions base)
+  let resolvedGroupingDimensions =
+        map (\(_, _, groupingDimension) -> groupingDimension) resolvedGroupingDimensionValues
+      resolvedSeries =
+        case resolvedGroupingDimensionValues of
+          firstGrouping : _ -> Just firstGrouping
+          [] -> Nothing
   metricSourceColumn <- metricSourceAttribute metricDef
-  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
+  resolvedRowPredicate <- resolveBaseRowPredicate ontology (coreFactObject base) (rowPredicate base)
+  resolvedResultPredicate <- resolveBaseResultPredicate factObject metricDef (resultPredicate base)
+  let maybeSeasonPair = seasonFilterPair (filters base)
   pure
     ResolvedTrendQuery
       { factTableName = backing_table factObject
-      , seriesTableName = backing_table . fst <$> resolvedSeries
-      , seriesObjectName = objectName . fst <$> resolvedSeries
-      , seriesPath = snd <$> resolvedSeries
-      , seriesName = fmap (\(seriesObject, _) -> ColumnRef "series" (trendSeriesColumn seriesObject (dimensions base))) resolvedSeries
+      , seriesTableName = (\(seriesObject, _, _) -> backing_table seriesObject) <$> resolvedSeries
+      , seriesObjectName = (\(seriesObject, _, _) -> objectName seriesObject) <$> resolvedSeries
+      , seriesPath = (\(_, seriesPathValue, _) -> seriesPathValue) <$> resolvedSeries
+      , seriesName =
+          case resolvedGroupingDimensions of
+            groupingDimension : _ -> Just (ColumnRef "group" (columnName (groupingSource groupingDimension)))
+            [] -> Nothing
       , timeBucketName = "time_bucket"
       , timeBucketExpression = timeBucketExpressionFor trendTimeGrain
       , metricSource = ColumnRef "fact" metricSourceColumn
@@ -40,6 +51,10 @@ resolveTrendQuery ontology metricQuery = do
       , timeFilterKind = trendFilterKindText (filters base)
       , trendFilters = filters base
       , timeGrain = timeGrainText trendTimeGrain
-      , linkedFiltersResolved = resolvedLinkedFilters
+      , trendSeasonLabel = fst <$> maybeSeasonPair
+      , trendSeasonType = snd <$> maybeSeasonPair
+      , trendRowPredicateResolved = resolvedRowPredicate
+      , trendResultPredicateResolved = resolvedResultPredicate
+      , trendGroupingDimensions = resolvedGroupingDimensions
       , resolvedAssumptions = assumptions base
       }

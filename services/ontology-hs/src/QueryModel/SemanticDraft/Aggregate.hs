@@ -7,12 +7,13 @@ import Data.List (sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Text (Text)
-import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Ontology (objects), Object)
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
+import QueryModel.SemanticDraft.Grouping (requireGroupingDimensionReachable, resolveDefaultGroupingDimensions)
 import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticDraft.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
 semanticAggregateDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -20,68 +21,31 @@ semanticAggregateDraftToQuery ontology draft = do
   -- Turn an aggregate draft into typed Query IR.
   -- Aggregates are grouped summaries, not disguised Top-N rankings.
   rawMeasure <- requireDraftMeasureForFamily "Aggregate" draft
-  aggregateFilters <- requireRankingFilters (timeWindow draft) (filters draft)
+  aggregateTimeScopeValue <- aggregateTimeScope (timeWindow draft) (filters draft)
   limitValue <- requireOptionalPositiveLimit (limit draft)
   subjectObject <- resolveSubjectObject ontology (subject draft)
-  aggregateDimension <- resolveAggregateDimension ontology subjectObject (dimensions draft)
+  aggregateDimensions <- resolveAggregateDimensions ontology subjectObject (dimensions draft)
   grounded <-
     resolveAggregateGrounding
       ontology
       draft
       rawMeasure
       subjectObject
-      aggregateDimension
-      aggregateFilters
+      aggregateDimensions
+      aggregateTimeScopeValue
       limitValue
   pure (aggregateQuery grounded)
 
-resolveAggregateDimension :: Ontology -> Object -> [Text] -> Either Text AggregateDimension
-resolveAggregateDimension ontology subjectObject rawDimensions =
-  -- Aggregates need one public grouping dimension. If the user only names a
-  -- subject, group by that subject's identity dimension.
-  case rawDimensions of
-    [] -> aggregateIdentityDimension subjectObject
-    [rawDimension] -> resolveAggregateDimensionValue ontology subjectObject rawDimension
-    _ -> Left "Aggregate drafts support exactly one business grouping dimension."
+resolveAggregateDimensions :: Ontology -> Object -> [Text] -> Either Text [SemanticGroupingDimension]
+resolveAggregateDimensions ontology subjectObject rawDimensions =
+  -- Aggregates can group by one or more public ontology attributes. If the user
+  -- only names a subject, group by that subject's identity dimension.
+  resolveDefaultGroupingDimensions ontology subjectObject rawDimensions
 
-resolveAggregateDimensionValue :: Ontology -> Object -> Text -> Either Text AggregateDimension
-resolveAggregateDimensionValue ontology subjectObject rawDimension
-  | trendDimensionMatchesSubject subjectObject rawDimension = aggregateIdentityDimension subjectObject
-  | otherwise =
-      case resolveSubjectObject ontology rawDimension of
-        Right dimensionObject -> aggregateIdentityDimension dimensionObject
-        Left _ ->
-          case bestPublicDimensionMatch rawDimension subjectObject of
-            Just dimensionNameValue ->
-              Right
-                AggregateDimension
-                  { aggregateDimensionObject = subjectObject
-                  , aggregateDimensionName = dimensionNameValue
-                  }
-            Nothing ->
-              Left
-                ( "Could not ground aggregate grouping dimension '"
-                    <> rawDimension
-                    <> "' to a public ontology dimension."
-                )
-
-aggregateIdentityDimension :: Object -> Either Text AggregateDimension
-aggregateIdentityDimension objectValue =
-  maybe
-    (Left ("No public identity dimension exists for aggregate grouping object '" <> objectName objectValue <> "'."))
-    ( \dimensionNameValue ->
-        Right
-          AggregateDimension
-            { aggregateDimensionObject = objectValue
-            , aggregateDimensionName = dimensionNameValue
-            }
-    )
-    (identityDimension objectValue)
-
-resolveAggregateGrounding :: Ontology -> SemanticDraft -> Text -> Object -> AggregateDimension -> RankingFilterBundle -> Maybe Int -> Either Text GroundedAggregate
-resolveAggregateGrounding ontology draft rawMeasure subjectObject aggregateDimension aggregateFilters maybeLimit =
+resolveAggregateGrounding :: Ontology -> SemanticDraft -> Text -> Object -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> Either Text GroundedAggregate
+resolveAggregateGrounding ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit =
   -- Search ontology fact objects for one that can produce the requested
-  -- aggregate metric by the requested public grouping dimension.
+  -- aggregate metric by the requested public grouping dimensions.
   case rankedCandidates of
     candidate : _ -> Right candidate
     [] ->
@@ -96,7 +60,7 @@ resolveAggregateGrounding ontology draft rawMeasure subjectObject aggregateDimen
     rankedCandidates =
       sortOn aggregateCandidateRank $
         mapMaybe
-          (groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimension aggregateFilters maybeLimit)
+          (groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit)
           (objects ontology)
 
 aggregateCandidateRank :: GroundedAggregate -> (Down Int, Down Int, Text)
@@ -106,27 +70,31 @@ aggregateCandidateRank candidate =
   , objectName (aggregateFactObject candidate)
   )
 
-groundAggregateFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> AggregateDimension -> RankingFilterBundle -> Maybe Int -> Object -> Maybe GroundedAggregate
-groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimension aggregateFilters maybeLimit factObjectValue = do
-  _ <- findPath ontology 2 (objectName factObjectValue) (objectName (aggregateDimensionObject aggregateDimension))
-  _ <- requireRankingFactSurface aggregateFilters factObjectValue
+groundAggregateFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> Object -> Maybe GroundedAggregate
+groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit factObjectValue = do
+  mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) aggregateDimensions
+  _ <- requireTimeScopeFactSurface aggregateTimeScopeValue factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
-  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
+  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
+  rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
+  resultPredicateTree <- groundDraftResultPredicate factObjectValue metricValue (resultFilters draft) (resultPredicate draft)
+  let groupObjects = map groupingDimensionObject aggregateDimensions
   pure
     GroundedAggregate
       { aggregateFactObject = factObjectValue
-      , aggregateGroupObject = aggregateDimensionObject aggregateDimension
+      , aggregateGroupObjects = groupObjects
       , aggregateMetricDef = metricValue
-      , aggregateDisplayDimension = aggregateDimensionName aggregateDimension
-      , aggregateFilterValues = rankingFilterValues aggregateFilters
-      , aggregateLinkedFilterValues = linkedFilterValue
+      , aggregateMetricDefs = metricValues
+      , aggregateDisplayDimensions = map groupingDimensionName aggregateDimensions
+      , aggregateFilterValues = timeScopeFilters aggregateTimeScopeValue
+      , aggregateRowPredicateValue = rowPredicateTree
+      , aggregateResultPredicateValue = resultPredicateTree
       , aggregateLimitValue = maybeLimit
       , aggregateAssumptions = assumptions draft
       , aggregateMatchScore = metricMatchScore rawMeasure metricValue
       , aggregateSubjectAffinityScore =
-          max
-            (subjectFactAffinity subjectObject factObjectValue)
-            (subjectFactAffinity (aggregateDimensionObject aggregateDimension) factObjectValue)
+          maximum
+            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) groupObjects)
       }
 
 aggregateQuery :: GroundedAggregate -> QI.Query
@@ -139,11 +107,12 @@ aggregateQuery grounded =
       { QI.sharedQuery =
           QI.BaseQuery
             { QI.coreFactObject = objectName (aggregateFactObject grounded)
-            , QI.metrics = [metricName (aggregateMetricDef grounded)]
-            , QI.dimensions = [aggregateDisplayDimension grounded]
+            , QI.metrics = map metricName (aggregateMetricDefs grounded)
+            , QI.dimensions = aggregateDisplayDimensions grounded
             , QI.timeGrain = Nothing
             , QI.filters = aggregateFilterValues grounded
-            , QI.linkedFilters = aggregateLinkedFilterValues grounded
+            , QI.rowPredicate = aggregateRowPredicateValue grounded
+            , QI.resultPredicate = aggregateResultPredicateValue grounded
             , QI.orders = []
             , QI.limit = aggregateLimitValue grounded
             , QI.assumptions = aggregateAssumptions grounded

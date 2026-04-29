@@ -27,6 +27,27 @@ class EntityResolverTests(unittest.TestCase):
                 {"entityId": 1630169, "entityName": "Tyrese Haliburton"},
             ],
         )
+        self.assertEqual(
+            enriched["value_resolution_trace"]["entity_resolutions"],
+            [
+                {
+                    "raw_value": "Brunson",
+                    "canonical_value": "Jalen Brunson",
+                    "target_object": "Player",
+                    "attribute": "full_name",
+                    "entity_id": 1628973,
+                    "source": "duckdb_entity_resolver",
+                },
+                {
+                    "raw_value": "Haliburton",
+                    "canonical_value": "Tyrese Haliburton",
+                    "target_object": "Player",
+                    "attribute": "full_name",
+                    "entity_id": 1630169,
+                    "source": "duckdb_entity_resolver",
+                },
+            ],
+        )
 
     def test_resolves_unique_first_name_when_combined_first_last_set_is_unique(self) -> None:
         draft = {

@@ -4,12 +4,15 @@
 #
 # Uses:
 # - pipelines/athena/metadata/semantic_gold_attribute_inventory.json
+# - pipelines/athena/metadata/semantic_gold_value_aliases.yaml
 #
 # Produces:
 # - fixtures/ontology/semantic-gold.yaml
 #
 # Next:
 # - apps/cli/main.py and the Haskell ontology loader
+# - run scripts/generate_semantic_value_aliases.py first when the DuckDB-backed
+#   value alias artifact needs to be refreshed
 
 from __future__ import annotations
 
@@ -22,6 +25,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 ATTRIBUTE_INVENTORY_PATH = (
     ROOT / "pipelines" / "athena" / "metadata" / "semantic_gold_attribute_inventory.json"
+)
+VALUE_ALIASES_PATH = (
+    ROOT / "pipelines" / "athena" / "metadata" / "semantic_gold_value_aliases.yaml"
 )
 ONTOLOGY_OUTPUT_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 
@@ -48,10 +54,45 @@ METRICS_BY_OBJECT = {
             "executable": True,
         },
         {
+            "name": "total_assists",
+            "aggregation": "sum",
+            "source_attributes": ["assists"],
+            "expression": "SUM(assists)",
+            "executable": True,
+        },
+        {
+            "name": "total_rebounds",
+            "aggregation": "sum",
+            "source_attributes": ["total_rebounds"],
+            "expression": "SUM(total_rebounds)",
+            "executable": True,
+        },
+        {
             "name": "average_points",
             "aggregation": "avg",
             "source_attributes": ["points"],
             "expression": "AVG(points)",
+            "executable": True,
+        },
+        {
+            "name": "average_assists",
+            "aggregation": "avg",
+            "source_attributes": ["assists"],
+            "expression": "AVG(assists)",
+            "executable": True,
+        },
+        {
+            "name": "average_rebounds",
+            "aggregation": "avg",
+            "source_attributes": ["total_rebounds"],
+            "expression": "AVG(total_rebounds)",
+            "executable": True,
+        },
+        {
+            "name": "average_minutes",
+            "aggregation": "avg",
+            "source_attributes": ["minutes_played"],
+            "expression": "AVG(minutes_played)",
             "executable": True,
         },
         {
@@ -396,7 +437,11 @@ def object_name_for_table(table_name: str) -> str:
     }[table_name]
 
 
-def build_attribute_payload(object_name: str, column: dict[str, object]) -> dict[str, object]:
+def build_attribute_payload(
+    object_name: str,
+    column: dict[str, object],
+    value_aliases_by_object: dict[str, object],
+) -> dict[str, object]:
     payload = {
         "name": column["name"],
         "kind": column["attribute_kind"],
@@ -407,11 +452,19 @@ def build_attribute_payload(object_name: str, column: dict[str, object]) -> dict
     }
     if column["name"] in COMPARISON_IDENTITIES_BY_OBJECT.get(object_name, set()):
         payload["comparison_identity"] = True
+    attribute_aliases = (
+        value_aliases_by_object.get(object_name, {}).get(column["name"], {})
+        if isinstance(value_aliases_by_object.get(object_name, {}), dict)
+        else {}
+    )
+    if attribute_aliases:
+        payload["value_aliases"] = attribute_aliases
     return payload
 
 
 def build_ontology_payload() -> dict[str, object]:
     inventory = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
+    value_aliases = yaml.safe_load(VALUE_ALIASES_PATH.read_text(encoding="utf-8")) or {}
     objects = []
     for table in inventory["tables"]:
         object_name = table["object_name"] if "object_name" in table else object_name_for_table(table["table_name"])
@@ -420,7 +473,7 @@ def build_ontology_payload() -> dict[str, object]:
             "backing_table": table["table_name"],
             "description": OBJECT_DESCRIPTIONS[object_name],
             "attributes": [
-                build_attribute_payload(object_name, column)
+                build_attribute_payload(object_name, column, value_aliases)
                 for column in table["columns"]
             ]
             + DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, []),

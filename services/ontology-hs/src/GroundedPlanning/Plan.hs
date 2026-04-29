@@ -19,20 +19,12 @@ module GroundedPlanning.Plan where
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import QueryModel.IR (FilterValue)
+import QueryModel.IR (FilterValue, Predicate)
 
 data PlanStep = PlanStep
   { kind :: Text
   , sql :: Maybe Text
   , analysis_spec :: Maybe Text
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
-data PlanFindPredicate = PlanFindPredicate
-  { target_object :: Text
-  , attribute :: Text
-  , operator :: Text
-  , value :: FilterValue
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -42,17 +34,23 @@ data PlanFindFilter = PlanFindFilter
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-data PlanLinkedFilter = PlanLinkedFilter
-  { target_object :: Text
-  , attribute :: Text
-  , value :: Text
-  }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
 data PlanDisplayMetadata = PlanDisplayMetadata
   { column_key :: Text
   , label :: Text
   , column_type :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanDisplayMetric = PlanDisplayMetric
+  { column_key :: Text
+  , metric :: Text
+  , label :: Text
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data PlanGroupingColumn = PlanGroupingColumn
+  { column_key :: Text
+  , label :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -68,14 +66,20 @@ data ExecutionPlan = ExecutionPlan
   , window_games :: Int
   , time_grain :: Maybe Text
   , time_filter :: Maybe Text
+  , time_window_days :: Maybe Int
+  , time_start_date :: Maybe Text
+  , time_end_date :: Maybe Text
   , season_label :: Maybe Text
   , season_type :: Maybe Text
   , limit :: Int
   , assumptions :: [Text]
-  , find_predicates :: [PlanFindPredicate]
+  , find_predicate_tree :: Maybe Predicate
   , find_filters :: [PlanFindFilter]
-  , linked_filters :: [PlanLinkedFilter]
+  , row_predicate :: Maybe Predicate
+  , result_predicate :: Maybe Predicate
+  , grouping_columns :: [PlanGroupingColumn]
   , display_metadata :: [PlanDisplayMetadata]
+  , display_metrics :: [PlanDisplayMetric]
   , steps :: [PlanStep]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)

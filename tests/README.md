@@ -29,6 +29,7 @@ use live/snapshot suites deliberately when validating provider/data behavior.
 ## Ontology-Grounded Boundaries
 
 - `test_linked_filter_cli_queries.py`, `test_linked_filter_season_surfaces.py`, `test_linked_filter_object_queries.py`, `test_linked_filter_contract.py`, `test_linked_filter_generic_grounding.py`, and `test_linked_filter_reachable_attributes.py` cover linked-filter grounding.
+- `test_semantic_draft_grounding.py` includes result-filter grounding coverage for aggregate/result predicates that must run after grouping, such as "average minutes > 30" or "total points > 200".
 - `test_query_shape_validation.py`, `test_metric_contract_validation.py`, `test_dimension_contract_validation.py`, and `test_filter_contract_validation.py` cover schema/ontology boundary failures.
 - `test_semantic_draft_module.py` and `test_semantic_draft_grounding.py` cover Haskell grounding from semantic drafts.
 

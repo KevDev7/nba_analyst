@@ -1,13 +1,43 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module GroundedPlanning.Resolve.Common.Filters
-  ( requireLastNGames
+  ( metricTimeFilterKind
+  , requireLastNGames
   , seasonFilterPair
   ) where
 
 import Control.Applicative ((<|>))
 import Data.Text (Text)
+import qualified Data.Text as T
 import QueryModel.IR
+
+metricTimeFilterKind :: [Filter] -> Text
+metricTimeFilterKind filterValues =
+  case filterValues of
+    [] -> "all"
+    _ ->
+      let kinds = map filterKindText filterValues
+       in if "last_n_games" `elem` kinds
+            then "last_n_games"
+            else
+              if "last_n_days" `elem` kinds
+                then "last_n_days"
+                else
+                  if "past_year" `elem` kinds
+                    then "past_year"
+                    else
+                      if "date_from" `elem` kinds && "date_to" `elem` kinds
+                        then "date_range"
+                        else
+                          if "date_from" `elem` kinds
+                            then "since_date"
+                            else
+                              if "date_to" `elem` kinds
+                                then "until_date"
+                                else
+                                  if "exact_season" `elem` kinds && "season_type" `elem` kinds
+                                    then "exact_season+season_type"
+                                    else T.intercalate "+" kinds
 
 requireLastNGames :: [Filter] -> Either Text Int
 requireLastNGames filterValues =

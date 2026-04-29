@@ -16,8 +16,9 @@ validateRankMetricQuery ontology metricQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   metricDef <- requireOrdinaryMetricSelectedMetric factObject (metrics base)
   validateMetricAttributes metricDef
-  _ <- requireOrdinaryMetricRowObject ontology factObject (dimensions base)
-  filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
-  validateOrdinaryLinkedFilters ontology MetricLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
+  mapM_ (validateResultPredicateTree factObject metricDef) (resultPredicate base)
+  _ <- requireRankGroupingDimensions ontology factObject (dimensions base)
+  _ <- classifyOrdinaryMetricFilterFamily (filters base)
+  mapM_ (validateRowPredicateTree ontology (objectName factObject)) (rowPredicate base)
   validateOrdinaryMetricFilterSurface factObject (filters base)
   validateMetricOrders Nothing (orders base) (metrics base)

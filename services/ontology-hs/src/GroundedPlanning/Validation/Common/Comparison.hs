@@ -20,8 +20,11 @@ import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (AttributeKind (Dimension), MetricDef (aggregation, executable, source_attributes), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
-import GroundedPlanning.Validation.Common.Filters (hasSeasonFilters, isRecentWindowBundle)
+import GroundedPlanning.Validation.Common.Dimensions (requireAggregateGroupingDimensions)
+import GroundedPlanning.Validation.Common.Filters (classifyOrdinaryMetricFilterFamily, hasSeasonFilters, isExactSeasonBundle)
 import GroundedPlanning.Validation.Common.Ontology
+import GroundedPlanning.Validation.Common.RowPredicates (validateRowPredicateTree)
+import GroundedPlanning.Validation.Common.Trend (validateTrendFactSurface, validateTrendTimeGrain)
 
 requireComparisonRowObject :: Ontology -> Object -> [DimensionName] -> ComparisonIntent -> Either Text Object
 requireComparisonRowObject ontology factObject dimensionValues comparisonIntent = do
@@ -33,16 +36,19 @@ requireComparisonRowObject ontology factObject dimensionValues comparisonIntent 
 requireComparisonDimension :: [DimensionName] -> Either Text DimensionName
 requireComparisonDimension dimensionValues =
   case dimensionValues of
-    [dimensionValue] -> Right dimensionValue
-    _ -> Left "Comparison queries require exactly one business grouping dimension."
+    dimensionValue : _ -> Right dimensionValue
+    [] -> Left "Comparison queries require a comparison identity dimension."
 
 validateComparisonQuery :: Ontology -> Object -> Object -> OT.MetricDef -> BaseQuery -> ComparisonIntent -> [EntityRef] -> Either Text ()
 validateComparisonQuery ontology factObject rowObject metricDef base comparisonIntent entityRefs = do
   validateComparisonQueryShape base
   validateComparisonSeasonAttributes factObject base
-  validateLinkedFiltersForComparison ontology (objectName factObject) (linkedFilters base)
+  validateComparisonTimeGrain factObject (timeGrain base)
+  validateComparisonBreakdownDimensions ontology factObject (drop 1 (dimensions base))
+  mapM_ (validateRowPredicateTree ontology (objectName factObject)) (rowPredicate base)
+  validateNoComparisonResultPredicate (resultPredicate base)
   validateComparisonPath ontology factObject rowObject comparisonIntent
-  validateComparisonMetric metricDef
+  validateComparisonMetric base metricDef
   validateComparisonEntities entityRefs
 
 validateComparisonQueryShape :: BaseQuery -> Either Text ()
@@ -53,26 +59,39 @@ validateComparisonQueryShape base = do
   case limit base of
     Nothing -> pure ()
     Just _ -> Left "Comparison queries do not support limit."
-  case timeGrain base of
-    Nothing -> pure ()
-    Just _ -> Left "Comparison queries do not support time-grain trends."
-  if isRecentWindowBundle (filters base)
-    then pure ()
-    else Left "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type."
+  case classifyOrdinaryMetricFilterFamily (filters base) of
+    Right _ -> pure ()
+    Left errorMessage -> Left errorMessage
   case dimensions base of
-    [_] -> pure ()
-    _ -> Left "Comparison queries require exactly one comparison identity dimension."
+    _ : _ -> pure ()
+    [] -> Left "Comparison queries require a comparison identity dimension."
+
+validateComparisonTimeGrain :: Object -> Maybe TimeGrain -> Either Text ()
+validateComparisonTimeGrain factObject maybeTimeGrain =
+  case maybeTimeGrain of
+    Nothing -> pure ()
+    Just timeGrainValue -> do
+      validateTrendTimeGrain timeGrainValue
+      validateTrendFactSurface factObject timeGrainValue
+
+validateComparisonBreakdownDimensions :: Ontology -> Object -> [DimensionName] -> Either Text ()
+validateComparisonBreakdownDimensions ontology factObject dimensionValues =
+  case dimensionValues of
+    [] -> pure ()
+    _ -> do
+      _ <- requireAggregateGroupingDimensions ontology factObject dimensionValues
+      pure ()
 
 validateComparisonPath :: Ontology -> Object -> Object -> ComparisonIntent -> Either Text ()
 validateComparisonPath ontology factObject rowObject comparisonIntent = do
   _ <- requireComparisonTargetPath ontology factObject rowObject comparisonIntent
   pure ()
 
-validateComparisonMetric :: OT.MetricDef -> Either Text ()
-validateComparisonMetric metricDef =
-  if comparisonRuntimeMetricSupported metricDef
+validateComparisonMetric :: BaseQuery -> OT.MetricDef -> Either Text ()
+validateComparisonMetric base metricDef =
+  if comparisonRuntimeMetricSupported base metricDef
     then pure ()
-    else Left "Comparison supports executable sum/avg metrics over recent row-level values only."
+    else Left "Comparison supports executable sum/avg metrics for recent rows and executable identity metrics for season surfaces."
 
 validateComparisonEntities :: [EntityRef] -> Either Text ()
 validateComparisonEntities entityRefs =
@@ -121,24 +140,16 @@ requireComparisonTargetPath ontology factObject rowObject comparisonIntent =
             then Right (OG.DiscoveredPath (objectName factObject) (objectName factObject) [])
             else requirePath ontology (objectName factObject) targetObjectName
 
-comparisonRuntimeMetricSupported :: OT.MetricDef -> Bool
-comparisonRuntimeMetricSupported metricDef =
+comparisonRuntimeMetricSupported :: BaseQuery -> OT.MetricDef -> Bool
+comparisonRuntimeMetricSupported base metricDef =
   executable metricDef
-    && aggregation metricDef `elem` ["sum", "avg"]
+    && if isExactSeasonBundle (filters base) && timeGrain base == Nothing
+      then aggregation metricDef `elem` ["identity"]
+      else aggregation metricDef `elem` ["sum", "avg"]
     && length (source_attributes metricDef) == 1
 
-validateLinkedFiltersForComparison :: Ontology -> Text -> [LinkedFilter] -> Either Text ()
-validateLinkedFiltersForComparison ontology factObjectName linkedFilterValues =
-  mapM_ validateLinkedFilter linkedFilterValues
-  where
-    validateLinkedFilter linkedFilterValue = do
-      _ <- requirePath ontology factObjectName (targetObject linkedFilterValue)
-      targetObjectValue <- requireObject ontology (targetObject linkedFilterValue)
-      attribute <-
-        maybe
-          (Left ("Linked filters support public dimension attributes on reachable ontology objects only."))
-          Right
-          (findAttribute targetObjectValue (attribute linkedFilterValue))
-      if OT.kind attribute /= Dimension || OT.visibility attribute /= OT.Public
-        then Left "Linked filters support public dimension attributes on reachable ontology objects only."
-        else pure ()
+validateNoComparisonResultPredicate :: Maybe Predicate -> Either Text ()
+validateNoComparisonResultPredicate maybePredicate =
+  case maybePredicate of
+    Nothing -> pure ()
+    Just _ -> Left "Comparison result predicates are not supported because comparison results are computed after SQL execution."

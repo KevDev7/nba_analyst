@@ -25,28 +25,11 @@ class PlanStep(BaseModel):
     analysis_spec: Optional[str] = None
 
 
-class PlanFindPredicate(BaseModel):
-    # Grounded predicate metadata for find-row answers.
-    # Plain English: "Team.team_name = Lakers" or "TeamGame.score > 120".
-    target_object: str
-    attribute: str
-    operator: str
-    value: object
-
-
 class PlanFindFilter(BaseModel):
     # Grounded time/window metadata for find-row answers.
     # Example: exact season, season type, or last-N games.
     filter_kind: str
     filter_value: Optional[object] = None
-
-
-class PlanLinkedFilter(BaseModel):
-    # Grounded linked-dimension metadata for non-find answers.
-    # Plain English: "Team.team_name = Lakers" after ontology resolution.
-    target_object: str
-    attribute: str
-    value: str
 
 
 class PlanDisplayMetadata(BaseModel):
@@ -55,6 +38,21 @@ class PlanDisplayMetadata(BaseModel):
     column_key: str
     label: str
     column_type: str
+
+
+class PlanDisplayMetric(BaseModel):
+    # One metric/result column Haskell intentionally emitted.
+    # When present, these replace the old single "metric_value" display path.
+    column_key: str
+    metric: str
+    label: str
+
+
+class PlanGroupingColumn(BaseModel):
+    # One column that defines aggregate result grain.
+    # Example: Team, Season Type, Conference.
+    column_key: str
+    label: str
 
 
 class ExecutionPlan(BaseModel):
@@ -72,14 +70,20 @@ class ExecutionPlan(BaseModel):
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
+    time_window_days: Optional[int] = None
+    time_start_date: Optional[str] = None
+    time_end_date: Optional[str] = None
     season_label: Optional[str] = None
     season_type: Optional[str] = None
     limit: int
     assumptions: List[str] = Field(default_factory=list)
-    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_predicate_tree: Optional[Dict[str, object]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    row_predicate: Optional[Dict[str, object]] = None
+    result_predicate: Optional[Dict[str, object]] = None
+    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
     display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
+    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     steps: List[PlanStep]
 
 
@@ -88,6 +92,7 @@ class RankingRow(BaseModel):
     rank: int
     entity_name: str
     context_value: Optional[str] = None
+    group_values: Dict[str, object] = Field(default_factory=dict)
     games_played: Optional[float] = None
     minutes: Optional[float] = None
     display_values: Dict[str, object] = Field(default_factory=dict)
@@ -98,6 +103,7 @@ class AggregateRow(BaseModel):
     # One grouped aggregate output row, like "Celtics - 110.6".
     entity_name: str
     context_value: Optional[str] = None
+    group_values: Dict[str, object] = Field(default_factory=dict)
     games_played: Optional[float] = None
     minutes: Optional[float] = None
     display_values: Dict[str, object] = Field(default_factory=dict)
@@ -120,7 +126,9 @@ class ComparisonRow(BaseModel):
     entity_id: int
     entity_name: str
     context_value: Optional[str] = None
-    game_date: str
+    time_bucket: Optional[str] = None
+    group_values: Dict[str, object] = Field(default_factory=dict)
+    game_date: Optional[str] = None
     metric_value: float
 
 
@@ -133,6 +141,17 @@ class ComparisonEntityStats(BaseModel):
     games_count: int
 
 
+class ComparisonBreakdownRow(BaseModel):
+    # One grouped comparison row, like "Brunson - Regular Season - 28.4".
+    entity_id: int
+    entity_name: str
+    context_value: Optional[str] = None
+    time_bucket: Optional[str] = None
+    group_values: Dict[str, object] = Field(default_factory=dict)
+    metric_value: float
+    games_count: int
+
+
 class ComparisonResult(BaseModel):
     # Final structured comparison result produced by Python analysis.
     leader: str
@@ -141,12 +160,14 @@ class ComparisonResult(BaseModel):
     entity_b: ComparisonEntityStats
     entities: List[ComparisonEntityStats] = Field(default_factory=list)
     per_game_rows: List[ComparisonRow] = Field(default_factory=list)
+    breakdown_rows: List[ComparisonBreakdownRow] = Field(default_factory=list)
 
 
 class TimeSeriesRow(BaseModel):
     # One point in a time-series answer.
     time_bucket: str
     series_name: Optional[str] = None
+    group_values: Dict[str, object] = Field(default_factory=dict)
     metric_value: float
 
 
@@ -162,6 +183,9 @@ class RuntimeResult(BaseModel):
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
+    time_window_days: Optional[int] = None
+    time_start_date: Optional[str] = None
+    time_end_date: Optional[str] = None
     season_label: Optional[str] = None
     season_type: Optional[str] = None
     limit: int
@@ -171,9 +195,12 @@ class RuntimeResult(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, object]] = Field(default_factory=list)
-    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_predicate_tree: Optional[Dict[str, object]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    row_predicate: Optional[Dict[str, object]] = None
+    result_predicate: Optional[Dict[str, object]] = None
+    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
     display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
+    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     raw_rows: List[Dict[str, object]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

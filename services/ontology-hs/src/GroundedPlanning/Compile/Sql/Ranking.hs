@@ -32,31 +32,45 @@ compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, 
           , factTableName = metricFactTableName
           , metricFormula = resolvedMetricFormulaValue
           , windowGames = metricWindowGames
+          , timeFilters = metricTimeFilters
           , displayMetadata = metricDisplayMetadata
-          , seasonLabel = metricSeasonLabel
-          , seasonType = metricSeasonType
           , queryLimit = metricQueryLimit
-          , linkedFiltersResolved = metricLinkedFilters
+          , rowPredicateResolved = metricRowPredicate
+          , resultPredicateResolved = metricResultPredicate
           , metricOrderDirection = metricOrderDirectionValue
+          , displayMetricFormulas = metricDisplayMetricFormulas
+          , groupingDimensions = metricGroupingDimensions
           } = resolved
         baseWhereConditions =
-          renderSeasonFilterConditions "f" metricSeasonLabel metricSeasonType
-            <> renderLinkedFilterConditions "f" metricLinkedFilters
+          renderGameDateFilterConditions metricFactTableName "f" metricTimeFilters
+            <> renderRowPredicateConditions "f" metricRowPredicate
         baseWhereClause =
           case baseWhereConditions of
             [] -> []
             conditions -> ["  WHERE " <> combineWhereClauses conditions]
+        resultFilterWhereClause =
+          case renderResultPredicateConditions metricResultPredicate of
+            [] -> []
+            conditions -> ["WHERE " <> combineWhereClauses conditions]
+        gameRankWhereClause =
+          if metricWindowGames > 0
+            then ["  WHERE game_rank <= " <> T.pack (show metricWindowGames)]
+            else []
        in
       T.unlines $
         [ "WITH recent_rows AS ("
         , "  SELECT"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
-        , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
+        ]
+          <> renderGroupingSourceSelectLines metricGroupingDimensions
+          <> [ "    " <> renderColumnRefWithContext "f" "r" "c" metricEntityId <> " AS entity_id,"
+        , "    " <> renderRankingEntityName metricGroupingDimensions metricDisplayName <> " AS entity_name,"
         , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
         ]
           <> renderMetadataSourceSelectLines "f" "r" "c" metricDisplayMetadata
+          <> renderDisplayMetricSourceSelectLines "f" metricDisplayMetricFormulas
+          <> renderResultPredicateSourceSelectLines "f" metricResultPredicate
           <> [ "    ROW_NUMBER() OVER ("
         , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" metricPartitionKey
         , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " DESC"
@@ -64,31 +78,41 @@ compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, 
         , "  FROM " <> metricFactTableName <> " f"
         ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+          <> renderGroupingJoinClauses metricGroupingDimensions
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
-          <> renderLinkedFilterJoinClauses "f" metricLinkedFilters
+          <> renderRowPredicateJoinClauses "f" metricRowPredicate
           <> baseWhereClause
           <> [ "), ranked_entities AS ("
         , "  SELECT"
         , "    entity_id,"
-        , "    arg_max(entity_name, game_date) AS entity_name,"
+        ]
+          <> renderGroupingAggregateSelectLines metricGroupingDimensions
+          <> [ "    arg_max(entity_name, game_date) AS entity_name,"
         , "    arg_max(context_value, game_date) AS context_value,"
         ]
           <> renderMetadataAggregateSelectLines metricDisplayMetadata
+          <> renderDisplayMetricAggregateSelectLines metricDisplayMetricFormulas
+          <> renderResultPredicateAggregateSelectLines metricResultPredicate
           <> [ "    " <> compileMetricAggregation resolvedMetricFormulaValue <> " AS metric_value"
         , "  FROM recent_rows"
-        , "  WHERE game_rank <= " <> T.pack (show metricWindowGames)
-        , "  GROUP BY entity_id"
+       ]
+          <> gameRankWhereClause
+          <> [ "  GROUP BY " <> renderRankingGroupKeys metricGroupingDimensions
         , ")"
         , "SELECT"
         , "  ROW_NUMBER() OVER (ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC) AS rank,"
-        , "  entity_name,"
+        , "  " <> primaryGroupingKey metricGroupingDimensions <> " AS entity_name,"
         , "  context_value,"
         ]
+          <> renderGroupingFinalSelectLines metricGroupingDimensions
           <> renderMetadataFinalSelectLines metricDisplayMetadata
+          <> renderResultPredicateFinalSelectLines metricResultPredicate
+          <> renderDisplayMetricFinalSelectLines metricDisplayMetricFormulas
           <> [ "  metric_value"
         , "FROM ranked_entities"
-        , "ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC"
         ]
+          <> resultFilterWhereClause
+          <> [ "ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC" ]
           <> limitClause metricQueryLimit
 
 -- Special SQL path for season-level ranking questions.
@@ -105,35 +129,63 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
       , rowPath = metricRowPath
       , contextPath = metricContextPath
       , queryLimit = metricQueryLimit
-      , linkedFiltersResolved = metricLinkedFilters
+      , rowPredicateResolved = metricRowPredicate
+      , resultPredicateResolved = metricResultPredicate
       , metricOrderDirection = metricOrderDirectionValue
       , displayMetadata = metricDisplayMetadata
+      , displayMetricFormulas = metricDisplayMetricFormulas
+      , groupingDimensions = metricGroupingDimensions
       } = resolved
    in
   T.unlines $
     [ "WITH season_ranked_entities AS ("
     , "  SELECT"
-    , "    " <> renderColumnRefWithContext "f" "r" "c" metricDisplayName <> " AS entity_name,"
+    ]
+      <> renderGroupingSourceSelectLines metricGroupingDimensions
+      <> [ "    " <> renderRankingEntityName metricGroupingDimensions metricDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
     ]
       <> renderMetadataDirectSelectLines "f" "r" "c" metricDisplayMetadata
+      <> renderDisplayMetricDirectSelectLines "f" metricDisplayMetricFormulas
+      <> renderResultPredicateDirectSelectLines "f" metricResultPredicate
       <> [ "    " <> renderMetricValue metricMetricSource <> " AS metric_value"
     , "  FROM " <> metricFactTableName <> " f"
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
+      <> renderGroupingJoinClauses metricGroupingDimensions
       <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
-      <> renderLinkedFilterJoinClauses "f" metricLinkedFilters
-      <> [ "  WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderLinkedFilterConditions "f" metricLinkedFilters)
+      <> renderRowPredicateJoinClauses "f" metricRowPredicate
+      <> [ "  WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderRowPredicateConditions "f" metricRowPredicate)
          , "    AND " <> renderMetricValue metricMetricSource <> " IS NOT NULL"
          , ")"
          , "SELECT"
     , "  ROW_NUMBER() OVER (ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC) AS rank,"
-    , "  entity_name,"
+    , "  " <> primaryGroupingKey metricGroupingDimensions <> " AS entity_name,"
     , "  context_value,"
          ]
+      <> renderGroupingFinalSelectLines metricGroupingDimensions
       <> renderMetadataFinalSelectLines metricDisplayMetadata
+      <> renderResultPredicateFinalSelectLines metricResultPredicate
+      <> renderDisplayMetricFinalSelectLines metricDisplayMetricFormulas
       <> [ "  metric_value"
          , "FROM season_ranked_entities"
-         , "ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC"
+         ]
+      <> (case renderResultPredicateConditions metricResultPredicate of
+            [] -> []
+            conditions -> ["WHERE " <> combineWhereClauses conditions])
+      <> [
+           "ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC"
          ]
       <> limitClause metricQueryLimit
+
+renderRankingEntityName :: [ResolvedGroupingDimension] -> ColumnRef -> Text
+renderRankingEntityName groupingDimensions fallbackColumnRef =
+  case groupingDimensions of
+    groupingDimension : _ -> renderGroupingSource 1 groupingDimension
+    [] -> renderColumnRefWithContext "f" "r" "c" fallbackColumnRef
+
+renderRankingGroupKeys :: [ResolvedGroupingDimension] -> Text
+renderRankingGroupKeys groupingDimensions =
+  case renderGroupingKeys groupingDimensions of
+    "" -> "entity_id"
+    groupingKeys -> "entity_id, " <> groupingKeys

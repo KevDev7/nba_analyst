@@ -51,6 +51,32 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(execution_plan["result_shape"], "aggregate")
         self.assertEqual(execution_plan["plan_type"], "single_sql")
 
+    def test_haskell_grounds_multi_metric_player_aggregate(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            aggregate_draft(
+                subject="players",
+                measure="average points",
+                measures=["average points", "average assists", "average rebounds"],
+                dimensions=["player"],
+            )
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["average_points", "average_assists", "average_rebounds"])
+        self.assertEqual(
+            execution_plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "average_points", "metric": "average_points"},
+                {"column_key": "metric_2", "label": "average_assists", "metric": "average_assists"},
+                {"column_key": "metric_3", "label": "average_rebounds", "metric": "average_rebounds"},
+            ],
+        )
+        self.assertIn("ROUND(AVG(__metric_2_source), 1) AS metric_2", sql)
+        self.assertIn("ROUND(AVG(__metric_3_source), 1) AS metric_3", sql)
+
     def test_haskell_grounds_non_identity_team_dimension_from_ontology(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
             aggregate_draft(dimensions=["conference"])
@@ -61,6 +87,93 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(shared["metrics"], ["average_points"])
         self.assertEqual(shared["dimensions"], ["conference"])
         self.assertEqual(payload["execution_plan"]["result_shape"], "aggregate")
+
+    def test_haskell_grounds_multi_dimensional_aggregate_grouping(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            aggregate_draft(dimensions=["team", "season type"])
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        resolved = payload["resolved_query"]["resolved"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["dimensions"], ["team_name", "season_type"])
+        self.assertEqual(
+            execution_plan["grouping_columns"],
+            [
+                {"column_key": "group_1", "label": "team_name"},
+                {"column_key": "group_2", "label": "season_type"},
+            ],
+        )
+        self.assertEqual(
+            [grouping["groupingLabel"] for grouping in resolved["groupingDimensions"]],
+            ["team_name", "season_type"],
+        )
+        self.assertIn("g1.team_name AS group_1", sql)
+        self.assertIn("f.season_type AS group_2", sql)
+        self.assertIn("GROUP BY group_1, group_2", sql)
+        self.assertIn("ORDER BY group_1 ASC, group_2 ASC", sql)
+
+    def test_haskell_grounds_season_aggregate_when_year_is_in_filters(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            aggregate_draft(
+                measure="wins",
+                measures=["wins"],
+                time_window={"kind": "season", "value": None},
+                filters=[
+                    {"field": "season", "op": "=", "value": "2025-26"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+            )
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        resolved = payload["resolved_query"]["resolved"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+        self.assertEqual(shared["coreFactObject"], "TeamSeason")
+        self.assertEqual(shared["metrics"], ["wins"])
+        self.assertEqual(
+            shared["filters"],
+            [
+                {"kind": "exact_season", "value": "2025-26"},
+                {"kind": "season_type", "value": "regular_season"},
+            ],
+        )
+        self.assertEqual(resolved["windowGames"], 0)
+        self.assertEqual(resolved["seasonLabel"], "2025-26")
+        self.assertIn("WITH season_rows AS", sql)
+        self.assertNotIn("game_rank <=", sql)
+
+    def test_haskell_grounds_player_average_minutes_aggregate(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            aggregate_draft(
+                subject="players",
+                measure="average minutes",
+                measures=["average minutes"],
+                dimensions=["player"],
+                filters=[{"field": "team", "op": "=", "value": "Knicks"}],
+                entities=["Knicks"],
+            )
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        execution_plan = payload["execution_plan"]
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["average_minutes"])
+        self.assertEqual(shared["dimensions"], ["full_name"])
+        self.assertEqual(
+            shared["rowPredicate"],
+            {
+                "kind": "leaf",
+                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                "operator": "equals",
+                "value": {"kind": "scalar", "value": "Knicks"},
+            },
+        )
+        self.assertEqual(execution_plan["metric"], "average_minutes")
+        self.assertIn("AVG(metric_source)", execution_plan["steps"][0]["sql"])
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_cli_runs_aggregate_end_to_end(self, mock_call_gemini) -> None:
@@ -105,6 +218,25 @@ class AggregateQueryTests(unittest.TestCase):
             f"{expected_name} | {expected_games} | {expected_date_start} to {expected_date_end} | {expected_average:.1f}",
             output,
         )
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_multi_dimensional_aggregate_end_to_end(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {"status": "ok", "draft": aggregate_draft(dimensions=["team", "season type"], limit=3)}
+        )
+
+        output = run_cli("Calculate average points by team and season type over the last 10 games")
+
+        self.assertIn(
+            "Interpreted as: Average points by team and season type over the last 10 games.",
+            output,
+        )
+        self.assertIn(
+            "Average points by team and season type over the last 10 games are shown below.",
+            output,
+        )
+        self.assertIn("Team | Season Type | Games Played | Date Range | Average Points", output)
+        self.assertNotIn("Rank |", output)
 
 
 if __name__ == "__main__":

@@ -53,6 +53,28 @@ def find_games_draft(**overrides: object) -> dict[str, object]:
     return draft
 
 
+def compare_players_draft(**overrides: object) -> dict[str, object]:
+    draft: dict[str, object] = {
+        "task": "compare",
+        "subject": "players",
+        "measure": "points",
+        "measures": ["points"],
+        "dimensions": [],
+        "filters": [],
+        "result_filters": [],
+        "time_window": None,
+        "grain": None,
+        "order": [],
+        "limit": None,
+        "sort": None,
+        "entities": ["Jalen Brunson", "Jayson Tatum"],
+        "operations": [],
+        "assumptions": [],
+    }
+    draft.update(overrides)
+    return draft
+
+
 class SemanticAssumptionTests(unittest.TestCase):
     def test_entity_row_language_reconciles_rank_draft_to_object(self) -> None:
         enriched = apply_semantic_assumptions(
@@ -99,6 +121,20 @@ class SemanticAssumptionTests(unittest.TestCase):
 
         self.assertEqual(enriched["task"], "object")
         self.assertEqual(enriched["assumptions"], ["Interpreted 'scoring' as total points."])
+
+    def test_average_scoring_adds_grounded_user_facing_assumption(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Who has the highest average scoring over the last 10 games?",
+            season_rank_draft(
+                measure="average scoring",
+                measures=["average scoring"],
+                time_window={"kind": "last_n_games", "value": 10},
+                limit=1,
+                assumptions=["Interpreted 'highest' as a request for the top 1 player."],
+            ),
+        )
+
+        self.assertIn("Interpreted 'average scoring' as average points.", enriched["assumptions"])
 
     def test_explicit_year_and_explicit_type_are_preserved_without_assumptions(self) -> None:
         draft = season_rank_draft(
@@ -308,6 +344,60 @@ class SemanticAssumptionTests(unittest.TestCase):
 
         self.assertEqual(enriched["time_window"], {"kind": "last_n_games", "value": 10})
         self.assertEqual(enriched["assumptions"], [])
+
+    def test_compare_missing_time_scope_defaults_to_current_regular_season(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Compare Jalen Brunson and Jayson Tatum points",
+            compare_players_draft(),
+        )
+
+        self.assertEqual(enriched["time_window"], {"kind": "season", "value": "2025-26"})
+        self.assertEqual(
+            enriched["filters"],
+            [{"field": "season type", "op": "=", "value": "regular season"}],
+        )
+        self.assertEqual(
+            enriched["assumptions"],
+            [
+                "Assumed season year is 2025-26.",
+                "Assumed season type is regular season.",
+            ],
+        )
+
+    def test_compare_explicit_recent_time_scope_is_preserved(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Compare Jalen Brunson and Jayson Tatum points over the last 10 games",
+            compare_players_draft(time_window={"kind": "last_n_games", "value": 10}),
+        )
+
+        self.assertEqual(enriched["time_window"], {"kind": "last_n_games", "value": 10})
+        self.assertEqual(enriched["filters"], [])
+        self.assertEqual(enriched["assumptions"], [])
+
+    def test_natural_between_dates_normalize_to_canonical_time_window(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Find Lakers games between Jan 1 and Feb 1 2025",
+            find_games_draft(time_window={"kind": "all", "value": None}),
+        )
+
+        self.assertEqual(
+            enriched["time_window"],
+            {"kind": "between_dates", "value": "2025-01-01 to 2025-02-01"},
+        )
+
+    def test_yearless_since_date_is_not_guessed(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Show monthly team wins since Jan 1",
+            season_rank_draft(
+                task="trend",
+                subject="teams",
+                measure="wins",
+                time_window={"kind": "all", "value": None},
+                grain="month",
+            ),
+        )
+
+        self.assertEqual(enriched["time_window"], {"kind": "all", "value": None})
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_pipeline_applies_assumptions_before_haskell_planning(self, mock_call_gemini) -> None:

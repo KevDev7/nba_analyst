@@ -9,7 +9,13 @@ import GroundedPlanning.Compile.Sql.Common
 import GroundedPlanning.Resolve
 import OntologyLayer.Graph (DiscoveredPath)
 import qualified OntologyLayer.Graph as OG
-import QueryModel.IR (Filter, filterIntValue, filterKindText, filterTextValue)
+import QueryModel.IR (Filter, FilterValue (FilterText), PredicateOperator (..), PredicateValue (..), filterIntValue, filterKindText)
+
+data IndexedFindPredicateTree
+  = IndexedFindPredicateLeaf Int ResolvedFindPredicateLeaf
+  | IndexedFindPredicateAnd [IndexedFindPredicateTree]
+  | IndexedFindPredicateOr [IndexedFindPredicateTree]
+  | IndexedFindPredicateNot IndexedFindPredicateTree
 
 compileFindSql :: ResolvedFindQuery -> Text
 compileFindSql resolved =
@@ -18,14 +24,20 @@ compileFindSql resolved =
       { resolvedFindFactTableName = factTableNameValue
       , resolvedFindTargetPath = targetPathValue
       , resolvedFindDisplays = displayValues
-      , resolvedFindPredicates = predicateValues
+      , resolvedFindPredicateTree = maybePredicateTree
       , resolvedFindFilters = findFilterValues
       , resolvedFindLimit = maybeFindLimit
       } = resolved
-    selectLines = renderFindSelectLines displayValues predicateValues
-    predicateJoinLines = concatMap renderIndexedFindPredicateJoin (zip [1 :: Int ..] predicateValues)
+    indexedPredicateTree = indexFindPredicateTree 1 <$> maybePredicateTree
+    predicateTreeLeaves =
+      case indexedPredicateTree of
+        Nothing -> []
+        Just predicateTree -> indexedFindPredicateTreeLeaves predicateTree
+    selectLines = renderFindSelectLines displayValues predicateTreeLeaves
+    predicateTreeJoinLines =
+      concatMap renderIndexedFindPredicateLeafJoin predicateTreeLeaves
     whereConditions =
-      map renderIndexedFindPredicateCondition (zip [1 :: Int ..] predicateValues)
+      maybe [] (\predicateTree -> [renderFindPredicateTreeCondition predicateTree]) indexedPredicateTree
         <> renderFindFilterConditions factTableNameValue findFilterValues
     maybeLastNGames = findLastNGames findFilterValues
    in
@@ -41,14 +53,14 @@ compileFindSql resolved =
              , "  FROM " <> factTableNameValue <> " f"
              ]
           <> renderPathJoinClauses "JOIN" "f" "r" "fp" targetPathValue
-          <> predicateJoinLines
-          <> [ "  WHERE " <> combineWhereClauses whereConditions
-             , ")"
-             , "SELECT DISTINCT " <> T.intercalate ", " (findSelectedLabels displayValues predicateValues)
+          <> predicateTreeJoinLines
+          <> renderWhereLines "  " whereConditions
+          <> [ ")"
+             , "SELECT DISTINCT " <> T.intercalate ", " (findSelectedLabels displayValues predicateTreeLeaves)
              , "FROM filtered_find_rows"
-             , "WHERE __find_row_rank <= " <> T.pack (show gamesValue)
-             , "ORDER BY " <> findOrderColumn displayValues
              ]
+          <> renderWhereLines "" ["__find_row_rank <= " <> T.pack (show gamesValue)]
+          <> [ "ORDER BY " <> findOrderColumn displayValues ]
           <> limitClause maybeFindLimit
     Nothing ->
       T.unlines $
@@ -57,27 +69,40 @@ compileFindSql resolved =
           <> selectLines
           <> [ "FROM " <> factTableNameValue <> " f" ]
           <> renderPathJoinClauses "JOIN" "f" "r" "fp" targetPathValue
-          <> predicateJoinLines
-          <> [ "WHERE " <> combineWhereClauses whereConditions
-             , "ORDER BY " <> findOrderColumn displayValues
-             ]
+          <> predicateTreeJoinLines
+          <> renderWhereLines "" whereConditions
+          <> [ "ORDER BY " <> findOrderColumn displayValues ]
           <> limitClause maybeFindLimit
 
-renderFindSelectLines :: [ResolvedFindDisplay] -> [ResolvedFindPredicate] -> [Text]
-renderFindSelectLines displayValues predicateValues =
-  map renderDisplay (markLast (displaySelections <> predicateSelections))
+renderWhereLines :: Text -> [Text] -> [Text]
+renderWhereLines prefix conditions =
+  case conditions of
+    [] -> []
+    _ -> [prefix <> "WHERE " <> combineWhereClauses conditions]
+
+renderFindSelectLines :: [ResolvedFindDisplay] -> [(Int, ResolvedFindPredicateLeaf)] -> [Text]
+renderFindSelectLines displayValues predicateTreeLeaves =
+  map renderDisplay (markLast (displaySelections <> predicateTreeSelections))
   where
     displaySelections =
       [ (displayLabel displayValue, findPathAlias "r" (displayPath displayValue), displayColumn displayValue)
       | displayValue <- displayValues
       ]
-    predicateSelections =
-      [ (predicateLabel predicateValue, findPredicateAlias indexValue predicateValue, predicateColumn predicateValue)
-      | (indexValue, predicateValue) <- zip [1 :: Int ..] predicateValues
-      , predicateLabel predicateValue `notElem` map displayLabel displayValues
-      ]
+    predicateTreeSelections =
+      uniqueSelectionsByLabel
+        [ (treePredicateLabel predicateValue, findPredicateTreeAlias indexValue predicateValue, treePredicateColumn predicateValue)
+        | (indexValue, predicateValue) <- predicateTreeLeaves
+        , treePredicateLabel predicateValue `notElem` map displayLabel displayValues
+        ]
     renderDisplay (isLastValue, (labelValue, aliasValue, columnValue)) =
       "  " <> aliasValue <> "." <> columnValue <> " AS " <> labelValue <> if isLastValue then "" else ","
+
+uniqueSelectionsByLabel :: [(Text, Text, Text)] -> [(Text, Text, Text)]
+uniqueSelectionsByLabel selections =
+  case selections of
+    [] -> []
+    selection@(labelValue, _, _) : remaining ->
+      selection : uniqueSelectionsByLabel [candidate | candidate@(candidateLabel, _, _) <- remaining, candidateLabel /= labelValue]
 
 indentFindSelectLines :: [Text] -> [Text]
 indentFindSelectLines selectLines =
@@ -89,16 +114,23 @@ indentFindSelectLines selectLines =
             then indentedLine
             else indentedLine <> ","
 
-findSelectedLabels :: [ResolvedFindDisplay] -> [ResolvedFindPredicate] -> [Text]
-findSelectedLabels displayValues predicateValues =
-  displayLabels <> predicateLabels
+findSelectedLabels :: [ResolvedFindDisplay] -> [(Int, ResolvedFindPredicateLeaf)] -> [Text]
+findSelectedLabels displayValues predicateTreeLeaves =
+  displayLabels <> predicateTreeLabels
   where
     displayLabels = map displayLabel displayValues
-    predicateLabels =
-      [ predicateLabel predicateValue
-      | predicateValue <- predicateValues
-      , predicateLabel predicateValue `notElem` displayLabels
-      ]
+    predicateTreeLabels =
+      uniqueLabels
+        [ treePredicateLabel predicateValue
+        | (_, predicateValue) <- predicateTreeLeaves
+        , treePredicateLabel predicateValue `notElem` displayLabels
+        ]
+
+uniqueLabels :: [Text] -> [Text]
+uniqueLabels labels =
+  case labels of
+    [] -> []
+    labelValue : remaining -> labelValue : uniqueLabels [candidate | candidate <- remaining, candidate /= labelValue]
 
 markLast :: [a] -> [(Bool, a)]
 markLast values =
@@ -107,25 +139,87 @@ markLast values =
     [value] -> [(True, value)]
     value : remaining -> (False, value) : markLast remaining
 
-renderIndexedFindPredicateJoin :: (Int, ResolvedFindPredicate) -> [Text]
-renderIndexedFindPredicateJoin (indexValue, predicateValue) =
-  if null (OG.steps (predicatePath predicateValue))
+renderIndexedFindPredicateLeafJoin :: (Int, ResolvedFindPredicateLeaf) -> [Text]
+renderIndexedFindPredicateLeafJoin (indexValue, predicateValue) =
+  if null (OG.steps (treePredicatePath predicateValue))
     then []
-    else renderPathJoinClauses "JOIN" "f" (findPredicateAlias indexValue predicateValue) ("pr" <> T.pack (show indexValue) <> "p") (predicatePath predicateValue)
+    else renderPathJoinClauses "JOIN" "f" (findPredicateTreeAlias indexValue predicateValue) ("pt" <> T.pack (show indexValue) <> "p") (treePredicatePath predicateValue)
 
-renderIndexedFindPredicateCondition :: (Int, ResolvedFindPredicate) -> Text
-renderIndexedFindPredicateCondition (indexValue, predicateValueResolved) =
-  findPredicateAlias indexValue predicateValueResolved
-    <> "."
-    <> predicateColumn predicateValueResolved
-    <> " "
-    <> predicateOp predicateValueResolved
-    <> " "
-    <> renderFilterLiteral (predicateValue predicateValueResolved)
+findPredicateTreeAlias :: Int -> ResolvedFindPredicateLeaf -> Text
+findPredicateTreeAlias indexValue predicateValue =
+  findPathAlias ("pt" <> T.pack (show indexValue)) (treePredicatePath predicateValue)
 
-findPredicateAlias :: Int -> ResolvedFindPredicate -> Text
-findPredicateAlias indexValue predicateValue =
-  findPathAlias ("pr" <> T.pack (show indexValue)) (predicatePath predicateValue)
+indexFindPredicateTree :: Int -> ResolvedFindPredicateTree -> IndexedFindPredicateTree
+indexFindPredicateTree startIndex predicateTree =
+  fst (indexFindPredicateTreeFrom startIndex predicateTree)
+
+indexFindPredicateTreeFrom :: Int -> ResolvedFindPredicateTree -> (IndexedFindPredicateTree, Int)
+indexFindPredicateTreeFrom startIndex predicateTree =
+  case predicateTree of
+    ResolvedFindPredicateLeafNode predicateLeaf ->
+      (IndexedFindPredicateLeaf startIndex predicateLeaf, startIndex + 1)
+    ResolvedFindPredicateAnd predicateValues ->
+      let (indexedValues, nextIndex) = indexFindPredicateChildren startIndex predicateValues
+       in (IndexedFindPredicateAnd indexedValues, nextIndex)
+    ResolvedFindPredicateOr predicateValues ->
+      let (indexedValues, nextIndex) = indexFindPredicateChildren startIndex predicateValues
+       in (IndexedFindPredicateOr indexedValues, nextIndex)
+    ResolvedFindPredicateNot predicateValue ->
+      let (indexedValue, nextIndex) = indexFindPredicateTreeFrom startIndex predicateValue
+       in (IndexedFindPredicateNot indexedValue, nextIndex)
+
+indexFindPredicateChildren :: Int -> [ResolvedFindPredicateTree] -> ([IndexedFindPredicateTree], Int)
+indexFindPredicateChildren startIndex predicateValues =
+  case predicateValues of
+    [] -> ([], startIndex)
+    predicateValue : remaining ->
+      let (indexedValue, nextIndex) = indexFindPredicateTreeFrom startIndex predicateValue
+          (indexedRemaining, finalIndex) = indexFindPredicateChildren nextIndex remaining
+       in (indexedValue : indexedRemaining, finalIndex)
+
+indexedFindPredicateTreeLeaves :: IndexedFindPredicateTree -> [(Int, ResolvedFindPredicateLeaf)]
+indexedFindPredicateTreeLeaves predicateTree =
+  case predicateTree of
+    IndexedFindPredicateLeaf indexValue predicateLeaf -> [(indexValue, predicateLeaf)]
+    IndexedFindPredicateAnd predicateValues -> concatMap indexedFindPredicateTreeLeaves predicateValues
+    IndexedFindPredicateOr predicateValues -> concatMap indexedFindPredicateTreeLeaves predicateValues
+    IndexedFindPredicateNot predicateValue -> indexedFindPredicateTreeLeaves predicateValue
+
+renderFindPredicateTreeCondition :: IndexedFindPredicateTree -> Text
+renderFindPredicateTreeCondition predicateTree =
+  case predicateTree of
+    IndexedFindPredicateLeaf indexValue predicateLeaf ->
+      renderFindPredicateLeafCondition indexValue predicateLeaf
+    IndexedFindPredicateAnd predicateValues ->
+      "(" <> T.intercalate " AND " (map renderFindPredicateTreeCondition predicateValues) <> ")"
+    IndexedFindPredicateOr predicateValues ->
+      "(" <> T.intercalate " OR " (map renderFindPredicateTreeCondition predicateValues) <> ")"
+    IndexedFindPredicateNot predicateValue ->
+      "NOT (" <> renderFindPredicateTreeCondition predicateValue <> ")"
+
+renderFindPredicateLeafCondition :: Int -> ResolvedFindPredicateLeaf -> Text
+renderFindPredicateLeafCondition indexValue predicateLeaf =
+  let columnRef = findPredicateTreeAlias indexValue predicateLeaf <> "." <> treePredicateColumn predicateLeaf
+   in case (treePredicateOperator predicateLeaf, treePredicateValue predicateLeaf) of
+        (PredicateEquals, PredicateScalar scalarValue) -> columnRef <> " = " <> renderFilterLiteral scalarValue
+        (PredicateNotEquals, PredicateScalar scalarValue) -> columnRef <> " <> " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThan, PredicateScalar scalarValue) -> columnRef <> " > " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " >= " <> renderFilterLiteral scalarValue
+        (PredicateLessThan, PredicateScalar scalarValue) -> columnRef <> " < " <> renderFilterLiteral scalarValue
+        (PredicateLessThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " <= " <> renderFilterLiteral scalarValue
+        (PredicateIn, PredicateList values) -> columnRef <> " IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateNotIn, PredicateList values) -> columnRef <> " NOT IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateBetween, PredicateRange lowerValue upperValue) -> columnRef <> " BETWEEN " <> renderFilterLiteral lowerValue <> " AND " <> renderFilterLiteral upperValue
+        (PredicateContains, PredicateScalar (FilterText textValue)) -> columnRef <> " ILIKE " <> renderLikeContainsLiteral textValue <> " ESCAPE '\\'"
+        _ -> error "Unsupported find predicate tree operator/value."
+
+renderLikeContainsLiteral :: Text -> Text
+renderLikeContainsLiteral rawValue =
+  "'%" <> escapeLikePattern rawValue <> "%'"
+
+escapeLikePattern :: Text -> Text
+escapeLikePattern =
+  T.replace "_" "\\_" . T.replace "%" "\\%" . T.replace "\\" "\\\\" . escapeSqlLiteral
 
 findPathAlias :: Text -> DiscoveredPath -> Text
 findPathAlias nonFactAlias pathValue =
@@ -150,21 +244,4 @@ findLastNGames filterValues =
 
 renderFindFilterConditions :: Text -> [Filter] -> [Text]
 renderFindFilterConditions findFactTableName filterValues =
-  mapMaybeFindFilterCondition filterValues
-  where
-    latestDateSubquery = "(SELECT MAX(game_date) FROM " <> findFactTableName <> ")"
-    mapMaybeFindFilterCondition [] = []
-    mapMaybeFindFilterCondition (filterValue : remaining) =
-      case filterKindText filterValue of
-        "last_n_games" -> mapMaybeFindFilterCondition remaining
-        "past_year" ->
-          ("f.game_date >= " <> latestDateSubquery <> " - INTERVAL '1 year'") : mapMaybeFindFilterCondition remaining
-        "exact_season" ->
-          case filterTextValue filterValue of
-            Just seasonLabelValue -> ("f.season_year = '" <> escapeSqlLiteral seasonLabelValue <> "'") : mapMaybeFindFilterCondition remaining
-            Nothing -> mapMaybeFindFilterCondition remaining
-        "season_type" ->
-          case filterTextValue filterValue of
-            Just seasonTypeValue -> ("f.season_type = '" <> escapeSqlLiteral seasonTypeValue <> "'") : mapMaybeFindFilterCondition remaining
-            Nothing -> mapMaybeFindFilterCondition remaining
-        _ -> mapMaybeFindFilterCondition remaining
+  renderGameDateFilterConditions findFactTableName "f" filterValues

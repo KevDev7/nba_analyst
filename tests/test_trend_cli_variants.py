@@ -151,10 +151,10 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertIn("Month | Team | Average Points", output)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
-    def test_last_month_trend_is_outside_supported_trend_filters(self, mock_call_gemini) -> None:
+    def test_last_month_trend_uses_last_30_days_scope(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
-        with self.assertRaises(RuntimeError):
-            run_cli("What is the trend in points over the last month?")
+        output = run_cli("What is the trend in points over the last month?")
+        self.assertIn("over the last 30 days", output)
 
 
 if __name__ == "__main__":

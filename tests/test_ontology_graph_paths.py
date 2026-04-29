@@ -68,7 +68,6 @@ class OntologyGraphPathTests(unittest.TestCase):
                     "metrics": ["total_points"],
                     "dimensions": ["full_name"],
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": 10,
                     "assumptions": [],

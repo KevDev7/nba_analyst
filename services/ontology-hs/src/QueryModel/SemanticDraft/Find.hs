@@ -14,6 +14,7 @@ import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticDraft.MeasureMatch (bestPublicMeasureAttributeMatch, measureAttributeScore)
 import QueryModel.SemanticDraft.Normalize
 import QueryModel.SemanticDraft.Types
 
@@ -23,13 +24,15 @@ semanticFindDraftToQuery ontology draft = do
   -- The fact object is selected by ontology paths and filter support.
   targetObject <- resolveSubjectObject ontology (subject draft)
   limitValue <- requireOptionalPositiveLimit (limit draft)
-  requireFindFilters (filters draft)
-  findTimeFilters <- findWindowFilters (timeWindow draft) (filters draft)
-  grounded <- resolveFindGrounding ontology draft targetObject findTimeFilters limitValue
+  findTimeScopeValue <- findTimeScope (timeWindow draft) (filters draft)
+  let predicateDraftFilters = findPredicateDraftFilters (filters draft)
+      maybeDraftPredicateTree = predicate draft
+  requireFindRequest predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue
+  grounded <- resolveFindGrounding ontology draft targetObject predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue limitValue
   pure (findQuery grounded)
 
-resolveFindGrounding :: Ontology -> SemanticDraft -> Object -> [QI.Filter] -> Maybe Int -> Either Text GroundedFind
-resolveFindGrounding ontology draft targetObject findTimeFilters limitValue =
+resolveFindGrounding :: Ontology -> SemanticDraft -> Object -> [DraftFilter] -> Maybe DraftPredicate -> TimeScope -> Maybe Int -> Either Text GroundedFind
+resolveFindGrounding ontology draft targetObject predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue limitValue =
   case rankedCandidates of
     candidate : _ -> Right candidate
     [] ->
@@ -44,30 +47,72 @@ resolveFindGrounding ontology draft targetObject findTimeFilters limitValue =
       -- implied by identity filters, like Team in "games where Lakers scored".
       sortOn findCandidateRank $
         mapMaybe
-          (groundFindFactCandidate ontology draft targetObject actorObjects findTimeFilters limitValue)
+          (groundFindFactCandidate ontology draft targetObject actorObjects predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue limitValue)
           (objects ontology)
-    actorObjects = findActorObjects ontology targetObject (filters draft)
+    actorObjects = findActorObjects ontology targetObject (predicateDraftFilters <> draftPredicateIdentityFilters maybeDraftPredicateTree)
 
 findCandidateRank :: GroundedFind -> (Down Int, Text)
 findCandidateRank candidate =
   (Down (findMatchScore candidate), objectName (findFactObject candidate))
 
-groundFindFactCandidate :: Ontology -> SemanticDraft -> Object -> [Object] -> [QI.Filter] -> Maybe Int -> Object -> Maybe GroundedFind
-groundFindFactCandidate ontology draft targetObject actorObjects findTimeFilters limitValue factObjectValue = do
+groundFindFactCandidate :: Ontology -> SemanticDraft -> Object -> [Object] -> [DraftFilter] -> Maybe DraftPredicate -> TimeScope -> Maybe Int -> Object -> Maybe GroundedFind
+groundFindFactCandidate ontology draft targetObject actorObjects predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue limitValue factObjectValue = do
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName targetObject)
-  predicateValues <- mapM (resolveFindPredicateForFact ontology targetObject actorObjects factObjectValue) (filters draft)
+  _ <- requireFindTimeScopeFactSurface findTimeScopeValue factObjectValue
+  filterPredicateTree <- groundDraftFindFiltersPredicateTree ontology targetObject actorObjects factObjectValue predicateDraftFilters
+  directPredicateTree <- mapM (groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue) maybeDraftPredicateTree
   displayDimensionValue <- identityDimension targetObject
+  let predicateTree = combinePredicates (maybe [] pure filterPredicateTree <> maybe [] pure directPredicateTree)
   pure
     GroundedFind
       { findFactObject = factObjectValue
       , findTargetObject = targetObject
       , findDisplayDimensions = findDisplayDimensionsFor targetObject displayDimensionValue
-      , findPredicateValues = predicateValues
-      , findFilterValues = findTimeFilters
+      , findPredicateTreeValue = predicateTree
+      , findFilterValues = timeScopeFilters findTimeScopeValue
       , findLimitValue = limitValue
       , findAssumptions = assumptions draft
-      , findMatchScore = findFactCandidateScore factObjectValue targetObject actorObjects predicateValues
+      , findMatchScore = findFactCandidateScore factObjectValue targetObject actorObjects predicateTree
       }
+
+findPredicateDraftFilters :: [DraftFilter] -> [DraftFilter]
+findPredicateDraftFilters =
+  filter (not . draftFilterIsTimeScopeFilter)
+
+requireFindRequest :: [DraftFilter] -> Maybe DraftPredicate -> TimeScope -> Either Text ()
+requireFindRequest predicateDraftFilters maybeDraftPredicateTree findTimeScopeValue =
+  case (predicateDraftFilters, maybeDraftPredicateTree, findTimeScopeValue) of
+    ([], Nothing, AllAvailable) -> Left "Find drafts require at least one user-facing filter or a bounded time scope."
+    _ -> pure ()
+
+requireFindTimeScopeFactSurface :: TimeScope -> Object -> Maybe ()
+requireFindTimeScopeFactSurface findTimeScopeValue factObjectValue =
+  case findTimeScopeValue of
+    AllAvailable -> Just ()
+    PastYear -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    LastNDays _ -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    DateRange _ _ -> do
+      _ <- findAttribute factObjectValue "game_date"
+      Just ()
+    RecentGames _ seasonFilters -> do
+      _ <- findAttribute factObjectValue "game_date"
+      case seasonFilters of
+        [] -> Just ()
+        _ -> do
+          _ <- findAttribute factObjectValue "season_year"
+          _ <- findAttribute factObjectValue "season_type"
+          Just ()
+    ExactSeason _ _ -> do
+      _ <- findAttribute factObjectValue "season_year"
+      _ <- findAttribute factObjectValue "season_type"
+      Just ()
+    SeasonTypeOnly _ -> do
+      _ <- findAttribute factObjectValue "season_type"
+      Just ()
 
 findDisplayDimensionsFor :: Object -> Text -> [Text]
 findDisplayDimensionsFor targetObject identityDimensionValue =
@@ -89,11 +134,27 @@ publicDimensionsNamed dimensionNames objectValue =
   , attributeVisibility attributeValue == Public
   ]
 
-findFactCandidateScore :: Object -> Object -> [Object] -> [QI.FindPredicate] -> Int
-findFactCandidateScore factObjectValue targetObject actorObjects predicateValues =
+findFactCandidateScore :: Object -> Object -> [Object] -> Maybe QI.Predicate -> Int
+findFactCandidateScore factObjectValue targetObject actorObjects maybePredicateTree =
   subjectFactAffinity targetObject factObjectValue
     + actorFactAffinity actorObjects factObjectValue
-    + (10 * length [predicateValue | predicateValue <- predicateValues, QI.predicateTargetObject predicateValue == objectName factObjectValue])
+    + (10 * countFactObjectPredicateLeaves factObjectValue maybePredicateTree)
+
+countFactObjectPredicateLeaves :: Object -> Maybe QI.Predicate -> Int
+countFactObjectPredicateLeaves factObjectValue maybePredicateTree =
+  case maybePredicateTree of
+    Nothing -> 0
+    Just predicateTree -> countFactObjectPredicateLeavesFromTree predicateTree
+  where
+    countFactObjectPredicateLeavesFromTree predicateTree =
+      case predicateTree of
+        QI.PredicateLeaf fieldValue _ _ ->
+          if QI.predicateFieldTargetObject fieldValue == objectName factObjectValue
+            then 1
+            else 0
+        QI.PredicateAnd predicateValues -> sum (map countFactObjectPredicateLeavesFromTree predicateValues)
+        QI.PredicateOr predicateValues -> sum (map countFactObjectPredicateLeavesFromTree predicateValues)
+        QI.PredicateNot predicateValue -> countFactObjectPredicateLeavesFromTree predicateValue
 
 actorFactAffinity :: [Object] -> Object -> Int
 actorFactAffinity actorObjects factObjectValue =
@@ -105,25 +166,105 @@ actorFactAffinity actorObjects factObjectValue =
           ]
     )
 
-resolveFindPredicateForFact :: Ontology -> Object -> [Object] -> Object -> DraftFilter -> Maybe QI.FindPredicate
-resolveFindPredicateForFact ontology targetObject actorObjects factObjectValue draftFilter = do
+groundDraftFindFiltersPredicateTree :: Ontology -> Object -> [Object] -> Object -> [DraftFilter] -> Maybe (Maybe QI.Predicate)
+groundDraftFindFiltersPredicateTree ontology targetObject actorObjects factObjectValue draftFilters = do
+  predicateValues <- mapM (groundDraftFindFilterPredicate ontology targetObject actorObjects factObjectValue) draftFilters
+  Just (combinePredicates predicateValues)
+
+groundDraftFindFilterPredicate :: Ontology -> Object -> [Object] -> Object -> DraftFilter -> Maybe QI.Predicate
+groundDraftFindFilterPredicate ontology targetObject actorObjects factObjectValue draftFilter = do
   rawField <- filterField draftFilter
   rawValue <- filterValue draftFilter
-  opValue <- normalizeFindOp (filterOp draftFilter)
+  opValue <- normalizePredicateOperator (filterOp draftFilter)
   (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
   pure
-    QI.FindPredicate
-      { QI.predicateTargetObject = objectName predicateObject
-      , QI.predicateAttribute = attributeName predicateAttribute
-      , QI.predicateOperator = opValue
-      , QI.predicateFilterValue = rawValue
-      }
+    ( QI.PredicateLeaf
+        QI.PredicateField
+          { QI.predicateFieldTargetObject = objectName predicateObject
+          , QI.predicateFieldAttribute = attributeName predicateAttribute
+          , QI.predicateLocation = QI.PredicateRowField
+          }
+        opValue
+        (QI.PredicateScalar rawValue)
+    )
+
+combinePredicates :: [QI.Predicate] -> Maybe QI.Predicate
+combinePredicates predicateValues =
+  case predicateValues of
+    [] -> Nothing
+    [predicateValue] -> Just predicateValue
+    _ -> Just (QI.PredicateAnd predicateValues)
+
+groundDraftFindPredicateTree :: Ontology -> Object -> [Object] -> Object -> DraftPredicate -> Maybe QI.Predicate
+groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue draftPredicate =
+  case draftPredicate of
+    DraftPredicateLeaf {draftPredicateField = rawField, draftPredicateOp = maybeRawOp, draftPredicateValue = rawValue} -> do
+      opValue <- normalizePredicateOperator maybeRawOp
+      (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
+      pure
+        ( QI.PredicateLeaf
+            QI.PredicateField
+              { QI.predicateFieldTargetObject = objectName predicateObject
+              , QI.predicateFieldAttribute = attributeName predicateAttribute
+              , QI.predicateLocation = QI.PredicateRowField
+              }
+            opValue
+            rawValue
+        )
+    DraftPredicateAnd predicatesValue ->
+      QI.PredicateAnd <$> mapM (groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue) predicatesValue
+    DraftPredicateOr predicatesValue ->
+      QI.PredicateOr <$> mapM (groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue) predicatesValue
+    DraftPredicateNot predicateValue ->
+      QI.PredicateNot <$> groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue predicateValue
+
+normalizePredicateOperator :: Maybe Text -> Maybe QI.PredicateOperator
+normalizePredicateOperator maybeRawOp =
+  case T.strip <$> maybeRawOp of
+    Just "=" -> Just QI.PredicateEquals
+    Just "!=" -> Just QI.PredicateNotEquals
+    Just "<>" -> Just QI.PredicateNotEquals
+    Just ">" -> Just QI.PredicateGreaterThan
+    Just ">=" -> Just QI.PredicateGreaterThanOrEqual
+    Just "<" -> Just QI.PredicateLessThan
+    Just "<=" -> Just QI.PredicateLessThanOrEqual
+    _ ->
+      case normalizedKey <$> maybeRawOp of
+        Nothing -> Just QI.PredicateEquals
+        Just "" -> Just QI.PredicateEquals
+        Just "eq" -> Just QI.PredicateEquals
+        Just "equals" -> Just QI.PredicateEquals
+        Just "is" -> Just QI.PredicateEquals
+        Just "notequals" -> Just QI.PredicateNotEquals
+        Just "not" -> Just QI.PredicateNotEquals
+        Just "neq" -> Just QI.PredicateNotEquals
+        Just "over" -> Just QI.PredicateGreaterThan
+        Just "above" -> Just QI.PredicateGreaterThan
+        Just "greaterthan" -> Just QI.PredicateGreaterThan
+        Just "gt" -> Just QI.PredicateGreaterThan
+        Just "morethan" -> Just QI.PredicateGreaterThan
+        Just "atleast" -> Just QI.PredicateGreaterThanOrEqual
+        Just "gte" -> Just QI.PredicateGreaterThanOrEqual
+        Just "under" -> Just QI.PredicateLessThan
+        Just "below" -> Just QI.PredicateLessThan
+        Just "lessthan" -> Just QI.PredicateLessThan
+        Just "lt" -> Just QI.PredicateLessThan
+        Just "atmost" -> Just QI.PredicateLessThanOrEqual
+        Just "lte" -> Just QI.PredicateLessThanOrEqual
+        Just "in" -> Just QI.PredicateIn
+        Just "notin" -> Just QI.PredicateNotIn
+        Just "between" -> Just QI.PredicateBetween
+        Just "contains" -> Just QI.PredicateContains
+        _ -> Nothing
 
 resolveFindPredicateAttribute :: Ontology -> Object -> [Object] -> Object -> Text -> Maybe (Object, OT.Attribute)
 resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField =
   case objectIdentityAttributeMatch ontology factObjectValue rawField of
     Just matchValue -> Just matchValue
-    Nothing -> bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField
+    Nothing ->
+      case bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField of
+        Just matchValue -> Just matchValue
+        Nothing -> factMeasureAttributeMatch factObjectValue rawField
 
 objectIdentityAttributeMatch :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
 objectIdentityAttributeMatch ontology factObjectValue rawField =
@@ -158,12 +299,17 @@ bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue r
       , attributeName attributeValue
       )
 
+factMeasureAttributeMatch :: Object -> Text -> Maybe (Object, OT.Attribute)
+factMeasureAttributeMatch factObjectValue rawField =
+  (factObjectValue,) <$> bestPublicMeasureAttributeMatch rawField factObjectValue
+
 findAttributeScore :: Object -> [Object] -> Object -> Text -> OT.Attribute -> Int
 findAttributeScore targetObject actorObjects factObjectValue rawField attributeValue
   | attributeKey `elem` rawKeys = 100
   | T.replace "total" "" attributeKey `elem` rawKeys = 90
   | T.replace "team" "" attributeKey `elem` rawKeys = 85
   | any (`T.isSuffixOf` attributeKey) rawKeys = 80
+  | measureAttributeScore rawField factObjectValue attributeValue > 0 = measureAttributeScore rawField factObjectValue attributeValue
   | otherwise = 0
   where
     rawKeys = findFieldAliasKeys targetObject actorObjects factObjectValue rawField
@@ -207,8 +353,8 @@ findActorObjects ontology targetObject draftFilters =
 
 isIdentityFilter :: DraftFilter -> Bool
 isIdentityFilter draftFilter =
-  case (normalizeFindOp (filterOp draftFilter), filterValue draftFilter) of
-    (Just QI.OpEq, Just (QI.FilterText textValue)) -> T.strip textValue /= ""
+  case (normalizePredicateOperator (filterOp draftFilter), filterValue draftFilter) of
+    (Just QI.PredicateEquals, Just (QI.FilterText textValue)) -> T.strip textValue /= ""
     _ -> False
 
 filterNamesObject :: Text -> Object -> Bool
@@ -225,6 +371,49 @@ filterNamesObject rawField objectValue =
             || rawKey == identityKey
             || rawKey == objectKey <> "name"
 
+draftPredicateIdentityFilters :: Maybe DraftPredicate -> [DraftFilter]
+draftPredicateIdentityFilters maybeDraftPredicate =
+  case maybeDraftPredicate of
+    Nothing -> []
+    Just draftPredicate -> draftPredicateIdentityFiltersFromTree draftPredicate
+
+draftPredicateIdentityFiltersFromTree :: DraftPredicate -> [DraftFilter]
+draftPredicateIdentityFiltersFromTree draftPredicate =
+  case draftPredicate of
+    DraftPredicateLeaf {draftPredicateField = rawField, draftPredicateOp = maybeRawOp, draftPredicateValue = rawValue} ->
+      case normalizePredicateOperator maybeRawOp of
+        Just QI.PredicateEquals ->
+          [ DraftFilter
+              { filterField = Just rawField
+              , filterOp = Just "="
+              , filterValue = Just (QI.FilterText textValue)
+              }
+          | textValue <- predicateTextValues rawValue
+          ]
+        Just QI.PredicateIn ->
+          [ DraftFilter
+              { filterField = Just rawField
+              , filterOp = Just "="
+              , filterValue = Just (QI.FilterText textValue)
+              }
+          | textValue <- predicateTextValues rawValue
+          ]
+        _ -> []
+    DraftPredicateAnd predicateValues -> concatMap draftPredicateIdentityFiltersFromTree predicateValues
+    DraftPredicateOr predicateValues -> concatMap draftPredicateIdentityFiltersFromTree predicateValues
+    DraftPredicateNot _ -> []
+
+predicateTextValues :: QI.PredicateValue -> [Text]
+predicateTextValues predicateValue =
+  case predicateValue of
+    QI.PredicateScalar (QI.FilterText textValue) -> [textValue]
+    QI.PredicateScalar _ -> []
+    QI.PredicateList values ->
+      [ textValue
+      | QI.FilterText textValue <- values
+      ]
+    QI.PredicateRange _ _ -> []
+
 reachableObjects :: Ontology -> Object -> [Object]
 reachableObjects ontology objectValue =
   [ candidateObject
@@ -240,7 +429,7 @@ findQuery grounded =
       { QI.findCoreFactObject = objectName (findFactObject grounded)
       , QI.findTargetObject = objectName (findTargetObject grounded)
       , QI.findDisplayDimensions = findDisplayDimensions grounded
-      , QI.findPredicates = findPredicateValues grounded
+      , QI.findPredicateTree = findPredicateTreeValue grounded
       , QI.findFilters = findFilterValues grounded
       , QI.findLimit = findLimitValue grounded
       , QI.findAssumptions = findAssumptions grounded

@@ -37,6 +37,8 @@ def _format_debug_output(result: AssistantResult) -> str:
     debug_lines = [
         f"Query type: {debug_payload.get('query_type')}",
         f"Semantic draft: {json.dumps(debug_payload.get('semantic_draft'), indent=2)}",
+        f"Predicate trace: {json.dumps(debug_payload.get('predicate_trace'), indent=2)}",
+        f"Value resolution trace: {json.dumps(debug_payload.get('value_resolution_trace'), indent=2)}",
         f"Query: {json.dumps(debug_payload.get('query'), indent=2)}",
         f"Resolved query: {json.dumps(debug_payload.get('resolved_query'), indent=2)}",
         f"Execution plan: {json.dumps(debug_payload.get('execution_plan'), indent=2)}",

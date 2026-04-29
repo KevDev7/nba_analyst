@@ -21,9 +21,9 @@ from runtime.AnalysisRuntime.models import (
     ComparisonResult,
     ObjectRow,
     PlanDisplayMetadata,
+    PlanDisplayMetric,
     PlanFindFilter,
-    PlanFindPredicate,
-    PlanLinkedFilter,
+    PlanGroupingColumn,
     RankingRow,
     TimeSeriesRow,
 )
@@ -42,6 +42,9 @@ class SynthesisPayload(BaseModel):
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
+    time_window_days: Optional[int] = None
+    time_start_date: Optional[str] = None
+    time_end_date: Optional[str] = None
     season_label: Optional[str] = None
     season_type: Optional[str] = None
     limit: int
@@ -51,10 +54,13 @@ class SynthesisPayload(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
-    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_predicate_tree: Optional[Dict[str, Any]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    row_predicate: Optional[Dict[str, Any]] = None
+    result_predicate: Optional[Dict[str, Any]] = None
+    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
     display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
+    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
 
 
@@ -70,6 +76,9 @@ class FinalAnswer(BaseModel):
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
+    time_window_days: Optional[int] = None
+    time_start_date: Optional[str] = None
+    time_end_date: Optional[str] = None
     season_label: Optional[str] = None
     season_type: Optional[str] = None
     limit: int
@@ -79,8 +88,11 @@ class FinalAnswer(BaseModel):
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
-    find_predicates: List[PlanFindPredicate] = Field(default_factory=list)
+    find_predicate_tree: Optional[Dict[str, Any]] = None
     find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    linked_filters: List[PlanLinkedFilter] = Field(default_factory=list)
+    row_predicate: Optional[Dict[str, Any]] = None
+    result_predicate: Optional[Dict[str, Any]] = None
+    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
     display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
+    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None

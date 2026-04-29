@@ -19,7 +19,7 @@ validateMetricOrders maybeComparison orderValues metricValues =
         else Left "Comparison queries should not request ranking order."
     Nothing ->
       case (orderValues, metricValues) of
-        ([orderValue], [selectedMetric]) | orderMetricName orderValue == selectedMetric -> pure ()
+        ([orderValue], selectedMetric : _) | orderMetricName orderValue == selectedMetric -> pure ()
         _ -> Left "Ranking queries require ordering by the selected metric."
 
 orderMetricName :: Order -> MetricName
@@ -34,11 +34,11 @@ validateOptionalMetricOrder orderValues metricValues =
     [] -> pure ()
     [Desc orderMetric] ->
       case metricValues of
-        [selectedMetric] | orderMetric == selectedMetric -> pure ()
+        selectedMetric : _ | orderMetric == selectedMetric -> pure ()
         _ -> Left "Object queries require descending ordering on the selected metric when order is present."
     [Asc orderMetric] ->
       case metricValues of
-        [selectedMetric] | orderMetric == selectedMetric -> pure ()
+        selectedMetric : _ | orderMetric == selectedMetric -> pure ()
         _ -> Left "Object queries require ordering on the selected metric when order is present."
     _ -> Left "Object queries support at most one order on the selected metric."
 

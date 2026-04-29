@@ -9,6 +9,7 @@ import Data.Text (Text)
 import GroundedPlanning.Resolve.Common
 import OntologyLayer.Types (Object (backing_table), Ontology)
 import QueryModel.IR
+import qualified QueryModel.IR as QI
 
 resolveCompareMetricQuery :: Ontology -> MetricQuerySpec -> Either Text ResolvedMetricQuery
 resolveCompareMetricQuery ontology metricQuery = do
@@ -24,11 +25,15 @@ resolveCompareMetricQuery ontology metricQuery = do
     resolveComparisonRowObject ontology (coreFactObject base) (dimensions base) comparisonTargetObjectName
   selectedMetric <- requireComparisonMetricName (metrics base)
   metricDef <- requireMetric factObject selectedMetric
-  displayColumn <- metricDisplayColumn (dimensions base)
+  displayColumn <- requireComparisonDimensionName (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObject
-  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
+  resolvedRowPredicate <- resolveBaseRowPredicate ontology (coreFactObject base) (rowPredicate base)
+  groupingDimensionValues <-
+    case requireComparisonBreakdownDimensionNames (dimensions base) of
+      [] -> Right []
+      breakdownDimensions -> map (\(_, _, groupingDimension) -> groupingDimension) <$> resolveAggregateGroupingDimensions ontology (coreFactObject base) breakdownDimensions
   let entityValues =
         case comparison metricQuery of
           Just (CompareEntities _ entities) -> map resolveEntity entities
@@ -38,6 +43,8 @@ resolveCompareMetricQuery ontology metricQuery = do
         case requireLastNGames (filters base) of
           Right value -> value
           Left _ -> 0
+      maybeBaseTimeGrain = QI.timeGrain base
+      maybeTimeBucketExpression = timeBucketExpressionFor <$> maybeBaseTimeGrain
   pure
     ResolvedMetricQuery
       { factTableName = backing_table factObject
@@ -53,15 +60,22 @@ resolveCompareMetricQuery ontology metricQuery = do
       , contextValue = selectedContextColumn contextSelection
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
+      , metricTimeGrain = QI.timeGrainText <$> maybeBaseTimeGrain
+      , metricTimeBucketExpression = maybeTimeBucketExpression
       , windowGames = gamesValue
+      , timeFilterKind = metricTimeFilterKind (filters base)
+      , timeFilters = filters base
       , seasonLabel = fst <$> maybeSeasonPair
       , seasonType = snd <$> maybeSeasonPair
       , queryLimit = Nothing
-      , linkedFiltersResolved = resolvedLinkedFilters
+      , rowPredicateResolved = resolvedRowPredicate
+      , resultPredicateResolved = Nothing
       , comparisonEntities = entityValues
       , comparisonRequestedValue = True
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
+      , displayMetricFormulas = [resolveMetricFormula metricDef]
       , filterLocation = "fact_table"
+      , groupingDimensions = groupingDimensionValues
       , displayMetadata = resolveDisplayMetadata factObject rowObject gamesValue
       }

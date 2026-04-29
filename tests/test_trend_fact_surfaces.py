@@ -16,7 +16,6 @@ class TrendFactSurfaceTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -43,7 +42,6 @@ class TrendFactSurfaceTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -69,7 +67,6 @@ class TrendFactSurfaceTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -87,7 +84,7 @@ class TrendFactSurfaceTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_reachable_non_dimension_grouping_attribute_fails_clearly(self) -> None:
+    def test_reachable_public_primary_key_grouping_attribute_is_supported(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -97,7 +94,6 @@ class TrendFactSurfaceTests(unittest.TestCase):
                     "dimensions": ["person_id"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -107,10 +103,16 @@ class TrendFactSurfaceTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
 
-        self.assertIn("Trend grouping supports reachable public dimension attributes only.", str(context.exception))
+        self.assertEqual(
+            planner_output["execution_plan"]["grouping_columns"],
+            [{"column_key": "group_1", "label": "person_id"}],
+        )
+        self.assertEqual(
+            planner_output["resolved_query"]["resolved"]["trendGroupingDimensions"][0]["groupingSource"]["tableRole"],
+            "fact",
+        )
 
 if __name__ == "__main__":
     unittest.main()

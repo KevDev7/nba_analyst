@@ -48,9 +48,11 @@ class ObjectQueryTests(unittest.TestCase):
         self.assertIn("Interpreted 'scoring' as total points.", output)
         self.assertRegex(output, r"Shai Gilgeous-Alexander \| OKC \| 10 \| 33\.9 \| [0-9-]+ to [0-9-]+ \| 312")
 
-    def test_assists_rejected(self) -> None:
-        with self.assertRaises(RuntimeError):
-            run_cli("Show me players and their assists over the last 10 games")
+    def test_assists_object_query_output(self) -> None:
+        output = run_cli("Show me players and their assists over the last 10 games")
+
+        self.assertIn("Players ordered by assists", output)
+        self.assertIn("Player | Team | Games Played | Minutes | Date Range | Assists", output)
 
     def test_games_and_players_rejected(self) -> None:
         with self.assertRaises(RuntimeError):

@@ -42,12 +42,46 @@ data ResolvedDisplayMetadata = ResolvedDisplayMetadata
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-data ResolvedLinkedFilter = ResolvedLinkedFilter
-  { targetObjectName :: Text
-  , filterPath :: DiscoveredPath
-  , filterColumn :: Text
-  , filterValue :: Text
+data ResolvedGroupingDimension = ResolvedGroupingDimension
+  { groupingKey :: Text
+  , groupingLabel :: Text
+  , groupingPath :: DiscoveredPath
+  , groupingSource :: ColumnRef
   }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ResolvedRowPredicateLeaf = ResolvedRowPredicateLeaf
+  { rowPredicateTargetObjectName :: Text
+  , rowPredicatePath :: DiscoveredPath
+  , rowPredicateColumn :: Text
+  , rowPredicateLabel :: Text
+  , rowPredicateOperator :: PredicateOperator
+  , rowPredicateValue :: PredicateValue
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ResolvedRowPredicateTree
+  = ResolvedRowPredicateLeafNode ResolvedRowPredicateLeaf
+  | ResolvedRowPredicateAnd [ResolvedRowPredicateTree]
+  | ResolvedRowPredicateOr [ResolvedRowPredicateTree]
+  | ResolvedRowPredicateNot ResolvedRowPredicateTree
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ResolvedResultPredicateLeaf = ResolvedResultPredicateLeaf
+  { resultPredicateKey :: Text
+  , resultPredicateLabel :: Text
+  , resultPredicateColumn :: Maybe Text
+  , resultPredicateAggregation :: Text
+  , resultPredicateOperator :: PredicateOperator
+  , resultPredicateValue :: PredicateValue
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ResolvedResultPredicateTree
+  = ResolvedResultPredicateLeafNode ResolvedResultPredicateLeaf
+  | ResolvedResultPredicateAnd [ResolvedResultPredicateTree]
+  | ResolvedResultPredicateOr [ResolvedResultPredicateTree]
+  | ResolvedResultPredicateNot ResolvedResultPredicateTree
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data ResolvedMetricQuery = ResolvedMetricQuery
@@ -64,16 +98,23 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , contextValue :: Maybe ColumnRef
   , gameDate :: ColumnRef
   , metricSource :: ColumnRef
+  , metricTimeGrain :: Maybe Text
+  , metricTimeBucketExpression :: Maybe Text
   , windowGames :: Int
+  , timeFilterKind :: Text
+  , timeFilters :: [Filter]
   , seasonLabel :: Maybe Text
   , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
-  , linkedFiltersResolved :: [ResolvedLinkedFilter]
+  , rowPredicateResolved :: Maybe ResolvedRowPredicateTree
+  , resultPredicateResolved :: Maybe ResolvedResultPredicateTree
   , comparisonEntities :: [ResolvedEntity]
   , comparisonRequestedValue :: Bool
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
+  , displayMetricFormulas :: [ResolvedMetricFormula]
   , filterLocation :: Text
+  , groupingDimensions :: [ResolvedGroupingDimension]
   , displayMetadata :: [ResolvedDisplayMetadata]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -92,7 +133,11 @@ data ResolvedTrendQuery = ResolvedTrendQuery
   , timeFilterKind :: Text
   , trendFilters :: [Filter]
   , timeGrain :: Text
-  , linkedFiltersResolved :: [ResolvedLinkedFilter]
+  , trendSeasonLabel :: Maybe Text
+  , trendSeasonType :: Maybe Text
+  , trendRowPredicateResolved :: Maybe ResolvedRowPredicateTree
+  , trendResultPredicateResolved :: Maybe ResolvedResultPredicateTree
+  , trendGroupingDimensions :: [ResolvedGroupingDimension]
   , resolvedAssumptions :: [Text]
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -111,12 +156,16 @@ data ResolvedObjectQuery = ResolvedObjectQuery
   , gameDate :: ColumnRef
   , metricSource :: ColumnRef
   , windowGames :: Int
+  , timeFilterKind :: Text
+  , timeFilters :: [Filter]
   , seasonLabel :: Maybe Text
   , seasonType :: Maybe Text
   , queryLimit :: Maybe Int
-  , linkedFiltersResolved :: [ResolvedLinkedFilter]
+  , objectRowPredicateResolved :: Maybe ResolvedRowPredicateTree
+  , objectResultPredicateResolved :: Maybe ResolvedResultPredicateTree
   , resolvedAssumptions :: [Text]
   , metricFormula :: ResolvedMetricFormula
+  , displayMetricFormulas :: [ResolvedMetricFormula]
   , filterLocation :: Text
   , displayMetadata :: [ResolvedDisplayMetadata]
   }
@@ -129,14 +178,21 @@ data ResolvedFindDisplay = ResolvedFindDisplay
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-data ResolvedFindPredicate = ResolvedFindPredicate
-  { predicateTargetObjectName :: Text
-  , predicatePath :: DiscoveredPath
-  , predicateColumn :: Text
-  , predicateLabel :: Text
-  , predicateOp :: Text
-  , predicateValue :: FilterValue
+data ResolvedFindPredicateLeaf = ResolvedFindPredicateLeaf
+  { treePredicateTargetObjectName :: Text
+  , treePredicatePath :: DiscoveredPath
+  , treePredicateColumn :: Text
+  , treePredicateLabel :: Text
+  , treePredicateOperator :: PredicateOperator
+  , treePredicateValue :: PredicateValue
   }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+data ResolvedFindPredicateTree
+  = ResolvedFindPredicateLeafNode ResolvedFindPredicateLeaf
+  | ResolvedFindPredicateAnd [ResolvedFindPredicateTree]
+  | ResolvedFindPredicateOr [ResolvedFindPredicateTree]
+  | ResolvedFindPredicateNot ResolvedFindPredicateTree
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data ResolvedFindQuery = ResolvedFindQuery
@@ -145,7 +201,7 @@ data ResolvedFindQuery = ResolvedFindQuery
   , resolvedFindTargetObjectName :: Text
   , resolvedFindTargetPath :: DiscoveredPath
   , resolvedFindDisplays :: [ResolvedFindDisplay]
-  , resolvedFindPredicates :: [ResolvedFindPredicate]
+  , resolvedFindPredicateTree :: Maybe ResolvedFindPredicateTree
   , resolvedFindFilters :: [Filter]
   , resolvedFindLimit :: Maybe Int
   , resolvedFindAssumptions :: [Text]

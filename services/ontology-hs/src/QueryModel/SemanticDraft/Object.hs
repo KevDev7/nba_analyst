@@ -10,9 +10,10 @@ import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Object, Ontology (objects))
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftLinkedFilters)
+import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticDraft.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
 semanticObjectDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -21,15 +22,15 @@ semanticObjectDraftToQuery ontology draft = do
   -- Object questions are entity-row questions: one row per Player/Team/etc.,
   -- with requested metrics attached from the best ontology fact surface.
   rawMeasure <- requireDraftMeasureForFamily "Object" draft
-  objectFilters <- requireRankingFilters (timeWindow draft) (filters draft)
+  objectTimeScopeValue <- objectTimeScope (timeWindow draft) (filters draft)
   limitValue <- requireOptionalPositiveLimit (limit draft)
   orderBuilder <- requireRankingSort (sort draft)
   rowObject <- resolveSubjectObject ontology (subject draft)
-  grounded <- resolveObjectGrounding ontology draft rawMeasure rowObject objectFilters limitValue
+  grounded <- resolveObjectGrounding ontology draft rawMeasure rowObject objectTimeScopeValue limitValue
   pure (objectQuery orderBuilder grounded)
 
-resolveObjectGrounding :: Ontology -> SemanticDraft -> Text -> Object -> RankingFilterBundle -> Maybe Int -> Either Text GroundedRanking
-resolveObjectGrounding ontology draft rawMeasure rowObject objectFilters maybeLimit =
+resolveObjectGrounding :: Ontology -> SemanticDraft -> Text -> Object -> TimeScope -> Maybe Int -> Either Text GroundedRanking
+resolveObjectGrounding ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit =
   -- Search ontology fact objects for one that can attach the requested metric
   -- to the requested row object.
   case rankedCandidates of
@@ -46,7 +47,7 @@ resolveObjectGrounding ontology draft rawMeasure rowObject objectFilters maybeLi
     rankedCandidates =
       sortOn objectCandidateRank $
         mapMaybe
-          (groundObjectFactCandidate ontology draft rawMeasure rowObject objectFilters maybeLimit)
+          (groundObjectFactCandidate ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit)
           (objects ontology)
 
 objectCandidateRank :: GroundedRanking -> (Down Int, Down Int, Text)
@@ -56,21 +57,26 @@ objectCandidateRank candidate =
   , objectName (factObject candidate)
   )
 
-groundObjectFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> RankingFilterBundle -> Maybe Int -> Object -> Maybe GroundedRanking
-groundObjectFactCandidate ontology draft rawMeasure rowObject objectFilters maybeLimit factObjectValue = do
+groundObjectFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> TimeScope -> Maybe Int -> Object -> Maybe GroundedRanking
+groundObjectFactCandidate ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit factObjectValue = do
   _ <- findPath ontology 2 (objectName factObjectValue) (objectName rowObject)
-  _ <- requireRankingFactSurface objectFilters factObjectValue
+  _ <- requireTimeScopeFactSurface objectTimeScopeValue factObjectValue
   metricValue <- bestMetricMatch rawMeasure factObjectValue
+  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
   dimensionValue <- identityDimension rowObject
-  linkedFilterValue <- groundDraftLinkedFilters ontology factObjectValue (filters draft)
+  rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
+  resultPredicateTree <- groundDraftResultPredicate factObjectValue metricValue (resultFilters draft) (resultPredicate draft)
   pure
     GroundedRanking
       { factObject = factObjectValue
       , subjectObject = rowObject
       , metricDef = metricValue
+      , metricDefs = metricValues
       , displayDimension = dimensionValue
-      , filterValues = rankingFilterValues objectFilters
-      , linkedFilterValues = linkedFilterValue
+      , displayDimensions = [dimensionValue]
+      , filterValues = timeScopeFilters objectTimeScopeValue
+      , rowPredicateValue = rowPredicateTree
+      , resultPredicateValue = resultPredicateTree
       , limitValue = maybeLimit
       , assumptionValues = assumptions draft
       , matchScore = metricMatchScore rawMeasure metricValue
@@ -85,11 +91,12 @@ objectQuery orderBuilder grounded =
       , QI.sharedQuery =
           QI.BaseQuery
             { QI.coreFactObject = objectName (factObject grounded)
-            , QI.metrics = [metricName (metricDef grounded)]
+            , QI.metrics = map metricName (metricDefs grounded)
             , QI.dimensions = [displayDimension grounded]
             , QI.timeGrain = Nothing
             , QI.filters = filterValues grounded
-            , QI.linkedFilters = linkedFilterValues grounded
+            , QI.rowPredicate = rowPredicateValue grounded
+            , QI.resultPredicate = resultPredicateValue grounded
             , QI.orders = [orderBuilder (metricName (metricDef grounded))]
             , QI.limit = limitValue grounded
             , QI.assumptions = assumptionValues grounded

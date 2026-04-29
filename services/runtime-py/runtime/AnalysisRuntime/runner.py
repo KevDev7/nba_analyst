@@ -30,7 +30,41 @@ def _row_with_display_values(row: dict[str, object], plan: ExecutionPlan) -> dic
         for metadata in plan.display_metadata
         if metadata.column_key in row
     }
+    display_values.update(
+        {
+            metric.column_key: row.get(metric.column_key)
+            for metric in plan.display_metrics
+            if metric.column_key in row
+        }
+    )
     return {**row, "display_values": display_values}
+
+
+def _aggregate_row_values(row: dict[str, object], plan: ExecutionPlan) -> dict[str, object]:
+    group_values = {
+        grouping.column_key: row.get(grouping.column_key)
+        for grouping in plan.grouping_columns
+        if grouping.column_key in row
+    }
+    return {**_row_with_display_values(row, plan), "group_values": group_values}
+
+
+def _ranking_row_values(row: dict[str, object], plan: ExecutionPlan) -> dict[str, object]:
+    group_values = {
+        grouping.column_key: row.get(grouping.column_key)
+        for grouping in plan.grouping_columns
+        if grouping.column_key in row
+    }
+    return {**_row_with_display_values(row, plan), "group_values": group_values}
+
+
+def _time_series_row_values(row: dict[str, object], plan: ExecutionPlan) -> dict[str, object]:
+    group_values = {
+        grouping.column_key: row.get(grouping.column_key)
+        for grouping in plan.grouping_columns
+        if grouping.column_key in row
+    }
+    return {**row, "group_values": group_values}
 
 
 def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
@@ -63,13 +97,13 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
     time_series_rows: List[TimeSeriesRow] = []
     find_rows = []
     if plan.plan_type == "single_sql" and plan.result_shape == "ranking":
-        rows = [RankingRow(**_row_with_display_values(row, plan)) for row in raw_rows]
+        rows = [RankingRow(**_ranking_row_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "aggregate":
-        aggregate_rows = [AggregateRow(**_row_with_display_values(row, plan)) for row in raw_rows]
+        aggregate_rows = [AggregateRow(**_aggregate_row_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "object_rows":
         object_rows = [ObjectRow(**_row_with_display_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "time_series":
-        time_series_rows = [TimeSeriesRow(**row) for row in raw_rows]
+        time_series_rows = [TimeSeriesRow(**_time_series_row_values(row, plan)) for row in raw_rows]
     elif plan.plan_type == "single_sql" and plan.result_shape == "find_rows":
         find_rows = raw_rows
     # Return one unified result object for answer synthesis.
@@ -83,6 +117,9 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         window_games=plan.window_games,
         time_grain=plan.time_grain,
         time_filter=plan.time_filter,
+        time_window_days=plan.time_window_days,
+        time_start_date=plan.time_start_date,
+        time_end_date=plan.time_end_date,
         season_label=plan.season_label,
         season_type=plan.season_type,
         limit=plan.limit,
@@ -92,10 +129,13 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         object_rows=object_rows,
         time_series_rows=time_series_rows,
         find_rows=find_rows,
-        find_predicates=plan.find_predicates,
+        find_predicate_tree=plan.find_predicate_tree,
         find_filters=plan.find_filters,
-        linked_filters=plan.linked_filters,
+        row_predicate=plan.row_predicate,
+        result_predicate=plan.result_predicate,
+        grouping_columns=plan.grouping_columns,
         display_metadata=plan.display_metadata,
+        display_metrics=plan.display_metrics,
         raw_rows=raw_rows,
         comparison=comparison_result,
     )

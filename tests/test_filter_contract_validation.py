@@ -16,7 +16,6 @@ class FilterContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": 5,
                     "assumptions": [],
@@ -45,7 +44,6 @@ class FilterContractValidationTests(unittest.TestCase):
                         {"kind": "exact_season", "value": "2025-26"},
                         {"kind": "season_type", "value": "regular_season"},
                     ],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
@@ -82,7 +80,6 @@ class FilterContractValidationTests(unittest.TestCase):
                         {"kind": "exact_season", "value": "2024-25"},
                         {"kind": "season_type", "value": "regular_season"},
                     ],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": 5,
                     "assumptions": [],
@@ -113,7 +110,6 @@ class FilterContractValidationTests(unittest.TestCase):
                     "dimensions": ["team_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -142,7 +138,6 @@ class FilterContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "made_up_filter", "value": "anything"}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -157,7 +152,7 @@ class FilterContractValidationTests(unittest.TestCase):
 
         message = str(context.exception)
         self.assertIn(
-            "Metric queries require either a positive LastNGames filter or an exact season plus season type filter bundle.",
+            "Metric queries require ontology-backed time filters",
             message,
         )
         self.assertNotIn("Unknown filter kind", message)
@@ -172,7 +167,6 @@ class FilterContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": "ten"}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -200,7 +194,6 @@ class FilterContractValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "exact_season", "value": "2025-26"}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "points_per_game"}],
                     "limit": None,
                     "assumptions": [],
@@ -214,11 +207,11 @@ class FilterContractValidationTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Metric queries require either a positive LastNGames filter or an exact season plus season type filter bundle.",
+            "Metric queries require ontology-backed time filters",
             str(context.exception),
         )
 
-    def test_comparison_requires_recent_window_filter_family(self) -> None:
+    def test_comparison_accepts_past_year_time_scope_filter_family(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -227,11 +220,7 @@ class FilterContractValidationTests(unittest.TestCase):
                     "metrics": ["total_points"],
                     "dimensions": ["full_name"],
                     "timeGrain": None,
-                    "filters": [
-                        {"kind": "exact_season", "value": "2025-26"},
-                        {"kind": "season_type", "value": "regular_season"},
-                    ],
-                    "linkedFilters": [],
+                    "filters": [{"kind": "past_year"}],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -248,13 +237,13 @@ class FilterContractValidationTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
-
-        self.assertIn(
-            "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type.",
-            str(context.exception),
-        )
+        planner_output = call_plan_query_json(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
+        plan = planner_output["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+        self.assertEqual(resolved["timeFilterKind"], "past_year")
+        self.assertEqual(plan["time_filter"], "past_year")
+        self.assertIn("INTERVAL '1 year'", sql)
 
 if __name__ == "__main__":
     unittest.main()

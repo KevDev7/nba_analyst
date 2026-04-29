@@ -85,6 +85,30 @@ class OntologyLayerTests(unittest.TestCase):
             payload["message"],
         )
 
+    def test_generated_ontology_includes_team_value_aliases(self) -> None:
+        team = next(obj for obj in self.ontology["objects"] if obj["name"] == "Team")
+        attributes = {attribute["name"]: attribute for attribute in team["attributes"]}
+
+        self.assertIn("western conference", attributes["conference"]["value_aliases"]["west"])
+        self.assertIn("LA Lakers", attributes["team_name"]["value_aliases"]["Lakers"])
+        self.assertIn("LA Lakers", attributes["team_abbreviation"]["value_aliases"]["LAL"])
+
+    def test_validation_rejects_ambiguous_value_aliases(self) -> None:
+        ontology = yaml.safe_load(yaml.safe_dump(self.ontology))
+        team = next(obj for obj in ontology["objects"] if obj["name"] == "Team")
+        team_name = next(attribute for attribute in team["attributes"] if attribute["name"] == "team_name")
+        team_name["value_aliases"]["Lakers"].append("LA")
+        team_name["value_aliases"]["Clippers"].append("LA")
+        path = write_temp_ontology(ontology)
+        self.addCleanup(path.unlink, missing_ok=True)
+
+        result = call_validate_ontology(path)
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["stage"], "OntologyLayer.Validation")
+        self.assertIn("attribute 'team_name' has ambiguous value alias 'la'", payload["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

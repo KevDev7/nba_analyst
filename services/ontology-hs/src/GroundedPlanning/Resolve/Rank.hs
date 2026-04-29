@@ -16,15 +16,26 @@ resolveRankMetricQuery ontology metricQuery = do
         case metricQuery of
           MetricQuerySpec {sharedQuery = currentBase} -> currentBase
   factObject <- requireObject ontology (coreFactObject base)
-  (rowObject, discoveredRowPath) <-
-    resolveOrdinaryMetricRowObject ontology (coreFactObject base) (dimensions base)
+  groupingDimensionValues <- resolveAggregateGroupingDimensions ontology (coreFactObject base) (dimensions base)
+  let (rowObject, discoveredRowPath, firstGroupingDimension) =
+        case groupingDimensionValues of
+          firstGrouping : _ -> firstGrouping
+          [] -> error "Ranking validation should require at least one grouping dimension."
+      resolvedGroupingDimensions =
+        map (\(_, _, groupingDimension) -> groupingDimension) groupingDimensionValues
   selectedMetric <- requireOrdinaryMetricName (metrics base)
   metricDef <- requireMetric factObject selectedMetric
-  displayColumn <- metricDisplayColumn (dimensions base)
+  metricDefs <- mapM (requireMetric factObject) (metrics base)
+  displayColumn <- metricDisplayColumn [groupingLabel firstGroupingDimension]
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObject
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObject
-  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
+  let partitionColumn =
+        if tableRole (groupingSource firstGroupingDimension) == "fact"
+          then groupingSource firstGroupingDimension
+          else pathPartitionKey rowPrimaryKey discoveredRowPath
+  resolvedRowPredicate <- resolveBaseRowPredicate ontology (coreFactObject base) (rowPredicate base)
+  resolvedResultPredicate <- resolveBaseResultPredicate factObject metricDef (resultPredicate base)
   let maybeSeasonPair = seasonFilterPair (filters base)
       gamesValue =
         case requireLastNGames (filters base) of
@@ -39,21 +50,28 @@ resolveRankMetricQuery ontology metricQuery = do
       , metricOrderDirection = orderDirectionText (orders base)
       , rowPath = discoveredRowPath
       , contextPath = selectedContextPath contextSelection
-      , partitionKey = pathPartitionKey rowPrimaryKey discoveredRowPath
-      , entityId = ColumnRef "row" rowPrimaryKey
+      , partitionKey = partitionColumn
+      , entityId = partitionColumn
       , displayName = ColumnRef "row" displayColumn
       , contextValue = selectedContextColumn contextSelection
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
+      , metricTimeGrain = Nothing
+      , metricTimeBucketExpression = Nothing
       , windowGames = gamesValue
+      , timeFilterKind = metricTimeFilterKind (filters base)
+      , timeFilters = filters base
       , seasonLabel = fst <$> maybeSeasonPair
       , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limit base
-      , linkedFiltersResolved = resolvedLinkedFilters
+      , rowPredicateResolved = resolvedRowPredicate
+      , resultPredicateResolved = resolvedResultPredicate
       , comparisonEntities = []
       , comparisonRequestedValue = False
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
+      , displayMetricFormulas = resolveMetricFormulas metricDefs
       , filterLocation = "fact_table"
+      , groupingDimensions = resolvedGroupingDimensions
       , displayMetadata = resolveDisplayMetadata factObject rowObject gamesValue
       }

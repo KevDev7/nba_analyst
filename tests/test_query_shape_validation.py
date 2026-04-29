@@ -16,7 +16,6 @@ class QueryShapeValidationTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -30,7 +29,7 @@ class QueryShapeValidationTests(unittest.TestCase):
             call_plan_query_json(payload)
 
         self.assertIn(
-            "Ranking/aggregation metric queries require exactly one business grouping dimension.",
+            "Ranking queries require at least one business grouping dimension.",
             str(context.exception),
         )
 
@@ -44,7 +43,6 @@ class QueryShapeValidationTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -61,17 +59,16 @@ class QueryShapeValidationTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_trend_with_multiple_dimensions_is_rejected_with_trend_specific_reason(self) -> None:
+    def test_trend_with_multiple_dimensions_is_supported_when_ontology_resolves_them(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
                     "coreFactObject": "TeamGame",
                     "metrics": ["average_points"],
-                    "dimensions": ["team_name", "full_name"],
+                    "dimensions": ["team_name", "season_type"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -81,15 +78,17 @@ class QueryShapeValidationTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
 
-        self.assertIn(
-            "Trend queries support at most one business grouping dimension.",
-            str(context.exception),
+        self.assertEqual(
+            planner_output["execution_plan"]["grouping_columns"],
+            [
+                {"column_key": "group_1", "label": "team_name"},
+                {"column_key": "group_2", "label": "season_type"},
+            ],
         )
 
-    def test_multi_metric_ranking_query_is_rejected_with_family_specific_reason(self) -> None:
+    def test_multi_metric_ranking_query_is_supported_with_one_primary_order_metric(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -99,7 +98,6 @@ class QueryShapeValidationTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "total_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -109,12 +107,14 @@ class QueryShapeValidationTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
 
-        self.assertIn(
-            "Ranking/aggregation metric queries require exactly one selected metric.",
-            str(context.exception),
+        self.assertEqual(
+            planner_output["execution_plan"]["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "total_points", "metric": "total_points"},
+                {"column_key": "metric_2", "label": "average_points", "metric": "average_points"},
+            ],
         )
 
     def test_multi_metric_trend_query_is_rejected_with_trend_specific_reason(self) -> None:
@@ -127,7 +127,6 @@ class QueryShapeValidationTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],

@@ -16,7 +16,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -48,7 +47,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": ["team_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -80,7 +78,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -106,7 +103,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": ["game_date"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -119,10 +115,11 @@ class TrendPlanningTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
-        self.assertEqual(resolved["seriesObjectName"], "Game")
-        self.assertEqual(resolved["seriesName"]["columnName"], "game_date")
+        self.assertEqual(resolved["seriesObjectName"], "TeamGame")
+        self.assertEqual(resolved["trendGroupingDimensions"][0]["groupingLabel"], "game_date")
+        self.assertEqual(resolved["trendGroupingDimensions"][0]["groupingSource"]["tableRole"], "fact")
 
-    def test_linked_filter_trend_is_grounded(self) -> None:
+    def test_row_predicate_trend_is_grounded(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -132,9 +129,12 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [
-                        {"targetObject": "Team", "attribute": "team_name", "value": "Lakers"}
-                    ],
+                    "rowPredicate": {
+                        "kind": "leaf",
+                        "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                        "operator": "equals",
+                        "value": {"kind": "scalar", "value": "Lakers"},
+                    },
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -147,7 +147,7 @@ class TrendPlanningTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
 
-        self.assertEqual(resolved["linkedFiltersResolved"][0]["filterColumn"], "team_name")
+        self.assertEqual(resolved["trendRowPredicateResolved"]["contents"]["rowPredicateColumn"], "team_name")
         self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
 
     def test_explicit_order_trend_is_rejected(self) -> None:
@@ -160,7 +160,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -188,7 +187,6 @@ class TrendPlanningTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": 5,
                     "assumptions": [],

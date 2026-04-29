@@ -23,6 +23,7 @@ DISPLAY_METADATA_TYPE_ORDER = (
     "filter_context",
     "analytical_metadata",
     "evidence",
+    "filter_metadata",
 )
 
 RowT = TypeVar("RowT")
@@ -44,6 +45,16 @@ def _metric_header(metric: str) -> str:
         "points_total": "Total Points",
         "average_points": "Average Points",
         "points_per_game": "Average Points",
+        "average_minutes": "Average Minutes",
+        "minutes_per_game": "Average Minutes",
+        "total_assists": "Assists",
+        "assists_total": "Assists",
+        "average_assists": "Average Assists",
+        "assists_per_game": "Average Assists",
+        "total_rebounds": "Rebounds",
+        "rebounds_total": "Rebounds",
+        "average_rebounds": "Average Rebounds",
+        "rebounds_per_game": "Average Rebounds",
         "games_played": "Games Played",
         "wins": "Wins",
         "losses": "Losses",
@@ -52,7 +63,7 @@ def _metric_header(metric: str) -> str:
 
 
 def _metric_value(metric: str, value: float) -> str:
-    if metric in {"average_points", "points_per_game"}:
+    if metric in {"average_points", "points_per_game", "average_minutes", "minutes_per_game", "average_assists", "assists_per_game", "average_rebounds", "rebounds_per_game"}:
         return f"{value:.1f}"
     if metric == "win_percentage":
         return f"{value:.3f}"
@@ -80,13 +91,15 @@ def _cell_value(value: object) -> str:
     return str(value)
 
 
-def _metadata_value(metric: str, key: str, value: object) -> str:
+def _metadata_value(metric: str, key: str, value: object, label: str = "") -> str:
     if value is None:
         return ""
     if key == "games_played":
         return str(int(round(float(value))))
     if key == "minutes":
         return f"{float(value):.1f}"
+    if "percentage" in label.lower() or "percentage" in key.lower():
+        return f"{float(value):.3f}"
     return _metric_value(metric, float(value)) if isinstance(value, (float, int)) else _cell_value(value)
 
 
@@ -97,19 +110,58 @@ def _display_metadata_value(row: Any, key: str) -> object:
     return getattr(row, key, None)
 
 
+def _display_metric_value(row: Any, key: str, metric: str) -> str:
+    value = _display_metadata_value(row, key)
+    if value is None:
+        return ""
+    return _metric_value(metric, float(value))
+
+
+def _grouping_header(answer: FinalAnswer, label: str) -> str:
+    if label in {"team_name", "full_name"}:
+        return answer.entity_label_singular
+    return _field_header(label)
+
+
+def _grouping_value(row: Any, key: str) -> object:
+    group_values = getattr(row, "group_values", {})
+    if isinstance(group_values, dict) and key in group_values:
+        return group_values[key]
+    return getattr(row, key, None)
+
+
+def _metadata_duplicates_display_metric(answer: FinalAnswer, metadata_key: str) -> bool:
+    display_metric_names = {display_metric.metric for display_metric in answer.display_metrics}
+    if metadata_key == "minutes" and display_metric_names & {"average_minutes", "minutes_per_game"}:
+        return True
+    if metadata_key == "games_played" and "games_played" in display_metric_names:
+        return True
+    return False
+
+
 def _row_table_columns(answer: FinalAnswer, rows: Sequence[Any], include_rank: bool) -> list[tuple[str, Callable[[Any], str]]]:
     columns: list[tuple[str, Callable[[Any], str]]] = []
     if include_rank:
         columns.append(("Rank", lambda row: str(row.rank)))
 
-    columns.append((answer.entity_label_singular, lambda row: _cell_value(row.entity_name)))
+    grouping_labels = {grouping.label for grouping in answer.grouping_columns}
+    if answer.result_shape in {"aggregate", "ranking"} and answer.grouping_columns:
+        for grouping in answer.grouping_columns:
+            columns.append(
+                (
+                    _grouping_header(answer, grouping.label),
+                    lambda row, key=grouping.column_key: _cell_value(_grouping_value(row, key)),
+                )
+            )
+    else:
+        columns.append((answer.entity_label_singular, lambda row: _cell_value(row.entity_name)))
 
-    if answer.context_label and any(row.context_value for row in rows):
+    if answer.result_shape != "aggregate" and answer.context_label and any(row.context_value for row in rows):
         columns.append((answer.context_label, lambda row: _cell_value(row.context_value)))
 
-    if answer.season_label:
+    if answer.season_label and "season_year" not in grouping_labels:
         columns.append(("Season", lambda _row: _cell_value(answer.season_label)))
-    if answer.season_type:
+    if answer.season_type and "season_type" not in grouping_labels:
         columns.append(("Season Type", lambda _row: _cell_value(answer.season_type)))
 
     for metadata_type in DISPLAY_METADATA_TYPE_ORDER:
@@ -118,18 +170,29 @@ def _row_table_columns(answer: FinalAnswer, rows: Sequence[Any], include_rank: b
                 continue
             if metadata.column_key == answer.metric:
                 continue
+            if _metadata_duplicates_display_metric(answer, metadata.column_key):
+                continue
             if not any(_display_metadata_value(row, metadata.column_key) is not None for row in rows):
                 continue
             columns.append(
                 (
-                    metadata.label,
-                    lambda row, key=metadata.column_key: _metadata_value(
-                        answer.metric, key, _display_metadata_value(row, key)
+                    _field_header(metadata.label),
+                    lambda row, key=metadata.column_key, label=metadata.label: _metadata_value(
+                        answer.metric, key, _display_metadata_value(row, key), label
                     ),
                 )
             )
 
-    columns.append((_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value)))
+    if answer.display_metrics:
+        for display_metric in answer.display_metrics:
+            columns.append(
+                (
+                    _metric_header(display_metric.metric),
+                    lambda row, key=display_metric.column_key, metric=display_metric.metric: _display_metric_value(row, key, metric),
+                )
+            )
+    else:
+        columns.append((_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value)))
     return columns
 
 
@@ -138,6 +201,32 @@ def _append_row_table(lines: list[str], answer: FinalAnswer, rows: Sequence[Any]
     lines.append(" | ".join(header for header, _getter in columns))
     lines.append(" | ".join("---" for _header, _getter in columns))
     for row in rows:
+        lines.append(" | ".join(getter(row) for _header, getter in columns))
+
+
+def _append_comparison_breakdown_table(lines: list[str], answer: FinalAnswer) -> None:
+    if answer.comparison is None:
+        return
+    rows_to_display, total_rows = _display_rows(answer.comparison.breakdown_rows)
+    _append_display_notice(lines, total_rows)
+    columns: list[tuple[str, Callable[[Any], str]]] = []
+    if answer.time_grain:
+        columns.append((_time_header(answer.time_grain), lambda row: _cell_value(row.time_bucket)))
+    columns.append((answer.entity_label_singular, lambda row: _cell_value(row.entity_name)))
+    if answer.context_label and any(row.context_value for row in rows_to_display):
+        columns.append((answer.context_label, lambda row: _cell_value(row.context_value)))
+    for grouping in answer.grouping_columns:
+        columns.append(
+            (
+                _grouping_header(answer, grouping.label),
+                lambda row, key=grouping.column_key: _cell_value(_grouping_value(row, key)),
+            )
+        )
+    columns.append(("Games", lambda row: str(row.games_count)))
+    columns.append((_metric_header(answer.metric), lambda row: _metric_value(answer.metric, row.metric_value)))
+    lines.append(" | ".join(header for header, _getter in columns))
+    lines.append(" | ".join("---" for _header, _getter in columns))
+    for row in rows_to_display:
         lines.append(" | ".join(getter(row) for _header, getter in columns))
 
 
@@ -151,6 +240,9 @@ def format_response(answer: FinalAnswer) -> str:
     if answer.comparison is not None:
         lines.append("Comparison")
         lines.append("---")
+        if answer.comparison.breakdown_rows:
+            _append_comparison_breakdown_table(lines, answer)
+            return "\n".join(lines)
         compared_entities = answer.comparison.entities or [
             answer.comparison.entity_a,
             answer.comparison.entity_b,
@@ -194,7 +286,21 @@ def format_response(answer: FinalAnswer) -> str:
         rows_to_display, total_rows = _display_rows(answer.time_series_rows)
         _append_display_notice(lines, total_rows)
         time_header = _time_header(answer.time_grain)
-        if any(row.series_name for row in rows_to_display):
+        if answer.grouping_columns:
+            group_columns = [
+                (
+                    _grouping_header(answer, grouping.label),
+                    lambda row, key=grouping.column_key: _cell_value(_grouping_value(row, key)),
+                )
+                for grouping in answer.grouping_columns
+            ]
+            headers = [time_header] + [header for header, _getter in group_columns] + [_metric_header(answer.metric)]
+            lines.append(" | ".join(headers))
+            lines.append(" | ".join("---" for _header in headers))
+            for row in rows_to_display:
+                group_values = [getter(row) for _header, getter in group_columns]
+                lines.append(" | ".join([_cell_value(row.time_bucket)] + group_values + [_metric_value(answer.metric, row.metric_value)]))
+        elif any(row.series_name for row in rows_to_display):
             lines.append(f"{time_header} | {answer.entity_label_singular} | {_metric_header(answer.metric)}")
             lines.append("--- | --- | ---")
             for row in rows_to_display:

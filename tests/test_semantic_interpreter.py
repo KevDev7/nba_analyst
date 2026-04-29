@@ -40,6 +40,9 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertNotIn('"query_kind"', prompt)
         self.assertNotIn("Capability summary", prompt)
         self.assertIn('"task":"object"', prompt)
+        self.assertIn("row-level constraints", prompt)
+        self.assertIn('"field":"minutes","op":">","value":30', prompt)
+        self.assertIn('"field":"win percentage","op":">","value":0.6', prompt)
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_interpreter_returns_basic_validated_semantic_draft(self, mock_call_gemini) -> None:
@@ -106,6 +109,62 @@ class SemanticInterpreterTests(unittest.TestCase):
         )
 
         self.assertIsNone(interpreted["time_window"])
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_interpreter_allows_compare_null_time_window_for_default_scope(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "compare",
+            "subject": "players",
+            "measure": "points",
+            "measures": ["points"],
+            "dimensions": [],
+            "filters": [],
+            "result_filters": [],
+            "time_window": None,
+            "grain": None,
+            "order": [],
+            "limit": None,
+            "sort": None,
+            "entities": ["Jalen Brunson", "Jayson Tatum"],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Compare Jalen Brunson and Jayson Tatum points"
+        )
+
+        self.assertIsNone(interpreted["time_window"])
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_interpreter_preserves_decimal_numeric_filter_values(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "rank",
+            "subject": "teams",
+            "measure": "wins",
+            "measures": ["wins"],
+            "dimensions": [],
+            "filters": [{"field": "win percentage", "op": ">", "value": 0.6}],
+            "time_window": {"kind": "season", "value": "2025-26"},
+            "grain": None,
+            "order": [{"by": "wins", "direction": "desc"}],
+            "limit": None,
+            "sort": "desc",
+            "entities": [],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Show me teams by wins with win percentage above .600 in the 2025-26 season"
+        )
+
+        self.assertEqual(
+            interpreted["filters"],
+            [{"field": "win percentage", "op": ">", "value": 0.6}],
+        )
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
     def test_interpreter_still_requires_non_find_time_window(self, mock_call_gemini) -> None:

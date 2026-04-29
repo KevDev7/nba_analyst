@@ -56,7 +56,6 @@ A family can pass this standard and still have:
 
 - one-metric limits
 - one-dimension limits
-- one-linked-filter limits
 - path-depth limits
 - runtime-specific shape limits
 - family-specific time or cardinality limits
@@ -95,11 +94,12 @@ Why it passes:
 - capability derivation is planner-derived
 - linked-filter support is ontology-reachable rather than tied to a tiny
   handwritten set
+- row-level numeric predicates and aggregate/result predicates are separated
+  instead of forcing both meanings through the same filter lane
 
 What still falls short of full ontology-backed behavior:
 
 - exactly one selected metric
-- exactly one selected business grouping dimension
 - descending-by-selected-metric shape
 - limited limit behavior
 
@@ -112,11 +112,12 @@ Why it passes:
 - core metric and dimension references are ontology-backed
 - support is no longer mainly driven by handwritten metric or dimension lists
 - capability derivation comes from validate + resolve + compile truth
+- aggregate/result predicates are supported for selected metrics and explicit
+  auxiliary aggregates such as average minutes
 
 What still falls short of full ontology-backed behavior:
 
 - exactly one selected metric
-- exactly one grouping dimension
 - current answer and result shapes are still narrow
 
 ### 3. Filtering / Joining
@@ -127,14 +128,15 @@ Why it passes:
 
 - filters are text-backed rather than enum-blocked
 - linked-filter support is now based on ontology reachability and public
-  dimension truth
+- dimension or numeric-measure truth
 - capability derivation is no longer tied to one special linked target shape
 
 What still falls short of full ontology-backed behavior:
 
-- ordinary queries still use a narrow recent-or-season filter-family box
+- ordinary queries now share a broader `TimeScope` contract for recent games,
+  last-N-days, past year, date ranges, all available data, and exact seasons
 - multiple linked filters are supported when each filter has a valid ontology
-  path to a public dimension
+  path to a public dimension or numeric measure
 - path traversal is still capped at depth 2
 
 ### 4. Trend
@@ -150,12 +152,18 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- trend filters are still mostly calendar-window shaped
+- trend now separates time grain from time scope, so exact-season trends,
+  past-year trends, last-N-days trends, and date-range trends are supported
+  when the fact surface exposes the required fields
+- trend filters are still calendar/date shaped
 - supported grains are day, week, month, and season
+- last-N-games trend scopes are still intentionally unsupported until the
+  product defines whether that means per-entity recent games, league-wide
+  recent game dates, or something else
 - linked filters are supported when each filter has a valid ontology path
+- aggregate/result predicates are supported on the trend result after grouping
 - no explicit ordering
 - no limit
-- at most one grouping dimension
 
 Trend is the closest family to the line, but it still passes because the
 remaining restrictions look more like current runtime truth than stale
@@ -174,12 +182,14 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- recent-window only
+- comparison supports shared metric time scopes, including recent games,
+  last-N-days, past year, date ranges, all available data, and exact seasons
 - comparisons support two or more distinct resolved entities
 - linked filters are supported when each filter has a valid ontology path
+- aggregate/result predicates are intentionally rejected because comparison
+  deltas are computed after SQL execution
 - no explicit ordering
 - no limit
-- no time grain
 
 ### 6. Object Rows
 
@@ -200,6 +210,8 @@ What still falls short of full ontology-backed behavior:
 - current output is still table-shaped; presentation caps displayed rows at 50
   when the underlying result is larger
 - linked filters are supported when each filter has a valid ontology path
+- aggregate/result predicates are supported for selected metrics and explicit
+  auxiliary aggregates such as average minutes
 
 ## Why We Are Moving Forward
 

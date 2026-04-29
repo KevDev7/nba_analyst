@@ -10,9 +10,13 @@ module GroundedPlanning.Compile.Sql.Common
   , renderColumnRefWithContext
   , renderFactExpression
   , renderFilterLiteral
-  , renderLinkedFilterConditions
-  , renderLinkedFilterJoinClauses
-  , renderLinkedFilterWhereClause
+  , renderGameDateFilterConditions
+  , renderDisplayMetricAggregateSelectLines
+  , renderDisplayMetricDirectSelectLines
+  , renderDisplayMetricFinalSelectLines
+  , renderDisplayMetricSourceSelectLines
+  , groupingAlias
+  , primaryGroupingKey
   , renderMaybeColumnRef
   , renderMaybePathJoinClauses
   , renderMetricValue
@@ -20,9 +24,24 @@ module GroundedPlanning.Compile.Sql.Common
   , renderMetadataDirectSelectLines
   , renderMetadataFinalSelectLines
   , renderMetadataSourceSelectLines
+  , renderGroupingAggregateSelectLines
+  , renderGroupingFinalSelectLines
+  , renderGroupingJoinClauses
+  , renderGroupingKeys
+  , renderGroupingOrder
+  , renderGroupingSource
+  , renderGroupingSourceSelectLines
   , renderPathJoinClauses
+  , renderResultPredicateAggregateSelectLines
+  , renderResultPredicateConditions
+  , renderResultPredicateDirectSelectLines
+  , renderResultPredicateFinalSelectLines
+  , renderResultPredicateSourceSelectLines
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
   , renderSeasonFilterConditions
   , renderTrendFilterConditions
+  , trendSeasonLabelFromFilters
   , seasonWhereClause
   , seasonWhereClauseForAlias
   , trendSeasonTypeFromFilters
@@ -33,7 +52,19 @@ import qualified Data.Text as T
 import GroundedPlanning.Resolve
 import OntologyLayer.Graph (DiscoveredPath)
 import qualified OntologyLayer.Graph as OG
-import QueryModel.IR (Filter, FilterValue (FilterInt, FilterText), filterKindText, filterTextValue)
+import QueryModel.IR (Filter, FilterValue (FilterDouble, FilterInt, FilterText), PredicateOperator (..), PredicateValue (..), filterIntValue, filterKindText, filterTextValue)
+
+data IndexedRowPredicateTree
+  = IndexedRowPredicateLeaf Int ResolvedRowPredicateLeaf
+  | IndexedRowPredicateAnd [IndexedRowPredicateTree]
+  | IndexedRowPredicateOr [IndexedRowPredicateTree]
+  | IndexedRowPredicateNot IndexedRowPredicateTree
+
+data IndexedResultPredicateTree
+  = IndexedResultPredicateLeaf ResolvedResultPredicateLeaf
+  | IndexedResultPredicateAnd [IndexedResultPredicateTree]
+  | IndexedResultPredicateOr [IndexedResultPredicateTree]
+  | IndexedResultPredicateNot IndexedResultPredicateTree
 
 -- Turn the resolved metric aggregation into the SQL aggregation expression.
 -- This is where a semantic aggregation like "sum" becomes concrete SQL like SUM(...).
@@ -45,21 +76,60 @@ compileMetricAggregation formula =
     "identity" -> "MAX(metric_source)"
     _ -> error "Unsupported executable metric aggregation."
 
+compileResultPredicateAggregation :: ResolvedResultPredicateLeaf -> Text
+compileResultPredicateAggregation predicateLeaf =
+  case resultPredicateAggregation predicateLeaf of
+    "sum" -> "SUM(__" <> resultPredicateKey predicateLeaf <> "_source)"
+    "avg" -> "ROUND(AVG(__" <> resultPredicateKey predicateLeaf <> "_source), 1)"
+    "identity" -> "MAX(__" <> resultPredicateKey predicateLeaf <> "_source)"
+    _ -> error "Unsupported result-predicate aggregation."
+
 renderTrendFilterConditions :: Text -> [Filter] -> [Text]
 renderTrendFilterConditions trendFactTableName filterValues =
-  mapMaybeTrendFilterCondition filterValues
+  renderGameDateFilterConditions trendFactTableName "f" filterValues
+
+renderGameDateFilterConditions :: Text -> Text -> [Filter] -> [Text]
+renderGameDateFilterConditions factTableNameValue factAlias filterValues =
+  mapMaybeDateFilterCondition filterValues
   where
-    latestDateSubquery = "(SELECT MAX(game_date) FROM " <> trendFactTableName <> ")"
-    mapMaybeTrendFilterCondition [] = []
-    mapMaybeTrendFilterCondition (filterValue : remaining) =
+    latestDateSubquery = "(SELECT MAX(game_date) FROM " <> factTableNameValue <> ")"
+    gameDateColumn = factAlias <> ".game_date"
+    mapMaybeDateFilterCondition [] = []
+    mapMaybeDateFilterCondition (filterValue : remaining) =
       case filterKindText filterValue of
         "past_year" ->
-          ("f.game_date >= " <> latestDateSubquery <> " - INTERVAL '1 year'") : mapMaybeTrendFilterCondition remaining
+          (gameDateColumn <> " >= " <> latestDateSubquery <> " - INTERVAL '1 year'") : mapMaybeDateFilterCondition remaining
+        "last_n_days" ->
+          case filterIntValue filterValue of
+            Just daysValue ->
+              (gameDateColumn <> " >= " <> latestDateSubquery <> " - INTERVAL '" <> T.pack (show daysValue) <> " days'") : mapMaybeDateFilterCondition remaining
+            Nothing -> mapMaybeDateFilterCondition remaining
+        "date_from" ->
+          case filterTextValue filterValue of
+            Just startDate -> (gameDateColumn <> " >= DATE '" <> escapeSqlLiteral startDate <> "'") : mapMaybeDateFilterCondition remaining
+            Nothing -> mapMaybeDateFilterCondition remaining
+        "date_to" ->
+          case filterTextValue filterValue of
+            Just endDate -> (gameDateColumn <> " <= DATE '" <> escapeSqlLiteral endDate <> "'") : mapMaybeDateFilterCondition remaining
+            Nothing -> mapMaybeDateFilterCondition remaining
         "season_type" ->
           case filterTextValue filterValue of
-            Just seasonTypeValue -> ("f.season_type = '" <> seasonTypeValue <> "'") : mapMaybeTrendFilterCondition remaining
-            Nothing -> mapMaybeTrendFilterCondition remaining
-        _ -> mapMaybeTrendFilterCondition remaining
+            Just seasonTypeValue -> (factAlias <> ".season_type = '" <> escapeSqlLiteral seasonTypeValue <> "'") : mapMaybeDateFilterCondition remaining
+            Nothing -> mapMaybeDateFilterCondition remaining
+        "exact_season" ->
+          case filterTextValue filterValue of
+            Just seasonLabelValue -> (factAlias <> ".season_year = '" <> escapeSqlLiteral seasonLabelValue <> "'") : mapMaybeDateFilterCondition remaining
+            Nothing -> mapMaybeDateFilterCondition remaining
+        _ -> mapMaybeDateFilterCondition remaining
+
+trendSeasonLabelFromFilters :: [Filter] -> Maybe Text
+trendSeasonLabelFromFilters filterValues =
+  case filterValues of
+    [] -> Nothing
+    filterValue : remaining ->
+      if filterKindText filterValue == "exact_season"
+        then filterTextValue filterValue
+        else trendSeasonLabelFromFilters remaining
 
 trendSeasonTypeFromFilters :: [Filter] -> Maybe Text
 trendSeasonTypeFromFilters filterValues =
@@ -117,6 +187,178 @@ renderMetadataFinalSelectLines metadataValues =
   [ "  " <> metadataKey metadataValue <> ","
   | metadataValue <- metadataValues
   ]
+
+compileDisplayMetricAggregation :: ResolvedMetricFormula -> Text
+compileDisplayMetricAggregation formula =
+  case aggregationKind formula of
+    "sum" -> "SUM(__" <> resultColumn formula <> "_source)"
+    "avg" -> "ROUND(AVG(__" <> resultColumn formula <> "_source), 1)"
+    "identity" -> "MAX(__" <> resultColumn formula <> "_source)"
+    _ -> error "Unsupported executable display-metric aggregation."
+
+displayMetricSourceAttribute :: ResolvedMetricFormula -> Maybe Text
+displayMetricSourceAttribute formula =
+  case sourceAttributes formula of
+    sourceAttribute : _ -> Just sourceAttribute
+    [] -> Nothing
+
+extraDisplayMetricFormulas :: [ResolvedMetricFormula] -> [ResolvedMetricFormula]
+extraDisplayMetricFormulas metricFormulas =
+  [ formula
+  | formula <- metricFormulas
+  , resultColumn formula /= "metric_value"
+  ]
+
+renderDisplayMetricSourceSelectLines :: Text -> [ResolvedMetricFormula] -> [Text]
+renderDisplayMetricSourceSelectLines factAlias metricFormulas =
+  [ "    " <> factAlias <> "." <> sourceAttribute <> " AS __" <> resultColumn formula <> "_source,"
+  | formula <- extraDisplayMetricFormulas metricFormulas
+  , Just sourceAttribute <- [displayMetricSourceAttribute formula]
+  ]
+
+renderDisplayMetricAggregateSelectLines :: [ResolvedMetricFormula] -> [Text]
+renderDisplayMetricAggregateSelectLines metricFormulas =
+  [ "    " <> compileDisplayMetricAggregation formula <> " AS " <> resultColumn formula <> ","
+  | formula <- extraDisplayMetricFormulas metricFormulas
+  ]
+
+renderDisplayMetricDirectSelectLines :: Text -> [ResolvedMetricFormula] -> [Text]
+renderDisplayMetricDirectSelectLines factAlias metricFormulas =
+  [ "    " <> factAlias <> "." <> sourceAttribute <> " AS " <> resultColumn formula <> ","
+  | formula <- extraDisplayMetricFormulas metricFormulas
+  , Just sourceAttribute <- [displayMetricSourceAttribute formula]
+  ]
+
+renderDisplayMetricFinalSelectLines :: [ResolvedMetricFormula] -> [Text]
+renderDisplayMetricFinalSelectLines metricFormulas =
+  [ "  " <> resultColumn formula <> ","
+  | formula <- extraDisplayMetricFormulas metricFormulas
+  ]
+
+renderResultPredicateSourceSelectLines :: Text -> Maybe ResolvedResultPredicateTree -> [Text]
+renderResultPredicateSourceSelectLines factAlias maybePredicateTree =
+  [ "    " <> factAlias <> "." <> sourceColumn <> " AS __" <> resultPredicateKey predicateLeaf <> "_source,"
+  | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
+  , Just sourceColumn <- [resultPredicateColumn predicateLeaf]
+  ]
+
+renderResultPredicateAggregateSelectLines :: Maybe ResolvedResultPredicateTree -> [Text]
+renderResultPredicateAggregateSelectLines maybePredicateTree =
+  [ "    " <> compileResultPredicateAggregation predicateLeaf <> " AS " <> resultPredicateKey predicateLeaf <> ","
+  | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
+  ]
+
+renderResultPredicateDirectSelectLines :: Text -> Maybe ResolvedResultPredicateTree -> [Text]
+renderResultPredicateDirectSelectLines factAlias maybePredicateTree =
+  [ "    " <> factAlias <> "." <> sourceColumn <> " AS " <> resultPredicateKey predicateLeaf <> ","
+  | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
+  , Just sourceColumn <- [resultPredicateColumn predicateLeaf]
+  ]
+
+renderResultPredicateFinalSelectLines :: Maybe ResolvedResultPredicateTree -> [Text]
+renderResultPredicateFinalSelectLines maybePredicateTree =
+  [ "  " <> resultPredicateKey predicateLeaf <> ","
+  | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
+  ]
+
+renderGroupingJoinClauses :: [ResolvedGroupingDimension] -> [Text]
+renderGroupingJoinClauses groupingDimensions =
+  concatMap renderGroupingJoin (zip [1 :: Int ..] groupingDimensions)
+  where
+    renderGroupingJoin (indexValue, groupingDimension) =
+      if null (OG.steps (groupingPath groupingDimension))
+        then []
+        else
+          renderPathJoinClauses
+            "JOIN"
+            "f"
+            (groupingAlias indexValue)
+            (groupingAlias indexValue <> "p")
+            (groupingPath groupingDimension)
+
+renderGroupingSourceSelectLines :: [ResolvedGroupingDimension] -> [Text]
+renderGroupingSourceSelectLines groupingDimensions =
+  [ "    " <> renderGroupingSource indexValue groupingDimension <> " AS " <> groupingKey groupingDimension <> ","
+  | (indexValue, groupingDimension) <- zip [1 :: Int ..] groupingDimensions
+  ]
+
+renderGroupingSource :: Int -> ResolvedGroupingDimension -> Text
+renderGroupingSource indexValue groupingDimension =
+  case tableRole (groupingSource groupingDimension) of
+    "fact" -> "f." <> columnName (groupingSource groupingDimension)
+    "group" -> groupingAlias indexValue <> "." <> columnName (groupingSource groupingDimension)
+    _ -> error "Unsupported grouping column role."
+
+renderGroupingAggregateSelectLines :: [ResolvedGroupingDimension] -> [Text]
+renderGroupingAggregateSelectLines groupingDimensions =
+  [ "    " <> groupingKey groupingDimension <> ","
+  | groupingDimension <- groupingDimensions
+  ]
+
+renderGroupingFinalSelectLines :: [ResolvedGroupingDimension] -> [Text]
+renderGroupingFinalSelectLines groupingDimensions =
+  [ "  " <> groupingKey groupingDimension <> ","
+  | groupingDimension <- groupingDimensions
+  ]
+
+renderGroupingKeys :: [ResolvedGroupingDimension] -> Text
+renderGroupingKeys groupingDimensions =
+  T.intercalate ", " (map groupingKey groupingDimensions)
+
+renderGroupingOrder :: [ResolvedGroupingDimension] -> Text
+renderGroupingOrder groupingDimensions =
+  T.intercalate ", " [groupingKey groupingDimension <> " ASC" | groupingDimension <- groupingDimensions]
+
+primaryGroupingKey :: [ResolvedGroupingDimension] -> Text
+primaryGroupingKey groupingDimensions =
+  case groupingDimensions of
+    groupingDimension : _ -> groupingKey groupingDimension
+    [] -> "entity_name"
+
+groupingAlias :: Int -> Text
+groupingAlias indexValue =
+  "g" <> T.pack (show indexValue)
+
+renderResultPredicateConditions :: Maybe ResolvedResultPredicateTree -> [Text]
+renderResultPredicateConditions maybePredicateTree =
+  case maybePredicateTree of
+    Nothing -> []
+    Just predicateTree -> [renderResultPredicateTreeCondition (indexResultPredicateTree predicateTree)]
+
+indexResultPredicateTree :: ResolvedResultPredicateTree -> IndexedResultPredicateTree
+indexResultPredicateTree predicateTree =
+  case predicateTree of
+    ResolvedResultPredicateLeafNode predicateLeaf -> IndexedResultPredicateLeaf predicateLeaf
+    ResolvedResultPredicateAnd predicateValues -> IndexedResultPredicateAnd (map indexResultPredicateTree predicateValues)
+    ResolvedResultPredicateOr predicateValues -> IndexedResultPredicateOr (map indexResultPredicateTree predicateValues)
+    ResolvedResultPredicateNot predicateValue -> IndexedResultPredicateNot (indexResultPredicateTree predicateValue)
+
+renderResultPredicateTreeCondition :: IndexedResultPredicateTree -> Text
+renderResultPredicateTreeCondition predicateTree =
+  case predicateTree of
+    IndexedResultPredicateLeaf predicateLeaf ->
+      renderResultPredicateLeafCondition predicateLeaf
+    IndexedResultPredicateAnd predicateValues ->
+      "(" <> T.intercalate " AND " (map renderResultPredicateTreeCondition predicateValues) <> ")"
+    IndexedResultPredicateOr predicateValues ->
+      "(" <> T.intercalate " OR " (map renderResultPredicateTreeCondition predicateValues) <> ")"
+    IndexedResultPredicateNot predicateValue ->
+      "NOT (" <> renderResultPredicateTreeCondition predicateValue <> ")"
+
+renderResultPredicateLeafCondition :: ResolvedResultPredicateLeaf -> Text
+renderResultPredicateLeafCondition predicateLeaf =
+  let columnRef = resultPredicateKey predicateLeaf
+   in case (resultPredicateOperator predicateLeaf, resultPredicateValue predicateLeaf) of
+        (PredicateEquals, PredicateScalar scalarValue) -> columnRef <> " = " <> renderFilterLiteral scalarValue
+        (PredicateNotEquals, PredicateScalar scalarValue) -> columnRef <> " <> " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThan, PredicateScalar scalarValue) -> columnRef <> " > " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " >= " <> renderFilterLiteral scalarValue
+        (PredicateLessThan, PredicateScalar scalarValue) -> columnRef <> " < " <> renderFilterLiteral scalarValue
+        (PredicateLessThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " <= " <> renderFilterLiteral scalarValue
+        (PredicateIn, PredicateList values) -> columnRef <> " IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateNotIn, PredicateList values) -> columnRef <> " NOT IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateBetween, PredicateRange lowerValue upperValue) -> columnRef <> " BETWEEN " <> renderFilterLiteral lowerValue <> " AND " <> renderFilterLiteral upperValue
+        _ -> error "Unsupported result predicate tree operator/value."
 
 seasonWhereClause :: Text -> Text -> Text
 seasonWhereClause seasonLabelValue seasonTypeValue =
@@ -198,46 +440,108 @@ renderMaybePathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix m
     Just discoveredPath -> renderPathJoinClauses joinKeyword baseAlias finalAlias intermediatePrefix discoveredPath
     Nothing -> []
 
--- Add JOIN clauses needed for linked filters like "players on the Knicks".
-renderLinkedFilterJoinClauses :: Text -> [ResolvedLinkedFilter] -> [Text]
-renderLinkedFilterJoinClauses baseAlias linkedFilterValues =
-  concatMap renderIndexedFilter (zip [1 :: Int ..] linkedFilterValues)
+renderRowPredicateJoinClauses :: Text -> Maybe ResolvedRowPredicateTree -> [Text]
+renderRowPredicateJoinClauses baseAlias maybePredicateTree =
+  case maybePredicateTree of
+    Nothing -> []
+    Just predicateTree ->
+      concatMap renderIndexedRowPredicateLeafJoin (indexedRowPredicateTreeLeaves (indexRowPredicateTree 1 predicateTree))
   where
-    renderIndexedFilter :: (Int, ResolvedLinkedFilter) -> [Text]
-    renderIndexedFilter (indexValue, linkedFilterValue) =
-      renderPathJoinClauses
-        "JOIN"
-        baseAlias
-        (linkedFilterAlias indexValue linkedFilterValue)
-        ("lf" <> T.pack (show indexValue) <> "p")
-        (filterPath linkedFilterValue)
+    renderIndexedRowPredicateLeafJoin :: (Int, ResolvedRowPredicateLeaf) -> [Text]
+    renderIndexedRowPredicateLeafJoin (indexValue, predicateLeaf) =
+      if null (OG.steps (rowPredicatePath predicateLeaf))
+        then []
+        else
+          renderPathJoinClauses
+            "JOIN"
+            baseAlias
+            (rowPredicateAlias indexValue predicateLeaf)
+            ("lf" <> T.pack (show indexValue) <> "p")
+            (rowPredicatePath predicateLeaf)
 
--- Add the WHERE wrapper for linked-filter conditions when any exist.
-renderLinkedFilterWhereClause :: Text -> [ResolvedLinkedFilter] -> [Text]
-renderLinkedFilterWhereClause baseAlias linkedFilterValues =
-  case renderLinkedFilterConditions baseAlias linkedFilterValues of
-    [] -> []
-    conditions -> ["  WHERE " <> combineWhereClauses conditions]
+renderRowPredicateConditions :: Text -> Maybe ResolvedRowPredicateTree -> [Text]
+renderRowPredicateConditions _baseAlias maybePredicateTree =
+  case maybePredicateTree of
+    Nothing -> []
+    Just predicateTree -> [renderRowPredicateTreeCondition (indexRowPredicateTree 1 predicateTree)]
 
--- Render the individual linked-filter predicates.
-renderLinkedFilterConditions :: Text -> [ResolvedLinkedFilter] -> [Text]
-renderLinkedFilterConditions _baseAlias linkedFilterValues =
-  map renderIndexedCondition (zip [1 :: Int ..] linkedFilterValues)
-  where
-    renderIndexedCondition :: (Int, ResolvedLinkedFilter) -> Text
-    renderIndexedCondition (indexValue, linkedFilterValue) =
-      linkedFilterAlias indexValue linkedFilterValue
-        <> "."
-        <> filterColumn linkedFilterValue
-        <> " = '"
-        <> escapeSqlLiteral (filterValue linkedFilterValue)
-        <> "'"
+indexRowPredicateTree :: Int -> ResolvedRowPredicateTree -> IndexedRowPredicateTree
+indexRowPredicateTree startIndex predicateTree =
+  fst (indexRowPredicateTreeFrom startIndex predicateTree)
 
-linkedFilterAlias :: Int -> ResolvedLinkedFilter -> Text
-linkedFilterAlias indexValue linkedFilterValue =
-  if null (OG.steps (filterPath linkedFilterValue))
+indexRowPredicateTreeFrom :: Int -> ResolvedRowPredicateTree -> (IndexedRowPredicateTree, Int)
+indexRowPredicateTreeFrom startIndex predicateTree =
+  case predicateTree of
+    ResolvedRowPredicateLeafNode predicateLeaf ->
+      (IndexedRowPredicateLeaf startIndex predicateLeaf, startIndex + 1)
+    ResolvedRowPredicateAnd predicateValues ->
+      let (indexedValues, nextIndex) = indexRowPredicateChildren startIndex predicateValues
+       in (IndexedRowPredicateAnd indexedValues, nextIndex)
+    ResolvedRowPredicateOr predicateValues ->
+      let (indexedValues, nextIndex) = indexRowPredicateChildren startIndex predicateValues
+       in (IndexedRowPredicateOr indexedValues, nextIndex)
+    ResolvedRowPredicateNot predicateValue ->
+      let (indexedValue, nextIndex) = indexRowPredicateTreeFrom startIndex predicateValue
+       in (IndexedRowPredicateNot indexedValue, nextIndex)
+
+indexRowPredicateChildren :: Int -> [ResolvedRowPredicateTree] -> ([IndexedRowPredicateTree], Int)
+indexRowPredicateChildren startIndex predicateValues =
+  case predicateValues of
+    [] -> ([], startIndex)
+    predicateValue : remaining ->
+      let (indexedValue, nextIndex) = indexRowPredicateTreeFrom startIndex predicateValue
+          (indexedRemaining, finalIndex) = indexRowPredicateChildren nextIndex remaining
+       in (indexedValue : indexedRemaining, finalIndex)
+
+indexedRowPredicateTreeLeaves :: IndexedRowPredicateTree -> [(Int, ResolvedRowPredicateLeaf)]
+indexedRowPredicateTreeLeaves predicateTree =
+  case predicateTree of
+    IndexedRowPredicateLeaf indexValue predicateLeaf -> [(indexValue, predicateLeaf)]
+    IndexedRowPredicateAnd predicateValues -> concatMap indexedRowPredicateTreeLeaves predicateValues
+    IndexedRowPredicateOr predicateValues -> concatMap indexedRowPredicateTreeLeaves predicateValues
+    IndexedRowPredicateNot predicateValue -> indexedRowPredicateTreeLeaves predicateValue
+
+renderRowPredicateTreeCondition :: IndexedRowPredicateTree -> Text
+renderRowPredicateTreeCondition predicateTree =
+  case predicateTree of
+    IndexedRowPredicateLeaf indexValue predicateLeaf ->
+      renderRowPredicateLeafCondition indexValue predicateLeaf
+    IndexedRowPredicateAnd predicateValues ->
+      "(" <> T.intercalate " AND " (map renderRowPredicateTreeCondition predicateValues) <> ")"
+    IndexedRowPredicateOr predicateValues ->
+      "(" <> T.intercalate " OR " (map renderRowPredicateTreeCondition predicateValues) <> ")"
+    IndexedRowPredicateNot predicateValue ->
+      "NOT (" <> renderRowPredicateTreeCondition predicateValue <> ")"
+
+renderRowPredicateLeafCondition :: Int -> ResolvedRowPredicateLeaf -> Text
+renderRowPredicateLeafCondition indexValue predicateLeaf =
+  let columnRef = rowPredicateAlias indexValue predicateLeaf <> "." <> rowPredicateColumn predicateLeaf
+   in case (rowPredicateOperator predicateLeaf, rowPredicateValue predicateLeaf) of
+        (PredicateEquals, PredicateScalar scalarValue) -> columnRef <> " = " <> renderFilterLiteral scalarValue
+        (PredicateNotEquals, PredicateScalar scalarValue) -> columnRef <> " <> " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThan, PredicateScalar scalarValue) -> columnRef <> " > " <> renderFilterLiteral scalarValue
+        (PredicateGreaterThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " >= " <> renderFilterLiteral scalarValue
+        (PredicateLessThan, PredicateScalar scalarValue) -> columnRef <> " < " <> renderFilterLiteral scalarValue
+        (PredicateLessThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " <= " <> renderFilterLiteral scalarValue
+        (PredicateIn, PredicateList values) -> columnRef <> " IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateNotIn, PredicateList values) -> columnRef <> " NOT IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
+        (PredicateBetween, PredicateRange lowerValue upperValue) -> columnRef <> " BETWEEN " <> renderFilterLiteral lowerValue <> " AND " <> renderFilterLiteral upperValue
+        (PredicateContains, PredicateScalar (FilterText textValue)) -> columnRef <> " ILIKE " <> renderLikeContainsLiteral textValue <> " ESCAPE '\\'"
+        _ -> error "Unsupported row predicate tree operator/value."
+
+rowPredicateAlias :: Int -> ResolvedRowPredicateLeaf -> Text
+rowPredicateAlias indexValue predicateLeaf =
+  if null (OG.steps (rowPredicatePath predicateLeaf))
     then "f"
     else "lf" <> T.pack (show indexValue)
+
+renderLikeContainsLiteral :: Text -> Text
+renderLikeContainsLiteral rawValue =
+  "'%" <> escapeLikePattern rawValue <> "%'"
+
+escapeLikePattern :: Text -> Text
+escapeLikePattern =
+  T.replace "_" "\\_" . T.replace "%" "\\%" . T.replace "\\" "\\\\" . escapeSqlLiteral
 
 escapeSqlLiteral :: Text -> Text
 escapeSqlLiteral = T.replace "'" "''"
@@ -246,6 +550,7 @@ renderFilterLiteral :: FilterValue -> Text
 renderFilterLiteral filterValue =
   case filterValue of
     FilterInt intValue -> T.pack (show intValue)
+    FilterDouble doubleValue -> T.pack (show doubleValue)
     FilterText textValue -> "'" <> escapeSqlLiteral textValue <> "'"
 
 -- Turn an optional limit into a SQL LIMIT clause.

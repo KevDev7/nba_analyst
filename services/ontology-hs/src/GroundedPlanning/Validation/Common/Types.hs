@@ -3,9 +3,5 @@
 module GroundedPlanning.Validation.Common.Types where
 
 data OrdinaryMetricFilterFamily
-  = RecentMetricWindow
+  = GameDateMetricWindow
   | SeasonMetricWindow
-
-data OrdinaryLinkedFilterQueryKind
-  = MetricLinkedFilterQuery
-  | ObjectLinkedFilterQuery

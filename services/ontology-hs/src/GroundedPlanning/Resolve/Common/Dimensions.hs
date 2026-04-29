@@ -7,18 +7,21 @@ module GroundedPlanning.Resolve.Common.Dimensions
   , objectPrimaryKey
   , pathPartitionKey
   , requireAnySingleDimensionName
+  , requireComparisonBreakdownDimensionNames
   , requireComparisonDimensionName
   , requireOrdinaryMetricDimensionName
+  , resolveAggregateGroupingDimensions
   , resolveComparisonRowObject
   , resolveOrdinaryMetricRowObject
   ) where
 
 import Data.Text (Text)
+import qualified Data.Text as T
 import GroundedPlanning.Resolve.Common.Ontology
 import GroundedPlanning.Resolve.Common.Types
-import OntologyLayer.Graph (DiscoveredPath (steps), findObject, findPathsFrom)
+import OntologyLayer.Graph (DiscoveredPath (steps), findAttribute, findObject, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (Attribute (source_column), AttributeKind (PrimaryKey), Ontology)
+import OntologyLayer.Types (Attribute (source_column), AttributeKind (Dimension, PrimaryKey), AttributeVisibility (Public), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -33,6 +36,45 @@ resolveOrdinaryMetricRowObject ontology factObjectName dimensionValues = do
       if hasAttribute factObject attributeName
         then Right (factObject, emptyPath factObjectName)
         else Left ("Could not resolve a reachable row object for ranking/aggregation dimension '" <> attributeName <> "'.")
+
+resolveAggregateGroupingDimensions :: Ontology -> Text -> [DimensionName] -> Either Text [(OT.Object, DiscoveredPath, ResolvedGroupingDimension)]
+resolveAggregateGroupingDimensions ontology factObjectName dimensionValues =
+  case dimensionValues of
+    [] -> Left "Aggregate queries require at least one business grouping dimension."
+    _ -> mapM resolveIndexedGroupingDimension (zip [1 :: Int ..] dimensionValues)
+  where
+    resolveIndexedGroupingDimension (indexValue, dimensionName) = do
+      (groupObject, groupPath) <- resolveReachableGroupingObject dimensionName
+      attribute <-
+        maybe
+          (Left ("Could not resolve aggregate grouping attribute '" <> dimensionName <> "'."))
+          Right
+          (findAttribute groupObject dimensionName)
+      if OT.visibility attribute == Public && OT.kind attribute `elem` [Dimension, PrimaryKey]
+        then
+          let sourceRole =
+                if null (steps groupPath)
+                  then "fact"
+                  else "group"
+              groupingDimension =
+                ResolvedGroupingDimension
+                  { groupingKey = "group_" <> T.pack (show indexValue)
+                  , groupingLabel = dimensionName
+                  , groupingPath = groupPath
+                  , groupingSource = ColumnRef sourceRole (source_column attribute)
+                  }
+           in Right (groupObject, groupPath, groupingDimension)
+        else Left "Aggregate grouping supports public dimension or primary-key attributes only."
+
+    resolveReachableGroupingObject dimensionName =
+      do
+        factObject <- requireObject ontology factObjectName
+        if hasAttribute factObject dimensionName
+          then Right (factObject, emptyPath factObjectName)
+          else
+            case firstLinkedObjectWithAttribute ontology factObjectName dimensionName [] of
+              Just resolvedValue -> Right resolvedValue
+              Nothing -> Left ("Could not resolve a reachable grouping object for aggregate dimension '" <> dimensionName <> "'.")
 
 resolveComparisonRowObject :: Ontology -> Text -> [DimensionName] -> Maybe Text -> Either Text (OT.Object, DiscoveredPath)
 resolveComparisonRowObject ontology factObjectName dimensionValues maybeTargetObjectName = do
@@ -118,5 +160,11 @@ requireOrdinaryMetricDimensionName dimensionValues =
 requireComparisonDimensionName :: [DimensionName] -> Either Text DimensionName
 requireComparisonDimensionName dimensionValues =
   case dimensionValues of
-    [dimensionValue] -> Right dimensionValue
-    _ -> Left "Comparison queries require exactly one business grouping dimension."
+    dimensionValue : _ -> Right dimensionValue
+    [] -> Left "Comparison queries require a comparison identity dimension."
+
+requireComparisonBreakdownDimensionNames :: [DimensionName] -> [DimensionName]
+requireComparisonBreakdownDimensionNames dimensionValues =
+  case dimensionValues of
+    _identityDimension : breakdownDimensions -> breakdownDimensions
+    [] -> []

@@ -19,9 +19,10 @@ validateObjectQuery ontology objectQuery = do
   _ <- requirePath ontology (objectName factObject) rowObjectNameValue
   metricDef <- requireObjectQuerySelectedMetric factObject (metrics base)
   validateMetricAttributes metricDef
+  mapM_ (validateResultPredicateTree factObject metricDef) (resultPredicate base)
   rowObjectValue <- requireObject ontology rowObjectNameValue
   requireObjectQueryDimension rowObjectValue (dimensions base)
-  filterFamily <- classifyOrdinaryMetricFilterFamily (filters base)
-  validateOrdinaryLinkedFilters ontology ObjectLinkedFilterQuery filterFamily (objectName factObject) (linkedFilters base)
+  _ <- classifyOrdinaryMetricFilterFamily (filters base)
+  mapM_ (validateRowPredicateTree ontology (objectName factObject)) (rowPredicate base)
   validateOrdinaryMetricFilterSurface factObject (filters base)
   validateOptionalMetricOrder (orders base) (metrics base)

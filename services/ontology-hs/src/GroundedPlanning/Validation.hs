@@ -26,7 +26,7 @@ import OntologyLayer.Types (Ontology)
 import QueryModel.IR
 
 validateQuery :: Ontology -> Query -> Either Text ()
-validateQuery ontology query =
+validateQuery ontology query = do
   case query of
     MetricQuery spec ->
       case comparison spec of

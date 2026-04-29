@@ -19,16 +19,16 @@ import OntologyLayer.Types (AttributeKind (Dimension), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 import GroundedPlanning.Validation.Common.Dimensions
-import GroundedPlanning.Validation.Common.LinkedFilters
 import GroundedPlanning.Validation.Common.Ontology
 import GroundedPlanning.Validation.Common.Orders
+import GroundedPlanning.Validation.Common.RowPredicates
 
 validateTrendMetricQuery :: Ontology -> Object -> OT.MetricDef -> TimeGrain -> BaseQuery -> Either Text ()
 validateTrendMetricQuery ontology factObject _metricDef timeGrainValue base = do
   validateTrendTimeGrain timeGrainValue
   validateTrendFilters factObject (filters base)
   validateTrendLimit (limit base)
-  validateLinkedFilters ontology (objectName factObject) (linkedFilters base)
+  mapM_ (validateRowPredicateTree ontology (objectName factObject)) (rowPredicate base)
   validateTrendOrders (orders base)
   validateTrendFactSurface factObject timeGrainValue
   validateTrendDimensions ontology factObject (dimensions base)
@@ -38,14 +38,43 @@ validateTrendFilters factObject filterValues = do
   if length filterKinds == length (nub filterKinds)
     then pure ()
     else Left "Trend queries do not support duplicate filter kinds."
+  validateTrendSeasonBundle
   mapM_ validateTrendFilter filterValues
   where
     filterKinds = map filterKindText filterValues
+    validateTrendSeasonBundle =
+      if "exact_season" `elem` filterKinds
+        then
+          if "season_type" `elem` filterKinds
+            then pure ()
+            else Left "Exact-season trend filters require an explicit season_type filter."
+        else pure ()
     validateTrendFilter filterValue =
       case filterKindText filterValue of
         "past_year" -> do
           requireFactAttribute factObject "game_date" "Past-year trend filters require an ontology-backed game_date attribute."
           pure ()
+        "last_n_days" -> do
+          requireFactAttribute factObject "game_date" "Last-N-days trend filters require an ontology-backed game_date attribute."
+          case filterIntValue filterValue of
+            Just daysValue | daysValue > 0 -> pure ()
+            _ -> Left "Last-N-days trend filters require a positive integer value."
+        "date_from" -> do
+          requireFactAttribute factObject "game_date" "Date-range trend filters require an ontology-backed game_date attribute."
+          case filterTextValue filterValue of
+            Just _ -> pure ()
+            Nothing -> Left "Date-from trend filters require a text value."
+        "date_to" -> do
+          requireFactAttribute factObject "game_date" "Date-range trend filters require an ontology-backed game_date attribute."
+          case filterTextValue filterValue of
+            Just _ -> pure ()
+            Nothing -> Left "Date-to trend filters require a text value."
+        "exact_season" ->
+          case filterTextValue filterValue of
+            Just _ -> do
+              requireFactAttribute factObject "season_year" "Exact-season trend filters require an ontology-backed season_year attribute."
+              pure ()
+            Nothing -> Left "Exact-season trend filters require a text value."
         "season_type" ->
           case filterTextValue filterValue of
             Just _ -> do
@@ -85,11 +114,9 @@ validateTrendDimensions :: Ontology -> Object -> [DimensionName] -> Either Text 
 validateTrendDimensions ontology factObject dimensionValues =
   case dimensionValues of
     [] -> pure ()
-    [dimensionValue] -> do
-      rowObject <- requireReachableDimensionObject ontology (objectName factObject) dimensionValue
-      requirePublicTrendDimensionOnObject rowObject dimensionValue
+    _ -> do
+      _ <- requireTrendGroupingDimensions ontology factObject dimensionValues
       pure ()
-    _ -> Left "Trend queries support at most one business grouping dimension."
 
 trendFactSurfaceMessage :: Text
 trendFactSurfaceMessage =

@@ -16,39 +16,85 @@ compileTrendSql resolved =
   let
     ResolvedTrendQuery
       { factTableName = trendFactTableName
-      , seriesPath = trendSeriesPath
-      , seriesName = trendSeriesName
       , timeBucketExpression = trendTimeBucketExpression
       , metricSource = trendMetricSource
       , metricFormula = trendMetricFormula
       , trendFilters = trendFilterValues
-      , linkedFiltersResolved = trendLinkedFilters
+      , trendRowPredicateResolved = trendRowPredicate
+      , trendResultPredicateResolved = trendResultPredicate
+      , trendGroupingDimensions = groupingDimensions
       } = resolved
-    trendWhereConditions = renderTrendFilterConditions trendFactTableName trendFilterValues <> renderLinkedFilterConditions "f" trendLinkedFilters
+    trendWhereConditions = renderTrendFilterConditions trendFactTableName trendFilterValues <> renderRowPredicateConditions "f" trendRowPredicate
+    resultFilterSourceLines = stripLastTrailingComma (renderResultPredicateSourceSelectLines "f" trendResultPredicate)
+    metricSourceLine =
+      "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source"
+        <> if null resultFilterSourceLines then "" else ","
+    resultFilterWhereClause =
+      case renderResultPredicateConditions trendResultPredicate of
+        [] -> []
+        conditions -> ["WHERE " <> combineWhereClauses conditions]
    in
   T.unlines $
     [ "WITH filtered_rows AS ("
     , "  SELECT"
     , "    " <> renderFactExpression "f" trendTimeBucketExpression <> " AS time_bucket,"
-    , "    " <> renderMaybeColumnRef "f" "s" "c" trendSeriesName <> " AS series_name,"
-    , "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source"
-    , "  FROM " <> trendFactTableName <> " f"
     ]
-      <> renderMaybePathJoinClauses "JOIN" "f" "s" "sp" trendSeriesPath
-      <> renderLinkedFilterJoinClauses "f" trendLinkedFilters
+      <> renderGroupingSourceSelectLines groupingDimensions
+      <> [ "    " <> renderTrendSeriesName groupingDimensions <> " AS series_name,"
+      , metricSourceLine
+     ]
+      <> resultFilterSourceLines
+      <> [ "  FROM " <> trendFactTableName <> " f" ]
+      <> renderGroupingJoinClauses groupingDimensions
+      <> renderRowPredicateJoinClauses "f" trendRowPredicate
       <> (if null trendWhereConditions then [] else ["  WHERE " <> combineWhereClauses trendWhereConditions])
       <> [ "), aggregated_series AS ("
          , "  SELECT"
          , "    time_bucket,"
-         , "    series_name,"
-         , "    " <> compileMetricAggregation trendMetricFormula <> " AS metric_value"
+         ]
+      <> renderGroupingAggregateSelectLines groupingDimensions
+      <> [ "    MIN(series_name) AS series_name," ]
+      <> renderResultPredicateAggregateSelectLines trendResultPredicate
+      <> [ "    " <> compileMetricAggregation trendMetricFormula <> " AS metric_value"
          , "  FROM filtered_rows"
-         , "  GROUP BY time_bucket, series_name"
+         , "  GROUP BY " <> renderTrendGroupKeys groupingDimensions
          , ")"
          , "SELECT"
          , "  time_bucket,"
          , "  series_name,"
-         , "  metric_value"
-         , "FROM aggregated_series"
-         , "ORDER BY time_bucket ASC, series_name ASC"
          ]
+      <> renderGroupingFinalSelectLines groupingDimensions
+      <> [ "  metric_value"
+         , "FROM aggregated_series"
+         ]
+      <> resultFilterWhereClause
+      <> [ "ORDER BY " <> renderTrendOrder groupingDimensions ]
+
+stripLastTrailingComma :: [Text] -> [Text]
+stripLastTrailingComma sourceLines =
+  case reverse sourceLines of
+    [] -> []
+    lastLine : earlierLines ->
+      reverse earlierLines
+        <> [ case T.stripSuffix "," lastLine of
+               Just strippedLine -> strippedLine
+               Nothing -> lastLine
+           ]
+
+renderTrendSeriesName :: [ResolvedGroupingDimension] -> Text
+renderTrendSeriesName groupingDimensions =
+  case groupingDimensions of
+    groupingDimension : _ -> renderGroupingSource 1 groupingDimension
+    [] -> "NULL"
+
+renderTrendGroupKeys :: [ResolvedGroupingDimension] -> Text
+renderTrendGroupKeys groupingDimensions =
+  case renderGroupingKeys groupingDimensions of
+    "" -> "time_bucket, series_name"
+    groupingKeys -> "time_bucket, " <> groupingKeys
+
+renderTrendOrder :: [ResolvedGroupingDimension] -> Text
+renderTrendOrder groupingDimensions =
+  case renderGroupingOrder groupingDimensions of
+    "" -> "time_bucket ASC, series_name ASC"
+    groupingOrder -> "time_bucket ASC, " <> groupingOrder

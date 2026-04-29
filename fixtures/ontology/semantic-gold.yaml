@@ -119,6 +119,141 @@ objects:
     visibility: public
     derivation: null
     comparison_identity: true
+    value_aliases:
+      76ers:
+      - 76ers
+      - PHI
+      - Philadelphia 76ers
+      - Phila
+      - Philadelphia Seventy Sixers
+      - Sixers
+      Bucks:
+      - Bucks
+      - MIL
+      - Milwaukee Bucks
+      Bulls:
+      - Bulls
+      - CHI
+      - Chicago Bulls
+      Cavaliers:
+      - Cavaliers
+      - CLE
+      - Cleveland Cavaliers
+      - Cavs
+      Celtics:
+      - Celtics
+      - BOS
+      - Boston Celtics
+      Clippers:
+      - Clippers
+      - LAC
+      - Los Angeles Clippers
+      - LA Clippers
+      Grizzlies:
+      - Grizzlies
+      - MEM
+      - Memphis Grizzlies
+      Hawks:
+      - Hawks
+      - ATL
+      - Atlanta Hawks
+      Heat:
+      - Heat
+      - MIA
+      - Miami Heat
+      Hornets:
+      - Hornets
+      - CHA
+      - Charlotte Hornets
+      Jazz:
+      - Jazz
+      - UTA
+      - Salt Lake City Jazz
+      - Utah Jazz
+      Kings:
+      - Kings
+      - SAC
+      - Sacramento Kings
+      Knicks:
+      - Knicks
+      - NYK
+      - New York City Knicks
+      - New York Knicks
+      Lakers:
+      - Lakers
+      - LAL
+      - Los Angeles Lakers
+      - LA Lakers
+      - LA Laker
+      Magic:
+      - Magic
+      - ORL
+      - Orlando Magic
+      Mavericks:
+      - Mavericks
+      - DAL
+      - Dallas Mavericks
+      - Mavs
+      Nets:
+      - Nets
+      - BKN
+      - Brooklyn Nets
+      Nuggets:
+      - Nuggets
+      - DEN
+      - Denver Nuggets
+      Pacers:
+      - Pacers
+      - IND
+      - Indianapolis Pacers
+      - Indiana Pacers
+      Pelicans:
+      - Pelicans
+      - NOP
+      - New Orleans Pelicans
+      Pistons:
+      - Pistons
+      - DET
+      - Detroit Pistons
+      Raptors:
+      - Raptors
+      - TOR
+      - Toronto Raptors
+      Rockets:
+      - Rockets
+      - HOU
+      - Houston Rockets
+      Spurs:
+      - Spurs
+      - SAS
+      - San Antonio Spurs
+      Suns:
+      - Suns
+      - PHX
+      - Phoenix Suns
+      Thunder:
+      - Thunder
+      - OKC
+      - Oklahoma City Thunder
+      Timberwolves:
+      - Timberwolves
+      - MIN
+      - Minneapolis Timberwolves
+      - Wolves
+      Trail Blazers:
+      - Trail Blazers
+      - POR
+      - Portland Trail Blazers
+      - Blazers
+      Warriors:
+      - Warriors
+      - GSW
+      - San Francisco Warriors
+      - Golden State Warriors
+      Wizards:
+      - Wizards
+      - WAS
+      - Washington Wizards
   - name: team_city
     kind: dimension
     source_column: team_city
@@ -143,18 +278,183 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+    value_aliases:
+      PHI:
+      - PHI
+      - 76ers
+      - Philadelphia 76ers
+      - Phila
+      - Philadelphia Seventy Sixers
+      - Sixers
+      MIL:
+      - MIL
+      - Bucks
+      - Milwaukee Bucks
+      CHI:
+      - CHI
+      - Bulls
+      - Chicago Bulls
+      CLE:
+      - CLE
+      - Cavaliers
+      - Cleveland Cavaliers
+      - Cavs
+      BOS:
+      - BOS
+      - Celtics
+      - Boston Celtics
+      LAC:
+      - LAC
+      - Clippers
+      - Los Angeles Clippers
+      - LA Clippers
+      MEM:
+      - MEM
+      - Grizzlies
+      - Memphis Grizzlies
+      ATL:
+      - ATL
+      - Hawks
+      - Atlanta Hawks
+      MIA:
+      - MIA
+      - Heat
+      - Miami Heat
+      CHA:
+      - CHA
+      - Hornets
+      - Charlotte Hornets
+      UTA:
+      - UTA
+      - Jazz
+      - Salt Lake City Jazz
+      - Utah Jazz
+      SAC:
+      - SAC
+      - Kings
+      - Sacramento Kings
+      NYK:
+      - NYK
+      - Knicks
+      - New York City Knicks
+      - New York Knicks
+      LAL:
+      - LAL
+      - Lakers
+      - Los Angeles Lakers
+      - LA Lakers
+      - LA Laker
+      ORL:
+      - ORL
+      - Magic
+      - Orlando Magic
+      DAL:
+      - DAL
+      - Mavericks
+      - Dallas Mavericks
+      - Mavs
+      BKN:
+      - BKN
+      - Nets
+      - Brooklyn Nets
+      DEN:
+      - DEN
+      - Nuggets
+      - Denver Nuggets
+      IND:
+      - IND
+      - Pacers
+      - Indianapolis Pacers
+      - Indiana Pacers
+      NOP:
+      - NOP
+      - Pelicans
+      - New Orleans Pelicans
+      DET:
+      - DET
+      - Pistons
+      - Detroit Pistons
+      TOR:
+      - TOR
+      - Raptors
+      - Toronto Raptors
+      HOU:
+      - HOU
+      - Rockets
+      - Houston Rockets
+      SAS:
+      - SAS
+      - Spurs
+      - San Antonio Spurs
+      PHX:
+      - PHX
+      - Suns
+      - Phoenix Suns
+      OKC:
+      - OKC
+      - Thunder
+      - Oklahoma City Thunder
+      MIN:
+      - MIN
+      - Timberwolves
+      - Minneapolis Timberwolves
+      - Wolves
+      POR:
+      - POR
+      - Trail Blazers
+      - Portland Trail Blazers
+      - Blazers
+      GSW:
+      - GSW
+      - Warriors
+      - San Francisco Warriors
+      - Golden State Warriors
+      WAS:
+      - WAS
+      - Wizards
+      - Washington Wizards
   - name: conference
     kind: dimension
     source_column: conference
     link_key: false
     visibility: public
     derivation: null
+    value_aliases:
+      east:
+      - east
+      - east conference
+      - eastern
+      - eastern conference
+      west:
+      - west
+      - west conference
+      - western
+      - western conference
   - name: division
     kind: dimension
     source_column: division
     link_key: false
     visibility: public
     derivation: null
+    value_aliases:
+      atlantic:
+      - atlantic
+      - atlantic division
+      central:
+      - central
+      - central division
+      pacific:
+      - pacific
+      - pacific division
+      southwest:
+      - southwest
+      - southwest division
+      southeast:
+      - southeast
+      - southeast division
+      northwest:
+      - northwest
+      - northwest division
   metrics: []
 - name: Arena
   backing_table: arena
@@ -669,11 +969,41 @@ objects:
     - points
     expression: SUM(points)
     executable: true
+  - name: total_assists
+    aggregation: sum
+    source_attributes:
+    - assists
+    expression: SUM(assists)
+    executable: true
+  - name: total_rebounds
+    aggregation: sum
+    source_attributes:
+    - total_rebounds
+    expression: SUM(total_rebounds)
+    executable: true
   - name: average_points
     aggregation: avg
     source_attributes:
     - points
     expression: AVG(points)
+    executable: true
+  - name: average_assists
+    aggregation: avg
+    source_attributes:
+    - assists
+    expression: AVG(assists)
+    executable: true
+  - name: average_rebounds
+    aggregation: avg
+    source_attributes:
+    - total_rebounds
+    expression: AVG(total_rebounds)
+    executable: true
+  - name: average_minutes
+    aggregation: avg
+    source_attributes:
+    - minutes_played
+    expression: AVG(minutes_played)
     executable: true
   - name: games_played
     aggregation: count

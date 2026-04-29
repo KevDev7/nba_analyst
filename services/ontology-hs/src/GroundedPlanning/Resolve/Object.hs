@@ -23,11 +23,13 @@ resolveObjectQuery ontology objectQuery = do
   discoveredRowPath <- requirePath ontology (coreFactObject base) rowObjectNameValue
   selectedMetric <- requireObjectQueryMetricName (metrics base)
   metricDef <- requireMetric factObject selectedMetric
+  metricDefs <- mapM (requireMetric factObject) (metrics base)
   displayColumn <- metricDisplayColumn (dimensions base)
   contextSelection <- resolveContextSelection ontology (coreFactObject base) rowObjectValue
   metricSourceColumn <- metricSourceAttribute metricDef
   rowPrimaryKey <- objectPrimaryKey rowObjectValue
-  resolvedLinkedFilters <- mapM (resolveLinkedFilter ontology (coreFactObject base)) (linkedFilters base)
+  resolvedRowPredicate <- resolveBaseRowPredicate ontology (coreFactObject base) (rowPredicate base)
+  resolvedResultPredicate <- resolveBaseResultPredicate factObject metricDef (resultPredicate base)
   let maybeSeasonPair = seasonFilterPair (filters base)
       gamesValue =
         case requireLastNGames (filters base) of
@@ -48,12 +50,16 @@ resolveObjectQuery ontology objectQuery = do
       , gameDate = ColumnRef "fact" "game_date"
       , metricSource = ColumnRef "fact" metricSourceColumn
       , windowGames = gamesValue
+      , timeFilterKind = metricTimeFilterKind (filters base)
+      , timeFilters = filters base
       , seasonLabel = fst <$> maybeSeasonPair
       , seasonType = snd <$> maybeSeasonPair
       , queryLimit = limit base
-      , linkedFiltersResolved = resolvedLinkedFilters
+      , objectRowPredicateResolved = resolvedRowPredicate
+      , objectResultPredicateResolved = resolvedResultPredicate
       , resolvedAssumptions = assumptions base
       , metricFormula = resolveMetricFormula metricDef
+      , displayMetricFormulas = resolveMetricFormulas metricDefs
       , filterLocation = "fact_table"
       , displayMetadata = resolveDisplayMetadata factObject rowObjectValue gamesValue
       }

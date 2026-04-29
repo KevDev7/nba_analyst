@@ -5,19 +5,17 @@ module GroundedPlanning.Resolve.Common.Trend
   , renderDerivedExpression
   , requireDerivedTimeAttribute
   , requireTrendTimeGrainValue
-  , resolveTrendSeries
+  , resolveTrendGroupingDimensions
   , timeBucketAttributeName
   , timeBucketExpressionFor
   , trendFilterKindText
-  , trendSeriesColumn
   ) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Resolve.Common.Dimensions
-import GroundedPlanning.Resolve.Common.Ontology
-import OntologyLayer.Graph (DiscoveredPath)
-import OntologyLayer.Graph (findAttribute)
+import GroundedPlanning.Resolve.Common.Types (ResolvedGroupingDimension)
+import OntologyLayer.Graph (DiscoveredPath, findAttribute)
 import OntologyLayer.Types (Attribute (derivation), AttributeDerivation (sql_expression), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
@@ -57,20 +55,11 @@ trendFilterKindText filterValues =
     [] -> "all"
     kindValues -> T.intercalate "+" kindValues
 
-resolveTrendSeries :: Ontology -> OT.Object -> [DimensionName] -> Either Text (Maybe (OT.Object, DiscoveredPath))
-resolveTrendSeries ontology factObject dimensionValues =
+resolveTrendGroupingDimensions :: Ontology -> Text -> [DimensionName] -> Either Text [(OT.Object, DiscoveredPath, ResolvedGroupingDimension)]
+resolveTrendGroupingDimensions ontology factObjectName dimensionValues =
   case dimensionValues of
-    [] -> Right Nothing
-    [dimensionValue] -> do
-      seriesObject <- resolveOrdinaryMetricRowObject ontology (objectName factObject) [dimensionValue]
-      pure (Just seriesObject)
-    _ -> Left "Trend queries support at most one business grouping dimension."
-
-trendSeriesColumn :: OT.Object -> [DimensionName] -> Text
-trendSeriesColumn _ dimensionValues =
-  case dimensionValues of
-    [dimensionValue] -> dimensionValue
-    _ -> error "Trend series columns require exactly one business grouping dimension."
+    [] -> Right []
+    _ -> resolveAggregateGroupingDimensions ontology factObjectName dimensionValues
 
 renderDerivedExpression :: OT.Attribute -> Text
 renderDerivedExpression attributeValue =

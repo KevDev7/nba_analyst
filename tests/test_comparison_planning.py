@@ -52,20 +52,19 @@ class ComparisonPlanningTests(unittest.TestCase):
             ["Jalen Brunson", "Jayson Tatum"],
         )
 
-    def test_season_comparison_is_rejected(self) -> None:
+    def test_season_player_comparison_validates(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
                 "sharedQuery": {
-                    "coreFactObject": "PlayerGame",
-                    "metrics": ["total_points"],
+                    "coreFactObject": "PlayerSeason",
+                    "metrics": ["points_total"],
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [
                         {"kind": "exact_season", "value": "2025-26"},
                         {"kind": "season_type", "value": "regular_season"},
                     ],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -82,15 +81,58 @@ class ComparisonPlanningTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        shared = planner_output["query"]["spec"]["sharedQuery"]
+        resolved = planner_output["resolved_query"]["resolved"]
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
 
-        self.assertIn(
-            "Comparison queries require a positive LastNGames filter, optionally scoped by exact season plus season type.",
-            str(context.exception),
-        )
+        self.assertEqual(shared["filters"], [
+            {"kind": "exact_season", "value": "2025-26"},
+            {"kind": "season_type", "value": "regular_season"},
+        ])
+        self.assertEqual(resolved["factTableName"], "player_season")
+        self.assertEqual(execution_plan["metric_aggregation"], "identity")
+        self.assertEqual(execution_plan["season_label"], "2025-26")
+        self.assertIn("WITH season_rows AS", sql)
+        self.assertIn("f.points_total AS metric_value", sql)
+        self.assertNotIn("game_rank <=", sql)
 
-    def test_trend_comparison_is_rejected(self) -> None:
+    def test_season_team_comparison_validates(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "TeamSeason",
+                    "metrics": ["wins"],
+                    "dimensions": ["team_name"],
+                    "timeGrain": None,
+                    "filters": [
+                        {"kind": "exact_season", "value": "2025-26"},
+                        {"kind": "season_type", "value": "regular_season"},
+                    ],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": {
+                    "kind": "compare_entities",
+                    "targetObject": "Team",
+                    "entities": [
+                        {"entityId": 1610612747, "entityName": "Lakers"},
+                        {"entityId": 1610612738, "entityName": "Celtics"},
+                    ],
+                },
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        self.assertEqual(planner_output["resolved_query"]["resolved"]["factTableName"], "team_season")
+        self.assertEqual(planner_output["execution_plan"]["metric"], "wins")
+        self.assertIn("f.wins AS metric_value", planner_output["execution_plan"]["steps"][0]["sql"])
+
+    def test_time_bucketed_comparison_validates(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -100,7 +142,6 @@ class ComparisonPlanningTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -117,13 +158,13 @@ class ComparisonPlanningTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        execution_plan = planner_output["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
 
-        self.assertIn(
-            "Comparison queries do not support time-grain trends.",
-            str(context.exception),
-        )
+        self.assertEqual(execution_plan["result_shape"], "comparison")
+        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertIn("AS time_bucket", sql)
 
     def test_average_points_comparison_is_now_supported(self) -> None:
         payload = {
@@ -135,7 +176,6 @@ class ComparisonPlanningTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -166,7 +206,6 @@ class ComparisonPlanningTests(unittest.TestCase):
                     "dimensions": ["primary_position"],
                     "timeGrain": None,
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -211,6 +250,35 @@ class ComparisonPlanningTests(unittest.TestCase):
 
         self.assertIn("Jalen Brunson led in total points", output)
         self.assertIn("Differential: 110 total points", output)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_compare_without_time_scope_defaults_to_current_regular_season(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": {
+                    "task": "compare",
+                    "subject": "players",
+                    "measure": "points",
+                    "time_window": None,
+                    "entities": ["Jalen Brunson", "Jayson Tatum"],
+                    "assumptions": [],
+                },
+            }
+        )
+
+        semantic_draft, planner_output = plan_question("Compare Jalen Brunson and Jayson Tatum points")
+
+        self.assertEqual(semantic_draft["time_window"], {"kind": "season", "value": "2025-26"})
+        self.assertEqual(
+            semantic_draft["assumptions"],
+            [
+                "Assumed season year is 2025-26.",
+                "Assumed season type is regular season.",
+            ],
+        )
+        self.assertEqual(planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerSeason")
+        self.assertEqual(planner_output["execution_plan"]["season_label"], "2025-26")
 
 
 if __name__ == "__main__":

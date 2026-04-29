@@ -18,6 +18,7 @@ validateTrendMetricQuery ontology metricQuery = do
   factObject <- requireObject ontology (coreFactObject base)
   metricDef <- requireTrendSelectedMetric factObject (metrics base)
   validateMetricAttributes metricDef
+  mapM_ (validateResultPredicateTree factObject metricDef) (resultPredicate base)
   case timeGrain base of
     Just timeGrainValue -> GroundedPlanning.Validation.Common.validateTrendMetricQuery ontology factObject metricDef timeGrainValue base
     Nothing -> Left "Trend queries require a time grain."

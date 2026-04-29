@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from apps.cli.llm_transport import LlmTransportError, call_gemini
+from apps.cli.predicate_draft_normalizer import normalize_flat_filter_predicates
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +61,9 @@ class SemanticDraft(BaseModel):
     measures: list[str] = Field(default_factory=list)
     dimensions: list[str] = Field(default_factory=list)
     filters: list[dict[str, Any]] = Field(default_factory=list)
+    result_filters: list[dict[str, Any]] = Field(default_factory=list)
+    predicate: Optional[dict[str, Any]] = None
+    result_predicate: Optional[dict[str, Any]] = None
     time_window: Optional[DraftTimeWindow] = None
     grain: Optional[str] = None
     order: list[dict[str, Any]] = Field(default_factory=list)
@@ -75,7 +79,7 @@ class SemanticDraft(BaseModel):
         # while Haskell remains the source of truth for semantic validity.
         if self.limit is not None and self.limit <= 0:
             raise ValueError("limit must be positive when provided.")
-        if self.time_window is None and self.task != "find":
+        if self.time_window is None and self.task not in {"find", "compare"}:
             raise ValueError("time_window is required except for find drafts.")
         return self
 
@@ -133,7 +137,31 @@ Question family rules:
 - Use "trend" when the user asks for a metric over time or uses a time grain like by day, by week, monthly, or by season.
 - Use "find" when the user asks to find/list matching games, players, teams, or rows that satisfy filters.
 - Use "compare" when the user asks to compare named entities.
+- For compare questions, preserve requested breakdowns in dimensions, such as "by season type", "by team", or "by conference".
+- For compare questions with calendar/time buckets like "by month" or "monthly", keep task "compare" and set grain to the requested bucket.
+- If a compare question has no explicit time scope, keep time_window null; the policy layer will apply the product default.
 - If a rank question does not explicitly ask for a limit, keep limit null but still include a descending order for positive performance metrics unless the user asks for ascending/lowest.
+- When the user asks for multiple measures, put every requested measure phrase in "measures" in user-facing order.
+- Keep "measure" as the primary measure used for ranking, ordering, and summary. For object/aggregate questions without an explicit primary measure, use the first requested measure.
+- Do not invent multi-sort. Extra measures are display measures unless the user clearly names one as the ranking/order measure.
+
+Filter rules:
+- Put row-level constraints in filters using the user's field phrase, operator, and value.
+- Preserve numeric filter values as numbers when possible, including decimals such as 0.6.
+- Examples of row-level filters: "minutes over 30" -> {"field":"minutes","op":">","value":30}; "win percentage above .600" -> {"field":"win percentage","op":">","value":0.6}.
+- For any question family with OR, NOT, IN, BETWEEN, or CONTAINS row-level logic, put the richer condition in predicate instead of flattening it into filters.
+- Predicate leaves still use user-facing field phrases, not ontology/table/column names.
+- Predicate examples:
+  "team is Lakers or Warriors" -> {"kind":"leaf","field":"team","op":"in","value":["Lakers","Warriors"]}
+  "not in the West" -> {"kind":"not","predicate":{"kind":"leaf","field":"conference","op":"=","value":"West"}}
+  "name contains Smith" -> {"kind":"leaf","field":"name","op":"contains","value":"Smith"}
+  "score between 110 and 120" -> {"kind":"leaf","field":"score","op":"between","value":{"lower":110,"upper":120}}
+- For AND/OR predicate trees, always use "predicates": [...]. Do not use "left" and "right".
+- Put aggregate/result constraints in result_filters or result_predicate, not filters. These are conditions that must be applied after grouping/calculation.
+- Examples of result filters: "averaging over 30 minutes" -> {"field":"average minutes","op":">","value":30}; "total points above 200" -> {"field":"total points","op":">","value":200}.
+- For aggregate/result constraints with OR, NOT, IN, or BETWEEN logic, put the richer condition in result_predicate instead of flattening it into result_filters.
+- Result predicate leaves still use user-facing result field phrases, not ontology/table/column names.
+- If the condition references an average, total, sum, or per-game value, treat it as result-level unless the user is clearly filtering individual rows.
 
 JSON template for supported drafts:
 {
@@ -147,7 +175,12 @@ JSON template for supported drafts:
     "filters": [
       {"field":"<user-facing filter field phrase>","op":"<operator or filter kind>","value":"<number, text, date, or object>"}
     ],
-    "time_window": {"kind":"last_n_games" | "season" | "past_year" | "<time window from the user>","value":10},
+    "predicate": {"kind":"leaf" | "and" | "or" | "not", "...":"richer row predicate, or null"},
+    "result_filters": [
+      {"field":"<user-facing aggregate/result field phrase>","op":"<operator>","value":"<number>"}
+    ],
+    "result_predicate": {"kind":"leaf" | "and" | "or" | "not", "...":"richer grouped-result predicate, or null"},
+    "time_window": {"kind":"last_n_games" | "last_n_days" | "season" | "past_year" | "since_date" | "until_date" | "between_dates" | "all","value":10},
     "grain": "day" | "week" | "month" | "season" | null,
     "order": [{"by":"<user-facing measure/dimension phrase>","direction":"asc" | "desc"}],
     "limit": "<positive integer explicitly requested by the user, or null>",
@@ -182,6 +215,15 @@ A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring"
 Q: What are monthly team average points over the past year?
 A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
+Q: Rank players by average points over the last 30 days
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_days","value":30},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show me monthly team wins since 2023-01-01
+A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"wins","measures":["wins"],"dimensions":["team"],"filters":[],"time_window":{"kind":"since_date","value":"2023-01-01"},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
+
+Q: Find Lakers games between 2025-01-01 and 2025-02-01
+A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"between_dates","value":"2025-01-01 to 2025-02-01"},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
+
 Q: Calculate average points by team over the last 10 games
 A: {"status":"ok","draft":{"task":"aggregate","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
@@ -191,17 +233,35 @@ A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average 
 Q: Show me players and their total points over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
 
+Q: Show me players with points, rebounds, and assists over the last 10 games
+A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"points","measures":["points","rebounds","assists"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Rank players by points over the last 10 games and show assists and rebounds
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points","assists","rebounds"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
 Q: Show me players with their scoring totals over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"scoring totals","measures":["scoring totals"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":["Interpreted 'scoring' as total points."]}}
 
 Q: Show me the top 5 players and their total points for the Knicks over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Knicks"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"total points","direction":"desc"}],"limit":5,"sort":"desc","entities":["Knicks"],"operations":[],"assumptions":[]}}
 
+Q: Show me players by average points with minutes over 30 over the last 10 games
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[{"field":"minutes","op":">","value":30}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show me teams by wins with win percentage above .600 in the 2025-26 regular season
+A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"wins","measures":["wins"],"dimensions":[],"filters":[{"field":"win percentage","op":">","value":0.6},{"field":"season type","op":"=","value":"regular season"}],"time_window":{"kind":"season","value":"2025-26"},"grain":null,"order":[{"by":"wins","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+
 Q: Find Lakers games over the last 10 games
 A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
 
 Q: Compare Brunson and Tatum scoring over the last 10 games
 A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Brunson","Tatum"],"operations":[],"assumptions":["Interpreted 'scoring' as points."]}}
+
+Q: Compare Brunson and Tatum average points by season type over the last 10 games
+A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"average points","measures":["average points"],"dimensions":["season type"],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Brunson","Tatum"],"operations":[],"assumptions":[]}}
+
+Q: Compare Lakers and Warriors average points by month over the past year
+A: {"status":"ok","draft":{"task":"compare","subject":"teams","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":["Lakers","Warriors"],"operations":[],"assumptions":[]}}
 """.strip()
 
 
@@ -250,4 +310,71 @@ def interpret_question_to_semantic_draft(question: str) -> dict[str, Any]:
     if isinstance(interpreted, InterpreterUnsupported):
         raise SemanticInterpreterError(interpreted.reason)
     # Return a plain Python dict so main.py can JSON-encode it for Haskell.
-    return interpreted.draft.model_dump()
+    return _normalize_supported_draft(interpreted.draft.model_dump())
+
+
+def _normalize_supported_draft(draft: dict[str, Any]) -> dict[str, Any]:
+    # Keep this as a schema-shape repair, not ontology reasoning. Haskell still
+    # decides whether the normalized predicate can be grounded.
+    normalized = dict(draft)
+    predicate = _normalize_predicate_shape(normalized.get("predicate"))
+    result_predicate = _normalize_predicate_shape(normalized.get("result_predicate"))
+    if result_predicate is None and _looks_like_result_predicate(predicate):
+        result_predicate = predicate
+        predicate = None
+    normalized["predicate"] = predicate
+    normalized["result_predicate"] = result_predicate
+    normalized = normalize_flat_filter_predicates(normalized)
+    return normalized
+
+
+def _normalize_predicate_shape(predicate: Any) -> Optional[dict[str, Any]]:
+    if not isinstance(predicate, dict):
+        return None
+    normalized = dict(predicate)
+    kind = normalized.get("kind")
+    if kind in {"and", "or"}:
+        raw_children = normalized.get("predicates")
+        if not isinstance(raw_children, list):
+            raw_children = [
+                child
+                for child in [normalized.get("left"), normalized.get("right")]
+                if isinstance(child, dict)
+            ]
+        normalized["predicates"] = [
+            child
+            for child in (_normalize_predicate_shape(child) for child in raw_children)
+            if child is not None
+        ]
+        normalized.pop("left", None)
+        normalized.pop("right", None)
+    elif kind == "not":
+        normalized["predicate"] = _normalize_predicate_shape(normalized.get("predicate"))
+    return normalized
+
+
+def _looks_like_result_predicate(predicate: Optional[dict[str, Any]]) -> bool:
+    leaves = _predicate_leaves(predicate)
+    return bool(leaves) and all(_looks_like_result_field(str(leaf.get("field", ""))) for leaf in leaves)
+
+
+def _predicate_leaves(predicate: Optional[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not isinstance(predicate, dict):
+        return []
+    kind = predicate.get("kind")
+    if kind == "leaf":
+        return [predicate]
+    if kind in {"and", "or"}:
+        leaves: list[dict[str, Any]] = []
+        for child in predicate.get("predicates", []):
+            leaves.extend(_predicate_leaves(child))
+        return leaves
+    if kind == "not":
+        return _predicate_leaves(predicate.get("predicate"))
+    return []
+
+
+def _looks_like_result_field(field: str) -> bool:
+    normalized = field.lower().replace("_", " ")
+    result_hints = ("average", "avg", "total", "sum", "per game", "pergame", "ppg", "mpg")
+    return any(hint in normalized for hint in result_hints)

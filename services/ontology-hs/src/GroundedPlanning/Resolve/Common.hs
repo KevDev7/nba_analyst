@@ -10,9 +10,10 @@ module GroundedPlanning.Resolve.Common
   , module GroundedPlanning.Resolve.Common.Dimensions
   , module GroundedPlanning.Resolve.Common.DisplayMetadata
   , module GroundedPlanning.Resolve.Common.Filters
-  , module GroundedPlanning.Resolve.Common.LinkedFilters
   , module GroundedPlanning.Resolve.Common.Metrics
   , module GroundedPlanning.Resolve.Common.Ontology
+  , module GroundedPlanning.Resolve.Common.ResultPredicates
+  , module GroundedPlanning.Resolve.Common.RowPredicates
   , module GroundedPlanning.Resolve.Common.Trend
   , module GroundedPlanning.Resolve.Common.Types
   , module GroundedPlanning.Resolve.Common.ValueCanonicalization
@@ -23,9 +24,10 @@ import GroundedPlanning.Resolve.Common.Context
 import GroundedPlanning.Resolve.Common.Dimensions
 import GroundedPlanning.Resolve.Common.DisplayMetadata
 import GroundedPlanning.Resolve.Common.Filters
-import GroundedPlanning.Resolve.Common.LinkedFilters
 import GroundedPlanning.Resolve.Common.Metrics
 import GroundedPlanning.Resolve.Common.Ontology
+import GroundedPlanning.Resolve.Common.ResultPredicates
+import GroundedPlanning.Resolve.Common.RowPredicates
 import GroundedPlanning.Resolve.Common.Trend
 import GroundedPlanning.Resolve.Common.Types
 import GroundedPlanning.Resolve.Common.ValueCanonicalization

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Optional
 import unittest
 from unittest.mock import patch
 
@@ -38,6 +39,45 @@ def lakers_games_draft(**overrides: object) -> dict[str, object]:
     return draft
 
 
+def predicate_leaves(predicate: Optional[dict[str, object]]) -> list[dict[str, object]]:
+    if not predicate:
+        return []
+    kind = predicate.get("kind")
+    if kind == "leaf":
+        return [predicate]
+    if kind in {"and", "or"}:
+        leaves: list[dict[str, object]] = []
+        for child in predicate.get("predicates", []):
+            if isinstance(child, dict):
+                leaves.extend(predicate_leaves(child))
+        return leaves
+    if kind == "not":
+        nested = predicate.get("predicate")
+        if isinstance(nested, dict):
+            return predicate_leaves(nested)
+    return []
+
+
+def assert_has_predicate_leaf(
+    test: unittest.TestCase,
+    predicate: Optional[dict[str, object]],
+    *,
+    target: str,
+    attribute: str,
+    operator: str,
+    value: object,
+) -> None:
+    test.assertIn(
+        {
+            "kind": "leaf",
+            "field": {"targetObject": target, "attribute": attribute, "location": "row"},
+            "operator": operator,
+            "value": {"kind": "scalar", "value": value},
+        },
+        predicate_leaves(predicate),
+    )
+
+
 class FindQueryTests(unittest.TestCase):
     def setUp(self) -> None:
         interpret_question_to_semantic_draft.cache_clear()
@@ -47,50 +87,19 @@ class FindQueryTests(unittest.TestCase):
 
         query = payload["query"]
         spec = query["spec"]
-        predicates = spec["findPredicates"]
+        predicate_tree = spec["findPredicateTree"]
         execution_plan = payload["execution_plan"]
 
         self.assertEqual(query["kind"], "find_query")
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
         self.assertEqual(spec["findTargetObject"], "Game")
         self.assertEqual(spec["findDisplayDimensions"], ["game_date", "season_year", "season_type"])
-        self.assertIn(
-            {
-                "predicateTargetObject": "Team",
-                "predicateAttribute": "team_name",
-                "predicateOperator": "=",
-                "predicateFilterValue": "Lakers",
-            },
-            predicates,
-        )
-        self.assertIn(
-            {
-                "predicateTargetObject": "TeamGame",
-                "predicateAttribute": "score",
-                "predicateOperator": ">",
-                "predicateFilterValue": 120,
-            },
-            predicates,
-        )
+        assert_has_predicate_leaf(self, predicate_tree, target="Team", attribute="team_name", operator="equals", value="Lakers")
+        assert_has_predicate_leaf(self, predicate_tree, target="TeamGame", attribute="score", operator="greater_than", value=120)
         self.assertEqual(execution_plan["query_kind"], "find_query")
         self.assertEqual(execution_plan["result_shape"], "find_rows")
-        self.assertEqual(
-            execution_plan["find_predicates"],
-            [
-                {
-                    "target_object": "Team",
-                    "attribute": "team_name",
-                    "operator": "=",
-                    "value": "Lakers",
-                },
-                {
-                    "target_object": "TeamGame",
-                    "attribute": "score",
-                    "operator": ">",
-                    "value": 120,
-                },
-            ],
-        )
+        assert_has_predicate_leaf(self, execution_plan["find_predicate_tree"], target="Team", attribute="team_name", operator="equals", value="Lakers")
+        assert_has_predicate_leaf(self, execution_plan["find_predicate_tree"], target="TeamGame", attribute="score", operator="greater_than", value=120)
         self.assertEqual(execution_plan["find_filters"], [])
         self.assertIn("JOIN team", execution_plan["steps"][0]["sql"])
         self.assertIn("f.score > 120", execution_plan["steps"][0]["sql"])
@@ -116,6 +125,111 @@ class FindQueryTests(unittest.TestCase):
             rows = conn.execute(sql).fetchall()
         self.assertLessEqual(len(rows), 10)
 
+    def test_haskell_grounds_find_exact_season_without_duplicate_season_predicate(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                time_window={"kind": "season", "value": "2025-26"},
+                filters=[
+                    {"field": "team", "op": "=", "value": "Lakers"},
+                    {"field": "points", "op": ">", "value": 120},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "TeamGame")
+        self.assertEqual(
+            spec["findFilters"],
+            [
+                {"kind": "exact_season", "value": "2025-26"},
+                {"kind": "season_type", "value": "regular_season"},
+            ],
+        )
+        season_type_leaves = [
+            leaf
+            for leaf in predicate_leaves(spec["findPredicateTree"])
+            if leaf["field"]["attribute"] == "season_type"
+        ]
+        self.assertEqual(season_type_leaves, [])
+        self.assertIn("f.season_year = '2025-26'", sql)
+        self.assertIn("f.season_type = 'regular_season'", sql)
+        self.assertNotIn("f.season_type = 'regular season'", sql)
+
+    def test_haskell_grounds_find_exact_season_when_year_is_in_filters(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                time_window={"kind": "season", "value": None},
+                filters=[
+                    {"field": "team", "op": "=", "value": "Lakers"},
+                    {"field": "points", "op": ">", "value": 120},
+                    {"field": "season", "op": "=", "value": "2025-26"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "TeamGame")
+        self.assertEqual(
+            spec["findFilters"],
+            [
+                {"kind": "exact_season", "value": "2025-26"},
+                {"kind": "season_type", "value": "regular_season"},
+            ],
+        )
+        self.assertEqual(len(predicate_leaves(spec["findPredicateTree"])), 2)
+        self.assertIn("f.season_year = '2025-26'", sql)
+        self.assertIn("f.season_type = 'regular_season'", sql)
+
+    def test_haskell_uses_date_backed_fact_for_find_past_year(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                subject="teams",
+                filters=[{"field": "conference", "op": "=", "value": "West"}],
+                time_window={"kind": "past_year", "value": None},
+                entities=[],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "TeamGame")
+        self.assertEqual(spec["findTargetObject"], "Team")
+        self.assertEqual(spec["findFilters"], [{"kind": "past_year"}])
+        self.assertIn("f.game_date >=", sql)
+
+    def test_haskell_allows_time_only_find_when_scope_is_bounded(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                filters=[
+                    {"field": "season", "op": "=", "value": "2025-26"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+                time_window={"kind": "season", "value": None},
+                entities=[],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "Game")
+        self.assertIsNone(spec["findPredicateTree"])
+        self.assertEqual(
+            spec["findFilters"],
+            [
+                {"kind": "exact_season", "value": "2025-26"},
+                {"kind": "season_type", "value": "regular_season"},
+            ],
+        )
+        self.assertIn("WHERE f.season_year = '2025-26' AND f.season_type = 'regular_season'", sql)
+
     def test_haskell_grounds_find_team_score_field_alias(self) -> None:
         draft = lakers_games_draft(
             filters=[
@@ -126,14 +240,13 @@ class FindQueryTests(unittest.TestCase):
 
         payload = call_haskell_planner_for_semantic_draft(draft)
 
-        self.assertIn(
-            {
-                "predicateTargetObject": "TeamGame",
-                "predicateAttribute": "score",
-                "predicateOperator": ">",
-                "predicateFilterValue": 120,
-            },
-            payload["query"]["spec"]["findPredicates"],
+        assert_has_predicate_leaf(
+            self,
+            payload["query"]["spec"]["findPredicateTree"],
+            target="TeamGame",
+            attribute="score",
+            operator="greater_than",
+            value=120,
         )
 
     def test_haskell_grounds_find_points_scored_field_alias(self) -> None:
@@ -146,14 +259,13 @@ class FindQueryTests(unittest.TestCase):
 
         payload = call_haskell_planner_for_semantic_draft(draft)
 
-        self.assertIn(
-            {
-                "predicateTargetObject": "TeamGame",
-                "predicateAttribute": "score",
-                "predicateOperator": ">",
-                "predicateFilterValue": 120,
-            },
-            payload["query"]["spec"]["findPredicates"],
+        assert_has_predicate_leaf(
+            self,
+            payload["query"]["spec"]["findPredicateTree"],
+            target="TeamGame",
+            attribute="score",
+            operator="greater_than",
+            value=120,
         )
 
     def test_haskell_uses_team_game_for_team_actor_points_without_lakers_corridor(self) -> None:
@@ -169,14 +281,13 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
-        self.assertIn(
-            {
-                "predicateTargetObject": "TeamGame",
-                "predicateAttribute": "score",
-                "predicateOperator": ">",
-                "predicateFilterValue": 130,
-            },
-            spec["findPredicates"],
+        assert_has_predicate_leaf(
+            self,
+            spec["findPredicateTree"],
+            target="TeamGame",
+            attribute="score",
+            operator="greater_than",
+            value=130,
         )
         self.assertIn("f.score > 130", payload["execution_plan"]["steps"][0]["sql"])
 
@@ -193,14 +304,13 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         self.assertEqual(spec["findCoreFactObject"], "PlayerGame")
-        self.assertIn(
-            {
-                "predicateTargetObject": "PlayerGame",
-                "predicateAttribute": "points",
-                "predicateOperator": ">",
-                "predicateFilterValue": 40,
-            },
-            spec["findPredicates"],
+        assert_has_predicate_leaf(
+            self,
+            spec["findPredicateTree"],
+            target="PlayerGame",
+            attribute="points",
+            operator="greater_than",
+            value=40,
         )
         self.assertIn("f.points > 40", payload["execution_plan"]["steps"][0]["sql"])
 
@@ -214,26 +324,21 @@ class FindQueryTests(unittest.TestCase):
         runtime_result = execute_plan(execution_plan)
         packaged = package_results(runtime_result)
 
-        serialized_predicates = [
-            predicate.model_dump() if hasattr(predicate, "model_dump") else predicate.dict()
-            for predicate in packaged.find_predicates
-        ]
-        self.assertEqual(
-            serialized_predicates,
-            [
-                {
-                    "target_object": "Team",
-                    "attribute": "team_name",
-                    "operator": "=",
-                    "value": "Lakers",
-                },
-                {
-                    "target_object": "TeamGame",
-                    "attribute": "score",
-                    "operator": ">",
-                    "value": 120,
-                },
-            ],
+        assert_has_predicate_leaf(
+            self,
+            packaged.find_predicate_tree,
+            target="Team",
+            attribute="team_name",
+            operator="equals",
+            value="Lakers",
+        )
+        assert_has_predicate_leaf(
+            self,
+            packaged.find_predicate_tree,
+            target="TeamGame",
+            attribute="score",
+            operator="greater_than",
+            value=120,
         )
 
     @patch("apps.cli.semantic_interpreter._call_gemini")
@@ -302,16 +407,13 @@ class FindQueryTests(unittest.TestCase):
         self.assertEqual(spec["findCoreFactObject"], "Team")
         self.assertEqual(spec["findTargetObject"], "Team")
         self.assertEqual(payload["execution_plan"]["result_shape"], "find_rows")
-        self.assertEqual(
-            payload["execution_plan"]["find_predicates"],
-            [
-                {
-                    "target_object": "Team",
-                    "attribute": "conference",
-                    "operator": "=",
-                    "value": "west",
-                }
-            ],
+        assert_has_predicate_leaf(
+            self,
+            payload["execution_plan"]["find_predicate_tree"],
+            target="Team",
+            attribute="conference",
+            operator="equals",
+            value="west",
         )
         self.assertIn("f.conference = 'west'", payload["execution_plan"]["steps"][0]["sql"])
 
@@ -335,7 +437,7 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(payload["execution_plan"]["find_predicates"][0]["value"], "east")
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "east")
         self.assertIn("f.conference = 'east'", payload["execution_plan"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_team_name_find_value(self) -> None:
@@ -358,8 +460,143 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(payload["execution_plan"]["find_predicates"][0]["value"], "Lakers")
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "Lakers")
         self.assertIn("f.team_name = 'Lakers'", payload["execution_plan"]["steps"][0]["sql"])
+
+    def test_haskell_canonicalizes_data_backed_team_city_name_value(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "teams",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [{"field": "team", "op": "=", "value": "Salt Lake City Jazz"}],
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 3,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "Jazz")
+        self.assertIn("f.team_name = 'Jazz'", payload["execution_plan"]["steps"][0]["sql"])
+
+    def test_haskell_grounds_find_predicate_tree_in_and_between(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                filters=[],
+                predicate={
+                    "kind": "and",
+                    "predicates": [
+                        {"kind": "leaf", "field": "team", "op": "in", "value": ["Lakers", "Warriors"]},
+                        {"kind": "leaf", "field": "score", "op": "between", "value": {"lower": 110, "upper": 120}},
+                    ],
+                },
+                entities=[],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "TeamGame")
+        self.assertEqual(spec["findPredicateTree"]["kind"], "and")
+        self.assertIn("pt1.team_name IN ('Lakers', 'Warriors')", sql)
+        self.assertIn("f.score BETWEEN 110 AND 120", sql)
+        self.assertIn("pt1.team_name AS team_name", sql)
+        self.assertIn("f.score AS score", sql)
+
+    def test_haskell_executes_find_predicate_tree_contains(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [],
+                "predicate": {"kind": "leaf", "field": "player", "op": "contains", "value": "Smith"},
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertIn("f.full_name ILIKE '%Smith%'", sql)
+        database_path = load_database()
+        with duckdb.connect(str(database_path), read_only=True) as conn:
+            rows = conn.execute(sql).fetchall()
+        self.assertGreater(len(rows), 0)
+        self.assertTrue(all("Smith" in row[0] for row in rows))
+
+    def test_haskell_grounds_find_predicate_tree_not_and_canonicalizes_value(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "teams",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [],
+                "predicate": {
+                    "kind": "not",
+                    "predicate": {"kind": "leaf", "field": "conference", "op": "=", "value": "Western"},
+                },
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        predicate_tree = payload["execution_plan"]["find_predicate_tree"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(predicate_tree["predicate"]["value"]["value"], "west")
+        self.assertIn("NOT (f.conference = 'west')", sql)
+
+    @patch("apps.cli.semantic_interpreter._call_gemini")
+    def test_cli_runs_find_predicate_tree_or_end_to_end(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps(
+            {
+                "status": "ok",
+                "draft": lakers_games_draft(
+                    filters=[],
+                    predicate={
+                        "kind": "or",
+                        "predicates": [
+                            {"kind": "leaf", "field": "team", "op": "=", "value": "Lakers"},
+                            {"kind": "leaf", "field": "team", "op": "=", "value": "Warriors"},
+                        ],
+                    },
+                    entities=[],
+                    limit=3,
+                ),
+            }
+        )
+
+        output = run_cli("Find games for the Lakers or Warriors")
+
+        self.assertIn(
+            "Interpreted as: Games where (team name equals Lakers or team name equals Warriors) across all available data.",
+            output,
+        )
+        self.assertIn("Game Date | Season Year | Season Type | Team Name", output)
 
 
 if __name__ == "__main__":

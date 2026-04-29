@@ -18,8 +18,13 @@ class ObjectQueryLimitTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(
-            shared["linkedFilters"],
-            [{"targetObject": "Team", "attribute": "team_name", "value": "Knicks"}],
+            shared["rowPredicate"],
+            {
+                "kind": "leaf",
+                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                "operator": "equals",
+                "value": {"kind": "scalar", "value": "Knicks"},
+            },
         )
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
         self.assertEqual(shared["limit"], 5)
@@ -27,11 +32,8 @@ class ObjectQueryLimitTests(unittest.TestCase):
         resolved = planner_output["resolved_query"]["resolved"]
         self.assertEqual(resolved["factTableName"], "player_game")
         self.assertEqual(resolved["rowObjectName"], "Player")
-        self.assertEqual(
-            resolved["linkedFiltersResolved"][0]["filterPath"]["steps"][0]["linkName"],
-            "player_game_team",
-        )
-        self.assertEqual(resolved["linkedFiltersResolved"][0]["filterValue"], "Knicks")
+        self.assertEqual(resolved["objectRowPredicateResolved"]["contents"]["rowPredicatePath"]["steps"][0]["linkName"], "player_game_team")
+        self.assertEqual(resolved["objectRowPredicateResolved"]["contents"]["rowPredicateValue"]["value"], "Knicks")
 
         sql = planner_output["execution_plan"]["steps"][0]["sql"]
         self.assertIn("JOIN team lf1", sql)

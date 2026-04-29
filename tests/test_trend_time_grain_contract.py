@@ -16,7 +16,6 @@ class TrendTimeGrainContractTests(unittest.TestCase):
                     "dimensions": ["team_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -45,7 +44,6 @@ class TrendTimeGrainContractTests(unittest.TestCase):
                     "dimensions": ["team_name"],
                     "timeGrain": "week",
                     "filters": [{"kind": "past_year"}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -61,6 +59,68 @@ class TrendTimeGrainContractTests(unittest.TestCase):
         self.assertEqual(resolved["timeGrain"], "week")
         self.assertIn("DATE_TRUNC('week'", resolved["timeBucketExpression"])
 
+    def test_monthly_trend_accepts_exact_season_scope(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "TeamGame",
+                    "metrics": ["average_points"],
+                    "dimensions": ["team_name"],
+                    "timeGrain": "month",
+                    "filters": [
+                        {"kind": "exact_season", "value": "2025-26"},
+                        {"kind": "season_type", "value": "regular_season"},
+                    ],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": None,
+            },
+        }
+
+        planner_output = call_plan_query_json(payload)
+        resolved = planner_output["resolved_query"]["resolved"]
+        plan = planner_output["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(resolved["timeGrain"], "month")
+        self.assertEqual(resolved["trendSeasonLabel"], "2025-26")
+        self.assertEqual(resolved["trendSeasonType"], "regular_season")
+        self.assertEqual(plan["season_label"], "2025-26")
+        self.assertEqual(plan["season_type"], "regular_season")
+        self.assertIn("f.season_year = '2025-26'", sql)
+        self.assertIn("f.season_type = 'regular_season'", sql)
+
+    def test_exact_season_trend_requires_season_type(self) -> None:
+        payload = {
+            "kind": "metric_query",
+            "spec": {
+                "sharedQuery": {
+                    "coreFactObject": "TeamGame",
+                    "metrics": ["average_points"],
+                    "dimensions": ["team_name"],
+                    "timeGrain": "month",
+                    "filters": [{"kind": "exact_season", "value": "2025-26"}],
+                    "orders": [],
+                    "limit": None,
+                    "assumptions": [],
+                },
+                "entityFilters": [],
+                "comparison": None,
+            },
+        }
+
+        with self.assertRaises(RuntimeError) as context:
+            call_plan_query_json(payload)
+
+        self.assertIn(
+            "Exact-season trend filters require an explicit season_type filter.",
+            str(context.exception),
+        )
+
     def test_trend_rejects_non_calendar_window_filter(self) -> None:
         payload = {
             "kind": "metric_query",
@@ -71,7 +131,6 @@ class TrendTimeGrainContractTests(unittest.TestCase):
                     "dimensions": [],
                     "timeGrain": "month",
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -99,7 +158,6 @@ class TrendTimeGrainContractTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [{"kind": "desc", "metric": "average_points"}],
                     "limit": None,
                     "assumptions": [],
@@ -116,7 +174,7 @@ class TrendTimeGrainContractTests(unittest.TestCase):
             str(context.exception),
         )
 
-    def test_comparison_queries_reject_time_grain_usage(self) -> None:
+    def test_comparison_queries_allow_time_grain_breakdowns(self) -> None:
         payload = {
             "kind": "metric_query",
             "spec": {
@@ -126,7 +184,6 @@ class TrendTimeGrainContractTests(unittest.TestCase):
                     "dimensions": ["full_name"],
                     "timeGrain": "month",
                     "filters": [{"kind": "last_n_games", "value": 10}],
-                    "linkedFilters": [],
                     "orders": [],
                     "limit": None,
                     "assumptions": [],
@@ -143,13 +200,12 @@ class TrendTimeGrainContractTests(unittest.TestCase):
             },
         }
 
-        with self.assertRaises(RuntimeError) as context:
-            call_plan_query_json(payload)
+        planner_output = call_plan_query_json(payload)
+        execution_plan = planner_output["execution_plan"]
 
-        self.assertIn(
-            "Comparison queries do not support time-grain trends.",
-            str(context.exception),
-        )
+        self.assertEqual(execution_plan["result_shape"], "comparison")
+        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertIn("AS time_bucket", execution_plan["steps"][0]["sql"])
 
 if __name__ == "__main__":
     unittest.main()

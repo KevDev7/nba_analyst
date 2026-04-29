@@ -203,4 +203,18 @@ def enrich_semantic_draft_with_resolved_entities(draft: dict[str, Any]) -> dict[
 
     enriched = dict(draft)
     enriched["resolved_entities"] = resolved_entities
+    enriched["value_resolution_trace"] = {
+        "entity_resolutions": [
+            {
+                "raw_value": raw_entity,
+                "canonical_value": resolved_entity["entityName"],
+                "target_object": spec.object_name,
+                "attribute": spec.identity_column,
+                "entity_id": resolved_entity["entityId"],
+                "source": "duckdb_entity_resolver",
+            }
+            for raw_entity, resolved_entity in zip(raw_entities, resolved_entities)
+            if raw_entity != resolved_entity["entityName"]
+        ]
+    }
     return enriched

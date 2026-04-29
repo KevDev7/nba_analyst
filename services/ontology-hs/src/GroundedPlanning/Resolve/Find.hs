@@ -17,7 +17,7 @@ resolveFindQuery ontology findQuery = do
   targetObjectValue <- requireObject ontology (findTargetObject findQuery)
   targetPathValue <- requirePath ontology (findCoreFactObject findQuery) (findTargetObject findQuery)
   displayValues <- mapM (resolveFindDisplay ontology targetObjectValue targetPathValue) (findDisplayDimensions findQuery)
-  predicateValues <- mapM (resolveFindPredicate ontology (findCoreFactObject findQuery)) (findPredicates findQuery)
+  predicateTreeValue <- mapM (resolveFindPredicateTree ontology (findCoreFactObject findQuery)) (findPredicateTree findQuery)
   pure
     ResolvedFindQuery
       { resolvedFindFactTableName = backing_table factObject
@@ -25,7 +25,7 @@ resolveFindQuery ontology findQuery = do
       , resolvedFindTargetObjectName = findTargetObject findQuery
       , resolvedFindTargetPath = targetPathValue
       , resolvedFindDisplays = displayValues
-      , resolvedFindPredicates = predicateValues
+      , resolvedFindPredicateTree = predicateTreeValue
       , resolvedFindFilters = findFilters findQuery
       , resolvedFindLimit = findLimit findQuery
       , resolvedFindAssumptions = findAssumptions findQuery
@@ -45,32 +45,56 @@ resolveFindDisplay _ontology targetObjectValue targetPathValue displayName = do
       , displayLabel = displayName
       }
 
-resolveFindPredicate :: Ontology -> Text -> FindPredicate -> Either Text ResolvedFindPredicate
-resolveFindPredicate ontology factObjectName predicateValue = do
-  predicatePathValue <- requirePath ontology factObjectName (predicateTargetObject predicateValue)
-  predicateObject <- requireObject ontology (predicateTargetObject predicateValue)
-  attributeValue <-
-    maybe
-      (Left ("Could not resolve find predicate attribute '" <> predicateAttribute predicateValue <> "'."))
-      Right
-      (findAttribute predicateObject (predicateAttribute predicateValue))
-  pure
-    ResolvedFindPredicate
-      { predicateTargetObjectName = predicateTargetObject predicateValue
-      , predicatePath = predicatePathValue
-      , predicateColumn = source_column attributeValue
-      , predicateLabel = predicateAttribute predicateValue
-      , predicateOp = predicateOpText (predicateOperator predicateValue)
-      , predicateValue =
-          canonicalizePredicateValue
-            (predicateTargetObject predicateValue)
-            (predicateAttribute predicateValue)
-            (predicateFilterValue predicateValue)
-      }
-
-canonicalizePredicateValue :: Text -> Text -> FilterValue -> FilterValue
-canonicalizePredicateValue targetObjectName attributeName predicateValue =
+canonicalizePredicateValue :: Attribute -> FilterValue -> FilterValue
+canonicalizePredicateValue attributeValue predicateValue =
   case predicateValue of
     FilterText textValue ->
-      FilterText (canonicalizeTextValue targetObjectName attributeName textValue)
+      FilterText (canonicalizeTextValue attributeValue textValue)
     FilterInt _ -> predicateValue
+    FilterDouble _ -> predicateValue
+
+resolveFindPredicateTree :: Ontology -> Text -> Predicate -> Either Text ResolvedFindPredicateTree
+resolveFindPredicateTree ontology factObjectName predicateTree =
+  case predicateTree of
+    PredicateLeaf fieldValue operatorValue predicateValue ->
+      ResolvedFindPredicateLeafNode <$> resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue
+    PredicateAnd predicateValues ->
+      ResolvedFindPredicateAnd <$> mapM (resolveFindPredicateTree ontology factObjectName) predicateValues
+    PredicateOr predicateValues ->
+      ResolvedFindPredicateOr <$> mapM (resolveFindPredicateTree ontology factObjectName) predicateValues
+    PredicateNot predicateValue ->
+      ResolvedFindPredicateNot <$> resolveFindPredicateTree ontology factObjectName predicateValue
+
+resolveFindPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ResolvedFindPredicateLeaf
+resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
+  predicatePathValue <- requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
+  predicateObject <- requireObject ontology (predicateFieldTargetObject fieldValue)
+  attributeValue <-
+    maybe
+      (Left ("Could not resolve find predicate attribute '" <> predicateFieldAttribute fieldValue <> "'."))
+      Right
+      (findAttribute predicateObject (predicateFieldAttribute fieldValue))
+  pure
+    ResolvedFindPredicateLeaf
+      { treePredicateTargetObjectName = predicateFieldTargetObject fieldValue
+      , treePredicatePath = predicatePathValue
+      , treePredicateColumn = source_column attributeValue
+      , treePredicateLabel = predicateFieldAttribute fieldValue
+      , treePredicateOperator = operatorValue
+      , treePredicateValue =
+          canonicalizePredicateTreeValue
+            attributeValue
+            predicateValue
+      }
+
+canonicalizePredicateTreeValue :: Attribute -> PredicateValue -> PredicateValue
+canonicalizePredicateTreeValue attributeValue predicateValue =
+  case predicateValue of
+    PredicateScalar scalarValue ->
+      PredicateScalar (canonicalizePredicateValue attributeValue scalarValue)
+    PredicateList values ->
+      PredicateList (map (canonicalizePredicateValue attributeValue) values)
+    PredicateRange lowerValue upperValue ->
+      PredicateRange
+        (canonicalizePredicateValue attributeValue lowerValue)
+        (canonicalizePredicateValue attributeValue upperValue)

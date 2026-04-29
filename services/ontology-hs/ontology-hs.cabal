@@ -25,9 +25,10 @@ executable ontology-hs
     , GroundedPlanning.Resolve.Common.Dimensions
     , GroundedPlanning.Resolve.Common.DisplayMetadata
     , GroundedPlanning.Resolve.Common.Filters
-    , GroundedPlanning.Resolve.Common.LinkedFilters
     , GroundedPlanning.Resolve.Common.Metrics
     , GroundedPlanning.Resolve.Common.Ontology
+    , GroundedPlanning.Resolve.Common.ResultPredicates
+    , GroundedPlanning.Resolve.Common.RowPredicates
     , GroundedPlanning.Resolve.Common.Trend
     , GroundedPlanning.Resolve.Common.Types
     , GroundedPlanning.Resolve.Common.ValueCanonicalization
@@ -42,10 +43,11 @@ executable ontology-hs
     , GroundedPlanning.Validation.Common.Comparison
     , GroundedPlanning.Validation.Common.Dimensions
     , GroundedPlanning.Validation.Common.Filters
-    , GroundedPlanning.Validation.Common.LinkedFilters
     , GroundedPlanning.Validation.Common.Metrics
     , GroundedPlanning.Validation.Common.Ontology
     , GroundedPlanning.Validation.Common.Orders
+    , GroundedPlanning.Validation.Common.ResultPredicates
+    , GroundedPlanning.Validation.Common.RowPredicates
     , GroundedPlanning.Validation.Common.Trend
     , GroundedPlanning.Validation.Common.Types
     , GroundedPlanning.Validation.Rank
@@ -64,11 +66,15 @@ executable ontology-hs
     , QueryModel.SemanticDraft.Compare
     , QueryModel.SemanticDraft.FilterGrounding
     , QueryModel.SemanticDraft.Filters
+    , QueryModel.SemanticDraft.Grouping
     , QueryModel.SemanticDraft.Find
     , QueryModel.SemanticDraft.Match
+    , QueryModel.SemanticDraft.MatchAccessors
+    , QueryModel.SemanticDraft.MeasureMatch
     , QueryModel.SemanticDraft.Normalize
     , QueryModel.SemanticDraft.Object
     , QueryModel.SemanticDraft.Rank
+    , QueryModel.SemanticDraft.ResultFilterGrounding
     , QueryModel.SemanticDraft.Trend
     , QueryModel.SemanticDraft.Types
   build-depends:

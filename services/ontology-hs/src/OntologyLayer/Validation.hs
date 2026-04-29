@@ -16,12 +16,14 @@
 module OntologyLayer.Validation where
 
 import Data.List (group, sort)
+import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import OntologyLayer.Graph (findAttribute, findObject)
 import OntologyLayer.Types
-  ( Attribute (comparison_identity, kind, link_key)
+  ( Attribute (comparison_identity, kind, link_key, value_aliases)
   , AttributeDerivation (source_attribute)
   , AttributeKind (Dimension, PrimaryKey)
   , AttributeVisibility (Public)
@@ -107,6 +109,7 @@ validateAttribute objectValue attributeValue =
   -- Check rules that apply to one attribute.
   comparisonIdentityErrors objectValue attributeValue
     ++ derivationErrors objectValue attributeValue
+    ++ valueAliasErrors objectValue attributeValue
 
 comparisonIdentityErrors :: Object -> Attribute -> [Text]
 comparisonIdentityErrors objectValue attributeValue =
@@ -142,6 +145,33 @@ derivationErrors objectValue attributeValue =
               <> source_attribute derivationValue
               <> "'."
           ]
+
+valueAliasErrors :: Object -> Attribute -> [Text]
+valueAliasErrors objectValue attributeValue =
+  -- A single user-facing alias cannot safely point at two canonical values for
+  -- the same attribute. That would make grounding depend on hidden guesswork.
+  [ "Object '"
+      <> objectName objectValue
+      <> "' attribute '"
+      <> attributeName attributeValue
+      <> "' has ambiguous value alias '"
+      <> aliasValue
+      <> "' for canonical values: "
+      <> T.intercalate ", " (Set.toList canonicalValues)
+      <> "."
+  | (aliasValue, canonicalValues) <- Map.toList aliasesToCanonicalValues
+  , Set.size canonicalValues > 1
+  ]
+  where
+    aliasesToCanonicalValues =
+      Map.fromListWith
+        Set.union
+        [ (normalizedAlias, Set.singleton canonicalValue)
+        | (canonicalValue, aliases) <- Map.toList (value_aliases attributeValue)
+        , aliasValue <- canonicalValue : aliases
+        , let normalizedAlias = normalizedValueAlias aliasValue
+        , not (T.null normalizedAlias)
+        ]
 
 validateMetric :: Object -> MetricDef -> [Text]
 validateMetric objectValue metricValue =
@@ -278,3 +308,11 @@ metricName OT.MetricDef {OT.name = currentName} = currentName
 
 linkName :: Link -> Text
 linkName OT.Link {OT.name = currentName} = currentName
+
+normalizedValueAlias :: Text -> Text
+normalizedValueAlias =
+  T.filter isAliasCharacter . T.toLower . T.strip
+
+isAliasCharacter :: Char -> Bool
+isAliasCharacter character =
+  ('a' <= character && character <= 'z') || ('0' <= character && character <= '9')

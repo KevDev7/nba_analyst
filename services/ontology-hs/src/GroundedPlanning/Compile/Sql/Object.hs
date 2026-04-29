@@ -31,20 +31,29 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
           , factTableName = objectFactTableName
           , metricFormula = objectMetricFormula
           , windowGames = objectWindowGames
+          , timeFilters = objectTimeFilters
           , displayMetadata = objectDisplayMetadata
-          , seasonLabel = objectSeasonLabel
-          , seasonType = objectSeasonType
           , queryLimit = objectQueryLimit
-          , linkedFiltersResolved = objectLinkedFilters
+          , objectRowPredicateResolved = objectRowPredicate
+          , objectResultPredicateResolved = objectResultPredicate
           , objectOrderDirection = objectOrderDirectionValue
+          , displayMetricFormulas = objectDisplayMetricFormulas
           } = resolved
         baseWhereConditions =
-          renderSeasonFilterConditions "f" objectSeasonLabel objectSeasonType
-            <> renderLinkedFilterConditions "f" objectLinkedFilters
+          renderGameDateFilterConditions objectFactTableName "f" objectTimeFilters
+            <> renderRowPredicateConditions "f" objectRowPredicate
         baseWhereClause =
           case baseWhereConditions of
             [] -> []
             conditions -> ["  WHERE " <> combineWhereClauses conditions]
+        resultFilterWhereClause =
+          case renderResultPredicateConditions objectResultPredicate of
+            [] -> []
+            conditions -> ["WHERE " <> combineWhereClauses conditions]
+        gameRankWhereClause =
+          if objectWindowGames > 0
+            then ["  WHERE game_rank <= " <> T.pack (show objectWindowGames)]
+            else []
        in
       T.unlines $
         [ "WITH recent_rows AS ("
@@ -56,6 +65,8 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         , "    " <> renderColumnRefWithContext "f" "r" "c" objectMetricSource <> " AS metric_source,"
         ]
           <> renderMetadataSourceSelectLines "f" "r" "c" objectDisplayMetadata
+          <> renderDisplayMetricSourceSelectLines "f" objectDisplayMetricFormulas
+          <> renderResultPredicateSourceSelectLines "f" objectResultPredicate
           <> [ "    ROW_NUMBER() OVER ("
         , "      PARTITION BY " <> renderColumnRefWithContext "f" "r" "c" objectPartitionKey
         , "      ORDER BY " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " DESC"
@@ -64,7 +75,7 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         ]
           <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
           <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
-          <> renderLinkedFilterJoinClauses "f" objectLinkedFilters
+          <> renderRowPredicateJoinClauses "f" objectRowPredicate
           <> baseWhereClause
           <> [ "), entity_values AS ("
         , "  SELECT"
@@ -73,10 +84,13 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         , "    arg_max(context_value, game_date) AS context_value,"
         ]
           <> renderMetadataAggregateSelectLines objectDisplayMetadata
+          <> renderDisplayMetricAggregateSelectLines objectDisplayMetricFormulas
+          <> renderResultPredicateAggregateSelectLines objectResultPredicate
           <> [ "    " <> compileMetricAggregation objectMetricFormula <> " AS metric_value"
         , "  FROM recent_rows"
-        , "  WHERE game_rank <= " <> T.pack (show objectWindowGames)
-        , "  GROUP BY entity_id"
+        ]
+          <> gameRankWhereClause
+          <> [ "  GROUP BY entity_id"
         , ")"
         , "SELECT"
         , "  entity_id,"
@@ -84,10 +98,13 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         , "  context_value,"
         ]
           <> renderMetadataFinalSelectLines objectDisplayMetadata
+          <> renderResultPredicateFinalSelectLines objectResultPredicate
+          <> renderDisplayMetricFinalSelectLines objectDisplayMetricFormulas
           <> [ "  metric_value"
         , "FROM entity_values"
-        , "ORDER BY metric_value " <> objectOrderDirectionValue <> ", entity_name ASC"
         ]
+          <> resultFilterWhereClause
+          <> [ "ORDER BY metric_value " <> objectOrderDirectionValue <> ", entity_name ASC" ]
           <> limitClause objectQueryLimit
 
 -- Special SQL path for season-level object-row questions.
@@ -103,25 +120,44 @@ compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
       , rowPath = objectRowPath
       , contextPath = objectContextPath
       , queryLimit = objectQueryLimit
-      , linkedFiltersResolved = objectLinkedFilters
+      , objectRowPredicateResolved = objectRowPredicate
+      , objectResultPredicateResolved = objectResultPredicate
       , objectOrderDirection = objectOrderDirectionValue
       , displayMetadata = objectDisplayMetadata
+      , displayMetricFormulas = objectDisplayMetricFormulas
       } = resolved
    in
   T.unlines $
-    [ "SELECT"
-    , "  " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
-    , "  " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
-    , "  " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
+    [ "WITH season_entity_values AS ("
+    , "  SELECT"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectEntityId <> " AS entity_id,"
+    , "    " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
+    , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
     ]
-      <> map (T.replace "    " "  ") (renderMetadataDirectSelectLines "f" "r" "c" objectDisplayMetadata)
-      <> [ "  " <> renderMetricValue objectMetricSource <> " AS metric_value"
-    , "FROM " <> objectFactTableName <> " f"
+      <> renderMetadataDirectSelectLines "f" "r" "c" objectDisplayMetadata
+      <> renderDisplayMetricDirectSelectLines "f" objectDisplayMetricFormulas
+      <> renderResultPredicateDirectSelectLines "f" objectResultPredicate
+      <> [ "    " <> renderMetricValue objectMetricSource <> " AS metric_value"
+    , "  FROM " <> objectFactTableName <> " f"
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath
       <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" objectContextPath
-      <> renderLinkedFilterJoinClauses "f" objectLinkedFilters
-      <> [ "WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderLinkedFilterConditions "f" objectLinkedFilters)
-         , "ORDER BY metric_value " <> objectOrderDirectionValue <> ", entity_name ASC"
+      <> renderRowPredicateJoinClauses "f" objectRowPredicate
+      <> [ "WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderRowPredicateConditions "f" objectRowPredicate)
+         , ")"
+         , "SELECT"
+         , "  entity_id,"
+         , "  entity_name,"
+         , "  context_value,"
          ]
+      <> renderMetadataFinalSelectLines objectDisplayMetadata
+      <> renderResultPredicateFinalSelectLines objectResultPredicate
+      <> renderDisplayMetricFinalSelectLines objectDisplayMetricFormulas
+      <> [ "  metric_value"
+         , "FROM season_entity_values"
+         ]
+      <> (case renderResultPredicateConditions objectResultPredicate of
+            [] -> []
+            conditions -> ["WHERE " <> combineWhereClauses conditions])
+      <> [ "ORDER BY metric_value " <> objectOrderDirectionValue <> ", entity_name ASC" ]
       <> limitClause objectQueryLimit
