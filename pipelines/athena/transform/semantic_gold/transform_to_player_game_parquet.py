@@ -28,10 +28,6 @@ from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import
     PLAYER_REQUIRED_COLUMNS,
     PLAYER_SOURCE_KEY,
 )
-from pipelines.athena.transform.gold.transform_to_fct_team_game_parquet import (
-    TEAM_GAME_REQUIRED_COLUMNS,
-    TEAM_GAME_SOURCE_KEY,
-)
 from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     BOXSCORE_REQUIRED_COLUMNS,
     BOXSCORE_SOURCE_KEY,
@@ -41,7 +37,11 @@ from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
 
 from .contracts import PLAYER_GAME_SCHEMA
 from .transform_to_game_parquet import build_game_rows_from_tables
-from .transform_to_team_game_parquet import build_team_game_rows_from_tables
+from .transform_to_team_game_parquet import (
+    TEAM_GAME_REQUIRED_COLUMNS,
+    TEAM_GAME_SOURCE_KEY,
+    build_team_game_rows_from_tables,
+)
 
 load_dotenv(override=True)
 

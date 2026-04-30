@@ -26,8 +26,6 @@ from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     BOXSCORE_SOURCE_KEY,
     SCHEDULE_REQUIRED_COLUMNS,
     SCHEDULE_SOURCE_KEY,
-    TEAM_GAME_REQUIRED_COLUMNS,
-    TEAM_GAME_SOURCE_KEY,
 )
 from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import (
     PLAYER_REQUIRED_COLUMNS,
@@ -54,6 +52,7 @@ from .transform_to_player_season_parquet import (
     build_player_game_opportunity_context_map_from_table,
     build_player_game_possession_context_map_from_table,
 )
+from .transform_to_team_game_parquet import TEAM_GAME_REQUIRED_COLUMNS, TEAM_GAME_SOURCE_KEY
 
 load_dotenv(override=True)
 

@@ -26,13 +26,13 @@ from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     SCHEDULE_REQUIRED_COLUMNS,
     SCHEDULE_SOURCE_KEY,
 )
-from pipelines.athena.transform.gold.transform_to_fct_team_game_parquet import (
-    TEAM_GAME_REQUIRED_COLUMNS,
-    TEAM_GAME_SOURCE_KEY,
-)
 
 from .contracts import TEAM_SEASON_SCHEMA
-from .transform_to_team_game_parquet import build_team_game_rows_from_tables
+from .transform_to_team_game_parquet import (
+    TEAM_GAME_REQUIRED_COLUMNS,
+    TEAM_GAME_SOURCE_KEY,
+    build_team_game_rows_from_tables,
+)
 
 load_dotenv(override=True)
 

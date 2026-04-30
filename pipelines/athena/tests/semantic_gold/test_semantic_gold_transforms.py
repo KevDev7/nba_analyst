@@ -444,6 +444,47 @@ def test_semantic_source_contracts_include_live_measure_columns() -> None:
     assert "minutesCalculated" in PLAYER_REQUIRED_COLUMNS
     assert "score" in TEAM_GAME_REQUIRED_COLUMNS
     assert "timeoutsRemaining" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "minutesCalculated" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "assists" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "reboundsTotal" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "fieldGoalsAttempted" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "threePointersMade" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "turnovers" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "pointsFastBreak" in TEAM_GAME_REQUIRED_COLUMNS
+    assert "foulsPersonal" in TEAM_GAME_REQUIRED_COLUMNS
+
+
+def test_team_game_required_columns_populate_semantic_measures() -> None:
+    from pipelines.athena.transform.semantic_gold.transform_to_team_game_parquet import (
+        TEAM_GAME_REQUIRED_COLUMNS,
+    )
+
+    team_game_table = sample_team_game_table()
+    for column in TEAM_GAME_REQUIRED_COLUMNS:
+        if column not in team_game_table.column_names:
+            team_game_table = team_game_table.append_column(
+                column, pa.nulls(team_game_table.num_rows, type=pa.null())
+            )
+    team_game_table = team_game_table.select(TEAM_GAME_REQUIRED_COLUMNS)
+
+    rows = build_team_game_rows_from_tables(
+        team_game_table,
+        sample_boxscore_game_table(),
+        sample_schedule_table(),
+        sample_team_game_possession_context_table(),
+        sample_team_game_defensive_shot_context_table(),
+    )
+
+    by_key = {(row["game_id"], row["team_id"]): row for row in rows}
+    home_row = by_key[("0022400001", 1610612744)]
+    assert home_row["assists"] == 30
+    assert home_row["total_rebounds"] == 43
+    assert home_row["field_goals_attempted"] == 90
+    assert home_row["three_pointers_made"] == 16
+    assert home_row["turnovers"] == 12
+    assert home_row["fast_break_points"] == 15
+    assert home_row["personal_fouls_committed"] == 17
+    assert home_row["assist_percentage"] == pytest.approx(68.2)
 
 
 def sample_bridge_table() -> pa.Table:

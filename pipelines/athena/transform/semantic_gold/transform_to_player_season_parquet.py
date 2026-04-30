@@ -31,10 +31,6 @@ from pipelines.athena.transform.gold.transform_to_dim_game_parquet import (
     SCHEDULE_REQUIRED_COLUMNS,
     SCHEDULE_SOURCE_KEY,
 )
-from pipelines.athena.transform.gold.transform_to_fct_team_game_parquet import (
-    TEAM_GAME_REQUIRED_COLUMNS,
-    TEAM_GAME_SOURCE_KEY,
-)
 from pipelines.athena.transform.gold.transform_to_fct_player_game_parquet import (
     PLAYER_REQUIRED_COLUMNS,
     PLAYER_SOURCE_KEY,
@@ -54,6 +50,7 @@ from pipelines.athena.transform.gold.player_surface.sources import (
 )
 
 from .contracts import PLAYER_SEASON_SCHEMA
+from .transform_to_team_game_parquet import TEAM_GAME_REQUIRED_COLUMNS, TEAM_GAME_SOURCE_KEY
 from .transform_to_player_game_parquet import (
     TEAM_GAME_USAGE_REQUIRED_COLUMNS,
     TEAM_GAME_USAGE_SOURCE_KEY,
