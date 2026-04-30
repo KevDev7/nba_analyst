@@ -11,7 +11,7 @@ import yaml
 from scripts.load_gold_snapshot import load_database
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 SINGLE_TOKEN_NAME_PARTS = {
     "firstname",

@@ -7,6 +7,7 @@ module GroundedPlanning.Validation.Find where
 
 import Data.Text (Text)
 import GroundedPlanning.Validation.Common
+import GroundedPlanning.Validation.Common.PredicateRules
 import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (AttributeKind (Dimension, Measure, PrimaryKey), AttributeVisibility (Public), Ontology)
@@ -120,23 +121,11 @@ validateFindPredicateShape ontology factObjectName maybePredicateTree filterValu
 
 validateFindPredicateTree :: Ontology -> Text -> Predicate -> Either Text ()
 validateFindPredicateTree ontology factObjectName predicateTree =
-  case predicateTree of
-    PredicateLeaf fieldValue operatorValue predicateValue -> validateFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue
-    PredicateAnd predicateValues -> validatePredicateChildren "AND" ontology factObjectName predicateValues
-    PredicateOr predicateValues -> validatePredicateChildren "OR" ontology factObjectName predicateValues
-    PredicateNot predicateValue -> validateFindPredicateTree ontology factObjectName predicateValue
-
-validatePredicateChildren :: Text -> Ontology -> Text -> [Predicate] -> Either Text ()
-validatePredicateChildren label ontology factObjectName predicateValues =
-  case predicateValues of
-    [] -> Left ("Find " <> label <> " predicate requires at least one child predicate.")
-    _ -> mapM_ (validateFindPredicateTree ontology factObjectName) predicateValues
+  validatePredicateTree "Find" (validateFindPredicateLeaf ontology factObjectName) predicateTree
 
 validateFindPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ()
 validateFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
-  case predicateLocation fieldValue of
-    PredicateRowField -> pure ()
-    PredicateResultField -> Left "Find predicate trees only support row-level predicate fields."
+  validatePredicateLocation "Find" PredicateRowField fieldValue
   predicateObject <- requireObject ontology (predicateFieldTargetObject fieldValue)
   _ <- requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
   attributeValue <-
@@ -146,53 +135,12 @@ validateFindPredicateLeaf ontology factObjectName fieldValue operatorValue predi
       (findAttribute predicateObject (predicateFieldAttribute fieldValue))
   if OT.kind attributeValue == PrimaryKey || OT.visibility attributeValue /= Public
     then Left "Find predicate trees must reference public non-primary ontology attributes."
-    else validateFindPredicateOperatorValue attributeValue operatorValue predicateValue
-
-validateFindPredicateOperatorValue :: OT.Attribute -> PredicateOperator -> PredicateValue -> Either Text ()
-validateFindPredicateOperatorValue attributeValue operatorValue predicateValue =
-  case (OT.kind attributeValue, operatorValue, predicateValue) of
-    (Dimension, PredicateEquals, PredicateScalar (FilterText textValue))
-      | textValue /= "" -> pure ()
-    (Dimension, PredicateNotEquals, PredicateScalar (FilterText textValue))
-      | textValue /= "" -> pure ()
-    (Dimension, PredicateIn, PredicateList values)
-      | all isNonEmptyText values && not (null values) -> pure ()
-    (Dimension, PredicateNotIn, PredicateList values)
-      | all isNonEmptyText values && not (null values) -> pure ()
-    (Dimension, PredicateContains, PredicateScalar (FilterText textValue))
-      | textValue /= "" -> pure ()
-    (Measure, PredicateEquals, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateNotEquals, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateGreaterThan, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateGreaterThanOrEqual, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateLessThan, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateLessThanOrEqual, PredicateScalar value)
-      | isNumericFilterValue value -> pure ()
-    (Measure, PredicateIn, PredicateList values)
-      | all isNumericFilterValue values && not (null values) -> pure ()
-    (Measure, PredicateNotIn, PredicateList values)
-      | all isNumericFilterValue values && not (null values) -> pure ()
-    (Measure, PredicateBetween, PredicateRange lowerValue upperValue)
-      | isNumericFilterValue lowerValue && isNumericFilterValue upperValue -> pure ()
-    _ -> Left "Find predicate tree operator/value is not valid for the resolved ontology attribute."
-
-isNonEmptyText :: FilterValue -> Bool
-isNonEmptyText filterValue =
-  case filterValue of
-    FilterText textValue -> textValue /= ""
-    _ -> False
-
-isNumericFilterValue :: FilterValue -> Bool
-isNumericFilterValue filterValue =
-  case filterValue of
-    FilterInt _ -> True
-    FilterDouble _ -> True
-    FilterText _ -> False
+    else
+      validateRowLikePredicateOperatorValue
+        "Find predicate tree operator/value is not valid for the resolved ontology attribute."
+        attributeValue
+        operatorValue
+        predicateValue
 
 validateFindFilters :: OT.Object -> [Filter] -> Either Text ()
 validateFindFilters factObject filterValues =

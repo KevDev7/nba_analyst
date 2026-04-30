@@ -9,7 +9,7 @@
 # - basic validated semantic draft JSON for Haskell grounding
 #
 # Next:
-# - apps/cli/main.py
+# - apps/assistant/pipeline.py
 
 from __future__ import annotations
 
@@ -21,11 +21,11 @@ from typing import Any, Literal, Optional, Union
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-from apps.cli.llm_transport import LlmTransportError, call_gemini
-from apps.cli.predicate_draft_normalizer import normalize_flat_filter_predicates
+from apps.assistant.semantic.llm_transport import LlmTransportError, call_gemini
+from apps.assistant.semantic.predicate_draft_normalizer import normalize_flat_filter_predicates
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 # Find the project root and load API/model configuration from .env.
 load_dotenv(ROOT / ".env", override=False)

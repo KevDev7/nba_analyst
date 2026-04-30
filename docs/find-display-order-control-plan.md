@@ -139,7 +139,7 @@ Find Lakers games over 120 points and show date, opponent, score, sorted newest 
 
 Likely files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Find.hs`
@@ -149,7 +149,7 @@ Likely files:
 - `services/ontology-hs/src/GroundedPlanning/Plan.hs`
 - `services/runtime-py/runtime/AnalysisRuntime/models.py`
 - `tests/test_find_queries.py`
-- `tests/test_semantic_interpreter.py`
+- `tests/test_interpreter.py`
 
 ## Slice 4: Prompt, Presentation, Docs, Hardening
 
@@ -176,7 +176,7 @@ python3 apps/cli/main.py "Find Lakers games over 120 points and show date, oppon
 
 Likely files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/runtime-py/runtime/AnswerSynthesis/format_response.py`
 - `services/runtime-py/runtime/AnswerSynthesis/interpretation_summary.py`
 - `contracts/query_ir.md`

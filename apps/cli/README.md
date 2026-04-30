@@ -12,6 +12,10 @@ Live flow:
 
 `question -> Gemini semantic draft -> Haskell grounding/planning -> Python runtime -> answer synthesis -> terminal output`
 
+The CLI owns only terminal input/output. Shared semantic interpretation lives in
+`apps/assistant/semantic`, and the shared orchestration path lives in
+`apps/assistant/pipeline.py`.
+
 Current scope:
 
 - one user question

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence, TypeVar
 
+from .answer_language import cell_value, field_label, format_metric_value, metric_header, time_header
 from .response_models import FinalAnswer
 
 
@@ -40,55 +41,23 @@ def _append_display_notice(lines: list[str], total_rows: int) -> None:
 
 
 def _metric_header(metric: str) -> str:
-    return {
-        "total_points": "Total Points",
-        "points_total": "Total Points",
-        "average_points": "Average Points",
-        "points_per_game": "Average Points",
-        "average_minutes": "Average Minutes",
-        "minutes_per_game": "Average Minutes",
-        "total_assists": "Assists",
-        "assists_total": "Assists",
-        "average_assists": "Average Assists",
-        "assists_per_game": "Average Assists",
-        "total_rebounds": "Rebounds",
-        "rebounds_total": "Rebounds",
-        "average_rebounds": "Average Rebounds",
-        "rebounds_per_game": "Average Rebounds",
-        "games_played": "Games Played",
-        "wins": "Wins",
-        "losses": "Losses",
-        "win_percentage": "Win Percentage",
-    }.get(metric, metric.replace("_", " ").title())
+    return metric_header(metric)
 
 
 def _metric_value(metric: str, value: float) -> str:
-    if metric in {"average_points", "points_per_game", "average_minutes", "minutes_per_game", "average_assists", "assists_per_game", "average_rebounds", "rebounds_per_game"}:
-        return f"{value:.1f}"
-    if metric == "win_percentage":
-        return f"{value:.3f}"
-    return str(int(round(value)))
+    return format_metric_value(metric, value, table=True)
 
 
 def _time_header(time_grain: str | None) -> str:
-    return {
-        "day": "Day",
-        "week": "Week",
-        "month": "Month",
-        "season": "Season",
-    }.get(time_grain or "", "Time")
+    return time_header(time_grain)
 
 
 def _field_header(field_name: str) -> str:
-    return field_name.replace("_", " ").title()
+    return field_label(field_name)
 
 
 def _cell_value(value: object) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str) and "_" in value:
-        return value.replace("_", " ").title()
-    return str(value)
+    return cell_value(value)
 
 
 def _metadata_value(metric: str, key: str, value: object, label: str = "") -> str:

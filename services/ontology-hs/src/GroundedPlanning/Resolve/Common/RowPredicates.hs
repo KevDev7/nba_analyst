@@ -7,8 +7,8 @@ module GroundedPlanning.Resolve.Common.RowPredicates
 
 import Data.Text (Text)
 import GroundedPlanning.Resolve.Common.Ontology
+import GroundedPlanning.Resolve.Common.PredicateTrees
 import GroundedPlanning.Resolve.Common.Types
-import GroundedPlanning.Resolve.Common.ValueCanonicalization
 import OntologyLayer.Graph (findAttribute)
 import OntologyLayer.Types (Attribute (source_column), Ontology)
 import QueryModel.IR
@@ -19,15 +19,13 @@ resolveBaseRowPredicate ontology factObjectName maybeRowPredicate =
 
 resolveRowPredicateTree :: Ontology -> Text -> Predicate -> Either Text ResolvedRowPredicateTree
 resolveRowPredicateTree ontology factObjectName predicateTree =
-  case predicateTree of
-    PredicateLeaf fieldValue operatorValue predicateValue ->
-      ResolvedRowPredicateLeafNode <$> resolveRowPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue
-    PredicateAnd predicateValues ->
-      ResolvedRowPredicateAnd <$> mapM (resolveRowPredicateTree ontology factObjectName) predicateValues
-    PredicateOr predicateValues ->
-      ResolvedRowPredicateOr <$> mapM (resolveRowPredicateTree ontology factObjectName) predicateValues
-    PredicateNot predicateValue ->
-      ResolvedRowPredicateNot <$> resolveRowPredicateTree ontology factObjectName predicateValue
+  resolvePredicateTree
+    (resolveRowPredicateLeaf ontology factObjectName)
+    ResolvedRowPredicateLeafNode
+    ResolvedRowPredicateAnd
+    ResolvedRowPredicateOr
+    ResolvedRowPredicateNot
+    predicateTree
 
 resolveRowPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ResolvedRowPredicateLeaf
 resolveRowPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
@@ -46,29 +44,8 @@ resolveRowPredicateLeaf ontology factObjectName fieldValue operatorValue predica
       , rowPredicateLabel = predicateFieldAttribute fieldValue
       , rowPredicateOperator = operatorValue
       , rowPredicateValue =
-          canonicalizePredicateTreeValue
-            attributeValue
-            predicateValue
+          canonicalizePredicateTreeValue attributeValue predicateValue
       }
-
-canonicalizePredicateTreeValue :: Attribute -> PredicateValue -> PredicateValue
-canonicalizePredicateTreeValue attributeValue predicateValue =
-  case predicateValue of
-    PredicateScalar scalarValue ->
-      PredicateScalar (canonicalizePredicateScalar attributeValue scalarValue)
-    PredicateList values ->
-      PredicateList (map (canonicalizePredicateScalar attributeValue) values)
-    PredicateRange lowerValue upperValue ->
-      PredicateRange
-        (canonicalizePredicateScalar attributeValue lowerValue)
-        (canonicalizePredicateScalar attributeValue upperValue)
-
-canonicalizePredicateScalar :: Attribute -> FilterValue -> FilterValue
-canonicalizePredicateScalar attributeValue filterValue =
-  case filterValue of
-    FilterText textValue -> FilterText (canonicalizeTextValue attributeValue textValue)
-    FilterInt _ -> filterValue
-    FilterDouble _ -> filterValue
 
 planRowPredicateTree :: ResolvedRowPredicateTree -> Predicate
 planRowPredicateTree predicateTree =

@@ -3,13 +3,11 @@
 
 module QueryModel.SemanticDraft.Object (semanticObjectDraftToQuery) where
 
-import Data.List (sortOn)
-import Data.Maybe (mapMaybe)
-import Data.Ord (Down (Down))
 import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
-import OntologyLayer.Types (Object, Ontology (objects))
+import OntologyLayer.Types (Object, Ontology)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.CandidateSelection
 import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Match
@@ -33,36 +31,27 @@ resolveObjectGrounding :: Ontology -> SemanticDraft -> Text -> Object -> TimeSco
 resolveObjectGrounding ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit =
   -- Search ontology fact objects for one that can attach the requested metric
   -- to the requested row object.
-  case rankedCandidates of
-    candidate : _ -> Right candidate
-    [] ->
-      Left
-        ( "Could not ground object draft with subject '"
-            <> subject draft
-            <> "', measure '"
-            <> rawMeasure
-            <> "', and the requested object-row filters against executable ontology metrics."
-        )
+  selectMetricFactGrounding
+    failureMessage
+    ontology
+    rawMeasure
+    (draftMeasurePhrases draft)
+    objectCandidateEligibility
+    (groundObjectFactCandidate ontology draft rowObject objectTimeScopeValue maybeLimit)
   where
-    rankedCandidates =
-      sortOn objectCandidateRank $
-        mapMaybe
-          (groundObjectFactCandidate ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit)
-          (objects ontology)
+    failureMessage =
+      "Could not ground object draft with subject '"
+        <> subject draft
+        <> "', measure '"
+        <> rawMeasure
+        <> "', and the requested object-row filters against executable ontology metrics."
+    objectCandidateEligibility factObjectValue = do
+      _ <- findPath ontology 2 (objectName factObjectValue) (objectName rowObject)
+      _ <- requireTimeScopeFactSurface objectTimeScopeValue factObjectValue
+      pure (subjectFactAffinity rowObject factObjectValue)
 
-objectCandidateRank :: GroundedRanking -> (Down Int, Down Int, Text)
-objectCandidateRank candidate =
-  ( Down (matchScore candidate)
-  , Down (subjectAffinityScore candidate)
-  , objectName (factObject candidate)
-  )
-
-groundObjectFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> TimeScope -> Maybe Int -> Object -> Maybe GroundedRanking
-groundObjectFactCandidate ontology draft rawMeasure rowObject objectTimeScopeValue maybeLimit factObjectValue = do
-  _ <- findPath ontology 2 (objectName factObjectValue) (objectName rowObject)
-  _ <- requireTimeScopeFactSurface objectTimeScopeValue factObjectValue
-  metricValue <- bestMetricMatch rawMeasure factObjectValue
-  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
+groundObjectFactCandidate :: Ontology -> SemanticDraft -> Object -> TimeScope -> Maybe Int -> MetricFactCandidate -> Maybe GroundedRanking
+groundObjectFactCandidate ontology draft rowObject objectTimeScopeValue maybeLimit candidate = do
   dimensionValue <- identityDimension rowObject
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
   resultPredicateTree <- groundDraftResultPredicate factObjectValue metricValue (resultFilters draft) (resultPredicate draft)
@@ -79,9 +68,13 @@ groundObjectFactCandidate ontology draft rawMeasure rowObject objectTimeScopeVal
       , resultPredicateValue = resultPredicateTree
       , limitValue = maybeLimit
       , assumptionValues = assumptions draft
-      , matchScore = metricMatchScore rawMeasure metricValue
-      , subjectAffinityScore = subjectFactAffinity rowObject factObjectValue
+      , matchScore = candidateMatchScore candidate
+      , subjectAffinityScore = candidateAffinityScore candidate
       }
+  where
+    factObjectValue = candidateFactObject candidate
+    metricValue = candidateMetricDef candidate
+    metricValues = candidateMetricDefs candidate
 
 objectQuery :: (QI.MetricName -> QI.Order) -> GroundedRanking -> QI.Query
 objectQuery orderBuilder grounded =

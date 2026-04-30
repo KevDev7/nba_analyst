@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import patch
 
 from apps.assistant.pipeline import AssistantResult
-from apps.cli.main import plan_question, run_cli
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
 
 
 SAMPLE_DRAFT = {

@@ -12,51 +12,29 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from runtime.AnalysisRuntime.models import PlanFindFilter, PlanFindOrder
+from runtime.AnswerSynthesis.answer_language import (
+    field_phrase,
+    grain_phrase,
+    join_nonempty,
+    join_phrase,
+    metric_phrase,
+    or_list_phrase,
+    season_phrase,
+    season_type_label,
+    value_phrase,
+)
 from runtime.AnswerSynthesis.response_models import SynthesisPayload
 
 
 def _human_metric(metric: str) -> str:
-    return {
-        "total_points": "total points",
-        "points_total": "total points",
-        "average_points": "average points",
-        "points_per_game": "average points",
-        "average_minutes": "average minutes",
-        "minutes_per_game": "average minutes",
-        "total_assists": "assists",
-        "assists_total": "assists",
-        "average_assists": "average assists",
-        "assists_per_game": "average assists",
-        "total_rebounds": "rebounds",
-        "rebounds_total": "rebounds",
-        "average_rebounds": "average rebounds",
-        "rebounds_per_game": "average rebounds",
-        "games_played": "games played",
-        "points_per_36": "points per 36",
-        "wins": "wins",
-        "losses": "losses",
-        "win_percentage": "win percentage",
-    }.get(metric, metric.replace("_", " "))
+    return metric_phrase(metric)
 
 
-def _season_type_label(season_type: Optional[str]) -> Optional[str]:
-    if not season_type:
-        return None
-    return season_type.replace("_", " ")
-
-
-def _season_phrase(season_label: Optional[str], season_type: Optional[str]) -> str:
-    season_type_label = _season_type_label(season_type)
-    if season_label and season_type_label:
-        return f"in the {season_label} {season_type_label}"
-    if season_label:
-        return f"in the {season_label} season"
-    if season_type_label:
-        return f"for {season_type_label}s"
-    return ""
+def _season_phrase(season_label: str | None, season_type: str | None) -> str:
+    return season_phrase(season_label, season_type, plural_type_only=True)
 
 
 def _time_phrase(payload: SynthesisPayload) -> str:
@@ -77,24 +55,18 @@ def _time_phrase(payload: SynthesisPayload) -> str:
     if payload.time_filter == "past_year":
         return "over the past year"
     if payload.time_filter == "season_type":
-        season_type_label = _season_type_label(payload.season_type)
-        if season_type_label:
-            return f"for {season_type_label}s"
+        season_type_text = season_type_label(payload.season_type)
+        if season_type_text:
+            return f"for {season_type_text}s"
     return ""
 
 
-def _join_nonempty(parts: Iterable[str]) -> str:
-    return " ".join(part for part in parts if part)
-
-
 def _join_phrase(values: list[str]) -> str:
-    if not values:
-        return ""
-    if len(values) == 1:
-        return values[0]
-    if len(values) == 2:
-        return f"{values[0]} and {values[1]}"
-    return f"{', '.join(values[:-1])}, and {values[-1]}"
+    return join_phrase(values)
+
+
+def _join_nonempty(parts: list[str]) -> str:
+    return join_nonempty(parts)
 
 
 def _display_metric_phrase(payload: SynthesisPayload) -> str:
@@ -139,12 +111,7 @@ def _ranked_subject_phrase(payload: SynthesisPayload) -> str:
 
 
 def _grain_phrase(time_grain: Optional[str]) -> str:
-    return {
-        "day": "by day",
-        "week": "by week",
-        "month": "by month",
-        "season": "by season",
-    }.get(time_grain or "", "over time")
+    return grain_phrase(time_grain)
 
 
 def _operator_phrase(operator: str) -> str:
@@ -168,13 +135,11 @@ def _operator_phrase(operator: str) -> str:
 
 
 def _field_phrase(attribute: str) -> str:
-    return attribute.replace("_", " ")
+    return field_phrase(attribute)
 
 
 def _value_phrase(value: object) -> str:
-    if isinstance(value, str):
-        return value.replace("_", " ")
-    return str(value)
+    return value_phrase(value)
 
 
 def _predicate_tree_phrase(predicate_tree: dict[str, Any]) -> str:
@@ -236,13 +201,7 @@ def _predicate_value_phrase(value: object) -> str:
 
 
 def _format_list_phrase(values: list[str]) -> str:
-    if not values:
-        return ""
-    if len(values) == 1:
-        return values[0]
-    if len(values) == 2:
-        return f"{values[0]} or {values[1]}"
-    return f"{', '.join(values[:-1])}, or {values[-1]}"
+    return or_list_phrase(values)
 
 
 def _find_filter_phrase(filter_value: PlanFindFilter) -> str:

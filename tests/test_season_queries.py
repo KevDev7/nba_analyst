@@ -4,7 +4,8 @@ import unittest
 
 import duckdb
 
-from apps.cli.main import ROOT, plan_question, run_cli
+from apps.assistant.pipeline import ROOT, plan_question
+from apps.cli.main import run_cli
 from scripts.load_gold_snapshot import load_database
 
 

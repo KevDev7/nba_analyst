@@ -4,7 +4,7 @@ import unittest
 
 import duckdb
 
-from apps.cli.main import plan_question
+from apps.assistant.pipeline import plan_question
 from runtime.AnalysisRuntime.models import ExecutionPlan
 from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response

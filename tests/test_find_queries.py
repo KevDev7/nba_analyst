@@ -7,8 +7,9 @@ from unittest.mock import patch
 
 import duckdb
 
-from apps.cli.main import call_haskell_planner_for_semantic_draft, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import call_haskell_planner_for_semantic_draft
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 from runtime.AnalysisRuntime.models import ExecutionPlan
 from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.package_results import package_results
@@ -529,7 +530,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertEqual(packaged.find_orders[0].order_field, "score")
         self.assertEqual(packaged.find_orders[0].order_direction, "descending")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_find_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": lakers_games_draft()}
@@ -554,7 +555,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("Game Date | Season Year | Season Type | Team Name | Score", output)
         self.assertIn(f"{expected_date} | 2025-26 | Regular Season | Lakers | {expected_score}", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_find_with_requested_display_columns(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -570,7 +571,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("Matching games are shown below.", output)
         self.assertIn("Game Date | Score | Point Differential | Team Name", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_find_with_role_aware_opponent_display(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -586,7 +587,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("Matching games are shown below.", output)
         self.assertIn("Game Date | Opponent | Score | Team Name", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_find_with_requested_order(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -607,7 +608,7 @@ class FindQueryTests(unittest.TestCase):
         )
         self.assertIn("Game Date | Opponent | Score | Team Name", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_normalizes_find_null_time_window_to_all_available_data(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": lakers_games_draft(time_window=None)}
@@ -811,7 +812,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertEqual(predicate_tree["predicate"]["value"]["value"], "west")
         self.assertIn("NOT (f.conference = 'west')", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_find_predicate_tree_or_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {

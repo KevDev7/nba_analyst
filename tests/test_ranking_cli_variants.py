@@ -36,7 +36,7 @@ def draft(limit: int, measure: str = "points", assumptions: list[str] | None = N
 
 
 class RankingCliVariantTests(unittest.TestCase):
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_canonical_question(self, _call_gemini) -> None:
         _call_gemini.return_value = draft(10)
         output = run_cli("Show me the top 10 players by points over the last 10 games")
@@ -45,7 +45,7 @@ class RankingCliVariantTests(unittest.TestCase):
         self.assertIn("397", output)
         self.assertIn("312", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_scorers_variant(self, _call_gemini) -> None:
         _call_gemini.return_value = draft(
             10,
@@ -56,7 +56,7 @@ class RankingCliVariantTests(unittest.TestCase):
         self.assertIn("Interpreted 'scorers' as players ranked by points.", output)
         self.assertIn("Luka Dončić", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_pts_variant(self, _call_gemini) -> None:
         _call_gemini.return_value = draft(
             10,
@@ -67,7 +67,7 @@ class RankingCliVariantTests(unittest.TestCase):
         self.assertIn("Interpreted 'pts' as points.", output)
         self.assertIn("Luka Dončić", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_limit_variant(self, _call_gemini) -> None:
         _call_gemini.return_value = draft(5)
         output = run_cli("Show me the top 5 players by points over the last 10 games")
@@ -75,7 +75,7 @@ class RankingCliVariantTests(unittest.TestCase):
         self.assertIn("Devin Booker", output)
         self.assertNotIn("6 | Tyrese Maxey | PHI | 285", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_non_analytics_request_is_rejected(self, _call_gemini) -> None:
         _call_gemini.return_value = (
             '{"status":"unsupported","reason":"not an NBA analytics request"}'

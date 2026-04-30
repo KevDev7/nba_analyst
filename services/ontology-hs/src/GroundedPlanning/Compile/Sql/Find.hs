@@ -6,10 +6,18 @@ module GroundedPlanning.Compile.Sql.Find (compileFindSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( renderGameDateFilterConditions
+  , renderPathJoinClauses
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( limitClause
+  , renderWhereLines
+  )
+import GroundedPlanning.Compile.Sql.Predicates (renderPredicateCondition)
 import GroundedPlanning.Resolve
 import OntologyLayer.Graph (DiscoveredPath)
 import qualified OntologyLayer.Graph as OG
-import QueryModel.IR (Filter, FilterValue (FilterText), FindOrderDirection (..), PredicateOperator (..), PredicateValue (..), filterIntValue, filterKindText)
+import QueryModel.IR (Filter, FindOrderDirection (..), filterIntValue, filterKindText)
 
 data IndexedFindPredicateTree
   = IndexedFindPredicateLeaf Int ResolvedFindPredicateLeaf
@@ -82,12 +90,6 @@ compileFindSql resolved =
           <> renderWhereLines "" whereConditions
           <> [ "ORDER BY " <> findOrderColumn targetPathValue displayValues orderValues False ]
           <> limitClause maybeFindLimit
-
-renderWhereLines :: Text -> [Text] -> [Text]
-renderWhereLines prefix conditions =
-  case conditions of
-    [] -> []
-    _ -> [prefix <> "WHERE " <> combineWhereClauses conditions]
 
 renderFindSelectLines :: DiscoveredPath -> [ResolvedFindDisplay] -> [(Int, ResolvedFindPredicateLeaf)] -> [Text]
 renderFindSelectLines targetPathValue displayValues predicateTreeLeaves =
@@ -252,26 +254,9 @@ renderFindPredicateTreeCondition predicateTree =
 renderFindPredicateLeafCondition :: Int -> ResolvedFindPredicateLeaf -> Text
 renderFindPredicateLeafCondition indexValue predicateLeaf =
   let columnRef = findPredicateTreeAlias indexValue predicateLeaf <> "." <> treePredicateColumn predicateLeaf
-   in case (treePredicateOperator predicateLeaf, treePredicateValue predicateLeaf) of
-        (PredicateEquals, PredicateScalar scalarValue) -> columnRef <> " = " <> renderFilterLiteral scalarValue
-        (PredicateNotEquals, PredicateScalar scalarValue) -> columnRef <> " <> " <> renderFilterLiteral scalarValue
-        (PredicateGreaterThan, PredicateScalar scalarValue) -> columnRef <> " > " <> renderFilterLiteral scalarValue
-        (PredicateGreaterThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " >= " <> renderFilterLiteral scalarValue
-        (PredicateLessThan, PredicateScalar scalarValue) -> columnRef <> " < " <> renderFilterLiteral scalarValue
-        (PredicateLessThanOrEqual, PredicateScalar scalarValue) -> columnRef <> " <= " <> renderFilterLiteral scalarValue
-        (PredicateIn, PredicateList values) -> columnRef <> " IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
-        (PredicateNotIn, PredicateList values) -> columnRef <> " NOT IN (" <> T.intercalate ", " (map renderFilterLiteral values) <> ")"
-        (PredicateBetween, PredicateRange lowerValue upperValue) -> columnRef <> " BETWEEN " <> renderFilterLiteral lowerValue <> " AND " <> renderFilterLiteral upperValue
-        (PredicateContains, PredicateScalar (FilterText textValue)) -> columnRef <> " ILIKE " <> renderLikeContainsLiteral textValue <> " ESCAPE '\\'"
-        _ -> error "Unsupported find predicate tree operator/value."
-
-renderLikeContainsLiteral :: Text -> Text
-renderLikeContainsLiteral rawValue =
-  "'%" <> escapeLikePattern rawValue <> "%'"
-
-escapeLikePattern :: Text -> Text
-escapeLikePattern =
-  T.replace "_" "\\_" . T.replace "%" "\\%" . T.replace "\\" "\\\\" . escapeSqlLiteral
+   in case renderPredicateCondition columnRef (treePredicateOperator predicateLeaf) (treePredicateValue predicateLeaf) of
+        Just conditionValue -> conditionValue
+        Nothing -> error "Unsupported find predicate tree operator/value."
 
 findPathAlias :: Text -> DiscoveredPath -> Text
 findPathAlias nonFactAlias pathValue =

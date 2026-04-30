@@ -12,47 +12,28 @@
 
 from __future__ import annotations
 
+from .answer_language import (
+    format_metric_value,
+    grain_adjective,
+    join_nonempty,
+    join_phrase,
+    metric_phrase,
+    season_phrase,
+)
 from .interpretation_summary import build_interpretation
-from .response_models import FinalAnswer, SynthesisPayload
+from .response_models import FinalAnswer, SynthesisPayload, final_answer_from_payload
 
 
 def _human_metric(metric: str) -> str:
-    return {
-        "total_points": "total points",
-        "points_total": "total points",
-        "average_points": "average points",
-        "points_per_game": "average points",
-        "average_minutes": "average minutes",
-        "minutes_per_game": "average minutes",
-        "total_assists": "assists",
-        "assists_total": "assists",
-        "average_assists": "average assists",
-        "assists_per_game": "average assists",
-        "total_rebounds": "rebounds",
-        "rebounds_total": "rebounds",
-        "average_rebounds": "average rebounds",
-        "rebounds_per_game": "average rebounds",
-        "games_played": "games played",
-        "points_per_36": "points per 36",
-        "wins": "wins",
-        "losses": "losses",
-        "win_percentage": "win percentage",
-    }.get(metric, metric)
+    return metric_phrase(metric, prettify_unknown=False)
 
 
 def _format_metric_value(metric: str, value: float) -> str:
-    if metric in {"average_points", "points_per_game", "average_minutes", "minutes_per_game", "average_assists", "assists_per_game", "average_rebounds", "rebounds_per_game"}:
-        return f"{value:.1f}"
-    return str(int(round(value)))
+    return format_metric_value(metric, value)
 
 
 def _grain_adjective(time_grain: object) -> str:
-    return {
-        "day": "Daily",
-        "week": "Weekly",
-        "month": "Monthly",
-        "season": "Season-by-season",
-    }.get(str(time_grain), "Time-series")
+    return grain_adjective(time_grain)
 
 
 def _time_filter_phrase(
@@ -84,17 +65,11 @@ def _time_filter_phrase(
 
 
 def _join_nonempty(parts: list[str]) -> str:
-    return " ".join(part for part in parts if part)
+    return join_nonempty(parts)
 
 
 def _join_phrase(values: list[str]) -> str:
-    if not values:
-        return ""
-    if len(values) == 1:
-        return values[0]
-    if len(values) == 2:
-        return f"{values[0]} and {values[1]}"
-    return f"{', '.join(values[:-1])}, and {values[-1]}"
+    return join_phrase(values)
 
 
 def _display_metric_phrase(payload: SynthesisPayload) -> str:
@@ -122,13 +97,11 @@ def _ranked_subject_phrase(payload: SynthesisPayload) -> str:
 
 
 def _season_scope_phrase(season_label: object, season_type: object) -> str:
-    if season_label and season_type:
-        return f"in the {season_label} {str(season_type).replace('_', ' ')}"
-    if season_label:
-        return f"in the {season_label} season"
-    if season_type:
-        return f"for {str(season_type).replace('_', ' ')}"
-    return ""
+    return season_phrase(
+        str(season_label) if season_label else None,
+        str(season_type) if season_type else None,
+        plural_type_only=False,
+    )
 
 
 def _result_time_phrase(
@@ -153,7 +126,6 @@ def _result_time_phrase(
 
 
 def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
-    query_kind = payload.query_kind
     result_shape = payload.result_shape
     rows = list(payload.rows)
     aggregate_rows = list(payload.aggregate_rows)
@@ -161,7 +133,6 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     find_rows = list(payload.find_rows)
     entity_label_singular = payload.entity_label_singular
     entity_label_plural = payload.entity_label_plural
-    context_label = payload.context_label
     metric = payload.metric
     window_games = payload.window_games
     time_grain = payload.time_grain
@@ -172,16 +143,9 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
     season_label = payload.season_label
     season_type = payload.season_type
     limit = payload.limit
-    assumptions = list(payload.assumptions)
     comparison = payload.comparison
     time_series_rows = list(payload.time_series_rows)
-    find_predicate_tree = payload.find_predicate_tree
-    find_filters = list(payload.find_filters)
-    find_orders = list(payload.find_orders)
-    row_predicate = payload.row_predicate
-    result_predicate = payload.result_predicate
     grouping_columns = list(payload.grouping_columns)
-    display_metadata = list(payload.display_metadata)
     display_metrics = list(payload.display_metrics)
     interpretation = build_interpretation(payload)
 
@@ -222,36 +186,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
                 f"{comparison.leader} led in {_human_metric(metric)} {comparison_scope} "
                 f"by {differential_text} {_human_metric(metric)}."
             )
-        return FinalAnswer(
+        return final_answer_from_payload(
+            payload,
             summary=summary,
             interpretation=interpretation,
-            query_kind=query_kind,
-            result_shape=result_shape,
-            entity_label_singular=entity_label_singular,
-            entity_label_plural=entity_label_plural,
-            context_label=context_label,
-            metric=metric,
-            window_games=window_games,
-            time_grain=time_grain,
-            time_filter=time_filter,
-            time_window_days=time_window_days,
-            time_start_date=time_start_date,
-            time_end_date=time_end_date,
-            season_label=season_label,
-            season_type=season_type,
-            limit=limit,
-            assumptions=assumptions,
             rows=[],
             aggregate_rows=[],
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
-            find_orders=find_orders,
-            row_predicate=row_predicate,
-            result_predicate=result_predicate,
-            grouping_columns=grouping_columns,
-            display_metadata=display_metadata,
-            display_metrics=display_metrics,
             comparison=comparison,
         )
 
@@ -261,35 +204,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             if find_rows
             else f"No matching {entity_label_plural.lower()} were returned."
         )
-        return FinalAnswer(
+        return final_answer_from_payload(
+            payload,
             summary=summary,
             interpretation=interpretation,
-            query_kind=query_kind,
-            result_shape=result_shape,
-            entity_label_singular=entity_label_singular,
-            entity_label_plural=entity_label_plural,
-            context_label=context_label,
-            metric=metric,
-            window_games=window_games,
-            time_grain=time_grain,
-            time_filter=time_filter,
-            season_label=season_label,
-            season_type=season_type,
-            limit=limit,
-            assumptions=assumptions,
             rows=[],
             aggregate_rows=[],
             object_rows=[],
             time_series_rows=[],
             find_rows=find_rows,
-            find_predicate_tree=find_predicate_tree,
-            find_filters=find_filters,
-            find_orders=find_orders,
-            row_predicate=row_predicate,
-            result_predicate=result_predicate,
-            grouping_columns=grouping_columns,
-            display_metadata=display_metadata,
-            display_metrics=display_metrics,
             comparison=None,
         )
 
@@ -299,33 +222,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             f"{_human_metric(metric).capitalize()} by {_grouping_phrase(payload)} "
             f"{time_scope} are shown below."
         )
-        return FinalAnswer(
+        return final_answer_from_payload(
+            payload,
             summary=summary,
             interpretation=interpretation,
-            query_kind=query_kind,
-            result_shape=result_shape,
-            entity_label_singular=entity_label_singular,
-            entity_label_plural=entity_label_plural,
-            context_label=context_label,
-            metric=metric,
-            window_games=window_games,
-            time_grain=time_grain,
-            time_filter=time_filter,
-            season_label=season_label,
-            season_type=season_type,
-            limit=limit,
-            assumptions=assumptions,
             rows=[],
             aggregate_rows=aggregate_rows,
             object_rows=[],
             time_series_rows=[],
             find_rows=[],
-            find_orders=find_orders,
-            row_predicate=row_predicate,
-            result_predicate=result_predicate,
-            grouping_columns=grouping_columns,
-            display_metadata=display_metadata,
-            display_metrics=display_metrics,
             comparison=None,
         )
 
@@ -337,33 +242,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             f"{leader.entity_name} leads with "
             f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
         )
-        return FinalAnswer(
+        return final_answer_from_payload(
+            payload,
             summary=summary,
             interpretation=interpretation,
-            query_kind=query_kind,
-            result_shape=result_shape,
-            entity_label_singular=entity_label_singular,
-            entity_label_plural=entity_label_plural,
-            context_label=context_label,
-            metric=metric,
-            window_games=window_games,
-            time_grain=time_grain,
-            time_filter=time_filter,
-            season_label=season_label,
-            season_type=season_type,
-            limit=limit,
-            assumptions=assumptions,
             rows=[],
             aggregate_rows=[],
             object_rows=object_rows,
             time_series_rows=[],
             find_rows=[],
-            find_orders=find_orders,
-            row_predicate=row_predicate,
-            result_predicate=result_predicate,
-            grouping_columns=grouping_columns,
-            display_metadata=display_metadata,
-            display_metrics=display_metrics,
             comparison=None,
         )
 
@@ -392,32 +279,15 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             summary = (
                 f"{grain_label} {metric_phrase}{filter_phrase} are shown below."
             )
-        return FinalAnswer(
+        return final_answer_from_payload(
+            payload,
             summary=summary,
             interpretation=interpretation,
-            query_kind=query_kind,
-            result_shape=result_shape,
-            entity_label_singular=entity_label_singular,
-            entity_label_plural=entity_label_plural,
-            context_label=context_label,
-            metric=metric,
-            window_games=window_games,
-            time_grain=time_grain,
-            time_filter=time_filter,
-            season_label=season_label,
-            season_type=season_type,
-            limit=limit,
-            assumptions=assumptions,
             rows=[],
             aggregate_rows=[],
             object_rows=[],
             time_series_rows=time_series_rows,
             find_rows=[],
-            row_predicate=row_predicate,
-            result_predicate=result_predicate,
-            grouping_columns=grouping_columns,
-            display_metadata=display_metadata,
-            display_metrics=display_metrics,
             comparison=None,
         )
 
@@ -441,31 +311,14 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
             f"No {entity_label_plural.lower()} were returned for the requested {_human_metric(metric)} ranking."
         )
 
-    return FinalAnswer(
+    return final_answer_from_payload(
+        payload,
         summary=summary,
         interpretation=interpretation,
-        query_kind=query_kind,
-        result_shape=result_shape,
-        entity_label_singular=entity_label_singular,
-        entity_label_plural=entity_label_plural,
-        context_label=context_label,
-        metric=metric,
-        window_games=window_games,
-        time_grain=time_grain,
-        time_filter=time_filter,
-        season_label=season_label,
-        season_type=season_type,
-        limit=limit,
-        assumptions=assumptions,
         rows=rows,
         aggregate_rows=[],
         object_rows=[],
         time_series_rows=[],
         find_rows=[],
-        row_predicate=row_predicate,
-        result_predicate=result_predicate,
-        grouping_columns=grouping_columns,
-        display_metadata=display_metadata,
-        display_metrics=display_metrics,
         comparison=None,
     )

@@ -17,7 +17,15 @@ from __future__ import annotations
 from typing import List
 
 from .analysis import run_analysis
-from .models import AggregateRow, ExecutionPlan, ObjectRow, RankingRow, RuntimeResult, TimeSeriesRow
+from .models import (
+    AggregateRow,
+    ExecutionPlan,
+    ObjectRow,
+    RankingRow,
+    RuntimeResult,
+    TimeSeriesRow,
+    runtime_context_from_plan,
+)
 from .query_engine import run_sql
 from .state import RuntimeState
 
@@ -108,35 +116,12 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         find_rows = raw_rows
     # Return one unified result object for answer synthesis.
     return RuntimeResult(
-        query_kind=plan.query_kind,
-        result_shape=plan.result_shape,
-        entity_label_singular=plan.entity_label_singular,
-        entity_label_plural=plan.entity_label_plural,
-        context_label=plan.context_label,
-        metric=plan.metric,
-        window_games=plan.window_games,
-        time_grain=plan.time_grain,
-        time_filter=plan.time_filter,
-        time_window_days=plan.time_window_days,
-        time_start_date=plan.time_start_date,
-        time_end_date=plan.time_end_date,
-        season_label=plan.season_label,
-        season_type=plan.season_type,
-        limit=plan.limit,
-        assumptions=plan.assumptions,
+        **runtime_context_from_plan(plan),
         rows=rows,
         aggregate_rows=aggregate_rows,
         object_rows=object_rows,
         time_series_rows=time_series_rows,
         find_rows=find_rows,
-        find_predicate_tree=plan.find_predicate_tree,
-        find_filters=plan.find_filters,
-        find_orders=plan.find_orders,
-        row_predicate=plan.row_predicate,
-        result_predicate=plan.result_predicate,
-        grouping_columns=plan.grouping_columns,
-        display_metadata=plan.display_metadata,
-        display_metrics=plan.display_metrics,
         raw_rows=raw_rows,
         comparison=comparison_result,
     )

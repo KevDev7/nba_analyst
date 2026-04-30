@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.entity_resolver import (
+from apps.assistant.semantic.entity_resolver import (
     EntityResolutionError,
     enrich_semantic_draft_with_resolved_entities,
 )

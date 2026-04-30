@@ -4,8 +4,9 @@ import json
 import unittest
 from unittest.mock import patch
 
-from apps.cli.main import plan_question, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 
 
 def compare_draft(*entities: str) -> str:
@@ -28,7 +29,7 @@ class ComparisonEntityAliasTests(unittest.TestCase):
     def setUp(self) -> None:
         interpret_question_to_semantic_draft.cache_clear()
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_family_name_alias_comparison_query(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Brunson", "Tatum")
         semantic_draft, planner_output = plan_question(
@@ -62,7 +63,7 @@ class ComparisonEntityAliasTests(unittest.TestCase):
         self.assertIn("entity_id", sql)
         self.assertIn("IN (1628973, 1628369)", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_first_name_alias_comparison_query(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Ja", "Tatum")
         semantic_draft, planner_output = plan_question(
@@ -76,7 +77,7 @@ class ComparisonEntityAliasTests(unittest.TestCase):
             ["Ja Morant", "Jayson Tatum"],
         )
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_family_name_alias_comparison_output(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Brunson", "Tatum")
         output = run_cli("Compare Brunson and Tatum scoring over the last 10 games")
@@ -85,7 +86,7 @@ class ComparisonEntityAliasTests(unittest.TestCase):
         self.assertIn("Jayson Tatum", output)
         self.assertIn("Differential:", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_ambiguous_alias_rejected(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Jalen", "Tatum")
         with self.assertRaises(RuntimeError) as context:

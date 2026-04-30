@@ -37,7 +37,7 @@ These are the main layers that will be touched.
 
 Files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 
@@ -114,7 +114,7 @@ Work:
 
 Files:
 
-- `tests/test_semantic_interpreter.py`
+- `tests/test_interpreter.py`
 - behavior-based test files such as `tests/test_ranking_cli_variants.py`,
   `tests/test_trend_planning.py`, and `tests/test_comparison_planning.py`
 - shared helpers in `tests/planner_helpers.py`
@@ -145,7 +145,7 @@ Show me the top 10 players by points over the last 10 games
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Rank.hs`
 - `services/ontology-hs/src/GroundedPlanning/Resolve/Rank.hs`
@@ -180,7 +180,7 @@ Show me monthly points by team over the past year
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Trend.hs`
@@ -217,7 +217,7 @@ Compare Brunson and Haliburton scoring over the last 10 games
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Compare.hs`
@@ -254,7 +254,7 @@ Calculate average points by team over the last 10 games
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Aggregate.hs`
@@ -292,7 +292,7 @@ Find games where the Lakers scored over 120 points
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Find.hs`
@@ -324,7 +324,7 @@ Make sure the system fails for the right reasons.
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/*`
 - `services/ontology-hs/src/GroundedPlanning/Resolve/*`
@@ -358,7 +358,7 @@ Show me players and their total points over the last 10 games
 
 Primary files:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Object.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Normalize.hs`

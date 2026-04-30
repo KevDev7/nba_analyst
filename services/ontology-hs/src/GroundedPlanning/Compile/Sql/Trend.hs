@@ -6,6 +6,34 @@ module GroundedPlanning.Compile.Sql.Trend (compileTrendSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( compileMetricAggregation
+  , renderResultPredicateConditions
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
+  , renderTrendFilterConditions
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( combineWhereClauses
+  , renderColumnRefWithContext
+  , renderFactExpression
+  , stripLastTrailingComma
+  )
+import GroundedPlanning.Compile.Sql.Grouping
+  ( renderGroupingAggregateSelectLines
+  , renderGroupingFinalSelectLines
+  , renderGroupingJoinClauses
+  , renderGroupingKeys
+  , renderGroupingOrder
+  , renderGroupingSource
+  , renderGroupingSourceSelectLines
+  )
+import GroundedPlanning.Compile.Sql.Projection
+  ( renderDisplayMetricAggregateSelectLines
+  , renderDisplayMetricFinalSelectLines
+  , renderDisplayMetricSourceSelectLines
+  , renderResultPredicateAggregateSelectLines
+  , renderResultPredicateSourceSelectLines
+  )
 import GroundedPlanning.Resolve
 
 -- Build SQL for trend/time-series questions.
@@ -73,17 +101,6 @@ compileTrendSql resolved =
          ]
       <> resultFilterWhereClause
       <> [ "ORDER BY " <> renderTrendOrder groupingDimensions ]
-
-stripLastTrailingComma :: [Text] -> [Text]
-stripLastTrailingComma sourceLines =
-  case reverse sourceLines of
-    [] -> []
-    lastLine : earlierLines ->
-      reverse earlierLines
-        <> [ case T.stripSuffix "," lastLine of
-               Just strippedLine -> strippedLine
-               Nothing -> lastLine
-           ]
 
 renderTrendSeriesName :: [ResolvedGroupingDimension] -> Text
 renderTrendSeriesName groupingDimensions =

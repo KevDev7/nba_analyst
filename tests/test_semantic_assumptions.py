@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from apps.assistant.pipeline import plan_question
-from apps.cli.semantic_assumptions import apply_semantic_assumptions
+from apps.assistant.semantic.assumptions import apply_semantic_assumptions
 
 
 def season_rank_draft(**overrides: object) -> dict[str, object]:
@@ -399,7 +399,7 @@ class SemanticAssumptionTests(unittest.TestCase):
 
         self.assertEqual(enriched["time_window"], {"kind": "all", "value": None})
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_pipeline_applies_assumptions_before_haskell_planning(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {

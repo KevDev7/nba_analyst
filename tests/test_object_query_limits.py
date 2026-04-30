@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import plan_question, run_cli
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
 
 
 class ObjectQueryLimitTests(unittest.TestCase):

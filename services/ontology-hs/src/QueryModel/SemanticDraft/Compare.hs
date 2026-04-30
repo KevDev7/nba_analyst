@@ -3,14 +3,12 @@
 
 module QueryModel.SemanticDraft.Compare (semanticCompareDraftToQuery) where
 
-import Data.List (sortOn)
-import Data.Maybe (mapMaybe)
-import Data.Ord (Down (Down))
 import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
-import OntologyLayer.Types (AttributeKind (Dimension), AttributeVisibility (Public), Object, Ontology (objects))
+import OntologyLayer.Types (AttributeKind (Dimension), AttributeVisibility (Public), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.CandidateSelection
 import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Grouping (requireGroupingDimensionReachable, resolveGroupingDimensionValue)
@@ -73,36 +71,29 @@ resolveComparisonGrounding :: Ontology -> SemanticDraft -> Text -> Object -> Tex
 resolveComparisonGrounding ontology draft rawMeasure subjectObject displayDimensionValue maybeGrainValue timeScopeValue filtersForComparison entityValues =
   -- Search ontology fact objects for one that can compare the requested entities
   -- by the requested metric over the resolved TimeScope.
-  case rankedCandidates of
-    candidate : _ -> Right candidate
-    [] ->
-      Left
-        ( "Could not ground comparison draft with subject '"
-            <> subject draft
-            <> "', measure '"
-            <> rawMeasure
-            <> "', and the requested comparison filters against executable ontology metrics."
-        )
+  selectMetricFactGrounding
+    failureMessage
+    ontology
+    rawMeasure
+    (draftMeasurePhrases draft)
+    comparisonCandidateEligibility
+    groundComparisonCandidate
   where
-    rankedCandidates =
-      sortOn comparisonCandidateRank $
-        mapMaybe
-          (groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDimensionValue maybeGrainValue timeScopeValue filtersForComparison entityValues)
-          (objects ontology)
+    failureMessage =
+      "Could not ground comparison draft with subject '"
+        <> subject draft
+        <> "', measure '"
+        <> rawMeasure
+        <> "', and the requested comparison filters against executable ontology metrics."
+    comparisonCandidateEligibility factObjectValue = do
+      _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
+      _ <- requireTimeScopeFactSurface timeScopeValue factObjectValue
+      pure (subjectFactAffinity subjectObject factObjectValue)
+    groundComparisonCandidate =
+      groundComparisonFactCandidate ontology draft subjectObject displayDimensionValue maybeGrainValue filtersForComparison entityValues
 
-comparisonCandidateRank :: GroundedComparison -> (Down Int, Down Int, Text)
-comparisonCandidateRank candidate =
-  ( Down (comparisonMatchScore candidate)
-  , Down (comparisonSubjectAffinityScore candidate)
-  , objectName (comparisonFactObject candidate)
-  )
-
-groundComparisonFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> Text -> Maybe Text -> TimeScope -> [QI.Filter] -> [QI.EntityRef] -> Object -> Maybe GroundedComparison
-groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDimensionValue maybeGrainValue timeScopeValue filtersForComparison entityValues factObjectValue = do
-  _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
-  _ <- requireTimeScopeFactSurface timeScopeValue factObjectValue
-  metricValue <- bestMetricMatch rawMeasure factObjectValue
-  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
+groundComparisonFactCandidate :: Ontology -> SemanticDraft -> Object -> Text -> Maybe Text -> [QI.Filter] -> [QI.EntityRef] -> MetricFactCandidate -> Maybe GroundedComparison
+groundComparisonFactCandidate ontology draft subjectObject displayDimensionValue maybeGrainValue filtersForComparison entityValues candidate = do
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
   displayDimensionValues <- resolveComparisonDisplayDimensions ontology draft subjectObject displayDimensionValue maybeGrainValue factObjectValue
   pure
@@ -118,9 +109,13 @@ groundComparisonFactCandidate ontology draft rawMeasure subjectObject displayDim
       , comparisonRowPredicateValue = rowPredicateTree
       , comparisonEntitiesValue = entityValues
       , comparisonAssumptions = assumptions draft
-      , comparisonMatchScore = metricMatchScore rawMeasure metricValue
-      , comparisonSubjectAffinityScore = subjectFactAffinity subjectObject factObjectValue
+      , comparisonMatchScore = candidateMatchScore candidate
+      , comparisonSubjectAffinityScore = candidateAffinityScore candidate
       }
+  where
+    factObjectValue = candidateFactObject candidate
+    metricValue = candidateMetricDef candidate
+    metricValues = candidateMetricDefs candidate
 
 resolveComparisonDisplayDimensions :: Ontology -> SemanticDraft -> Object -> Text -> Maybe Text -> Object -> Maybe [Text]
 resolveComparisonDisplayDimensions ontology draft subjectObject displayDimensionValue maybeGrainValue factObjectValue = do

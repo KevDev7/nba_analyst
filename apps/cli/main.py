@@ -26,8 +26,6 @@ if str(ROOT) not in sys.path:
 
 from apps.assistant.pipeline import (
     AssistantResult,
-    call_haskell_planner_for_semantic_draft,
-    plan_question,
     run_assistant,
 )
 

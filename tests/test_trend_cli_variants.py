@@ -14,7 +14,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from apps.cli.main import plan_question, run_cli
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
 
 
 def _trend_gemini_response(prompt: str) -> str:
@@ -115,7 +116,7 @@ def _trend_gemini_response(prompt: str) -> str:
 
 
 class TrendCliVariantTests(unittest.TestCase):
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_trend_query(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         _interpreted_query, planner_output = plan_question(
@@ -138,14 +139,14 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertIn("STRFTIME({fact_alias}.game_date, '%Y-%m')", resolved["timeBucketExpression"])
         self.assertEqual(planner_output["execution_plan"]["result_shape"], "time_series")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_trend_output(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         output = run_cli("What are the monthly average points over the past year?")
         self.assertIn("Monthly average points over the past year are shown below.", output)
         self.assertIn("Month | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_by_team_trend_query(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         _interpreted_query, planner_output = plan_question(
@@ -165,20 +166,20 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertEqual(resolved["seriesName"]["columnName"], "team_name")
         self.assertEqual(planner_output["execution_plan"]["result_shape"], "time_series")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_by_team_trend_output(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         output = run_cli("What are the monthly average points by team over the past year?")
         self.assertIn("Monthly average points by team over the past year are shown below.", output)
         self.assertIn("Month | Team | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_last_month_trend_uses_last_30_days_scope(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         output = run_cli("What is the trend in points over the last month?")
         self.assertIn("over the last 30 days", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_multi_metric_trend_query(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         _interpreted_query, planner_output = plan_question(
@@ -201,7 +202,7 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertIn("SUM(__metric_2_source) AS metric_2", sql)
         self.assertIn("SUM(__metric_3_source) AS metric_3", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_multi_metric_trend_output(self, mock_call_gemini) -> None:
         mock_call_gemini.side_effect = _trend_gemini_response
         output = run_cli("Trend points, assists, and rebounds by team over the past year")

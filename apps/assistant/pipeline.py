@@ -2,7 +2,7 @@
 # Run one user question through the shared NBA analyst pipeline.
 #
 # Uses:
-# - semantic interpretation from apps/cli
+# - semantic interpretation from apps/assistant/semantic
 # - Haskell ontology planning
 # - Python runtime execution
 # - answer synthesis and formatting
@@ -37,9 +37,9 @@ from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
 from apps.assistant.predicate_observability import build_predicate_trace
 from apps.assistant.value_resolution_observability import build_value_resolution_trace
-from apps.cli.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
-from apps.cli.semantic_assumptions import apply_semantic_assumptions
-from apps.cli.semantic_interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
+from apps.assistant.semantic.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
+from apps.assistant.semantic.assumptions import apply_semantic_assumptions
+from apps.assistant.semantic.interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
 

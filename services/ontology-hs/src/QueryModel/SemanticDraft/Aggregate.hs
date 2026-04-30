@@ -3,12 +3,10 @@
 
 module QueryModel.SemanticDraft.Aggregate (semanticAggregateDraftToQuery) where
 
-import Data.List (sortOn)
-import Data.Maybe (mapMaybe)
-import Data.Ord (Down (Down))
 import Data.Text (Text)
-import OntologyLayer.Types (Ontology (objects), Object)
+import OntologyLayer.Types (Ontology, Object)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.CandidateSelection
 import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Grouping (requireGroupingDimensionReachable, resolveDefaultGroupingDimensions)
@@ -46,36 +44,33 @@ resolveAggregateGrounding :: Ontology -> SemanticDraft -> Text -> Object -> [Sem
 resolveAggregateGrounding ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit =
   -- Search ontology fact objects for one that can produce the requested
   -- aggregate metric by the requested public grouping dimensions.
-  case rankedCandidates of
-    candidate : _ -> Right candidate
-    [] ->
-      Left
-        ( "Could not ground aggregate draft with subject '"
-            <> subject draft
-            <> "', measure '"
-            <> rawMeasure
-            <> "', and the requested grouping/filter shape against executable ontology metrics."
-        )
+  selectMetricFactGrounding
+    failureMessage
+    ontology
+    rawMeasure
+    (draftMeasurePhrases draft)
+    aggregateCandidateEligibility
+    groundAggregateFactCandidateValue
   where
-    rankedCandidates =
-      sortOn aggregateCandidateRank $
-        mapMaybe
-          (groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit)
-          (objects ontology)
+    failureMessage =
+      "Could not ground aggregate draft with subject '"
+        <> subject draft
+        <> "', measure '"
+        <> rawMeasure
+        <> "', and the requested grouping/filter shape against executable ontology metrics."
+    aggregateCandidateEligibility factObjectValue = do
+      mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) aggregateDimensions
+      _ <- requireTimeScopeFactSurface aggregateTimeScopeValue factObjectValue
+      let groupObjects = map groupingDimensionObject aggregateDimensions
+      pure
+        ( maximum
+            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) groupObjects)
+        )
+    groundAggregateFactCandidateValue =
+      groundAggregateFactCandidate ontology draft aggregateDimensions aggregateTimeScopeValue maybeLimit
 
-aggregateCandidateRank :: GroundedAggregate -> (Down Int, Down Int, Text)
-aggregateCandidateRank candidate =
-  ( Down (aggregateMatchScore candidate)
-  , Down (aggregateSubjectAffinityScore candidate)
-  , objectName (aggregateFactObject candidate)
-  )
-
-groundAggregateFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> Object -> Maybe GroundedAggregate
-groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDimensions aggregateTimeScopeValue maybeLimit factObjectValue = do
-  mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) aggregateDimensions
-  _ <- requireTimeScopeFactSurface aggregateTimeScopeValue factObjectValue
-  metricValue <- bestMetricMatch rawMeasure factObjectValue
-  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
+groundAggregateFactCandidate :: Ontology -> SemanticDraft -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> MetricFactCandidate -> Maybe GroundedAggregate
+groundAggregateFactCandidate ontology draft aggregateDimensions aggregateTimeScopeValue maybeLimit candidate = do
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
   resultPredicateTree <- groundDraftResultPredicate factObjectValue metricValue (resultFilters draft) (resultPredicate draft)
   let groupObjects = map groupingDimensionObject aggregateDimensions
@@ -91,11 +86,13 @@ groundAggregateFactCandidate ontology draft rawMeasure subjectObject aggregateDi
       , aggregateResultPredicateValue = resultPredicateTree
       , aggregateLimitValue = maybeLimit
       , aggregateAssumptions = assumptions draft
-      , aggregateMatchScore = metricMatchScore rawMeasure metricValue
-      , aggregateSubjectAffinityScore =
-          maximum
-            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) groupObjects)
+      , aggregateMatchScore = candidateMatchScore candidate
+      , aggregateSubjectAffinityScore = candidateAffinityScore candidate
       }
+  where
+    factObjectValue = candidateFactObject candidate
+    metricValue = candidateMetricDef candidate
+    metricValues = candidateMetricDefs candidate
 
 aggregateQuery :: GroundedAggregate -> QI.Query
 aggregateQuery grounded =

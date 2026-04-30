@@ -6,6 +6,45 @@ module GroundedPlanning.Compile.Sql.Ranking (compileRankingSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( compileMetricAggregation
+  , renderGameDateFilterConditions
+  , renderMaybePathJoinClauses
+  , renderPathJoinClauses
+  , renderResultPredicateConditions
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
+  , seasonWhereClause
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( combineWhereClauses
+  , limitClause
+  , renderColumnRefWithContext
+  , renderMaybeColumnRef
+  )
+import GroundedPlanning.Compile.Sql.Grouping
+  ( primaryGroupingKey
+  , renderGroupingAggregateSelectLines
+  , renderGroupingFinalSelectLines
+  , renderGroupingJoinClauses
+  , renderGroupingKeys
+  , renderGroupingSource
+  , renderGroupingSourceSelectLines
+  )
+import GroundedPlanning.Compile.Sql.Projection
+  ( renderDisplayMetricAggregateSelectLines
+  , renderDisplayMetricDirectSelectLines
+  , renderDisplayMetricFinalSelectLines
+  , renderDisplayMetricSourceSelectLines
+  , renderMetadataAggregateSelectLines
+  , renderMetadataDirectSelectLines
+  , renderMetadataFinalSelectLines
+  , renderMetadataSourceSelectLines
+  , renderMetricValue
+  , renderResultPredicateAggregateSelectLines
+  , renderResultPredicateDirectSelectLines
+  , renderResultPredicateFinalSelectLines
+  , renderResultPredicateSourceSelectLines
+  )
 import GroundedPlanning.Resolve
 
 -- Build SQL for ranking/top-N style questions.

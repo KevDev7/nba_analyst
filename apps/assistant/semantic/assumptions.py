@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import duckdb
 
-from apps.cli.time_scope_normalizer import normalize_question_time_window
+from apps.assistant.semantic.time_scope_normalizer import normalize_question_time_window
 from scripts.load_gold_snapshot import load_database
 
 

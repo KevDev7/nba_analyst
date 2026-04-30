@@ -7,6 +7,7 @@ module GroundedPlanning.Resolve.Find where
 
 import Data.Text (Text)
 import GroundedPlanning.Resolve.Common
+import GroundedPlanning.Resolve.Common.PredicateTrees
 import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (Attribute (source_column), Object (backing_table), Ontology)
@@ -128,25 +129,15 @@ resolveFindOrder ontology factObjectValue targetObjectValue targetPathValue orde
       , orderDirection = findOrderDirection orderSpec
       }
 
-canonicalizePredicateValue :: Attribute -> FilterValue -> FilterValue
-canonicalizePredicateValue attributeValue predicateValue =
-  case predicateValue of
-    FilterText textValue ->
-      FilterText (canonicalizeTextValue attributeValue textValue)
-    FilterInt _ -> predicateValue
-    FilterDouble _ -> predicateValue
-
 resolveFindPredicateTree :: Ontology -> Text -> Predicate -> Either Text ResolvedFindPredicateTree
 resolveFindPredicateTree ontology factObjectName predicateTree =
-  case predicateTree of
-    PredicateLeaf fieldValue operatorValue predicateValue ->
-      ResolvedFindPredicateLeafNode <$> resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue
-    PredicateAnd predicateValues ->
-      ResolvedFindPredicateAnd <$> mapM (resolveFindPredicateTree ontology factObjectName) predicateValues
-    PredicateOr predicateValues ->
-      ResolvedFindPredicateOr <$> mapM (resolveFindPredicateTree ontology factObjectName) predicateValues
-    PredicateNot predicateValue ->
-      ResolvedFindPredicateNot <$> resolveFindPredicateTree ontology factObjectName predicateValue
+  resolvePredicateTree
+    (resolveFindPredicateLeaf ontology factObjectName)
+    ResolvedFindPredicateLeafNode
+    ResolvedFindPredicateAnd
+    ResolvedFindPredicateOr
+    ResolvedFindPredicateNot
+    predicateTree
 
 resolveFindPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ResolvedFindPredicateLeaf
 resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
@@ -165,19 +156,5 @@ resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predic
       , treePredicateLabel = predicateFieldAttribute fieldValue
       , treePredicateOperator = operatorValue
       , treePredicateValue =
-          canonicalizePredicateTreeValue
-            attributeValue
-            predicateValue
+          canonicalizePredicateTreeValue attributeValue predicateValue
       }
-
-canonicalizePredicateTreeValue :: Attribute -> PredicateValue -> PredicateValue
-canonicalizePredicateTreeValue attributeValue predicateValue =
-  case predicateValue of
-    PredicateScalar scalarValue ->
-      PredicateScalar (canonicalizePredicateValue attributeValue scalarValue)
-    PredicateList values ->
-      PredicateList (map (canonicalizePredicateValue attributeValue) values)
-    PredicateRange lowerValue upperValue ->
-      PredicateRange
-        (canonicalizePredicateValue attributeValue lowerValue)
-        (canonicalizePredicateValue attributeValue upperValue)

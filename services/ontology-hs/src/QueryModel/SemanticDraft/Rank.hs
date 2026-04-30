@@ -3,13 +3,11 @@
 
 module QueryModel.SemanticDraft.Rank (semanticRankDraftToQuery) where
 
-import Data.List (sortOn)
-import Data.Maybe (mapMaybe)
-import Data.Ord (Down (Down))
 import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
-import OntologyLayer.Types (Ontology (objects), Object)
+import OntologyLayer.Types (Ontology, Object)
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticDraft.CandidateSelection
 import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticDraft.Filters
 import QueryModel.SemanticDraft.Grouping (groupingIdentityDimension, requireGroupingDimensionReachable, resolveGroupingDimensionValue)
@@ -51,47 +49,42 @@ resolveRankingGrounding :: Ontology -> SemanticDraft -> Text -> Object -> [Seman
 resolveRankingGrounding ontology draft rawMeasure subjectObject rankingDimensions rankingTimeScopeValue maybeLimit =
   -- Search the ontology for the best fact object + metric + display dimension
   -- that can answer this ranking.
-  case rankedCandidates of
-    candidate : _ -> Right candidate
-    [] ->
-      Left
-        ( "Could not ground ranking draft with subject '"
-            <> subject draft
-            <> "', measure '"
-            <> rawMeasure
-            <> "', and the requested rank filters against executable ontology metrics."
-        )
+  selectMetricFactGrounding
+    failureMessage
+    ontology
+    rawMeasure
+    (draftMeasurePhrases draft)
+    rankingCandidateEligibility
+    groundRankedCandidate
   where
-    rankedCandidates =
-      sortOn candidateRank $
-        mapMaybe
-          (groundFactCandidate ontology draft rawMeasure subjectObject rankingDimensions rankingTimeScopeValue maybeLimit)
-          (objects ontology)
+    failureMessage =
+      "Could not ground ranking draft with subject '"
+        <> subject draft
+        <> "', measure '"
+        <> rawMeasure
+        <> "', and the requested rank filters against executable ontology metrics."
+    rankingCandidateEligibility factObjectValue = do
+      _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
+      mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) rankingDimensions
+      _ <- requireTimeScopeFactSurface rankingTimeScopeValue factObjectValue
+      let dimensionObjects = map groupingDimensionObject rankingDimensions
+      pure
+        ( maximum
+            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) dimensionObjects)
+        )
+    groundRankedCandidate candidate =
+      groundFactCandidate ontology draft subjectObject rankingDimensions rankingTimeScopeValue maybeLimit candidate
 
-candidateRank :: GroundedRanking -> (Down Int, Down Int, Text)
-candidateRank candidate =
-  -- Prefer stronger metric matches, then fact objects that naturally match the subject.
-  ( Down (matchScore candidate)
-  , Down (subjectAffinityScore candidate)
-  , objectName (factObject candidate)
-  )
-
-groundFactCandidate :: Ontology -> SemanticDraft -> Text -> Object -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> Object -> Maybe GroundedRanking
-groundFactCandidate ontology draft rawMeasure subjectObject rankingDimensions rankingTimeScopeValue maybeLimit factObjectValue = do
+groundFactCandidate :: Ontology -> SemanticDraft -> Object -> [SemanticGroupingDimension] -> TimeScope -> Maybe Int -> MetricFactCandidate -> Maybe GroundedRanking
+groundFactCandidate ontology draft subjectObject rankingDimensions rankingTimeScopeValue maybeLimit candidate = do
   -- A fact candidate must be connected to the subject, expose the requested
   -- time surface, have a matching executable metric, and have a display field.
-  _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
-  mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) rankingDimensions
-  _ <- requireTimeScopeFactSurface rankingTimeScopeValue factObjectValue
-  metricValue <- bestMetricMatch rawMeasure factObjectValue
-  metricValues <- mapM (`bestMetricMatch` factObjectValue) (draftMeasurePhrases draft)
   dimensionValue <-
     case rankingDimensions of
       rankingDimension : _ -> Just (groupingDimensionName rankingDimension)
       [] -> identityDimension subjectObject
   rowPredicateTree <- groundDraftRowPredicate ontology factObjectValue (filters draft) (predicate draft)
   resultPredicateTree <- groundDraftResultPredicate factObjectValue metricValue (resultFilters draft) (resultPredicate draft)
-  let dimensionObjects = map groupingDimensionObject rankingDimensions
   pure
     GroundedRanking
       { factObject = factObjectValue
@@ -105,11 +98,13 @@ groundFactCandidate ontology draft rawMeasure subjectObject rankingDimensions ra
       , resultPredicateValue = resultPredicateTree
       , limitValue = maybeLimit
       , assumptionValues = assumptions draft
-      , matchScore = metricMatchScore rawMeasure metricValue
-      , subjectAffinityScore =
-          maximum
-            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) dimensionObjects)
+      , matchScore = candidateMatchScore candidate
+      , subjectAffinityScore = candidateAffinityScore candidate
       }
+  where
+    factObjectValue = candidateFactObject candidate
+    metricValue = candidateMetricDef candidate
+    metricValues = candidateMetricDefs candidate
 
 rankingQuery :: (QI.MetricName -> QI.Order) -> GroundedRanking -> QI.Query
 rankingQuery orderBuilder grounded =

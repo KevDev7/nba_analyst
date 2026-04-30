@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 
-from apps.cli.main import ROOT
+from apps.assistant.pipeline import ROOT
 
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"

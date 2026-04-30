@@ -15,7 +15,8 @@ import unittest
 
 import yaml
 
-from apps.cli.main import ROOT, plan_question, run_cli
+from apps.assistant.pipeline import ROOT, plan_question
+from apps.cli.main import run_cli
 
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"

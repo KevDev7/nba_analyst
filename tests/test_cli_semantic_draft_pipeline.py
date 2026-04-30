@@ -7,8 +7,9 @@ from unittest.mock import patch
 
 import duckdb
 
-from apps.cli.main import ROOT, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import ROOT
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
 
@@ -69,7 +70,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertEqual(payload["resolved_query"]["resolved"]["displayName"]["columnName"], "full_name")
         self.assertEqual(payload["execution_plan"]["result_shape"], "ranking")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_returns_semantic_draft(
         self, mock_call_gemini
     ) -> None:
@@ -85,7 +86,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertEqual(draft["time_window"], SAMPLE_DRAFT["time_window"])
         self.assertEqual(draft["limit"], SAMPLE_DRAFT["limit"])
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_draft_to_haskell_to_runtime_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": SAMPLE_DRAFT})
         database_path = load_database()
@@ -126,7 +127,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         )
         self.assertIn(f"| {int(expected_points)}", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_rank_wording_variation_uses_ontology_grounding(self, mock_call_gemini) -> None:
         varied_draft = {
             **SAMPLE_DRAFT,
@@ -140,7 +141,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertIn("Top 7 players by total points over the last 10 games", output)
         self.assertIn("Rank | Player | Team | Games Played | Minutes | Date Range | Total Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_rank_season_draft_reaches_existing_season_surface(self, mock_call_gemini) -> None:
         season_draft = {
             "task": "rank",
@@ -159,7 +160,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertIn("Top 10 players by average points in the 2025-26 regular season", output)
         self.assertIn("Rank | Player | Season | Season Type | Games Played | Minutes | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_object_draft_runs_to_object_rows_answer(self, mock_call_gemini) -> None:
         object_draft = {
             "task": "object",
@@ -185,7 +186,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertIn("Players ordered by total points over the last 10 games", output)
         self.assertIn("Player | Team | Games Played | Minutes | Date Range | Total Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_trend_draft_runs_to_time_series_answer(self, mock_call_gemini) -> None:
         trend_draft = {
             "task": "trend",
@@ -204,7 +205,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertIn("Monthly average points by team over the past year are shown below.", output)
         self.assertIn("Month | Team | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_weekly_trend_uses_calendar_week_bucket(self, mock_call_gemini) -> None:
         trend_draft = {
             "task": "trend",
@@ -223,7 +224,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertIn("Weekly average points by team over the past year are shown below.", output)
         self.assertIn("Week | Team | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_compare_resolves_entities_and_runs_multi_step_plan(self, mock_call_gemini) -> None:
         compare_draft = {
             "task": "compare",

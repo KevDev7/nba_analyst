@@ -6,7 +6,7 @@
 # - urllib HTTP transport
 #
 # Produces:
-# - raw model text for semantic_interpreter.py to parse and validate
+# - raw model text for interpreter.py to parse and validate
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 # Find the project root and load API/model configuration from .env.
 load_dotenv(ROOT / ".env", override=False)
@@ -35,7 +35,7 @@ def call_gemini(prompt: str) -> str:
     provider = os.getenv("LLM_INTERPRETER_PROVIDER", "google")
     if provider != "google":
         raise LlmTransportError(
-            f"Unsupported LLM_INTERPRETER_PROVIDER '{provider}'. This CLI supports 'google' only."
+            f"Unsupported LLM_INTERPRETER_PROVIDER '{provider}'. This assistant supports 'google' only."
         )
 
     api_key = os.getenv("GEMINI_API_KEY")

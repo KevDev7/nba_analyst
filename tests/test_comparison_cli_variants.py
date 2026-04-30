@@ -15,8 +15,9 @@ import json
 import unittest
 from unittest.mock import patch
 
-from apps.cli.main import plan_question, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 
 
 def rank_draft() -> str:
@@ -57,7 +58,7 @@ class ComparisonCliVariantTests(unittest.TestCase):
     def setUp(self) -> None:
         interpret_question_to_semantic_draft.cache_clear()
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_query_root_is_variant_tagged(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = rank_draft()
         _interpreted_query, planner_output = plan_question(
@@ -65,7 +66,7 @@ class ComparisonCliVariantTests(unittest.TestCase):
         )
         self.assertEqual(planner_output["query"]["kind"], "metric_query")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_comparison_question(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Brunson", "Haliburton")
         output = run_cli("Compare Brunson and Haliburton scoring over the last 10 games")
@@ -73,7 +74,7 @@ class ComparisonCliVariantTests(unittest.TestCase):
         self.assertIn("Tyrese Haliburton", output)
         self.assertIn("Differential:", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_comparison_full_names(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Jalen Brunson", "Tyrese Haliburton")
         output = run_cli(
@@ -81,13 +82,13 @@ class ComparisonCliVariantTests(unittest.TestCase):
         )
         self.assertIn("Jalen Brunson led in total points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_comparison_pts_variant(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Brunson", "Haliburton", measure="pts")
         output = run_cli("Compare Brunson and Haliburton pts over the last 10 games")
         self.assertIn("Jalen Brunson led in total points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_three_player_comparison_supported(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft("Brunson", "Haliburton", "Tatum")
         output = run_cli("Compare Brunson, Haliburton, and Tatum scoring over the last 10 games")
@@ -96,7 +97,7 @@ class ComparisonCliVariantTests(unittest.TestCase):
         self.assertIn("Tyrese Haliburton", output)
         self.assertIn("Jayson Tatum", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_multi_metric_comparison_outputs_one_row_per_entity(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = compare_draft(
             "Brunson",
@@ -115,7 +116,7 @@ class ComparisonCliVariantTests(unittest.TestCase):
         self.assertIn("Player | Team | Games | Total Points | Assists | Rebounds", output)
         self.assertNotIn("Differential:", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_object_style_question_rejected(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "unsupported", "reason": "cannot be represented as a Scope 1 question"}

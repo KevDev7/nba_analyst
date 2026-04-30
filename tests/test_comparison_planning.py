@@ -4,8 +4,9 @@ import json
 import unittest
 from unittest.mock import patch
 
-from apps.cli.main import plan_question, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import plan_question
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 from tests.planner_helpers import call_plan_query_json
 
 
@@ -13,7 +14,7 @@ class ComparisonPlanningTests(unittest.TestCase):
     def setUp(self) -> None:
         interpret_question_to_semantic_draft.cache_clear()
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_recent_player_comparison_validates(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -315,7 +316,7 @@ class ComparisonPlanningTests(unittest.TestCase):
             str(context.exception),
         )
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_recent_player_comparison_output_stays_green(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -336,7 +337,7 @@ class ComparisonPlanningTests(unittest.TestCase):
         self.assertIn("Jalen Brunson led in total points", output)
         self.assertIn("Differential: 110 total points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_compare_without_time_scope_defaults_to_current_regular_season(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {

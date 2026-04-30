@@ -185,7 +185,7 @@ predicate is row-level or result-level.
 
 Semantic draft:
 
-- `apps/cli/semantic_interpreter.py`
+- `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/FilterGrounding.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/ResultFilterGrounding.hs`

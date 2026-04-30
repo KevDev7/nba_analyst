@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import plan_question
+from apps.assistant.pipeline import plan_question
 from tests.planner_helpers import call_plan_query_json
 
 

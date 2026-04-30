@@ -6,6 +6,42 @@ module GroundedPlanning.Compile.Sql.Aggregate (compileAggregateSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( compileMetricAggregation
+  , renderGameDateFilterConditions
+  , renderPathJoinClauses
+  , renderResultPredicateConditions
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
+  , seasonWhereClause
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( combineWhereClauses
+  , limitClause
+  , renderColumnRefWithContext
+  , renderMaybeColumnRef
+  )
+import GroundedPlanning.Compile.Sql.Grouping
+  ( primaryGroupingKey
+  , renderGroupingAggregateSelectLines
+  , renderGroupingFinalSelectLines
+  , renderGroupingJoinClauses
+  , renderGroupingKeys
+  , renderGroupingOrder
+  , renderGroupingSource
+  , renderGroupingSourceSelectLines
+  )
+import GroundedPlanning.Compile.Sql.Projection
+  ( renderDisplayMetricAggregateSelectLines
+  , renderDisplayMetricFinalSelectLines
+  , renderDisplayMetricSourceSelectLines
+  , renderMetadataAggregateSelectLines
+  , renderMetadataFinalSelectLines
+  , renderMetadataSourceSelectLines
+  , renderMetricValue
+  , renderResultPredicateAggregateSelectLines
+  , renderResultPredicateFinalSelectLines
+  , renderResultPredicateSourceSelectLines
+  )
 import GroundedPlanning.Resolve
 
 -- Build SQL for grouped aggregate questions.

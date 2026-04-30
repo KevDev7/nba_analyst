@@ -4,7 +4,7 @@ import json
 import subprocess
 import unittest
 
-from apps.cli.main import ROOT
+from apps.assistant.pipeline import ROOT
 
 
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"

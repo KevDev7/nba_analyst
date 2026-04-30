@@ -6,6 +6,31 @@ module GroundedPlanning.Compile.Sql.Comparison (compileComparisonSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( renderGameDateFilterConditions
+  , renderMaybePathJoinClauses
+  , renderPathJoinClauses
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
+  , renderSeasonFilterConditions
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( combineWhereClauses
+  , renderColumnRefWithContext
+  , renderFactExpression
+  , renderMaybeColumnRef
+  , renderWhereLines
+  , stripLastTrailingComma
+  )
+import GroundedPlanning.Compile.Sql.Grouping
+  ( renderGroupingFinalSelectLines
+  , renderGroupingJoinClauses
+  , renderGroupingOrder
+  , renderGroupingSourceSelectLines
+  )
+import GroundedPlanning.Compile.Sql.Projection
+  ( renderDisplayMetricDirectSelectLines
+  , renderDisplayMetricFinalSelectLines
+  )
 import GroundedPlanning.Resolve
 
 compileComparisonSql :: ResolvedMetricQuery -> Text
@@ -111,12 +136,6 @@ compileRecentComparisonSql resolved =
           <> renderWhereLines "" gameRankWhereConditions
           <> [ "ORDER BY entity_id ASC" <> timeBucketOrder <> groupingOrder <> ", game_date DESC" ]
 
-renderWhereLines :: Text -> [Text] -> [Text]
-renderWhereLines prefix conditions =
-  case conditions of
-    [] -> []
-    _ -> [prefix <> "WHERE " <> combineWhereClauses conditions]
-
 compileSeasonComparisonSql :: ResolvedMetricQuery -> Text
 compileSeasonComparisonSql resolved =
   let
@@ -216,14 +235,3 @@ compileSeasonComparisonSql resolved =
           <> [ "FROM season_rows"
              , "ORDER BY entity_id ASC" <> timeBucketOrder <> groupingOrder
              ]
-
-stripLastTrailingComma :: [Text] -> [Text]
-stripLastTrailingComma sourceLines =
-  case reverse sourceLines of
-    [] -> []
-    lastLine : earlierLines ->
-      reverse earlierLines
-        <> [ case T.stripSuffix "," lastLine of
-               Just strippedLine -> strippedLine
-               Nothing -> lastLine
-           ]

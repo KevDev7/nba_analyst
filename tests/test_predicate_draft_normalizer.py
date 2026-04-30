@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import patch
 
 from apps.assistant.pipeline import plan_question
-from apps.cli.predicate_draft_normalizer import normalize_flat_filter_predicates
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.semantic.predicate_draft_normalizer import normalize_flat_filter_predicates
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 
 
 def rank_draft(**overrides: object) -> dict[str, object]:
@@ -118,7 +118,7 @@ class PredicateDraftNormalizerTests(unittest.TestCase):
             {"kind": "leaf", "field": "average points", "op": "between", "value": {"lower": 20, "upper": 30}},
         )
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_pipeline_plans_llm_flat_list_and_range_filters(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -142,7 +142,7 @@ class PredicateDraftNormalizerTests(unittest.TestCase):
         self.assertIn("lf1.team_name IN ('Lakers', 'Warriors')", sql)
         self.assertIn("f.minutes_played BETWEEN 20 AND 30", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_pipeline_plans_llm_flat_result_range_filter(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {

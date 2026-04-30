@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 import duckdb
 
-from apps.cli.main import call_haskell_planner_for_semantic_draft, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import call_haskell_planner_for_semantic_draft
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 from scripts.load_gold_snapshot import load_database
 
 
@@ -175,7 +176,7 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(execution_plan["metric"], "average_minutes")
         self.assertIn("AVG(metric_source)", execution_plan["steps"][0]["sql"])
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_aggregate_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": aggregate_draft()})
         database_path = load_database()
@@ -219,7 +220,7 @@ class AggregateQueryTests(unittest.TestCase):
             output,
         )
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_dimensional_aggregate_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": aggregate_draft(dimensions=["team", "season type"], limit=3)}

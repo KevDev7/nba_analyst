@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.main import call_haskell_planner_for_semantic_draft
+from apps.assistant.pipeline import call_haskell_planner_for_semantic_draft
 from tests.planner_helpers import call_plan_query_json
 
 

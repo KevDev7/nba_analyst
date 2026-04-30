@@ -4,8 +4,9 @@ import json
 import unittest
 from unittest.mock import patch
 
-from apps.cli.main import call_haskell_planner_for_semantic_draft, run_cli
-from apps.cli.semantic_interpreter import interpret_question_to_semantic_draft
+from apps.assistant.pipeline import call_haskell_planner_for_semantic_draft
+from apps.cli.main import run_cli
+from apps.assistant.semantic.interpreter import interpret_question_to_semantic_draft
 
 
 def ranking_draft(**overrides: object) -> dict[str, object]:
@@ -123,7 +124,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("GROUP BY entity_id, group_1, group_2", sql)
         self.assertIn("ROW_NUMBER() OVER (ORDER BY metric_value DESC", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_dimensional_ranking_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": ranking_draft()}
@@ -173,7 +174,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("GROUP BY time_bucket, group_1, group_2", sql)
         self.assertIn("ORDER BY time_bucket ASC, group_1 ASC, group_2 ASC", sql)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_dimensional_trend_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": trend_draft()}
@@ -241,7 +242,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertEqual(execution_plan["grouping_columns"], [])
         self.assertEqual(execution_plan["time_grain"], "month")
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_dimensional_comparison_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "ok", "draft": compare_draft(resolved_entities=[])}
@@ -256,7 +257,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("Average points comparison by season type over the last 10 games is shown below.", output)
         self.assertIn("Player | Team | Season Type | Games | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_metric_grouped_comparison_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -276,7 +277,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("Player | Team | Season Type | Games | Total Points | Assists | Rebounds", output)
         self.assertNotIn("Differential:", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_time_bucketed_comparison_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {
@@ -299,7 +300,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertIn("Average points comparison by month over the past year is shown below.", output)
         self.assertIn("Month | Player | Team | Games | Average Points", output)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_metric_time_bucketed_comparison_end_to_end(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {

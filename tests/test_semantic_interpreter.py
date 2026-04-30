@@ -4,7 +4,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from apps.cli.semantic_interpreter import (
+from apps.assistant.semantic.interpreter import (
     SemanticInterpreterError,
     _semantic_draft_prompt_preamble,
     interpret_question_to_semantic_draft,
@@ -44,7 +44,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn('"field":"minutes","op":">","value":30', prompt)
         self.assertIn('"field":"win percentage","op":">","value":0.6', prompt)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_returns_basic_validated_semantic_draft(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": SAMPLE_DRAFT})
 
@@ -61,7 +61,7 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("User question:", sent_prompt)
         self.assertIn("top 10 players", sent_prompt)
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_raises_for_non_analytics_unsupported_response(self, mock_call_gemini) -> None:
         mock_call_gemini.return_value = json.dumps(
             {"status": "unsupported", "reason": "not an NBA analytics request"}
@@ -72,7 +72,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIn("not an NBA analytics request", str(context.exception))
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_does_not_gate_time_window_capabilities(self, mock_call_gemini) -> None:
         draft = dict(SAMPLE_DRAFT)
         draft["time_window"] = {"kind": "last_month", "value": 1}
@@ -84,7 +84,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertEqual(interpreted["time_window"], {"kind": "last_month", "value": 1})
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_allows_find_null_time_window_for_policy_normalization(self, mock_call_gemini) -> None:
         draft = {
             "task": "find",
@@ -110,7 +110,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIsNone(interpreted["time_window"])
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_allows_compare_null_time_window_for_default_scope(self, mock_call_gemini) -> None:
         draft = {
             "task": "compare",
@@ -137,7 +137,7 @@ class SemanticInterpreterTests(unittest.TestCase):
 
         self.assertIsNone(interpreted["time_window"])
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_preserves_decimal_numeric_filter_values(self, mock_call_gemini) -> None:
         draft = {
             "task": "rank",
@@ -166,7 +166,7 @@ class SemanticInterpreterTests(unittest.TestCase):
             [{"field": "win percentage", "op": ">", "value": 0.6}],
         )
 
-    @patch("apps.cli.semantic_interpreter._call_gemini")
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_still_requires_non_find_time_window(self, mock_call_gemini) -> None:
         draft = dict(SAMPLE_DRAFT)
         draft["time_window"] = None

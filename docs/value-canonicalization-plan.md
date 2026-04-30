@@ -173,7 +173,7 @@ predicate value canonicalization.
 
 Current nearby behavior:
 
-- `apps/cli/entity_resolver.py` already resolves comparison entities using the
+- `apps/assistant/semantic/entity_resolver.py` already resolves comparison entities using the
   ontology and DuckDB.
 - Predicate values are canonicalized later in Haskell through
   `ValueCanonicalization.hs`.

@@ -10,7 +10,6 @@ import Data.List (nub, sortOn)
 import Data.Ord (Down (Down))
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Read as TR
 import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeKind (Dimension, Measure), AttributeVisibility (Public), Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
@@ -19,6 +18,7 @@ import QueryModel.SemanticDraft.Filters (draftFilterTextValue, seasonTypeFromFil
 import QueryModel.SemanticDraft.Match (attributeName, identityDimension, objectName)
 import QueryModel.SemanticDraft.MeasureMatch (measureAttributeScore)
 import QueryModel.SemanticDraft.Normalize (normalizedKey, normalizedMeasureKey, subjectMatchKey)
+import QueryModel.SemanticDraft.PredicateGrounding (combinePredicates, normalizePredicateOperator, numericFilterValue, textFilterValue)
 import QueryModel.SemanticDraft.Types (DraftFilter (filterField, filterOp, filterValue), DraftPredicate (..))
 
 groundDraftRowPredicate :: Ontology -> Object -> [DraftFilter] -> Maybe DraftPredicate -> Maybe (Maybe QI.Predicate)
@@ -30,13 +30,6 @@ groundDraftRowPredicate ontology factObjectValue draftFilters maybeDraftPredicat
       Nothing -> Just []
       Just draftPredicate -> pure <$> groundDraftPredicate ontology factObjectValue draftPredicate
   Just (combinePredicates (filterPredicates <> directPredicateValues))
-
-combinePredicates :: [QI.Predicate] -> Maybe QI.Predicate
-combinePredicates predicateValues =
-  case predicateValues of
-    [] -> Nothing
-    [predicateValue] -> Just predicateValue
-    _ -> Just (QI.PredicateAnd predicateValues)
 
 groundDraftPredicate :: Ontology -> Object -> DraftPredicate -> Maybe QI.Predicate
 groundDraftPredicate ontology factObjectValue draftPredicate =
@@ -60,45 +53,6 @@ groundDraftPredicate ontology factObjectValue draftPredicate =
       QI.PredicateOr <$> mapM (groundDraftPredicate ontology factObjectValue) predicateValues
     DraftPredicateNot predicateValue ->
       QI.PredicateNot <$> groundDraftPredicate ontology factObjectValue predicateValue
-
-normalizePredicateOperator :: Maybe Text -> Maybe QI.PredicateOperator
-normalizePredicateOperator maybeRawOp =
-  case T.strip <$> maybeRawOp of
-    Just "=" -> Just QI.PredicateEquals
-    Just "!=" -> Just QI.PredicateNotEquals
-    Just "<>" -> Just QI.PredicateNotEquals
-    Just ">" -> Just QI.PredicateGreaterThan
-    Just ">=" -> Just QI.PredicateGreaterThanOrEqual
-    Just "<" -> Just QI.PredicateLessThan
-    Just "<=" -> Just QI.PredicateLessThanOrEqual
-    _ ->
-      case normalizedKey <$> maybeRawOp of
-        Nothing -> Just QI.PredicateEquals
-        Just "" -> Just QI.PredicateEquals
-        Just "eq" -> Just QI.PredicateEquals
-        Just "equals" -> Just QI.PredicateEquals
-        Just "is" -> Just QI.PredicateEquals
-        Just "notequals" -> Just QI.PredicateNotEquals
-        Just "not" -> Just QI.PredicateNotEquals
-        Just "neq" -> Just QI.PredicateNotEquals
-        Just "over" -> Just QI.PredicateGreaterThan
-        Just "above" -> Just QI.PredicateGreaterThan
-        Just "greaterthan" -> Just QI.PredicateGreaterThan
-        Just "gt" -> Just QI.PredicateGreaterThan
-        Just "morethan" -> Just QI.PredicateGreaterThan
-        Just "atleast" -> Just QI.PredicateGreaterThanOrEqual
-        Just "gte" -> Just QI.PredicateGreaterThanOrEqual
-        Just "under" -> Just QI.PredicateLessThan
-        Just "below" -> Just QI.PredicateLessThan
-        Just "lessthan" -> Just QI.PredicateLessThan
-        Just "lt" -> Just QI.PredicateLessThan
-        Just "atmost" -> Just QI.PredicateLessThanOrEqual
-        Just "lte" -> Just QI.PredicateLessThanOrEqual
-        Just "in" -> Just QI.PredicateIn
-        Just "notin" -> Just QI.PredicateNotIn
-        Just "between" -> Just QI.PredicateBetween
-        Just "contains" -> Just QI.PredicateContains
-        _ -> Nothing
 
 rowPredicateCandidates :: [DraftFilter] -> [DraftFilter]
 rowPredicateCandidates =
@@ -163,39 +117,6 @@ requireEqualityOp opValue =
   case opValue of
     QI.PredicateEquals -> Just ()
     _ -> Nothing
-
-textFilterValue :: QI.FilterValue -> Maybe Text
-textFilterValue rawValue =
-  case rawValue of
-    QI.FilterText textValue
-      | T.strip textValue /= "" -> Just textValue
-    _ -> Nothing
-
-numericFilterValue :: QI.FilterValue -> Maybe QI.FilterValue
-numericFilterValue rawValue =
-  case rawValue of
-    QI.FilterInt _ -> Just rawValue
-    QI.FilterDouble _ -> Just rawValue
-    QI.FilterText textValue -> parseNumericText textValue
-
-parseNumericText :: Text -> Maybe QI.FilterValue
-parseNumericText rawValue =
-  case TR.signed TR.decimal strippedValue of
-    Right (intValue, remaining) | T.strip remaining == "" -> Just (QI.FilterInt intValue)
-    _ ->
-      case TR.signed TR.double doubleReadyValue of
-        Right (doubleValue, remaining) | T.strip remaining == "" -> Just (QI.FilterDouble doubleValue)
-        _ -> Nothing
-  where
-    strippedValue = T.strip rawValue
-    doubleReadyValue =
-      case T.uncons strippedValue of
-        Just ('.', _) -> "0" <> strippedValue
-        Just ('-', rest) ->
-          case T.uncons rest of
-            Just ('.', _) -> "-0" <> rest
-            _ -> strippedValue
-        _ -> strippedValue
 
 rejectAggregatePredicateWording :: Text -> Maybe ()
 rejectAggregatePredicateWording rawField =

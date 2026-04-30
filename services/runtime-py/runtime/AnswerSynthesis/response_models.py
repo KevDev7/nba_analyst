@@ -26,6 +26,7 @@ from runtime.AnalysisRuntime.models import (
     PlanFindOrder,
     PlanGroupingColumn,
     RankingRow,
+    RuntimeResult,
     TimeSeriesRow,
 )
 
@@ -99,3 +100,42 @@ class FinalAnswer(BaseModel):
     display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
     display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
+
+
+def _field_names(model_type: type[BaseModel]) -> tuple[str, ...]:
+    if hasattr(model_type, "model_fields"):
+        return tuple(model_type.model_fields)
+    return tuple(model_type.__fields__)
+
+
+def _model_values(model: BaseModel, fields: tuple[str, ...]) -> dict[str, Any]:
+    include = set(fields)
+    if hasattr(model, "model_dump"):
+        return model.model_dump(include=include)
+    return model.dict(include=include)
+
+
+SYNTHESIS_PAYLOAD_FIELDS = _field_names(SynthesisPayload)
+FINAL_ANSWER_PAYLOAD_FIELDS = tuple(
+    field for field in SYNTHESIS_PAYLOAD_FIELDS if field in _field_names(FinalAnswer)
+)
+
+
+def synthesis_payload_from_runtime_result(result: RuntimeResult) -> SynthesisPayload:
+    # Preserve the runtime result contract in one place instead of manually
+    # copying every shared field in package_results.py.
+    return SynthesisPayload(**_model_values(result, SYNTHESIS_PAYLOAD_FIELDS))
+
+
+def final_answer_from_payload(
+    payload: SynthesisPayload,
+    *,
+    summary: str,
+    interpretation: str,
+    **overrides: Any,
+) -> FinalAnswer:
+    # Every final answer should carry the same context payload unless a branch
+    # intentionally narrows which row collection it exposes.
+    values = _model_values(payload, FINAL_ANSWER_PAYLOAD_FIELDS)
+    values.update(overrides)
+    return FinalAnswer(summary=summary, interpretation=interpretation, **values)

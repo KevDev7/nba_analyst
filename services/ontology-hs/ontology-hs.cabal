@@ -13,9 +13,13 @@ executable ontology-hs
     , GroundedPlanning.Compile.PlanBuilder
     , GroundedPlanning.Compile.Sql.Aggregate
     , GroundedPlanning.Compile.Sql.Common
+    , GroundedPlanning.Compile.Sql.Common.Primitives
     , GroundedPlanning.Compile.Sql.Comparison
     , GroundedPlanning.Compile.Sql.Find
+    , GroundedPlanning.Compile.Sql.Grouping
     , GroundedPlanning.Compile.Sql.Object
+    , GroundedPlanning.Compile.Sql.Predicates
+    , GroundedPlanning.Compile.Sql.Projection
     , GroundedPlanning.Compile.Sql.Ranking
     , GroundedPlanning.Compile.Sql.Trend
     , GroundedPlanning.Plan
@@ -27,6 +31,7 @@ executable ontology-hs
     , GroundedPlanning.Resolve.Common.Filters
     , GroundedPlanning.Resolve.Common.Metrics
     , GroundedPlanning.Resolve.Common.Ontology
+    , GroundedPlanning.Resolve.Common.PredicateTrees
     , GroundedPlanning.Resolve.Common.ResultPredicates
     , GroundedPlanning.Resolve.Common.RowPredicates
     , GroundedPlanning.Resolve.Common.Trend
@@ -46,6 +51,7 @@ executable ontology-hs
     , GroundedPlanning.Validation.Common.Metrics
     , GroundedPlanning.Validation.Common.Ontology
     , GroundedPlanning.Validation.Common.Orders
+    , GroundedPlanning.Validation.Common.PredicateRules
     , GroundedPlanning.Validation.Common.ResultPredicates
     , GroundedPlanning.Validation.Common.RowPredicates
     , GroundedPlanning.Validation.Common.Trend
@@ -63,9 +69,12 @@ executable ontology-hs
     , QueryModel.IR
     , QueryModel.SemanticDraft
     , QueryModel.SemanticDraft.Aggregate
+    , QueryModel.SemanticDraft.CandidateSelection
     , QueryModel.SemanticDraft.Compare
     , QueryModel.SemanticDraft.FilterGrounding
     , QueryModel.SemanticDraft.Filters
+    , QueryModel.SemanticDraft.Find.Display
+    , QueryModel.SemanticDraft.Find.Predicate
     , QueryModel.SemanticDraft.Grouping
     , QueryModel.SemanticDraft.Find
     , QueryModel.SemanticDraft.Match
@@ -73,6 +82,7 @@ executable ontology-hs
     , QueryModel.SemanticDraft.MeasureMatch
     , QueryModel.SemanticDraft.Normalize
     , QueryModel.SemanticDraft.Object
+    , QueryModel.SemanticDraft.PredicateGrounding
     , QueryModel.SemanticDraft.Rank
     , QueryModel.SemanticDraft.ResultFilterGrounding
     , QueryModel.SemanticDraft.Trend

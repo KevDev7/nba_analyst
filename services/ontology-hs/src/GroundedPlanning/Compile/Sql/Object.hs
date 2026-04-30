@@ -6,6 +6,36 @@ module GroundedPlanning.Compile.Sql.Object (compileObjectSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
+  ( compileMetricAggregation
+  , renderGameDateFilterConditions
+  , renderMaybePathJoinClauses
+  , renderPathJoinClauses
+  , renderResultPredicateConditions
+  , renderRowPredicateConditions
+  , renderRowPredicateJoinClauses
+  , seasonWhereClause
+  )
+import GroundedPlanning.Compile.Sql.Common.Primitives
+  ( combineWhereClauses
+  , limitClause
+  , renderColumnRefWithContext
+  , renderMaybeColumnRef
+  )
+import GroundedPlanning.Compile.Sql.Projection
+  ( renderDisplayMetricAggregateSelectLines
+  , renderDisplayMetricDirectSelectLines
+  , renderDisplayMetricFinalSelectLines
+  , renderDisplayMetricSourceSelectLines
+  , renderMetadataAggregateSelectLines
+  , renderMetadataDirectSelectLines
+  , renderMetadataFinalSelectLines
+  , renderMetadataSourceSelectLines
+  , renderMetricValue
+  , renderResultPredicateAggregateSelectLines
+  , renderResultPredicateDirectSelectLines
+  , renderResultPredicateFinalSelectLines
+  , renderResultPredicateSourceSelectLines
+  )
 import GroundedPlanning.Resolve
 
 -- Build SQL for object-row questions.

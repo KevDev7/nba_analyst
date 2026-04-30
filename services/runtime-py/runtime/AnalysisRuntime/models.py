@@ -217,3 +217,44 @@ class RuntimeResult(BaseModel):
     display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     raw_rows: List[Dict[str, object]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
+
+
+RUNTIME_RESULT_CONTEXT_FIELDS = (
+    "query_kind",
+    "result_shape",
+    "entity_label_singular",
+    "entity_label_plural",
+    "context_label",
+    "metric",
+    "window_games",
+    "time_grain",
+    "time_filter",
+    "time_window_days",
+    "time_start_date",
+    "time_end_date",
+    "season_label",
+    "season_type",
+    "limit",
+    "assumptions",
+    "find_predicate_tree",
+    "find_filters",
+    "find_orders",
+    "row_predicate",
+    "result_predicate",
+    "grouping_columns",
+    "display_metadata",
+    "display_metrics",
+)
+
+
+def _model_values(model: BaseModel, fields: tuple[str, ...]) -> dict[str, object]:
+    include = set(fields)
+    if hasattr(model, "model_dump"):
+        return model.model_dump(include=include)
+    return model.dict(include=include)
+
+
+def runtime_context_from_plan(plan: ExecutionPlan) -> dict[str, object]:
+    # Copy plan-owned answer metadata through one boundary so new context fields
+    # do not have to be threaded manually in runner.py.
+    return _model_values(plan, RUNTIME_RESULT_CONTEXT_FIELDS)

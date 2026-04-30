@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.cli.time_scope_normalizer import normalize_question_time_window
+from apps.assistant.semantic.time_scope_normalizer import normalize_question_time_window
 
 
 class TimeScopeNormalizerTests(unittest.TestCase):

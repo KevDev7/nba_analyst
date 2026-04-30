@@ -11,7 +11,7 @@ use live/snapshot suites deliberately when validating provider/data behavior.
 - `test_cli_pipeline.py` covers the main terminal orchestration seam.
 - `test_web_api.py` covers the localhost web/API adapter over the shared assistant boundary.
 - `test_cli_semantic_draft_pipeline.py` covers semantic-draft-to-runtime end-to-end paths.
-- `test_semantic_interpreter.py` covers prompt/schema parsing behavior.
+- `test_interpreter.py` covers prompt/schema parsing behavior.
 - `test_entity_resolver.py` covers player/team entity resolution.
 - `test_ontology_layer.py` covers ontology fixture validation.
 - `test_question_bank.py` covers the question bank contract.
