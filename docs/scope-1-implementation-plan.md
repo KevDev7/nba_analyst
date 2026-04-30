@@ -360,7 +360,7 @@ Primary files:
 
 - `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Object.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Object.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Normalize.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 - `services/runtime-py/runtime/AnalysisRuntime/*`

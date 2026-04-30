@@ -50,8 +50,20 @@ AVERAGE_METRICS = {
 }
 
 
+def _generated_metric_phrase(metric: str) -> str:
+    if metric.startswith("total_"):
+        return "total " + field_phrase(metric.removeprefix("total_"))
+    if metric.startswith("average_"):
+        return "average " + field_phrase(metric.removeprefix("average_"))
+    if metric.endswith("_total"):
+        return field_phrase(metric.removesuffix("_total"))
+    if metric.endswith("_per_game"):
+        return "average " + field_phrase(metric.removesuffix("_per_game"))
+    return field_phrase(metric)
+
+
 def metric_phrase(metric: str, *, prettify_unknown: bool = True) -> str:
-    fallback = metric.replace("_", " ") if prettify_unknown else metric
+    fallback = _generated_metric_phrase(metric) if prettify_unknown else metric
     return METRIC_LABELS.get(metric, fallback)
 
 
@@ -60,7 +72,7 @@ def metric_header(metric: str) -> str:
 
 
 def format_metric_value(metric: str, value: float, *, table: bool = False) -> str:
-    if metric in AVERAGE_METRICS:
+    if metric in AVERAGE_METRICS or metric.startswith("average_") or metric.endswith("_per_game"):
         return f"{value:.1f}"
     if table and metric == "win_percentage":
         return f"{value:.3f}"
@@ -73,6 +85,21 @@ def field_label(field_name: str) -> str:
 
 def field_phrase(field_name: str) -> str:
     return field_name.replace("_", " ")
+
+
+def grouping_label(field_name: str, entity_label_singular: str) -> str:
+    if field_name == "full_name":
+        return entity_label_singular
+    return {
+        "team_name": "Team",
+        "team_abbreviation": "Team",
+        "season_year": "Season",
+        "season_type": "Season Type",
+    }.get(field_name, field_label(field_name))
+
+
+def grouping_phrase_label(field_name: str, entity_label_singular: str) -> str:
+    return grouping_label(field_name, entity_label_singular).lower()
 
 
 def cell_value(value: object) -> str:

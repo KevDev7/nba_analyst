@@ -132,6 +132,298 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIn("SUM(__metric_3_source) AS metric_3", sql)
         self.assertIn("  metric_2,\n  metric_3,\n  metric_value", sql)
 
+    def test_haskell_grounds_season_object_draft_with_team_filter_and_multiple_display_metrics(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "object",
+                "subject": "players",
+                "measure": "points",
+                "measures": ["points", "assists", "rebounds"],
+                "dimensions": [],
+                "filters": [
+                    {"field": "team", "op": "=", "value": "Lakers"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "grain": None,
+                "order": [],
+                "limit": None,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(payload["query"]["kind"], "object_query")
+        self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
+        self.assertEqual(shared["metrics"], ["points_total", "assists_total", "rebounds_total"])
+        self.assertEqual(
+            shared["rowPredicate"],
+            predicate_leaf("Team", "team_name", "equals", "Lakers"),
+        )
+        self.assertEqual(
+            plan["display_metrics"],
+            [
+                {"column_key": "metric_value", "label": "points_total", "metric": "points_total", "aggregation": "identity"},
+                {"column_key": "metric_2", "label": "assists_total", "metric": "assists_total", "aggregation": "identity"},
+                {"column_key": "metric_3", "label": "rebounds_total", "metric": "rebounds_total", "aggregation": "identity"},
+            ],
+        )
+        self.assertIn("FROM player_season_team f", sql)
+        self.assertIn("f.assists_total AS metric_2", sql)
+        self.assertIn("f.rebounds_total AS metric_3", sql)
+        self.assertIn("lf1.team_name = 'Lakers'", sql)
+
+    def test_haskell_grounds_team_generated_metric_from_supported_team_game_data(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "point differential",
+                "measures": ["point differential"],
+                "dimensions": [],
+                "filters": [],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [{"by": "point differential", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["metrics"], ["total_point_differential"])
+        self.assertEqual(plan["metric"], "total_point_differential")
+        self.assertEqual(plan["metric_aggregation"], "sum")
+        self.assertEqual(plan["display_metrics"], [])
+        self.assertIn("FROM team_game f", sql)
+        self.assertIn("f.point_differential AS metric_source", sql)
+
+    def test_haskell_grounds_monthly_team_wins_trend_from_game_outcomes(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "trend",
+                "subject": "teams",
+                "measure": "wins",
+                "measures": ["wins"],
+                "dimensions": ["team"],
+                "filters": [],
+                "time_window": {"kind": "between_dates", "value": "2026-01-01 to 2026-03-01"},
+                "grain": "month",
+                "order": [],
+                "limit": None,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        resolved = payload["resolved_query"]["resolved"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["metrics"], ["wins"])
+        self.assertEqual(shared["timeGrain"], "month")
+        self.assertEqual(resolved["metricFormula"]["aggregationKind"], "count_win")
+        self.assertEqual(execution_plan["metric"], "wins")
+        self.assertEqual(execution_plan["metric_aggregation"], "count_win")
+        self.assertIn("f.win_loss_result AS metric_source", sql)
+        self.assertIn("SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END) AS metric_value", sql)
+        self.assertIn("f.game_date >= DATE '2026-01-01'", sql)
+        self.assertIn("f.game_date <= DATE '2026-03-01'", sql)
+
+    def test_haskell_grounds_player_games_won_from_game_outcomes(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "players",
+                "measure": "wins",
+                "measures": ["wins"],
+                "dimensions": [],
+                "filters": [],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [{"by": "wins", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["games_won"])
+        self.assertEqual(plan["metric"], "games_won")
+        self.assertEqual(plan["metric_aggregation"], "count_win")
+        self.assertIn("f.win_loss_result AS metric_source", sql)
+        self.assertIn("SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END) AS metric_value", sql)
+
+    def test_haskell_grounds_player_starts_from_starter_flag(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "players",
+                "measure": "starts",
+                "measures": ["starts"],
+                "dimensions": [],
+                "filters": [],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [{"by": "starts", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["games_started"])
+        self.assertEqual(plan["metric"], "games_started")
+        self.assertEqual(plan["metric_aggregation"], "count_true")
+        self.assertIn("f.is_starter AS metric_source", sql)
+        self.assertIn("SUM(CASE WHEN metric_source THEN 1 ELSE 0 END) AS metric_value", sql)
+
+    def test_haskell_does_not_fallback_to_player_rows_for_unsupported_team_multi_stats(self) -> None:
+        with self.assertRaises(AssertionError) as context:
+            call_plan_semantic_draft(
+                {
+                    "task": "aggregate",
+                    "subject": "teams",
+                    "measure": "points",
+                    "measures": ["points", "assists", "rebounds"],
+                    "dimensions": ["team"],
+                    "filters": [],
+                    "time_window": {"kind": "last_n_games", "value": 10},
+                    "grain": None,
+                    "order": [],
+                    "limit": None,
+                    "sort": None,
+                    "entities": [],
+                    "operations": [],
+                    "assumptions": [],
+                }
+            )
+
+        self.assertIn(
+            "Could not ground aggregate draft with subject 'teams'",
+            str(context.exception),
+        )
+
+    def test_haskell_grounds_season_object_draft_with_generated_box_score_metrics(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "object",
+                "subject": "players",
+                "measure": "points",
+                "measures": ["points", "assists", "rebounds", "steals", "blocks"],
+                "dimensions": [],
+                "filters": [
+                    {"field": "team", "op": "=", "value": "Lakers"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "grain": None,
+                "order": [],
+                "limit": None,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
+        self.assertEqual(
+            shared["metrics"],
+            ["points_total", "assists_total", "rebounds_total", "steals_total", "blocks_total"],
+        )
+        self.assertEqual(
+            [metric["metric"] for metric in plan["display_metrics"]],
+            ["points_total", "assists_total", "rebounds_total", "steals_total", "blocks_total"],
+        )
+        self.assertIn("f.steals_total AS metric_4", sql)
+        self.assertIn("f.blocks_total AS metric_5", sql)
+
+    def test_haskell_prefers_team_season_surface_for_supported_team_season_metrics(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "average points",
+                "measures": ["average points"],
+                "dimensions": [],
+                "filters": [{"field": "season type", "op": "=", "value": "regular season"}],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "grain": None,
+                "order": [{"by": "average points", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["coreFactObject"], "TeamSeason")
+        self.assertEqual(shared["metrics"], ["average_points"])
+        self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
+
+    def test_haskell_maps_average_language_to_generated_per_game_season_metric(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "players",
+                "measure": "average steals",
+                "measures": ["average steals"],
+                "dimensions": [],
+                "filters": [{"field": "season type", "op": "=", "value": "regular season"}],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "grain": None,
+                "order": [{"by": "average steals", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["coreFactObject"], "PlayerSeason")
+        self.assertEqual(shared["metrics"], ["steals_per_game"])
+        self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "steals_per_game"}])
+
     def test_haskell_grounds_rank_draft_with_one_sort_metric_and_display_metrics(self) -> None:
         payload = call_plan_semantic_draft(
             {
@@ -791,6 +1083,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         sql = payload["execution_plan"]["steps"][0]["sql"]
         self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "total_points"}])
+        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
         self.assertIn("ORDER BY metric_value ASC, entity_name ASC", sql)
 
     def test_haskell_grounds_season_rank_draft_through_ontology_surface(self) -> None:
@@ -1245,6 +1538,41 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIn("WITH season_rows AS", sql)
         self.assertIn("f.points_total AS metric_value", sql)
         self.assertNotIn("game_rank <=", sql)
+
+    def test_haskell_grounds_time_bucketed_season_comparison_to_game_surface(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "compare",
+                "subject": "players",
+                "measure": "points",
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "grain": "month",
+                "filters": [{"field": "season type", "op": "=", "value": "regular season"}],
+                "entities": ["Jalen Brunson", "Jayson Tatum"],
+                "resolved_entities": [
+                    {"entityId": 1628973, "entityName": "Jalen Brunson"},
+                    {"entityId": 1628369, "entityName": "Jayson Tatum"},
+                ],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        resolved = payload["resolved_query"]["resolved"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "PlayerGame")
+        self.assertEqual(shared["metrics"], ["total_points"])
+        self.assertEqual(shared["timeGrain"], "month")
+        self.assertEqual(resolved["factTableName"], "player_game")
+        self.assertEqual(resolved["metricTimeGrain"], "month")
+        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertIn("WITH recent_rows AS", sql)
+        self.assertIn("STRFTIME(f.game_date, '%Y-%m') AS time_bucket", sql)
+        self.assertIn("f.season_year = '2025-26'", sql)
+        self.assertIn("f.season_type = 'regular_season'", sql)
+        self.assertNotIn("WITH season_rows AS", sql)
 
     def test_haskell_grounds_multi_entity_comparison_without_two_entity_gate(self) -> None:
         payload = call_plan_semantic_draft(

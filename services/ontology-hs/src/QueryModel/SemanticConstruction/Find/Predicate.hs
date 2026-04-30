@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 
-module QueryModel.SemanticDraft.Find.Predicate
+module QueryModel.SemanticConstruction.Find.Predicate
   ( draftPredicateIdentityFilters
   , findActorObjects
   , findFactCandidateScore
@@ -19,10 +19,10 @@ import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeVisibility (Public), Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.MeasureMatch (bestPublicMeasureAttributeMatch, measureAttributeScore)
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.MeasureMatch (bestPublicMeasureAttributeMatch, measureAttributeScore)
 import QueryModel.SemanticDraft.Normalize
-import QueryModel.SemanticDraft.PredicateGrounding (combinePredicates, normalizePredicateOperator)
+import QueryModel.SemanticConstruction.PredicateGrounding (combinePredicates, normalizePredicateOperator)
 import QueryModel.SemanticDraft.Types
 
 groundDraftFindFiltersPredicateTree :: Ontology -> Object -> [Object] -> Object -> [DraftFilter] -> Maybe (Maybe QI.Predicate)

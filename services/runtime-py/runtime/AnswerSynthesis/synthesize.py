@@ -15,6 +15,7 @@ from __future__ import annotations
 from .answer_language import (
     format_metric_value,
     grain_adjective,
+    grouping_phrase_label,
     join_nonempty,
     join_phrase,
     metric_phrase,
@@ -25,7 +26,7 @@ from .response_models import FinalAnswer, SynthesisPayload, final_answer_from_pa
 
 
 def _human_metric(metric: str) -> str:
-    return metric_phrase(metric, prettify_unknown=False)
+    return metric_phrase(metric)
 
 
 def _format_metric_value(metric: str, value: float) -> str:
@@ -81,12 +82,7 @@ def _display_metric_phrase(payload: SynthesisPayload) -> str:
 def _grouping_phrase(payload: SynthesisPayload) -> str:
     if not payload.grouping_columns:
         return payload.entity_label_singular.lower()
-    labels = [
-        payload.entity_label_singular.lower()
-        if grouping.label in {"team_name", "full_name"}
-        else grouping.label.replace("_", " ")
-        for grouping in payload.grouping_columns
-    ]
+    labels = [grouping_phrase_label(grouping.label, payload.entity_label_singular) for grouping in payload.grouping_columns]
     return _join_phrase(labels)
 
 
@@ -94,6 +90,25 @@ def _ranked_subject_phrase(payload: SynthesisPayload) -> str:
     if len(payload.grouping_columns) > 1:
         return f"{_grouping_phrase(payload)} combinations"
     return payload.entity_label_plural.lower()
+
+
+def _is_ascending_metric_order(payload: SynthesisPayload) -> bool:
+    return str(payload.metric_order_direction).lower() in {"asc", "ascending"}
+
+
+def _ranking_limit_phrase(payload: SynthesisPayload) -> str:
+    if payload.limit > 0:
+        direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
+        return f"{direction_label} {payload.limit}"
+    return "ranked from lowest to highest" if _is_ascending_metric_order(payload) else "ranked"
+
+
+def _ranking_leader_phrase(payload: SynthesisPayload, entity_name: str, metric: str, value: float) -> str:
+    metric_value = _format_metric_value(metric, value)
+    metric_label = _human_metric(metric)
+    if _is_ascending_metric_order(payload):
+        return f"{entity_name} is lowest with {metric_value} {metric_label}."
+    return f"{entity_name} leads with {metric_value} {metric_label}."
 
 
 def _season_scope_phrase(season_label: object, season_type: object) -> str:
@@ -296,15 +311,13 @@ def synthesize_answer(payload: SynthesisPayload) -> FinalAnswer:
         time_scope = _result_time_phrase(window_games, season_label, season_type, time_window_days, time_start_date, time_end_date)
         if limit > 0:
             summary = (
-                f"Top {limit} {_ranked_subject_phrase(payload)} by {_human_metric(metric)} {time_scope}: "
-                f"{leader.entity_name} leads with "
-                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+                f"{_ranking_limit_phrase(payload)} {_ranked_subject_phrase(payload)} by {_human_metric(metric)} {time_scope}: "
+                f"{_ranking_leader_phrase(payload, leader.entity_name, metric, leader.metric_value)}"
             )
         else:
             summary = (
-                f"{_ranked_subject_phrase(payload).capitalize()} ranked by {_human_metric(metric)} {time_scope}: "
-                f"{leader.entity_name} leads with "
-                f"{_format_metric_value(metric, leader.metric_value)} {_human_metric(metric)}."
+                f"{_ranked_subject_phrase(payload).capitalize()} {_ranking_limit_phrase(payload)} by {_human_metric(metric)} {time_scope}: "
+                f"{_ranking_leader_phrase(payload, leader.entity_name, metric, leader.metric_value)}"
             )
     else:
         summary = (

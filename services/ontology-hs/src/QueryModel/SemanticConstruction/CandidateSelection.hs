@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.CandidateSelection
+module QueryModel.SemanticConstruction.CandidateSelection
   ( MetricFactCandidate
   , candidateAffinityScore
   , candidateFactObject
@@ -17,7 +17,7 @@ import Data.Ord (Down (Down))
 import Data.Text (Text)
 import OntologyLayer.Types (Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
-import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticConstruction.Match
 
 data MetricFactCandidate = MetricFactCandidate
   -- A fact object that passed a family-specific eligibility check and has the

@@ -18,8 +18,24 @@ from types import SimpleNamespace
 from .models import ComparisonBreakdownRow, ComparisonEntityStats, ComparisonResult, ComparisonRow
 
 
+def _is_truthy_metric_value(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "t", "1", "yes"}
+    return False
+
+
 def _aggregate_metric_column(metric_aggregation: str, rows: list[dict[str, object]], column_key: str) -> float:
     # Re-aggregate the per-row metric values the SQL step returned.
+    if metric_aggregation == "count_win":
+        return float(sum(1 for row in rows if row.get(column_key) == "win"))
+    if metric_aggregation == "count_loss":
+        return float(sum(1 for row in rows if row.get(column_key) == "loss"))
+    if metric_aggregation == "count_true":
+        return float(sum(1 for row in rows if _is_truthy_metric_value(row.get(column_key))))
     metric_values = [float(row[column_key]) for row in rows if row.get(column_key) is not None]
     if metric_aggregation == "sum":
         return float(sum(metric_values))
@@ -30,6 +46,16 @@ def _aggregate_metric_column(metric_aggregation: str, rows: list[dict[str, objec
     raise ValueError(
         f"Comparison analysis does not support metric aggregation '{metric_aggregation}'."
     )
+
+
+def _row_metric_value(metric_aggregation: str, value: object) -> float:
+    if metric_aggregation == "count_win":
+        return 1.0 if value == "win" else 0.0
+    if metric_aggregation == "count_loss":
+        return 1.0 if value == "loss" else 0.0
+    if metric_aggregation == "count_true":
+        return 1.0 if _is_truthy_metric_value(value) else 0.0
+    return float(value)
 
 
 def _aggregate_metric(metric_aggregation: str, rows: list[dict[str, object]]) -> float:
@@ -143,7 +169,7 @@ def run_analysis(analysis_spec: str, runtime_state: object, plan: object) -> obj
                 time_bucket=(str(row["time_bucket"]) if row.get("time_bucket") is not None else None),
                 group_values=_comparison_group_values(row, plan),
                 game_date=(str(row["game_date"]) if row.get("game_date") is not None else None),
-                metric_value=float(row["metric_value"]),
+                metric_value=_row_metric_value(str(plan.metric_aggregation), row["metric_value"]),
             )
             for row in rows
         )

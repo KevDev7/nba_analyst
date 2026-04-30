@@ -3,9 +3,7 @@
 module GroundedPlanning.Resolve.Common.Metrics
   ( metricSourceAttribute
   , orderDirectionText
-  , requireComparisonMetricName
   , requireComparisonMetricNames
-  , requireExactlyOneMetricName
   , requireObjectQueryMetricName
   , requireOrdinaryMetricName
   , requireTrendMetricName
@@ -92,23 +90,11 @@ requireObjectQueryMetricName metricValues =
     "Object queries require at least one selected metric."
     metricValues
 
-requireComparisonMetricName :: [MetricName] -> Either Text MetricName
-requireComparisonMetricName metricValues =
-  requireExactlyOneMetricName
-    "Comparison queries require exactly one selected metric."
-    metricValues
-
 requireComparisonMetricNames :: [MetricName] -> Either Text [MetricName]
 requireComparisonMetricNames metricValues =
   requireAtLeastOneMetricNames
     "Comparison queries require at least one selected metric."
     metricValues
-
-requireExactlyOneMetricName :: Text -> [MetricName] -> Either Text MetricName
-requireExactlyOneMetricName cardinalityMessage metricValues =
-  case metricValues of
-    [metricValue] -> Right metricValue
-    _ -> Left cardinalityMessage
 
 requireAtLeastOneMetricName :: Text -> [MetricName] -> Either Text MetricName
 requireAtLeastOneMetricName cardinalityMessage metricValues =

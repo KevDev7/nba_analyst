@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Find.Display
+module QueryModel.SemanticConstruction.Find.Display
   ( resolveFindDisplayDimensions
   , resolveFindOrders
   ) where
@@ -16,8 +16,8 @@ import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (AttributeKind (Dimension, Measure), AttributeVisibility (Public), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.Find.Predicate (resolveFindPredicateAttribute)
-import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticConstruction.Find.Predicate (resolveFindPredicateAttribute)
+import QueryModel.SemanticConstruction.Match
 import QueryModel.SemanticDraft.Normalize
 import QueryModel.SemanticDraft.Types
 

@@ -1,18 +1,20 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Trend (semanticTrendDraftToQuery) where
+module QueryModel.SemanticConstruction.Build.Trend (semanticTrendDraftToQuery) where
 
 import Data.Text (Text)
 import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (Ontology, Object)
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.CandidateSelection
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
-import QueryModel.SemanticDraft.Filters
-import QueryModel.SemanticDraft.Grouping (requireGroupingDimensionReachable, resolveGroupingDimensionValue)
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.ResultFilterGrounding (groundDraftResultPredicate)
+import QueryModel.SemanticConstruction.CandidateSelection
+import QueryModel.SemanticConstruction.Grouping (requireGroupingDimensionReachable, resolveGroupingDimensionValue)
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
+import QueryModel.SemanticConstruction.FilterGrounding (groundDraftRowPredicate)
+import QueryModel.SemanticConstruction.TimeScope (draftFilterIsTimeScopeFilter, timeScopeFilters, trendTimeScope)
+import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasureForFamily, requireTrendGrain)
+import QueryModel.SemanticConstruction.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
 semanticTrendDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -59,10 +61,12 @@ resolveTrendGrounding ontology draft rawMeasure subjectObject trendDimensions tr
       _ <- requireTrendFactSurface trendGrain trendTimeScopeValue factObjectValue
       mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) trendDimensions
       let trendDimensionObjects = map groupingDimensionObject trendDimensions
-      pure
-        ( maximum
-            (trendFactAffinity trendGrain subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) trendDimensionObjects)
-        )
+          affinity =
+            maximum
+              (trendFactAffinity trendGrain subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) trendDimensionObjects)
+      if affinity >= 120
+        then Just affinity
+        else Nothing
     groundTrendFactCandidateValue =
       groundTrendFactCandidate ontology draft trendDimensions trendGrain filtersForTrend
 

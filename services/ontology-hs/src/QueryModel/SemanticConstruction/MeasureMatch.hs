@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.MeasureMatch
+module QueryModel.SemanticConstruction.MeasureMatch
   ( bestExecutableMetricMatch
   , bestPublicMeasureAttributeMatch
   , metricAliases
@@ -19,7 +19,7 @@ import OntologyLayer.Types
   , Object
   )
 import qualified OntologyLayer.Types as OT
-import QueryModel.SemanticDraft.MatchAccessors
+import QueryModel.SemanticConstruction.MatchAccessors
 import QueryModel.SemanticDraft.Normalize (normalizedKey, normalizedMeasureKey)
 
 bestExecutableMetricMatch :: Text -> Object -> Maybe OT.MetricDef
@@ -95,6 +95,15 @@ aliasMetricKey metricKey =
     <> [ ("winningpercentage", 95)
        | metricKey == "winpercentage"
        ]
+    <> [ ("wins", 95)
+       | metricKey == "gameswon"
+       ]
+    <> [ ("losses", 95)
+       | metricKey == "gameslost"
+       ]
+    <> [ ("starts", 95)
+       | metricKey == "gamesstarted"
+       ]
 
 aliasesForAggregation :: Text -> Text -> Text -> [(Text, Int)]
 aliasesForAggregation aggregationKey metricKey sourceKey
@@ -112,20 +121,29 @@ aliasesForAggregation aggregationKey metricKey sourceKey
         <> pointsTotalAliases
         <> minutesTotalAliases
   | "pergame" `T.isSuffixOf` metricKey =
-      [ ("average" <> sourceKey, 95)
-      , ("avg" <> sourceKey, 95)
-      , (sourceKey <> "pergame", 95)
-      ]
+      concatMap perGameAliases perGameBaseKeys
         <> pointsAverageAliases
         <> minutesAverageAliases
   | otherwise = []
   where
+    perGameBaseKeys =
+      nub
+        [ baseKey
+        | key <- [sourceKey, metricKey]
+        , Just baseKey <- [T.stripSuffix "pergame" key]
+        , baseKey /= ""
+        ]
+    perGameAliases baseKey =
+      [ ("average" <> baseKey, 95)
+      , ("avg" <> baseKey, 95)
+      , (baseKey <> "pergame", 95)
+      ]
     pointsAverageAliases =
-      if sourceKey `elem` ["points", "score"] || "points" `T.isInfixOf` metricKey
+      if sourceKey `elem` ["points", "score"]
         then [("ppg", 95), ("averagepoints", 95), ("avgpoints", 95), ("averagescoring", 90)]
         else []
     pointsTotalAliases =
-      if sourceKey `elem` ["points", "score"] || "points" `T.isInfixOf` metricKey
+      if sourceKey `elem` ["points", "score"]
         then
           [ ("points", 85)
           , ("pts", 85)
@@ -200,7 +218,7 @@ measureAttributeScore rawField objectValue attributeValue =
 
 pointsAttributeAliases :: Text -> [(Text, Int)]
 pointsAttributeAliases attributeKey =
-  if attributeKey `elem` ["points", "score"] || "points" `T.isInfixOf` attributeKey
+  if attributeKey `elem` ["points", "score"]
     then [("points", 85), ("pts", 85), ("scoring", 80), ("scored", 80)]
     else []
 

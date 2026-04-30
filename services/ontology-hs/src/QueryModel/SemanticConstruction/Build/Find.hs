@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Find (semanticFindDraftToQuery) where
+module QueryModel.SemanticConstruction.Build.Find (semanticFindDraftToQuery) where
 
 import Data.List (sortOn)
 import Data.Maybe (mapMaybe)
@@ -10,11 +10,13 @@ import Data.Text (Text)
 import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (Object, Ontology (objects))
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.Filters
-import QueryModel.SemanticDraft.Find.Display (resolveFindDisplayDimensions, resolveFindOrders)
-import QueryModel.SemanticDraft.Find.Predicate
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.PredicateGrounding (combinePredicates)
+import QueryModel.SemanticConstruction.Find.Display (resolveFindDisplayDimensions, resolveFindOrders)
+import QueryModel.SemanticConstruction.Find.Predicate
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
+import QueryModel.SemanticConstruction.PredicateGrounding (combinePredicates)
+import QueryModel.SemanticConstruction.TimeScope (draftFilterIsTimeScopeFilter, findTimeScope, timeScopeFilters)
+import QueryModel.SemanticDraft.Filters (requireOptionalPositiveLimit)
 import QueryModel.SemanticDraft.Types
 
 semanticFindDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query

@@ -67,25 +67,27 @@ executable ontology-hs
     , OntologyLayer.Types
     , OntologyLayer.Validation
     , QueryModel.IR
+    , QueryModel.SemanticConstruction.Build.Aggregate
+    , QueryModel.SemanticConstruction.Build.Compare
+    , QueryModel.SemanticConstruction.Build.Find
+    , QueryModel.SemanticConstruction.Build.Object
+    , QueryModel.SemanticConstruction.Build.Rank
+    , QueryModel.SemanticConstruction.Build.Trend
+    , QueryModel.SemanticConstruction.CandidateSelection
+    , QueryModel.SemanticConstruction.FilterGrounding
+    , QueryModel.SemanticConstruction.Find.Display
+    , QueryModel.SemanticConstruction.Find.Predicate
+    , QueryModel.SemanticConstruction.Grouping
+    , QueryModel.SemanticConstruction.Match
+    , QueryModel.SemanticConstruction.MatchAccessors
+    , QueryModel.SemanticConstruction.MeasureMatch
+    , QueryModel.SemanticConstruction.PredicateGrounding
+    , QueryModel.SemanticConstruction.ResultFilterGrounding
+    , QueryModel.SemanticConstruction.TimeScope
+    , QueryModel.SemanticConstruction.Types
     , QueryModel.SemanticDraft
-    , QueryModel.SemanticDraft.Aggregate
-    , QueryModel.SemanticDraft.CandidateSelection
-    , QueryModel.SemanticDraft.Compare
-    , QueryModel.SemanticDraft.FilterGrounding
     , QueryModel.SemanticDraft.Filters
-    , QueryModel.SemanticDraft.Find.Display
-    , QueryModel.SemanticDraft.Find.Predicate
-    , QueryModel.SemanticDraft.Grouping
-    , QueryModel.SemanticDraft.Find
-    , QueryModel.SemanticDraft.Match
-    , QueryModel.SemanticDraft.MatchAccessors
-    , QueryModel.SemanticDraft.MeasureMatch
     , QueryModel.SemanticDraft.Normalize
-    , QueryModel.SemanticDraft.Object
-    , QueryModel.SemanticDraft.PredicateGrounding
-    , QueryModel.SemanticDraft.Rank
-    , QueryModel.SemanticDraft.ResultFilterGrounding
-    , QueryModel.SemanticDraft.Trend
     , QueryModel.SemanticDraft.Types
   build-depends:
       base >= 4.20 && < 5

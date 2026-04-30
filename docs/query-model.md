@@ -51,8 +51,8 @@ Important current distinctions:
 
 - raw measure language like `points` maps to the governed metric `total_points`
 - governed metric language like `average points`, `avg points`, or `average scoring` maps to `average_points`
-- rank/object/aggregate can carry extra display metrics, while trend and
-  comparison still currently use one selected metric
+- rank/object/aggregate/trend/comparison can carry multiple requested metrics,
+  while preserving a primary metric for compatibility with older result shapes
 - dimensions are a list and can represent grouped output grain, not just one
   display column
 
@@ -97,7 +97,6 @@ The query model is no longer limited to points-only, last-N-games-only,
 player-only, or two hardcoded comparison players. The remaining restrictions
 are current result-shape/runtime limits:
 
-- trend and comparison still require one selected metric
 - comparison result predicates are not supported yet because comparison deltas
   are computed after SQL execution
 - trend supports day/week/month/season grains, but not last-N-games as a trend

@@ -36,7 +36,7 @@ compileExecutionPlan resolvedQuery =
 -- Build the top-level execution plan for metric questions.
 -- This covers both ordinary ranking questions and comparison questions.
 compileMetricExecutionPlan :: ResolvedMetricQuery -> ExecutionPlan
-compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, timeFilterKind = metricTimeFilterKindValue, timeFilters = metricTimeFilters, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName, seasonLabel = metricSeasonLabel, seasonType = metricSeasonType, metricResultShape = resolvedResultShape, rowPredicateResolved = metricRowPredicate, resultPredicateResolved = metricResultPredicate, groupingDimensions = metricGroupingDimensions, displayMetadata = metricDisplayMetadata, displayMetricFormulas = metricDisplayMetricFormulas, metricTimeGrain = maybeMetricTimeGrain} =
+compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, timeFilterKind = metricTimeFilterKindValue, timeFilters = metricTimeFilters, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName, seasonLabel = metricSeasonLabel, seasonType = metricSeasonType, metricResultShape = resolvedResultShape, metricOrderDirection = metricOrderDirectionValue, rowPredicateResolved = metricRowPredicate, resultPredicateResolved = metricResultPredicate, groupingDimensions = metricGroupingDimensions, displayMetadata = metricDisplayMetadata, displayMetricFormulas = metricDisplayMetricFormulas, metricTimeGrain = maybeMetricTimeGrain} =
   let formula =
         case resolved of
           ResolvedMetricQuery {metricFormula = currentFormula} -> currentFormula
@@ -57,6 +57,7 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , context_label = contextValueLabel
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
+    , metric_order_direction = metricOrderDirectionValue
     , window_games = metricWindowGames
     , time_grain = maybeMetricTimeGrain
     , time_filter = Just metricTimeFilterKindValue
@@ -97,6 +98,7 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     , context_label = contextValueLabel
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
+    , metric_order_direction = ""
     , window_games = 0
     , time_grain = Just trendTimeGrain
     , time_filter = Just trendTimeFilter
@@ -127,7 +129,7 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
 -- Build the top-level execution plan for object-row questions.
 -- Example shape: one row per player or one row per team.
 compileObjectExecutionPlan :: ResolvedObjectQuery -> ExecutionPlan
-compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, timeFilterKind = objectTimeFilterKind, timeFilters = objectTimeFilters, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions, rowObjectName = objectRowObjectName, seasonLabel = objectSeasonLabel, seasonType = objectSeasonType, objectRowPredicateResolved = objectRowPredicate, objectResultPredicateResolved = objectResultPredicate, displayMetadata = objectDisplayMetadata, displayMetricFormulas = objectDisplayMetricFormulas} =
+compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWindowGames, timeFilterKind = objectTimeFilterKind, timeFilters = objectTimeFilters, queryLimit = objectQueryLimit, resolvedAssumptions = objectAssumptions, rowObjectName = objectRowObjectName, seasonLabel = objectSeasonLabel, seasonType = objectSeasonType, objectOrderDirection = objectOrderDirectionValue, objectRowPredicateResolved = objectRowPredicate, objectResultPredicateResolved = objectResultPredicate, displayMetadata = objectDisplayMetadata, displayMetricFormulas = objectDisplayMetricFormulas} =
   let formula =
         case resolved of
           ResolvedObjectQuery {metricFormula = currentFormula} -> currentFormula
@@ -142,6 +144,7 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , context_label = contextValueLabel
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
+    , metric_order_direction = objectOrderDirectionValue
     , window_games = objectWindowGames
     , time_grain = Nothing
     , time_filter = Just objectTimeFilterKind
@@ -181,6 +184,7 @@ compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectNam
         , context_label = contextValueLabel
         , metric = ""
         , metric_aggregation = ""
+        , metric_order_direction = ""
         , window_games = 0
         , time_grain = Nothing
         , time_filter = Just (metricTimeFilterKind filterValues)

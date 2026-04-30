@@ -2,7 +2,7 @@
 -- Normalize an LLM-produced semantic draft into typed Query IR through ontology grounding.
 --
 -- This module is intentionally a small public doorway. The implementation lives
--- in QueryModel.SemanticDraft.* modules by responsibility/family.
+-- in QueryModel.SemanticConstruction.* modules by construction responsibility.
 
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -14,13 +14,13 @@ module QueryModel.SemanticDraft
 import Data.Text (Text)
 import OntologyLayer.Types (Ontology)
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.Aggregate (semanticAggregateDraftToQuery)
-import QueryModel.SemanticDraft.Compare (semanticCompareDraftToQuery)
-import QueryModel.SemanticDraft.Find (semanticFindDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Aggregate (semanticAggregateDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Compare (semanticCompareDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Find (semanticFindDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Object (semanticObjectDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Rank (semanticRankDraftToQuery)
+import QueryModel.SemanticConstruction.Build.Trend (semanticTrendDraftToQuery)
 import QueryModel.SemanticDraft.Normalize (draftTask)
-import QueryModel.SemanticDraft.Object (semanticObjectDraftToQuery)
-import QueryModel.SemanticDraft.Rank (semanticRankDraftToQuery)
-import QueryModel.SemanticDraft.Trend (semanticTrendDraftToQuery)
 import QueryModel.SemanticDraft.Types
 
 semanticDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query

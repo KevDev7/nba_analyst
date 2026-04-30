@@ -75,6 +75,7 @@ class ExecutionPlan(BaseModel):
     context_label: str
     metric: str
     metric_aggregation: str
+    metric_order_direction: str = "DESC"
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
@@ -192,6 +193,7 @@ class RuntimeResult(BaseModel):
     entity_label_plural: str
     context_label: str
     metric: str
+    metric_order_direction: str = "DESC"
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
@@ -226,6 +228,7 @@ RUNTIME_RESULT_CONTEXT_FIELDS = (
     "entity_label_plural",
     "context_label",
     "metric",
+    "metric_order_direction",
     "window_games",
     "time_grain",
     "time_filter",

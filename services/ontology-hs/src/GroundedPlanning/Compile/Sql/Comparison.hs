@@ -34,8 +34,8 @@ import GroundedPlanning.Compile.Sql.Projection
 import GroundedPlanning.Resolve
 
 compileComparisonSql :: ResolvedMetricQuery -> Text
-compileComparisonSql resolved@ResolvedMetricQuery {timeFilterKind = comparisonTimeFilterKind} =
-  if comparisonTimeFilterKind == "exact_season+season_type"
+compileComparisonSql resolved@ResolvedMetricQuery {metricTimeGrain = maybeComparisonTimeGrain, timeFilterKind = comparisonTimeFilterKind} =
+  if comparisonTimeFilterKind == "exact_season+season_type" && maybeComparisonTimeGrain == Nothing
     then compileSeasonComparisonSql resolved
     else compileRecentComparisonSql resolved
 

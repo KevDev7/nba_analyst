@@ -99,8 +99,7 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- exactly one selected metric
-- descending-by-selected-metric shape
+- ordering is still centered on a primary selected metric
 - limited limit behavior
 
 ### 2. Aggregation
@@ -117,8 +116,7 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- exactly one selected metric
-- current answer and result shapes are still narrow
+- current answer and result shapes are still centered on grouped metric tables
 
 ### 3. Filtering / Joining
 
@@ -206,7 +204,6 @@ Why it passes:
 
 What still falls short of full ontology-backed behavior:
 
-- exactly one attached metric in the current happy path
 - current output is still table-shaped; presentation caps displayed rows at 50
   when the underlying result is larger
 - linked filters are supported when each filter has a valid ontology path

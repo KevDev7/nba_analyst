@@ -70,6 +70,7 @@ data ExecutionPlan = ExecutionPlan
   , context_label :: Text
   , metric :: Text
   , metric_aggregation :: Text
+  , metric_order_direction :: Text
   , window_games :: Int
   , time_grain :: Maybe Text
   , time_filter :: Maybe Text

@@ -1,12 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module GroundedPlanning.Validation.Common.Metrics
-  ( requireComparisonSelectedMetric
-  , requireComparisonSelectedMetrics
-  , requireFamilySelectedMetric
+  ( requireComparisonSelectedMetrics
   , requireObjectQuerySelectedMetric
   , requireOrdinaryMetricSelectedMetric
-  , requireTrendSelectedMetric
   , requireTrendSelectedMetrics
   , validateMetricAttributes
   ) where
@@ -24,24 +21,10 @@ requireOrdinaryMetricSelectedMetric factObject metricValues =
     factObject
     metricValues
 
-requireTrendSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
-requireTrendSelectedMetric factObject metricValues =
-  requireAtLeastOneSelectedMetric
-    "Trend queries require at least one selected metric."
-    factObject
-    metricValues
-
 requireTrendSelectedMetrics :: Object -> [MetricName] -> Either Text [OT.MetricDef]
 requireTrendSelectedMetrics factObject metricValues =
   requireExecutableMetrics
     "Trend queries require at least one selected metric."
-    factObject
-    metricValues
-
-requireComparisonSelectedMetric :: Object -> [MetricName] -> Either Text OT.MetricDef
-requireComparisonSelectedMetric factObject metricValues =
-  requireFamilySelectedMetric
-    "Comparison queries require exactly one selected metric."
     factObject
     metricValues
 
@@ -58,16 +41,6 @@ requireObjectQuerySelectedMetric factObject metricValues =
     "Object queries require at least one selected metric."
     factObject
     metricValues
-
-requireFamilySelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.MetricDef
-requireFamilySelectedMetric cardinalityMessage factObject metricValues =
-  case metricValues of
-    [metricValue] -> do
-      metricDef <- requireMetric factObject metricValue
-      if executable metricDef
-        then pure metricDef
-        else Left ("Metric '" <> name metricDef <> "' is present in the ontology but not executable in this slice.")
-    _ -> Left cardinalityMessage
 
 requireAtLeastOneSelectedMetric :: Text -> Object -> [MetricName] -> Either Text OT.MetricDef
 requireAtLeastOneSelectedMetric cardinalityMessage factObject metricValues =

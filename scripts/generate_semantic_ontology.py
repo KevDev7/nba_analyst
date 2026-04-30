@@ -17,12 +17,15 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 ATTRIBUTE_INVENTORY_PATH = (
     ROOT / "pipelines" / "athena" / "metadata" / "semantic_gold_attribute_inventory.json"
 )
@@ -44,63 +47,52 @@ OBJECT_DESCRIPTIONS = {
     "TeamSeason": "One team across one season and season type from the semantic_gold surface.",
 }
 
-METRICS_BY_OBJECT = {
+RATE_MEASURE_TOKENS = (
+    "percentage",
+    "ratio",
+    "rating",
+    "pace",
+    "rate",
+)
+
+GAME_GRAIN_OBJECTS = {"PlayerGame", "TeamGame"}
+SEASON_GRAIN_OBJECTS = {"PlayerSeason", "PlayerSeasonTeam", "TeamSeason"}
+
+GAME_METRIC_BASE_OVERRIDES = {
+    "score": "points",
+    "opponent_score": "opponent_points",
+    "minutes_played": "minutes",
+}
+
+METRIC_OVERRIDES_BY_OBJECT = {
     "PlayerGame": [
-        {
-            "name": "total_points",
-            "aggregation": "sum",
-            "source_attributes": ["points"],
-            "expression": "SUM(points)",
-            "executable": True,
-        },
-        {
-            "name": "total_assists",
-            "aggregation": "sum",
-            "source_attributes": ["assists"],
-            "expression": "SUM(assists)",
-            "executable": True,
-        },
-        {
-            "name": "total_rebounds",
-            "aggregation": "sum",
-            "source_attributes": ["total_rebounds"],
-            "expression": "SUM(total_rebounds)",
-            "executable": True,
-        },
-        {
-            "name": "average_points",
-            "aggregation": "avg",
-            "source_attributes": ["points"],
-            "expression": "AVG(points)",
-            "executable": True,
-        },
-        {
-            "name": "average_assists",
-            "aggregation": "avg",
-            "source_attributes": ["assists"],
-            "expression": "AVG(assists)",
-            "executable": True,
-        },
-        {
-            "name": "average_rebounds",
-            "aggregation": "avg",
-            "source_attributes": ["total_rebounds"],
-            "expression": "AVG(total_rebounds)",
-            "executable": True,
-        },
-        {
-            "name": "average_minutes",
-            "aggregation": "avg",
-            "source_attributes": ["minutes_played"],
-            "expression": "AVG(minutes_played)",
-            "executable": True,
-        },
         {
             "name": "games_played",
             "aggregation": "count",
             "source_attributes": ["game_id"],
             "expression": "COUNT(*)",
             "executable": False,
+        },
+        {
+            "name": "games_won",
+            "aggregation": "count_win",
+            "source_attributes": ["win_loss_result"],
+            "expression": "SUM(CASE WHEN win_loss_result = 'win' THEN 1 ELSE 0 END)",
+            "executable": True,
+        },
+        {
+            "name": "games_lost",
+            "aggregation": "count_loss",
+            "source_attributes": ["win_loss_result"],
+            "expression": "SUM(CASE WHEN win_loss_result = 'loss' THEN 1 ELSE 0 END)",
+            "executable": True,
+        },
+        {
+            "name": "games_started",
+            "aggregation": "count_true",
+            "source_attributes": ["is_starter"],
+            "expression": "SUM(CASE WHEN is_starter THEN 1 ELSE 0 END)",
+            "executable": True,
         },
         {
             "name": "points_per_36",
@@ -112,102 +104,28 @@ METRICS_BY_OBJECT = {
     ],
     "TeamGame": [
         {
-            "name": "total_points",
-            "aggregation": "sum",
-            "source_attributes": ["score"],
-            "expression": "SUM(score)",
-            "executable": True,
-        },
-        {
-            "name": "average_points",
-            "aggregation": "avg",
-            "source_attributes": ["score"],
-            "expression": "AVG(score)",
-            "executable": True,
-        },
-        {
             "name": "games_played",
             "aggregation": "count",
             "source_attributes": ["game_id"],
             "expression": "COUNT(*)",
             "executable": False,
         },
-    ],
-    "PlayerSeason": [
-        {
-            "name": "games_played",
-            "aggregation": "identity",
-            "source_attributes": ["games_played"],
-            "expression": "games_played",
-            "executable": True,
-        },
-        {
-            "name": "points_total",
-            "aggregation": "identity",
-            "source_attributes": ["points_total"],
-            "expression": "points_total",
-            "executable": True,
-        },
-        {
-            "name": "points_per_game",
-            "aggregation": "identity",
-            "source_attributes": ["points_per_game"],
-            "expression": "points_per_game",
-            "executable": True,
-        },
-    ],
-    "PlayerSeasonTeam": [
-        {
-            "name": "games_played",
-            "aggregation": "identity",
-            "source_attributes": ["games_played"],
-            "expression": "games_played",
-            "executable": True,
-        },
-        {
-            "name": "points_total",
-            "aggregation": "identity",
-            "source_attributes": ["points_total"],
-            "expression": "points_total",
-            "executable": True,
-        },
-        {
-            "name": "points_per_game",
-            "aggregation": "identity",
-            "source_attributes": ["points_per_game"],
-            "expression": "points_per_game",
-            "executable": True,
-        },
-    ],
-    "TeamSeason": [
-        {
-            "name": "games_played",
-            "aggregation": "identity",
-            "source_attributes": ["games_played"],
-            "expression": "games_played",
-            "executable": True,
-        },
         {
             "name": "wins",
-            "aggregation": "identity",
-            "source_attributes": ["wins"],
-            "expression": "wins",
+            "aggregation": "count_win",
+            "source_attributes": ["win_loss_result"],
+            "expression": "SUM(CASE WHEN win_loss_result = 'win' THEN 1 ELSE 0 END)",
             "executable": True,
         },
         {
             "name": "losses",
-            "aggregation": "identity",
-            "source_attributes": ["losses"],
-            "expression": "losses",
+            "aggregation": "count_loss",
+            "source_attributes": ["win_loss_result"],
+            "expression": "SUM(CASE WHEN win_loss_result = 'loss' THEN 1 ELSE 0 END)",
             "executable": True,
         },
-        {
-            "name": "win_percentage",
-            "aggregation": "identity",
-            "source_attributes": ["win_percentage"],
-            "expression": "win_percentage",
-            "executable": True,
-        },
+    ],
+    "TeamSeason": [
         {
             "name": "average_points",
             "aggregation": "identity",
@@ -462,12 +380,175 @@ def build_attribute_payload(
     return payload
 
 
+def metric_payload(
+    *,
+    name: str,
+    aggregation: str,
+    source_attribute: str,
+    expression: str,
+    executable: bool = True,
+) -> dict[str, object]:
+    return {
+        "name": name,
+        "aggregation": aggregation,
+        "source_attributes": [source_attribute],
+        "expression": expression,
+        "executable": executable,
+    }
+
+
+def is_public_measure_column(column: dict[str, object]) -> bool:
+    return column["attribute_kind"] == "measure" and column["visibility"] == "public"
+
+
+def is_rate_measure(column_name: str) -> bool:
+    return any(token in column_name for token in RATE_MEASURE_TOKENS)
+
+
+def game_metric_base_name(column_name: str) -> str:
+    if column_name in GAME_METRIC_BASE_OVERRIDES:
+        return GAME_METRIC_BASE_OVERRIDES[column_name]
+    if column_name.startswith("opponent_total_"):
+        return "opponent_" + column_name.removeprefix("opponent_total_")
+    if column_name.startswith("total_"):
+        return column_name.removeprefix("total_")
+    return column_name
+
+
+def generated_game_metrics(column: dict[str, object]) -> list[dict[str, object]]:
+    source_attribute = str(column["name"])
+    base_name = game_metric_base_name(source_attribute)
+    metrics = [
+        metric_payload(
+            name=f"average_{base_name}",
+            aggregation="avg",
+            source_attribute=source_attribute,
+            expression=f"AVG({source_attribute})",
+        )
+    ]
+    if not is_rate_measure(source_attribute):
+        metrics.insert(
+            0,
+            metric_payload(
+                name=f"total_{base_name}",
+                aggregation="sum",
+                source_attribute=source_attribute,
+                expression=f"SUM({source_attribute})",
+            ),
+        )
+    return metrics
+
+
+def generated_season_metric(column: dict[str, object]) -> dict[str, object]:
+    source_attribute = str(column["name"])
+    return metric_payload(
+        name=source_attribute,
+        aggregation="identity",
+        source_attribute=source_attribute,
+        expression=source_attribute,
+    )
+
+
+def generated_metrics_for_object(object_name: str, columns: list[dict[str, object]]) -> list[dict[str, object]]:
+    public_measure_columns = [column for column in columns if is_public_measure_column(column)]
+    if object_name in GAME_GRAIN_OBJECTS:
+        return [
+            metric
+            for column in public_measure_columns
+            for metric in generated_game_metrics(column)
+        ]
+    if object_name in SEASON_GRAIN_OBJECTS:
+        return [generated_season_metric(column) for column in public_measure_columns]
+    return []
+
+
+def dedupe_metrics(metrics: list[dict[str, object]]) -> list[dict[str, object]]:
+    deduped = []
+    seen_names = set()
+    for metric in metrics:
+        metric_name = metric["name"]
+        if metric_name in seen_names:
+            continue
+        seen_names.add(metric_name)
+        deduped.append(metric)
+    return deduped
+
+
+def metrics_for_object(object_name: str, columns: list[dict[str, object]]) -> list[dict[str, object]]:
+    # Generated metrics expose every executable public stat surface supported by
+    # the snapshot. Overrides are only for semantic aliases and non-executable
+    # formulas that cannot be generated safely from one source column.
+    return dedupe_metrics(
+        generated_metrics_for_object(object_name, columns)
+        + METRIC_OVERRIDES_BY_OBJECT.get(object_name, [])
+    )
+
+
+def quote_identifier(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def supported_measure_columns_by_object(inventory: dict[str, object]) -> dict[str, set[str]]:
+    # Executable metrics must be backed by data, not just by a schema column.
+    # All-null snapshot columns remain queryable attributes but are not promoted
+    # to metrics that would otherwise render blank analytical answers.
+    import duckdb
+
+    from scripts.load_gold_snapshot import load_database
+
+    database_path = load_database()
+    conn = duckdb.connect(str(database_path), read_only=True)
+    support: dict[str, set[str]] = {}
+    for table in inventory["tables"]:
+        object_name = table["object_name"] if "object_name" in table else object_name_for_table(table["table_name"])
+        public_measure_columns = [
+            str(column["name"])
+            for column in table["columns"]
+            if is_public_measure_column(column)
+        ]
+        if not public_measure_columns:
+            support[object_name] = set()
+            continue
+        count_expressions = []
+        for column_name in public_measure_columns:
+            quoted_column = quote_identifier(column_name)
+            count_expressions.extend(
+                [
+                    f"COUNT({quoted_column}) AS {quote_identifier(column_name + '__count')}",
+                    f"MIN({quoted_column}) AS {quote_identifier(column_name + '__min')}",
+                    f"MAX({quoted_column}) AS {quote_identifier(column_name + '__max')}",
+                ]
+            )
+        row = conn.execute(
+            f"SELECT {', '.join(count_expressions)} FROM {quote_identifier(table['table_name'])}"
+        ).fetchone()
+        supported_columns = set()
+        row_values = list(row or [])
+        for index, column_name in enumerate(public_measure_columns):
+            non_null_count = row_values[index * 3]
+            min_value = row_values[index * 3 + 1]
+            max_value = row_values[index * 3 + 2]
+            if not non_null_count or int(non_null_count) <= 0:
+                continue
+            if min_value == 0 and max_value == 0:
+                continue
+            supported_columns.add(column_name)
+        support[object_name] = supported_columns
+    return support
+
+
 def build_ontology_payload() -> dict[str, object]:
     inventory = json.loads(ATTRIBUTE_INVENTORY_PATH.read_text(encoding="utf-8"))
     value_aliases = yaml.safe_load(VALUE_ALIASES_PATH.read_text(encoding="utf-8")) or {}
+    supported_measure_columns = supported_measure_columns_by_object(inventory)
     objects = []
     for table in inventory["tables"]:
         object_name = table["object_name"] if "object_name" in table else object_name_for_table(table["table_name"])
+        metric_columns = [
+            column
+            for column in table["columns"]
+            if str(column["name"]) in supported_measure_columns.get(object_name, set())
+        ]
         object_payload = {
             "name": object_name,
             "backing_table": table["table_name"],
@@ -477,7 +558,7 @@ def build_ontology_payload() -> dict[str, object]:
                 for column in table["columns"]
             ]
             + DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, []),
-            "metrics": METRICS_BY_OBJECT.get(object_name, []),
+            "metrics": metrics_for_object(object_name, metric_columns),
         }
         objects.append(object_payload)
     return {"objects": objects, "links": LINKS}

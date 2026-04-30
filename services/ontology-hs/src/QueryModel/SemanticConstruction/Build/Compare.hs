@@ -1,18 +1,21 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Compare (semanticCompareDraftToQuery) where
+module QueryModel.SemanticConstruction.Build.Compare (semanticCompareDraftToQuery) where
 
 import Data.Text (Text)
-import OntologyLayer.Graph (findPath)
+import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeKind (Dimension), AttributeVisibility (Public), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.CandidateSelection
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
-import QueryModel.SemanticDraft.Filters
-import QueryModel.SemanticDraft.Grouping (requireGroupingDimensionReachable, resolveGroupingDimensionValue)
-import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticConstruction.CandidateSelection
+import QueryModel.SemanticConstruction.Grouping (requireGroupingDimensionReachable, resolveGroupingDimensionValue)
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
+import QueryModel.SemanticConstruction.FilterGrounding (groundDraftRowPredicate)
+import QueryModel.SemanticConstruction.TimeScope (comparisonTimeScope, timeScopeFilters)
+import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasureForFamily, requireResolvedComparisonEntities)
+import QueryModel.SemanticDraft.Normalize (normalizeTrendGrain)
 import QueryModel.SemanticDraft.Types
 
 semanticCompareDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -87,8 +90,11 @@ resolveComparisonGrounding ontology draft rawMeasure subjectObject displayDimens
         <> "', and the requested comparison filters against executable ontology metrics."
     comparisonCandidateEligibility factObjectValue = do
       _ <- findPath ontology 2 (objectName factObjectValue) (objectName subjectObject)
-      _ <- requireTimeScopeFactSurface timeScopeValue factObjectValue
-      pure (subjectFactAffinity subjectObject factObjectValue)
+      _ <- requireComparisonFactSurface maybeGrainValue timeScopeValue factObjectValue
+      let affinity = subjectFactAffinity subjectObject factObjectValue
+      if affinity >= 120
+        then Just affinity
+        else Nothing
     groundComparisonCandidate =
       groundComparisonFactCandidate ontology draft subjectObject displayDimensionValue maybeGrainValue filtersForComparison entityValues
 
@@ -164,3 +170,31 @@ comparisonQuery grounded =
                 (comparisonEntitiesValue grounded)
             )
       }
+
+requireComparisonFactSurface :: Maybe Text -> TimeScope -> Object -> Maybe ()
+requireComparisonFactSurface maybeGrainValue timeScopeValue factObjectValue =
+  -- Time scope and time grain are different ideas:
+  -- an exact season can filter either season rows or game rows, but a calendar
+  -- grain like month/week/day must use rows with game_date.
+  case maybeGrainValue of
+    Nothing -> requireTimeScopeFactSurface timeScopeValue factObjectValue
+    Just _ -> do
+      _ <- findAttribute factObjectValue "game_date"
+      case timeScopeValue of
+        RecentGames _ seasonFilters -> do
+          case seasonFilters of
+            [] -> Just ()
+            _ -> requireSeasonColumns
+        ExactSeason _ _ -> requireSeasonColumns
+        SeasonTypeOnly _ -> do
+          _ <- findAttribute factObjectValue "season_type"
+          Just ()
+        LastNDays _ -> Just ()
+        PastYear -> Just ()
+        DateRange _ _ -> Just ()
+        AllAvailable -> Just ()
+  where
+    requireSeasonColumns = do
+      _ <- findAttribute factObjectValue "season_year"
+      _ <- findAttribute factObjectValue "season_type"
+      Just ()

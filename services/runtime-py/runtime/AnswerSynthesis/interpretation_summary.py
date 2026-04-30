@@ -18,6 +18,7 @@ from runtime.AnalysisRuntime.models import PlanFindFilter, PlanFindOrder
 from runtime.AnswerSynthesis.answer_language import (
     field_phrase,
     grain_phrase,
+    grouping_phrase_label,
     join_nonempty,
     join_phrase,
     metric_phrase,
@@ -95,12 +96,7 @@ def _singular_lower(payload: SynthesisPayload) -> str:
 def _grouping_phrase(payload: SynthesisPayload) -> str:
     if not payload.grouping_columns:
         return _singular_lower(payload)
-    labels = [
-        payload.entity_label_singular.lower()
-        if grouping.label in {"team_name", "full_name"}
-        else grouping.label.replace("_", " ")
-        for grouping in payload.grouping_columns
-    ]
+    labels = [grouping_phrase_label(grouping.label, payload.entity_label_singular) for grouping in payload.grouping_columns]
     return _join_phrase(labels)
 
 
@@ -108,6 +104,17 @@ def _ranked_subject_phrase(payload: SynthesisPayload) -> str:
     if len(payload.grouping_columns) > 1:
         return f"{_grouping_phrase(payload)} combinations"
     return _plural_lower(payload)
+
+
+def _is_ascending_metric_order(payload: SynthesisPayload) -> bool:
+    return str(payload.metric_order_direction).lower() in {"asc", "ascending"}
+
+
+def _ranking_limit_phrase(payload: SynthesisPayload) -> str:
+    if payload.limit > 0:
+        direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
+        return f"{direction_label} {payload.limit}"
+    return "Ranked from lowest to highest" if _is_ascending_metric_order(payload) else "Ranked"
 
 
 def _grain_phrase(time_grain: Optional[str]) -> str:
@@ -360,7 +367,7 @@ def build_interpretation(payload: SynthesisPayload) -> str:
             ]
         ) + "."
 
-    limit_phrase = f"Top {payload.limit}" if payload.limit > 0 else "Ranked"
+    limit_phrase = _ranking_limit_phrase(payload)
     return _join_nonempty(
         [
             f"{limit_phrase} {_ranked_subject_phrase(payload)} by {metric}",

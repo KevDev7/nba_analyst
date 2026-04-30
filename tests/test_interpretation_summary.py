@@ -18,6 +18,7 @@ from runtime.AnalysisRuntime.models import (
     PlanDisplayMetric,
     PlanFindFilter,
     PlanFindOrder,
+    PlanGroupingColumn,
     RankingRow,
     TimeSeriesRow,
 )
@@ -67,6 +68,76 @@ class InterpretationSummaryTests(unittest.TestCase):
             build_interpretation(payload),
             "Top 10 players by average points over the last 8 games in the 2024-25 regular season.",
         )
+
+    def test_bottom_ranking_interpretation_uses_ascending_direction(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Player",
+            entity_label_plural="Players",
+            context_label="Team",
+            metric="average_points",
+            metric_order_direction="ASC",
+            window_games=10,
+            limit=10,
+            rows=[RankingRow(rank=1, entity_name="Abdul Gaddy", metric_value=0.0)],
+        )
+
+        answer = synthesize_answer(payload)
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Bottom 10 players by average points over the last 10 games.",
+        )
+        self.assertEqual(
+            answer.summary,
+            "Bottom 10 players by average points over the last 10 games: Abdul Gaddy is lowest with 0.0 average points.",
+        )
+
+    def test_player_by_team_grouping_uses_distinct_grouping_labels(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Player",
+            entity_label_plural="Players",
+            context_label="Team",
+            metric="average_points",
+            window_games=0,
+            season_label="2025-26",
+            season_type="regular_season",
+            limit=0,
+            rows=[
+                RankingRow(
+                    rank=1,
+                    entity_name="Luka Dončić",
+                    context_value="LAL",
+                    group_values={"group_1": "Luka Dončić", "group_2": "Lakers"},
+                    games_played=62,
+                    metric_value=33.7,
+                )
+            ],
+            grouping_columns=[
+                PlanGroupingColumn(column_key="group_1", label="full_name"),
+                PlanGroupingColumn(column_key="group_2", label="team_name"),
+            ],
+            display_metadata=[
+                PlanDisplayMetadata(column_key="games_played", label="Games Played", column_type="analytical_metadata"),
+            ],
+        )
+
+        answer = synthesize_answer(payload)
+        formatted = format_response(answer)
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Ranked player and team combinations by average points in the 2025-26 regular season.",
+        )
+        self.assertIn(
+            "Player and team combinations ranked by average points in the 2025-26 regular season",
+            answer.summary,
+        )
+        self.assertIn("Rank | Player | Team | Abbrev | Season | Season Type | Games Played | Average Points", formatted)
+        self.assertIn("1 | Luka Dončić | Lakers | LAL | 2025-26 | Regular Season | 62 | 33.7", formatted)
 
     def test_aggregate_interpretation_includes_grouping_and_season(self) -> None:
         payload = SynthesisPayload(

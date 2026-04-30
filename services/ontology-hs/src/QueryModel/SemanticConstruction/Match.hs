@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Match
+module QueryModel.SemanticConstruction.Match
   ( attributeKind
   , attributeName
   , attributeVisibility
@@ -36,9 +36,9 @@ import OntologyLayer.Types
   , Ontology (objects)
   )
 import qualified OntologyLayer.Types as OT
-import QueryModel.SemanticDraft.MeasureMatch
+import QueryModel.SemanticConstruction.MeasureMatch
 import QueryModel.SemanticDraft.Normalize
-import QueryModel.SemanticDraft.Types (TimeScope (AllAvailable, DateRange, ExactSeason, LastNDays, PastYear, RecentGames, SeasonTypeOnly))
+import QueryModel.SemanticConstruction.Types (TimeScope (AllAvailable, DateRange, ExactSeason, LastNDays, PastYear, RecentGames, SeasonTypeOnly))
 
 bestPublicDimensionMatch :: Text -> Object -> Maybe Text
 bestPublicDimensionMatch rawDimension objectValue =
@@ -102,15 +102,25 @@ resolveSubjectObject ontology rawSubject =
 
 subjectFactAffinity :: Object -> Object -> Int
 subjectFactAffinity subjectObject factObjectValue =
-  -- Prefer fact objects whose name contains the subject name, like PlayerGame for Player.
-  if normalizedKey (objectName subjectObject) `T.isInfixOf` normalizedKey (objectName factObjectValue)
-    then 100
-    else 0
+  -- Prefer fact objects whose grain starts with the subject, like TeamSeason for
+  -- Team over PlayerSeasonTeam. Fall back to "contains" for linked surfaces.
+  if subjectKey `T.isPrefixOf` factKey
+    then 120
+    else
+      if subjectKey `T.isInfixOf` factKey
+        then 100
+        else 0
+  where
+    subjectKey = normalizedKey (objectName subjectObject)
+    factKey = normalizedKey (objectName factObjectValue)
 
 trendFactAffinity :: Text -> Object -> Object -> Int
 trendFactAffinity trendGrain subjectObject factObjectValue =
-  subjectFactAffinity subjectObject factObjectValue + grainSurfaceScore
+  if baseAffinity > 0
+    then baseAffinity + grainSurfaceScore
+    else 0
   where
+    baseAffinity = subjectFactAffinity subjectObject factObjectValue
     grainSurfaceScore =
       case (trendGrain, findAttribute factObjectValue "game_date") of
         ("season", Nothing) -> 50

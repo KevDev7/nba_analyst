@@ -75,7 +75,7 @@ Find Lakers games over 120 points and show date, score, point differential.
 
 Likely files:
 
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Find.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Find.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Resolve/Find.hs`
@@ -108,7 +108,7 @@ Find Lakers games over 120 points and show date, opponent, score.
 Likely files:
 
 - `services/ontology-hs/src/OntologyLayer/Graph.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Find.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Resolve/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Compile/Sql/Find.hs`
 - `tests/test_find_queries.py`
@@ -142,7 +142,7 @@ Likely files:
 - `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 - `services/ontology-hs/src/QueryModel/IR.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Find.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Validation/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Resolve/Find.hs`
 - `services/ontology-hs/src/GroundedPlanning/Compile/Sql/Find.hs`

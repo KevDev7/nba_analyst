@@ -214,8 +214,8 @@ Done when:
 
 Semantic draft grounding:
 
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Trend.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Compare.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Trend.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Compare.hs`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
 
 Grounded planning:

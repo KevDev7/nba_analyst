@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Grouping
+module QueryModel.SemanticConstruction.Grouping
   ( bestOntologyGroupingDimensionMatch
   , groupingIdentityDimension
   , requireGroupingDimensionReachable
@@ -16,9 +16,9 @@ import qualified Data.Text as T
 import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (Ontology (objects), Object)
 import qualified OntologyLayer.Types as OT
-import QueryModel.SemanticDraft.Match
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
 import QueryModel.SemanticDraft.Normalize (normalizedKey)
-import QueryModel.SemanticDraft.Types
 
 resolveDefaultGroupingDimensions :: Ontology -> Object -> [Text] -> Either Text [SemanticGroupingDimension]
 resolveDefaultGroupingDimensions ontology subjectObject rawDimensions =

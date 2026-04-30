@@ -1,17 +1,19 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Object (semanticObjectDraftToQuery) where
+module QueryModel.SemanticConstruction.Build.Object (semanticObjectDraftToQuery) where
 
 import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Object, Ontology)
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.CandidateSelection
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
-import QueryModel.SemanticDraft.Filters
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.ResultFilterGrounding (groundDraftResultPredicate)
+import QueryModel.SemanticConstruction.CandidateSelection
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
+import QueryModel.SemanticConstruction.FilterGrounding (groundDraftRowPredicate)
+import QueryModel.SemanticConstruction.TimeScope (objectTimeScope, timeScopeFilters)
+import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasureForFamily, requireOptionalPositiveLimit, requireRankingSort)
+import QueryModel.SemanticConstruction.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
 semanticObjectDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -48,7 +50,10 @@ resolveObjectGrounding ontology draft rawMeasure rowObject objectTimeScopeValue 
     objectCandidateEligibility factObjectValue = do
       _ <- findPath ontology 2 (objectName factObjectValue) (objectName rowObject)
       _ <- requireTimeScopeFactSurface objectTimeScopeValue factObjectValue
-      pure (subjectFactAffinity rowObject factObjectValue)
+      let affinity = subjectFactAffinity rowObject factObjectValue
+      if affinity >= 120
+        then Just affinity
+        else Nothing
 
 groundObjectFactCandidate :: Ontology -> SemanticDraft -> Object -> TimeScope -> Maybe Int -> MetricFactCandidate -> Maybe GroundedRanking
 groundObjectFactCandidate ontology draft rowObject objectTimeScopeValue maybeLimit candidate = do

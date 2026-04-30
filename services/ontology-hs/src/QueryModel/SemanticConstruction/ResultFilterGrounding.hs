@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.ResultFilterGrounding
+module QueryModel.SemanticConstruction.ResultFilterGrounding
   ( groundDraftResultPredicate
   ) where
 
@@ -11,10 +11,10 @@ import qualified Data.Text as T
 import qualified QueryModel.IR as QI
 import qualified OntologyLayer.Types as OT
 import OntologyLayer.Types (Object)
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.MeasureMatch (bestExecutableMetricMatch, bestPublicMeasureAttributeMatch)
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.MeasureMatch (bestExecutableMetricMatch, bestPublicMeasureAttributeMatch)
 import QueryModel.SemanticDraft.Normalize (normalizedMeasureKey)
-import QueryModel.SemanticDraft.PredicateGrounding (combinePredicates, normalizeNumericPredicateValue, normalizePredicateOperator)
+import QueryModel.SemanticConstruction.PredicateGrounding (combinePredicates, normalizeNumericPredicateValue, normalizePredicateOperator)
 import QueryModel.SemanticDraft.Types (DraftFilter (filterField, filterOp, filterValue), DraftPredicate (..))
 
 groundDraftResultPredicate :: Object -> OT.MetricDef -> [DraftFilter] -> Maybe DraftPredicate -> Maybe (Maybe QI.Predicate)

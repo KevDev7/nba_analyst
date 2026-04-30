@@ -75,6 +75,43 @@ Why this is valuable:
 - improves direct team-game querying
 - gives cleaner inputs for future team-game or team-season derived metrics
 
+Follow-up discovered from semantic assistant testing:
+- Current local semantic snapshots only have reliable `team_game` scoring fields
+  such as `score`, `opponent_score`, and `point_differential`.
+- Team-game boxscore detail fields such as assists, rebounds, steals, blocks,
+  and many shooting/rebound columns are currently empty in `team_game`, and
+  their `team_season` rollups become zero/empty as a result.
+- A later profile of the local DuckDB semantic snapshot showed the same broader
+  issue: `TeamGame` has many measure columns in the contract, but only a small
+  scoring/possession/rating subset has real populated signal. `TeamSeason` also
+  has far fewer reliable populated measures than the contract shape suggests.
+- This is a data-quality / semantic-gold completeness problem, not an assistant
+  planning problem. The ontology should not expose broad team-grain metrics until
+  the underlying `team_game` and `team_season` values are actually populated.
+- Likely root cause: `semantic_gold/transform_to_team_game_parquet.py` reads
+  those fields from rows built with the narrower `TEAM_GAME_REQUIRED_COLUMNS`
+  imported from the gold `fct_team_game` transform, so fields like `assists`
+  and `reboundsTotal` are not present when the semantic row builder asks for
+  them.
+
+Later fix:
+- Make the semantic-gold team-game transform source its team boxscore measures
+  from `silver/boxscore_team_game` or from the richer gold team-game inputs,
+  instead of relying on the minimal `fct_team_game` required-column list.
+- After that, regenerate `semantic_gold.team_game`,
+  `semantic_gold.team_season`, the local DuckDB snapshot, and the ontology so
+  team-grain questions like "points, assists, and rebounds by team" are
+  answerable because the data exists, not because the assistant falls back to a
+  player-grain workaround.
+- Once those team-game and team-season measure columns are populated with real
+  signal, expose them as ontology metrics through the normal metric-generation
+  path. The long-term goal is broad team-grain metric coverage from the semantic
+  contract, not one-off assistant fixes for individual questions.
+- Add a data-quality check that fails or warns when a semantic-gold measure
+  column exists in the contract but is entirely null or constant-zero in the
+  generated snapshot. This would catch the `TeamGame` / `TeamSeason` issue before
+  it leaks into ontology generation or assistant behavior.
+
 ### 3. Structured birthplace fields for players
 
 Why it stands out:

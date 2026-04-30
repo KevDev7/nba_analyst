@@ -1,6 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module QueryModel.SemanticDraft.MatchAccessors
+module QueryModel.SemanticConstruction.MatchAccessors
   ( attributeKind
   , attributeName
   , attributeVisibility

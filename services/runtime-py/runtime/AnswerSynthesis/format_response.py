@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence, TypeVar
 
-from .answer_language import cell_value, field_label, format_metric_value, metric_header, time_header
+from .answer_language import cell_value, field_label, format_metric_value, grouping_label, metric_header, time_header
 from .response_models import FinalAnswer
 
 
@@ -87,9 +87,13 @@ def _display_metric_value(row: Any, key: str, metric: str) -> str:
 
 
 def _grouping_header(answer: FinalAnswer, label: str) -> str:
-    if label in {"team_name", "full_name"}:
-        return answer.entity_label_singular
-    return _field_header(label)
+    return grouping_label(label, answer.entity_label_singular)
+
+
+def _context_header(answer: FinalAnswer, grouping_headers: set[str]) -> str:
+    if answer.context_label == "Team" and "Team" in grouping_headers:
+        return "Abbrev"
+    return answer.context_label
 
 
 def _grouping_value(row: Any, key: str) -> object:
@@ -114,6 +118,7 @@ def _row_table_columns(answer: FinalAnswer, rows: Sequence[Any], include_rank: b
         columns.append(("Rank", lambda row: str(row.rank)))
 
     grouping_labels = {grouping.label for grouping in answer.grouping_columns}
+    grouping_headers = {_grouping_header(answer, grouping.label) for grouping in answer.grouping_columns}
     if answer.result_shape in {"aggregate", "ranking"} and answer.grouping_columns:
         for grouping in answer.grouping_columns:
             columns.append(
@@ -126,7 +131,7 @@ def _row_table_columns(answer: FinalAnswer, rows: Sequence[Any], include_rank: b
         columns.append((answer.entity_label_singular, lambda row: _cell_value(row.entity_name)))
 
     if answer.result_shape != "aggregate" and answer.context_label and any(row.context_value for row in rows):
-        columns.append((answer.context_label, lambda row: _cell_value(row.context_value)))
+        columns.append((_context_header(answer, grouping_headers), lambda row: _cell_value(row.context_value)))
 
     if answer.season_label and "season_year" not in grouping_labels:
         columns.append(("Season", lambda _row: _cell_value(answer.season_label)))

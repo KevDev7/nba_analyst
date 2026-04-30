@@ -75,6 +75,9 @@ compileDisplayMetricAggregation formula =
     "sum" -> "SUM(__" <> resultColumn formula <> "_source)"
     "avg" -> "ROUND(AVG(__" <> resultColumn formula <> "_source), 1)"
     "identity" -> "MAX(__" <> resultColumn formula <> "_source)"
+    "count_win" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source = 'win' THEN 1 ELSE 0 END)"
+    "count_loss" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source = 'loss' THEN 1 ELSE 0 END)"
+    "count_true" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source THEN 1 ELSE 0 END)"
     _ -> error "Unsupported executable display-metric aggregation."
 
 displayMetricSourceAttribute :: ResolvedMetricFormula -> Maybe Text
@@ -122,6 +125,9 @@ compileResultPredicateAggregation predicateLeaf =
     "sum" -> "SUM(__" <> resultPredicateKey predicateLeaf <> "_source)"
     "avg" -> "ROUND(AVG(__" <> resultPredicateKey predicateLeaf <> "_source), 1)"
     "identity" -> "MAX(__" <> resultPredicateKey predicateLeaf <> "_source)"
+    "count_win" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source = 'win' THEN 1 ELSE 0 END)"
+    "count_loss" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source = 'loss' THEN 1 ELSE 0 END)"
+    "count_true" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source THEN 1 ELSE 0 END)"
     _ -> error "Unsupported result-predicate aggregation."
 
 renderResultPredicateSourceSelectLines :: Text -> Maybe ResolvedResultPredicateTree -> [Text]

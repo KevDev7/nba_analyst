@@ -187,9 +187,9 @@ Semantic draft:
 
 - `apps/assistant/semantic/interpreter.py`
 - `services/ontology-hs/src/QueryModel/SemanticDraft/Types.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/FilterGrounding.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/ResultFilterGrounding.hs`
-- `services/ontology-hs/src/QueryModel/SemanticDraft/Find.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/FilterGrounding.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/ResultFilterGrounding.hs`
+- `services/ontology-hs/src/QueryModel/SemanticConstruction/Build/Find.hs`
 
 Query model:
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.FilterGrounding
+module QueryModel.SemanticConstruction.FilterGrounding
   ( groundDraftRowPredicate
   ) where
 
@@ -14,11 +14,12 @@ import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeKind (Dimension, Measure), AttributeVisibility (Public), Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.Filters (draftFilterTextValue, seasonTypeFromFilter)
-import QueryModel.SemanticDraft.Match (attributeName, identityDimension, objectName)
-import QueryModel.SemanticDraft.MeasureMatch (measureAttributeScore)
+import QueryModel.SemanticDraft.Filters (draftFilterTextValue)
+import QueryModel.SemanticConstruction.Match (attributeName, identityDimension, objectName)
+import QueryModel.SemanticConstruction.MeasureMatch (measureAttributeScore)
 import QueryModel.SemanticDraft.Normalize (normalizedKey, normalizedMeasureKey, subjectMatchKey)
-import QueryModel.SemanticDraft.PredicateGrounding (combinePredicates, normalizePredicateOperator, numericFilterValue, textFilterValue)
+import QueryModel.SemanticConstruction.PredicateGrounding (combinePredicates, normalizePredicateOperator, numericFilterValue, textFilterValue)
+import QueryModel.SemanticConstruction.TimeScope (seasonTypeFromFilter)
 import QueryModel.SemanticDraft.Types (DraftFilter (filterField, filterOp, filterValue), DraftPredicate (..))
 
 groundDraftRowPredicate :: Ontology -> Object -> [DraftFilter] -> Maybe DraftPredicate -> Maybe (Maybe QI.Predicate)

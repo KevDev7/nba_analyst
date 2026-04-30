@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.PredicateGrounding
+module QueryModel.SemanticConstruction.PredicateGrounding
   ( combinePredicates
   , normalizeNumericPredicateValue
   , normalizePredicateOperator

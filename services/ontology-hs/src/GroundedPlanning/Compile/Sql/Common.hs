@@ -54,6 +54,9 @@ compileMetricAggregation formula =
     "sum" -> "SUM(metric_source)"
     "avg" -> "ROUND(AVG(metric_source), 1)"
     "identity" -> "MAX(metric_source)"
+    "count_win" -> "SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END)"
+    "count_loss" -> "SUM(CASE WHEN metric_source = 'loss' THEN 1 ELSE 0 END)"
+    "count_true" -> "SUM(CASE WHEN metric_source THEN 1 ELSE 0 END)"
     _ -> error "Unsupported executable metric aggregation."
 
 renderTrendFilterConditions :: Text -> [Filter] -> [Text]

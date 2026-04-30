@@ -64,6 +64,39 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
             self.assertEqual(attrs["game_year_month"]["source_column"], "game_date")
             self.assertIsNotNone(attrs["game_year_month"]["derivation"])
 
+    def test_generated_ontology_promotes_public_stat_columns_to_executable_metrics(self) -> None:
+        ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
+        objects = {obj["name"]: obj for obj in ontology["objects"]}
+
+        team_game_metrics = {metric["name"]: metric for metric in objects["TeamGame"]["metrics"]}
+        self.assertEqual(team_game_metrics["total_points"]["source_attributes"], ["score"])
+        self.assertEqual(team_game_metrics["total_point_differential"]["aggregation"], "sum")
+        self.assertTrue(team_game_metrics["total_point_differential"]["executable"])
+        self.assertEqual(team_game_metrics["average_offensive_rating"]["aggregation"], "avg")
+        self.assertNotIn("total_offensive_rating", team_game_metrics)
+        self.assertNotIn("total_assists", team_game_metrics)
+
+        player_game_metrics = {metric["name"]: metric for metric in objects["PlayerGame"]["metrics"]}
+        self.assertEqual(player_game_metrics["games_won"]["source_attributes"], ["win_loss_result"])
+        self.assertEqual(player_game_metrics["games_won"]["aggregation"], "count_win")
+        self.assertEqual(player_game_metrics["games_lost"]["aggregation"], "count_loss")
+        self.assertEqual(player_game_metrics["games_started"]["source_attributes"], ["is_starter"])
+        self.assertEqual(player_game_metrics["games_started"]["aggregation"], "count_true")
+
+        player_season_team_metrics = {
+            metric["name"]: metric for metric in objects["PlayerSeasonTeam"]["metrics"]
+        }
+        self.assertEqual(
+            player_season_team_metrics["steals_total"]["source_attributes"],
+            ["steals_total"],
+        )
+        self.assertEqual(player_season_team_metrics["blocks_per_game"]["aggregation"], "identity")
+
+        team_season_metrics = {metric["name"]: metric for metric in objects["TeamSeason"]["metrics"]}
+        self.assertIn("average_points", team_season_metrics)
+        self.assertNotIn("assists_total", team_season_metrics)
+        self.assertNotIn("rebounds_total", team_season_metrics)
+
     def test_team_average_points_query_is_ontology_driven(self) -> None:
         output = run_cli("Show me teams by average points over the last 10 games")
         self.assertIn("Teams ranked by average points", output)

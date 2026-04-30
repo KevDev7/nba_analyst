@@ -145,7 +145,7 @@ comparisonRuntimeMetricSupported base metricDef =
   executable metricDef
     && if isExactSeasonBundle (filters base) && timeGrain base == Nothing
       then aggregation metricDef `elem` ["identity"]
-      else aggregation metricDef `elem` ["sum", "avg"]
+      else aggregation metricDef `elem` ["sum", "avg", "count_win", "count_loss", "count_true"]
     && length (source_attributes metricDef) == 1
 
 validateNoComparisonResultPredicate :: Maybe Predicate -> Either Text ()

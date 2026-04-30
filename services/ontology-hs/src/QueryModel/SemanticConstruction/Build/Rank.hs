@@ -1,18 +1,20 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module QueryModel.SemanticDraft.Rank (semanticRankDraftToQuery) where
+module QueryModel.SemanticConstruction.Build.Rank (semanticRankDraftToQuery) where
 
 import Data.Text (Text)
 import OntologyLayer.Graph (findPath)
 import OntologyLayer.Types (Ontology, Object)
 import qualified QueryModel.IR as QI
-import QueryModel.SemanticDraft.CandidateSelection
-import QueryModel.SemanticDraft.FilterGrounding (groundDraftRowPredicate)
-import QueryModel.SemanticDraft.Filters
-import QueryModel.SemanticDraft.Grouping (groupingIdentityDimension, requireGroupingDimensionReachable, resolveGroupingDimensionValue)
-import QueryModel.SemanticDraft.Match
-import QueryModel.SemanticDraft.ResultFilterGrounding (groundDraftResultPredicate)
+import QueryModel.SemanticConstruction.CandidateSelection
+import QueryModel.SemanticConstruction.Grouping (groupingIdentityDimension, requireGroupingDimensionReachable, resolveGroupingDimensionValue)
+import QueryModel.SemanticConstruction.Match
+import QueryModel.SemanticConstruction.Types
+import QueryModel.SemanticConstruction.FilterGrounding (groundDraftRowPredicate)
+import QueryModel.SemanticConstruction.TimeScope (rankingTimeScope, timeScopeFilters)
+import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasure, requireOptionalPositiveLimit, requireRankingSort)
+import QueryModel.SemanticConstruction.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
 semanticRankDraftToQuery :: Ontology -> SemanticDraft -> Either Text QI.Query
@@ -68,10 +70,12 @@ resolveRankingGrounding ontology draft rawMeasure subjectObject rankingDimension
       mapM_ (requireGroupingDimensionReachable ontology factObjectValue . groupingDimensionName) rankingDimensions
       _ <- requireTimeScopeFactSurface rankingTimeScopeValue factObjectValue
       let dimensionObjects = map groupingDimensionObject rankingDimensions
-      pure
-        ( maximum
-            (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) dimensionObjects)
-        )
+          affinity =
+            maximum
+              (subjectFactAffinity subjectObject factObjectValue : map (`subjectFactAffinity` factObjectValue) dimensionObjects)
+      if affinity >= 120
+        then Just affinity
+        else Nothing
     groundRankedCandidate candidate =
       groundFactCandidate ontology draft subjectObject rankingDimensions rankingTimeScopeValue maybeLimit candidate
 
