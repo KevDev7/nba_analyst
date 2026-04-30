@@ -211,6 +211,35 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIn("FROM team_game f", sql)
         self.assertIn("f.point_differential AS metric_source", sql)
 
+    def test_haskell_grounds_team_margin_metric_from_ontology_alias(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "margin",
+                "measures": ["margin"],
+                "dimensions": [],
+                "filters": [],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [{"by": "margin", "direction": "desc"}],
+                "limit": 10,
+                "sort": "desc",
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["metrics"], ["total_point_differential"])
+        self.assertEqual(plan["metric"], "total_point_differential")
+        self.assertIn("f.point_differential AS metric_source", sql)
+
     def test_haskell_grounds_monthly_team_wins_trend_from_game_outcomes(self) -> None:
         payload = call_plan_semantic_draft(
             {

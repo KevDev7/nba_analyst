@@ -192,6 +192,7 @@ data ResolvedFindPredicateLeaf = ResolvedFindPredicateLeaf
   , treePredicatePath :: DiscoveredPath
   , treePredicateColumn :: Text
   , treePredicateLabel :: Text
+  , treePredicateLinkRole :: Maybe Text
   , treePredicateOperator :: PredicateOperator
   , treePredicateValue :: PredicateValue
   }

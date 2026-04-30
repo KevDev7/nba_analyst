@@ -7,16 +7,14 @@ module QueryModel.SemanticConstruction.Find.Display
   ) where
 
 import Control.Applicative ((<|>))
-import Data.List (nub, sortOn)
-import Data.Ord (Down (Down))
+import Data.List (nub)
 import Data.Text (Text)
-import qualified Data.Text as T
-import OntologyLayer.Graph (DiscoveredPath (steps), findAllPathsFrom, findAttribute, findObject)
-import qualified OntologyLayer.Graph as OG
+import OntologyLayer.Graph (findAttribute)
 import OntologyLayer.Types (AttributeKind (Dimension, Measure), AttributeVisibility (Public), Object, Ontology)
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
 import QueryModel.SemanticConstruction.Find.Predicate (resolveFindPredicateAttribute)
+import QueryModel.SemanticConstruction.Find.Role
 import QueryModel.SemanticConstruction.Match
 import QueryModel.SemanticDraft.Normalize
 import QueryModel.SemanticDraft.Types
@@ -61,111 +59,15 @@ resolveFindAttributeDisplaySpec ontology targetObject actorObjects factObjectVal
     else Nothing
 
 resolveFindRoleDisplaySpec :: Ontology -> Object -> Text -> Maybe QI.FindDisplaySpec
-resolveFindRoleDisplaySpec ontology factObjectValue rawField =
-  case sortOn roleDisplayRank roleDisplayCandidates of
-    (_, candidate) : _ -> Just candidate
-    [] -> Nothing
-  where
-    roleDisplayCandidates =
-      [ ( scoreValue
-        , QI.FindDisplaySpec
-            { QI.findDisplayAttribute = identityName
-            , QI.findDisplayTargetObject = Just (objectName linkedObject)
-            , QI.findDisplayLinkRole = Just (lastLinkName pathValue)
-            , QI.findDisplayLabel = Just (roleDisplayLabel rawField pathValue linkedObject identityName)
-            }
-        )
-      | pathValue <- findAllPathsFrom ontology 2 (objectName factObjectValue)
-      , Just linkedObject <- [findObject ontology (OG.targetObjectName pathValue)]
-      , Just identityName <- [roleIdentityDimension linkedObject]
-      , Just identityAttribute <- [findAttribute linkedObject identityName]
-      , isPublicFindDisplayAttribute identityAttribute
-      , let scoreValue = roleDisplayScore rawField pathValue linkedObject identityName
-      , scoreValue > 0
-      ]
-    roleDisplayRank (scoreValue, displaySpec) =
-      (Down scoreValue, QI.findDisplayAttribute displaySpec)
-
-lastLinkName :: DiscoveredPath -> Text
-lastLinkName pathValue =
-  case reverse (steps pathValue) of
-    stepValue : _ -> OG.linkName stepValue
-    [] -> ""
-
-roleIdentityDimension :: Object -> Maybe Text
-roleIdentityDimension objectValue = do
-  identityName <- identityDimension objectValue
-  if "name" `T.isInfixOf` normalizedKey identityName
-    then Just identityName
-    else Nothing
-
-roleDisplayScore :: Text -> DiscoveredPath -> Object -> Text -> Int
-roleDisplayScore rawField pathValue linkedObject identityName =
-  maximum (0 : [score | (aliasValue, score) <- roleDisplayAliases pathValue linkedObject identityName, aliasValue == rawKey])
-  where
-    rawKey = normalizedMeasureKey rawField
-
-roleDisplayAliases :: DiscoveredPath -> Object -> Text -> [(Text, Int)]
-roleDisplayAliases pathValue linkedObject identityName =
-  [ (roleKey, 110)
-  , (roleKey <> targetKey, 105)
-  , (roleKey <> targetKey <> "name", 100)
-  , (roleKey <> "name", 95)
-  , (roleKey <> identityKey, 90)
-  ]
-    <> sourceKeyAliases
-    <> linkNameAliases
-  where
-    targetKey = normalizedKey (objectName linkedObject)
-    identityKey = normalizedMeasureKey identityName
-    roleKey = normalizedRoleKey pathValue linkedObject
-    sourceKeyAliases =
-      concat
-        [ [ (T.replace "id" "" sourceKeyValue, 85)
-          , (T.replace targetKey "" (T.replace "id" "" sourceKeyValue), 90)
-          ]
-        | stepValue <- maybeLastStep pathValue
-        , let sourceKeyValue = normalizedMeasureKey (OG.sourceKey stepValue)
-        ]
-    linkNameAliases =
-      concat
-        [ [ (linkNameValue, 80)
-          , (T.replace targetKey "" linkNameValue, 85)
-          ]
-        | stepValue <- maybeLastStep pathValue
-        , let linkNameValue = normalizedMeasureKey (OG.linkName stepValue)
-        ]
-
-normalizedRoleKey :: DiscoveredPath -> Object -> Text
-normalizedRoleKey pathValue linkedObject =
-  case maybeLastStep pathValue of
-    stepValue : _ ->
-      let targetKey = normalizedKey (objectName linkedObject)
-          sourceObjectKey = normalizedKey (OG.stepSourceObjectName stepValue)
-          linkKey = normalizedMeasureKey (OG.linkName stepValue)
-          sourceKeyValue = normalizedMeasureKey (OG.sourceKey stepValue)
-          fromLink = T.replace sourceObjectKey "" (T.replace targetKey "" linkKey)
-          fromSourceKey = T.replace "id" "" (T.replace targetKey "" sourceKeyValue)
-       in if fromLink /= "" then fromLink else fromSourceKey
-    [] -> ""
-
-maybeLastStep :: DiscoveredPath -> [OG.PathStep]
-maybeLastStep pathValue =
-  case reverse (steps pathValue) of
-    stepValue : _ -> [stepValue]
-    [] -> []
-
-roleDisplayLabel :: Text -> DiscoveredPath -> Object -> Text -> Text
-roleDisplayLabel rawField pathValue linkedObject identityName =
-  case roleDisplayScore rawField pathValue linkedObject identityName of
-    scoreValue | scoreValue >= 110 -> normalizedRoleKey pathValue linkedObject
-    _ -> normalizedSqlLabel rawField
-
-normalizedSqlLabel :: Text -> Text
-normalizedSqlLabel rawField =
-  case normalizedMeasureKey rawField of
-    "" -> "display_value"
-    labelValue -> labelValue
+resolveFindRoleDisplaySpec ontology factObjectValue rawField = do
+  roleMatch <- resolveRoleIdentityMatch ontology factObjectValue rawField
+  Just
+    QI.FindDisplaySpec
+      { QI.findDisplayAttribute = attributeName (roleIdentityAttribute roleMatch)
+      , QI.findDisplayTargetObject = Just (objectName (roleIdentityObject roleMatch))
+      , QI.findDisplayLinkRole = Just (roleIdentityLinkRole roleMatch)
+      , QI.findDisplayLabel = Just (roleIdentityLabel roleMatch)
+      }
 
 isPublicFindDisplayAttribute :: OT.Attribute -> Bool
 isPublicFindDisplayAttribute attributeValue =

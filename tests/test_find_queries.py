@@ -67,11 +67,18 @@ def assert_has_predicate_leaf(
     attribute: str,
     operator: str,
     value: object,
+    link_role: Optional[str] = None,
+    label: Optional[str] = None,
 ) -> None:
+    field = {"targetObject": target, "attribute": attribute, "location": "row"}
+    if link_role is not None:
+        field["linkRole"] = link_role
+    if label is not None:
+        field["label"] = label
     test.assertIn(
         {
             "kind": "leaf",
-            "field": {"targetObject": target, "attribute": attribute, "location": "row"},
+            "field": field,
             "operator": operator,
             "value": {"kind": "scalar", "value": value},
         },
@@ -131,6 +138,35 @@ class FindQueryTests(unittest.TestCase):
             ["game_date", "score", "point_differential", "team_name"],
         )
 
+    def test_haskell_uses_ontology_alias_for_find_margin_display(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                dimensions=["game date", "opponent", "score", "margin"],
+                order=[{"by": "date", "direction": "desc"}],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        self.assertEqual(
+            spec["findDisplayDimensions"],
+            [
+                "game_date",
+                {
+                    "attribute": "team_name",
+                    "targetObject": "Team",
+                    "linkRole": "team_game_opponent_team",
+                    "label": "opponent",
+                },
+                "score",
+                "point_differential",
+            ],
+        )
+        self.assertIn("d2.team_name AS opponent", sql)
+        self.assertIn("f.point_differential AS point_differential", sql)
+        self.assertIn("ORDER BY r.game_date DESC", sql)
+
     def test_haskell_uses_role_aware_opponent_find_display(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
             lakers_games_draft(dimensions=["game date", "opponent", "score"])
@@ -169,6 +205,45 @@ class FindQueryTests(unittest.TestCase):
             list(runtime_result.find_rows[0].keys()),
             ["game_date", "opponent", "score", "team_name"],
         )
+
+    def test_haskell_uses_role_aware_opponent_find_predicate(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            lakers_games_draft(
+                filters=[
+                    {"field": "team name", "op": "=", "value": "Lakers"},
+                    {"field": "opponent name", "op": "=", "value": "Warriors"},
+                ],
+                entities=["Lakers", "Warriors"],
+            )
+        )
+
+        spec = payload["query"]["spec"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        assert_has_predicate_leaf(
+            self,
+            spec["findPredicateTree"],
+            target="Team",
+            attribute="team_name",
+            operator="equals",
+            value="Lakers",
+        )
+        assert_has_predicate_leaf(
+            self,
+            spec["findPredicateTree"],
+            target="Team",
+            attribute="team_name",
+            operator="equals",
+            value="Warriors",
+            link_role="team_game_opponent_team",
+            label="opponent",
+        )
+        self.assertIn("ON f.team_id = pt1.team_id", sql)
+        self.assertIn("ON f.opponent_team_id = pt2.team_id", sql)
+        self.assertIn("pt1.team_name = 'Lakers'", sql)
+        self.assertIn("pt2.team_name = 'Warriors'", sql)
+        self.assertIn("opponent", json.dumps(execution_plan["find_predicate_tree"]))
 
     def test_haskell_uses_requested_find_order_by_score_descending(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -781,6 +856,111 @@ class FindQueryTests(unittest.TestCase):
             rows = conn.execute(sql).fetchall()
         self.assertGreater(len(rows), 0)
         self.assertTrue(all("Smith" in row[0] for row in rows))
+
+    def test_haskell_scopes_generic_player_name_to_player_identity(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [],
+                "predicate": {"kind": "leaf", "field": "name", "op": "contains", "value": "Smith"},
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        predicate_tree = payload["query"]["spec"]["findPredicateTree"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        assert_has_predicate_leaf(
+            self,
+            predicate_tree,
+            target="Player",
+            attribute="full_name",
+            operator="contains",
+            value="Smith",
+        )
+        self.assertIn("f.full_name ILIKE '%Smith%'", sql)
+        self.assertNotIn("first_name ILIKE", sql)
+
+    def test_haskell_scopes_generic_team_name_to_team_identity(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "teams",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [],
+                "predicate": {"kind": "leaf", "field": "name", "op": "contains", "value": "Lake"},
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        predicate_tree = payload["query"]["spec"]["findPredicateTree"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        assert_has_predicate_leaf(
+            self,
+            predicate_tree,
+            target="Team",
+            attribute="team_name",
+            operator="contains",
+            value="Lake",
+        )
+        self.assertIn("f.team_name ILIKE '%Lake%'", sql)
+        self.assertNotIn("full_name ILIKE", sql)
+
+    def test_haskell_allows_qualified_linked_identity_name_predicate(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": ["player", "team"],
+                "filters": [],
+                "predicate": {"kind": "leaf", "field": "team name", "op": "contains", "value": "Lakers"},
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [],
+                "limit": 5,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        predicate_tree = payload["query"]["spec"]["findPredicateTree"]
+        sql = payload["execution_plan"]["steps"][0]["sql"]
+
+        assert_has_predicate_leaf(
+            self,
+            predicate_tree,
+            target="Team",
+            attribute="team_name",
+            operator="contains",
+            value="Lakers",
+        )
+        self.assertIn("team_name ILIKE '%Lakers%'", sql)
+        self.assertIn("JOIN team", sql)
 
     def test_haskell_grounds_find_predicate_tree_not_and_canonicalizes_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(

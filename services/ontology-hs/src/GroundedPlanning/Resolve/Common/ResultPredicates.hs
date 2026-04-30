@@ -159,6 +159,8 @@ planResultPredicateTree predicateTree =
           { predicateFieldTargetObject = ""
           , predicateFieldAttribute = resultPredicateLabel predicateLeaf
           , predicateLocation = PredicateResultField
+          , predicateFieldLinkRole = Nothing
+          , predicateFieldLabel = Nothing
           }
         (resultPredicateOperator predicateLeaf)
         (resultPredicateValue predicateLeaf)

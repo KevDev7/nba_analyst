@@ -64,6 +64,17 @@ GAME_METRIC_BASE_OVERRIDES = {
     "minutes_played": "minutes",
 }
 
+ATTRIBUTE_ALIASES_BY_OBJECT = {
+    "TeamGame": {
+        "point_differential": [
+            "margin",
+            "point margin",
+            "score margin",
+            "scoring margin",
+        ],
+    },
+}
+
 METRIC_OVERRIDES_BY_OBJECT = {
     "PlayerGame": [
         {
@@ -377,6 +388,9 @@ def build_attribute_payload(
     )
     if attribute_aliases:
         payload["value_aliases"] = attribute_aliases
+    semantic_aliases = ATTRIBUTE_ALIASES_BY_OBJECT.get(object_name, {}).get(column["name"], [])
+    if semantic_aliases:
+        payload["aliases"] = semantic_aliases
     return payload
 
 
@@ -387,14 +401,18 @@ def metric_payload(
     source_attribute: str,
     expression: str,
     executable: bool = True,
+    aliases=None,
 ) -> dict[str, object]:
-    return {
+    payload = {
         "name": name,
         "aggregation": aggregation,
         "source_attributes": [source_attribute],
         "expression": expression,
         "executable": executable,
     }
+    if aliases:
+        payload["aliases"] = aliases
+    return payload
 
 
 def is_public_measure_column(column: dict[str, object]) -> bool:
@@ -415,15 +433,17 @@ def game_metric_base_name(column_name: str) -> str:
     return column_name
 
 
-def generated_game_metrics(column: dict[str, object]) -> list[dict[str, object]]:
+def generated_game_metrics(object_name: str, column: dict[str, object]) -> list[dict[str, object]]:
     source_attribute = str(column["name"])
     base_name = game_metric_base_name(source_attribute)
+    source_aliases = ATTRIBUTE_ALIASES_BY_OBJECT.get(object_name, {}).get(source_attribute, [])
     metrics = [
         metric_payload(
             name=f"average_{base_name}",
             aggregation="avg",
             source_attribute=source_attribute,
             expression=f"AVG({source_attribute})",
+            aliases=prefixed_metric_aliases("average", source_aliases),
         )
     ]
     if not is_rate_measure(source_attribute):
@@ -434,9 +454,14 @@ def generated_game_metrics(column: dict[str, object]) -> list[dict[str, object]]
                 aggregation="sum",
                 source_attribute=source_attribute,
                 expression=f"SUM({source_attribute})",
+                aliases=source_aliases + prefixed_metric_aliases("total", source_aliases),
             ),
         )
     return metrics
+
+
+def prefixed_metric_aliases(prefix: str, aliases: list[str]) -> list[str]:
+    return [f"{prefix} {alias}" for alias in aliases]
 
 
 def generated_season_metric(column: dict[str, object]) -> dict[str, object]:
@@ -455,7 +480,7 @@ def generated_metrics_for_object(object_name: str, columns: list[dict[str, objec
         return [
             metric
             for column in public_measure_columns
-            for metric in generated_game_metrics(column)
+            for metric in generated_game_metrics(object_name, column)
         ]
     if object_name in SEASON_GRAIN_OBJECTS:
         return [generated_season_metric(column) for column in public_measure_columns]

@@ -8,7 +8,7 @@ module GroundedPlanning.Resolve.Find where
 import Data.Text (Text)
 import GroundedPlanning.Resolve.Common
 import GroundedPlanning.Resolve.Common.PredicateTrees
-import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathsFrom)
+import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathByLastLinkName, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
 import OntologyLayer.Types (Attribute (source_column), Object (backing_table), Ontology)
 import qualified OntologyLayer.Types as OT
@@ -141,7 +141,14 @@ resolveFindPredicateTree ontology factObjectName predicateTree =
 
 resolveFindPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ResolvedFindPredicateLeaf
 resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
-  predicatePathValue <- requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
+  predicatePathValue <-
+    case predicateFieldLinkRole fieldValue of
+      Just linkRoleValue ->
+        maybe
+          (Left ("Could not resolve an ontology path from '" <> factObjectName <> "' to '" <> predicateFieldTargetObject fieldValue <> "' through link role '" <> linkRoleValue <> "'."))
+          Right
+          (findPathByLastLinkName ontology 2 factObjectName (predicateFieldTargetObject fieldValue) linkRoleValue)
+      Nothing -> requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
   predicateObject <- requireObject ontology (predicateFieldTargetObject fieldValue)
   attributeValue <-
     maybe
@@ -153,8 +160,15 @@ resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predic
       { treePredicateTargetObjectName = predicateFieldTargetObject fieldValue
       , treePredicatePath = predicatePathValue
       , treePredicateColumn = source_column attributeValue
-      , treePredicateLabel = predicateFieldAttribute fieldValue
+      , treePredicateLabel = predicateOutputLabel fieldValue
+      , treePredicateLinkRole = predicateFieldLinkRole fieldValue
       , treePredicateOperator = operatorValue
       , treePredicateValue =
           canonicalizePredicateTreeValue attributeValue predicateValue
       }
+
+predicateOutputLabel :: PredicateField -> Text
+predicateOutputLabel fieldValue =
+  case predicateFieldLabel fieldValue of
+    Just labelValue -> labelValue
+    Nothing -> predicateFieldAttribute fieldValue

@@ -7,7 +7,7 @@ module GroundedPlanning.Validation.Common.RowPredicates
 import Data.Text (Text)
 import GroundedPlanning.Validation.Common.Ontology
 import GroundedPlanning.Validation.Common.PredicateRules
-import OntologyLayer.Graph (findAttribute)
+import OntologyLayer.Graph (findAttribute, findPathByLastLinkName)
 import OntologyLayer.Types (AttributeKind (PrimaryKey), AttributeVisibility (Public), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
@@ -20,7 +20,14 @@ validateRowPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOpera
 validateRowPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
   validatePredicateLocation "Row" PredicateRowField fieldValue
   predicateObject <- requireObject ontology (predicateFieldTargetObject fieldValue)
-  _ <- requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
+  _ <-
+    case predicateFieldLinkRole fieldValue of
+      Just linkRoleValue ->
+        maybe
+          (Left ("Row predicate path through link role '" <> linkRoleValue <> "' not found in ontology."))
+          Right
+          (findPathByLastLinkName ontology 2 factObjectName (predicateFieldTargetObject fieldValue) linkRoleValue)
+      Nothing -> requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
   attributeValue <-
     maybe
       (Left ("Row predicate attribute '" <> predicateFieldAttribute fieldValue <> "' not found in ontology."))

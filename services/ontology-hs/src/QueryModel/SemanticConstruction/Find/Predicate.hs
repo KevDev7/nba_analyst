@@ -19,6 +19,7 @@ import OntologyLayer.Graph (findAttribute, findPath)
 import OntologyLayer.Types (AttributeVisibility (Public), Object, Ontology (objects))
 import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
+import QueryModel.SemanticConstruction.Find.Role
 import QueryModel.SemanticConstruction.Match
 import QueryModel.SemanticConstruction.MeasureMatch (bestPublicMeasureAttributeMatch, measureAttributeScore)
 import QueryModel.SemanticDraft.Normalize
@@ -35,14 +36,10 @@ groundDraftFindFilterPredicate ontology targetObject actorObjects factObjectValu
   rawField <- filterField draftFilter
   rawValue <- filterValue draftFilter
   opValue <- normalizePredicateOperator (filterOp draftFilter)
-  (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
+  fieldValue <- resolveFindPredicateField ontology targetObject actorObjects factObjectValue rawField
   pure
     ( QI.PredicateLeaf
-        QI.PredicateField
-          { QI.predicateFieldTargetObject = objectName predicateObject
-          , QI.predicateFieldAttribute = attributeName predicateAttribute
-          , QI.predicateLocation = QI.PredicateRowField
-          }
+        fieldValue
         opValue
         (QI.PredicateScalar rawValue)
     )
@@ -52,14 +49,10 @@ groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue 
   case draftPredicate of
     DraftPredicateLeaf {draftPredicateField = rawField, draftPredicateOp = maybeRawOp, draftPredicateValue = rawValue} -> do
       opValue <- normalizePredicateOperator maybeRawOp
-      (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
+      fieldValue <- resolveFindPredicateField ontology targetObject actorObjects factObjectValue rawField
       pure
         ( QI.PredicateLeaf
-            QI.PredicateField
-              { QI.predicateFieldTargetObject = objectName predicateObject
-              , QI.predicateFieldAttribute = attributeName predicateAttribute
-              , QI.predicateLocation = QI.PredicateRowField
-              }
+            fieldValue
             opValue
             rawValue
         )
@@ -70,14 +63,107 @@ groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue 
     DraftPredicateNot predicateValue ->
       QI.PredicateNot <$> groundDraftFindPredicateTree ontology targetObject actorObjects factObjectValue predicateValue
 
+resolveFindPredicateField :: Ontology -> Object -> [Object] -> Object -> Text -> Maybe QI.PredicateField
+resolveFindPredicateField ontology targetObject actorObjects factObjectValue rawField =
+  case roleIdentityPredicateFieldMatch ontology factObjectValue rawField of
+    Just fieldValue -> Just fieldValue
+    Nothing -> do
+      (predicateObject, predicateAttribute) <- resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField
+      Just
+        QI.PredicateField
+          { QI.predicateFieldTargetObject = objectName predicateObject
+          , QI.predicateFieldAttribute = attributeName predicateAttribute
+          , QI.predicateLocation = QI.PredicateRowField
+          , QI.predicateFieldLinkRole = Nothing
+          , QI.predicateFieldLabel = Nothing
+          }
+
+roleIdentityPredicateFieldMatch :: Ontology -> Object -> Text -> Maybe QI.PredicateField
+roleIdentityPredicateFieldMatch ontology factObjectValue rawField = do
+  roleMatch <- resolveRoleIdentityMatch ontology factObjectValue rawField
+  if roleIdentityLabel roleMatch == attributeName (roleIdentityAttribute roleMatch)
+    then Nothing
+    else
+      Just
+        QI.PredicateField
+          { QI.predicateFieldTargetObject = objectName (roleIdentityObject roleMatch)
+          , QI.predicateFieldAttribute = attributeName (roleIdentityAttribute roleMatch)
+          , QI.predicateLocation = QI.PredicateRowField
+          , QI.predicateFieldLinkRole = Just (roleIdentityLinkRole roleMatch)
+          , QI.predicateFieldLabel = Just (roleIdentityLabel roleMatch)
+          }
+
 resolveFindPredicateAttribute :: Ontology -> Object -> [Object] -> Object -> Text -> Maybe (Object, OT.Attribute)
 resolveFindPredicateAttribute ontology targetObject actorObjects factObjectValue rawField =
-  case objectIdentityAttributeMatch ontology factObjectValue rawField of
+  case genericNameIdentityAttributeMatch targetObject rawField of
     Just matchValue -> Just matchValue
     Nothing ->
-      case bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField of
-        Just matchValue -> Just matchValue
-        Nothing -> factMeasureAttributeMatch factObjectValue rawField
+      if isGenericNameField rawField
+        then Nothing
+        else
+          case qualifiedIdentityAttributeMatch ontology factObjectValue rawField of
+            Just matchValue -> Just matchValue
+            Nothing ->
+              case objectIdentityAttributeMatch ontology factObjectValue rawField of
+                Just matchValue -> Just matchValue
+                Nothing ->
+                  case bestReachableAttributeMatch ontology targetObject actorObjects factObjectValue rawField of
+                    Just matchValue -> Just matchValue
+                    Nothing -> factMeasureAttributeMatch factObjectValue rawField
+
+genericNameIdentityAttributeMatch :: Object -> Text -> Maybe (Object, OT.Attribute)
+genericNameIdentityAttributeMatch targetObject rawField =
+  if isGenericNameField rawField
+    then (targetObject,) <$> objectNameIdentityAttribute targetObject
+    else Nothing
+
+qualifiedIdentityAttributeMatch :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
+qualifiedIdentityAttributeMatch ontology factObjectValue rawField =
+  case sortOn qualifiedIdentityRank matches of
+    matchValue : _ -> Just matchValue
+    [] -> Nothing
+  where
+    rawKey = normalizedMeasureKey rawField
+    candidateObjects = factObjectValue : reachableObjects ontology factObjectValue
+    matches =
+      [ (objectValue, attributeValue)
+      | objectValue <- candidateObjects
+      , Just attributeValue <- [objectNameIdentityAttribute objectValue]
+      , rawKey `elem` qualifiedIdentityAliasKeys objectValue attributeValue
+      ]
+    qualifiedIdentityRank (objectValue, attributeValue) =
+      ( if objectName objectValue == objectName factObjectValue then (0 :: Int) else 1
+      , objectName objectValue
+      , attributeName attributeValue
+      )
+
+objectNameIdentityAttribute :: Object -> Maybe OT.Attribute
+objectNameIdentityAttribute objectValue = do
+  identityName <- identityDimension objectValue
+  attributeValue <- findAttribute objectValue identityName
+  if attributeVisibility attributeValue == Public
+      && (OT.comparison_identity attributeValue || isNameLikeAttribute identityName)
+    then Just attributeValue
+    else Nothing
+
+qualifiedIdentityAliasKeys :: Object -> OT.Attribute -> [Text]
+qualifiedIdentityAliasKeys objectValue attributeValue =
+  nub
+    [ objectKey <> "name"
+    , objectKey <> identityKey
+    , identityKey
+    ]
+  where
+    objectKey = normalizedKey (objectName objectValue)
+    identityKey = normalizedMeasureKey (attributeName attributeValue)
+
+isGenericNameField :: Text -> Bool
+isGenericNameField rawField =
+  normalizedMeasureKey rawField `elem` ["name", "names"]
+
+isNameLikeAttribute :: Text -> Bool
+isNameLikeAttribute attributeNameValue =
+  "name" `T.isInfixOf` normalizedKey attributeNameValue
 
 objectIdentityAttributeMatch :: Ontology -> Object -> Text -> Maybe (Object, OT.Attribute)
 objectIdentityAttributeMatch ontology factObjectValue rawField =

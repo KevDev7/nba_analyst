@@ -51,6 +51,7 @@ data Attribute = Attribute
   , comparison_identity :: Bool
   , derivation :: Maybe AttributeDerivation
   , value_aliases :: Map Text [Text]
+  , semantic_aliases :: [Text]
   }
   deriving (Show, Eq, Generic, ToJSON)
 
@@ -65,6 +66,7 @@ instance FromJSON Attribute where
       <*> obj .:? "comparison_identity" .!= False
       <*> obj .: "derivation"
       <*> obj .:? "value_aliases" .!= mempty
+      <*> obj .:? "aliases" .!= []
 
 data AttributeDerivation = AttributeDerivation
   -- A derived attribute computed from another attribute.
@@ -97,8 +99,19 @@ data MetricDef = MetricDef
   , source_attributes :: [Text]
   , expression :: Text
   , executable :: Bool
+  , metric_aliases :: [Text]
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic, ToJSON)
+
+instance FromJSON MetricDef where
+  parseJSON = withObject "MetricDef" $ \obj ->
+    MetricDef
+      <$> obj .: "name"
+      <*> obj .: "aggregation"
+      <*> obj .: "source_attributes"
+      <*> obj .: "expression"
+      <*> obj .:? "executable" .!= False
+      <*> obj .:? "aliases" .!= []
 
 data LinkRelation
   -- Cardinality metadata for relationships between ontology objects.

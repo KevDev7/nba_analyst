@@ -96,6 +96,16 @@ findPath ontology maxDepth sourceName targetName
   where
     matchesTarget path = targetObjectName path == targetName
 
+findPathByLastLinkName :: Ontology -> Int -> Text -> Text -> Text -> Maybe DiscoveredPath
+findPathByLastLinkName ontology maxDepth sourceName targetName linkRole =
+  find matchesRole (findAllPathsFrom ontology maxDepth sourceName)
+  where
+    matchesRole path =
+      targetObjectName path == targetName
+        && case reverse (steps path) of
+          stepValue : _ -> linkName stepValue == linkRole
+          [] -> False
+
 findPathsFrom :: Ontology -> Int -> Text -> [DiscoveredPath]
 findPathsFrom ontology maxDepth sourceName =
   -- Breadth-first search over ontology links starting from one object.

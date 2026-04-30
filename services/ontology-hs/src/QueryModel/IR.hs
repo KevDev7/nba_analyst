@@ -20,6 +20,7 @@ module QueryModel.IR where
 import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.Aeson.Types (Parser)
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -189,16 +190,22 @@ data PredicateField = PredicateField
   { predicateFieldTargetObject :: Text
   , predicateFieldAttribute :: Text
   , predicateLocation :: PredicateFieldLocation
+  , predicateFieldLinkRole :: Maybe Text
+  , predicateFieldLabel :: Maybe Text
   }
   deriving (Show, Eq, Generic)
 
 instance ToJSON PredicateField where
   toJSON fieldValue =
-    object
+    object $
       [ "targetObject" .= predicateFieldTargetObject fieldValue
       , "attribute" .= predicateFieldAttribute fieldValue
       , "location" .= predicateLocation fieldValue
       ]
+        <> catMaybes
+          [ ("linkRole" .=) <$> predicateFieldLinkRole fieldValue
+          , ("label" .=) <$> predicateFieldLabel fieldValue
+          ]
 
 instance FromJSON PredicateField where
   parseJSON = withObject "PredicateField" $ \obj ->
@@ -206,6 +213,8 @@ instance FromJSON PredicateField where
       <$> obj .: "targetObject"
       <*> obj .: "attribute"
       <*> obj .: "location"
+      <*> obj .:? "linkRole"
+      <*> obj .:? "label"
 
 data PredicateOperator
   = PredicateEquals

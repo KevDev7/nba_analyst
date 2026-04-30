@@ -69,9 +69,13 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
         objects = {obj["name"]: obj for obj in ontology["objects"]}
 
         team_game_metrics = {metric["name"]: metric for metric in objects["TeamGame"]["metrics"]}
+        team_game_attributes = {attribute["name"]: attribute for attribute in objects["TeamGame"]["attributes"]}
         self.assertEqual(team_game_metrics["total_points"]["source_attributes"], ["score"])
         self.assertEqual(team_game_metrics["total_point_differential"]["aggregation"], "sum")
         self.assertTrue(team_game_metrics["total_point_differential"]["executable"])
+        self.assertIn("margin", team_game_attributes["point_differential"]["aliases"])
+        self.assertIn("margin", team_game_metrics["total_point_differential"]["aliases"])
+        self.assertIn("average margin", team_game_metrics["average_point_differential"]["aliases"])
         self.assertEqual(team_game_metrics["average_offensive_rating"]["aggregation"], "avg")
         self.assertNotIn("total_offensive_rating", team_game_metrics)
         self.assertNotIn("total_assists", team_game_metrics)

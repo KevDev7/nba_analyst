@@ -82,6 +82,8 @@ resultField attributeValue =
     { QI.predicateFieldTargetObject = ""
     , QI.predicateFieldAttribute = attributeValue
     , QI.predicateLocation = QI.PredicateResultField
+    , QI.predicateFieldLinkRole = Nothing
+    , QI.predicateFieldLabel = Nothing
     }
 
 singleSourceMetric :: OT.MetricDef -> Maybe Text

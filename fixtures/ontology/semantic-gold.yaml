@@ -1544,6 +1544,11 @@ objects:
     link_key: false
     visibility: public
     derivation: null
+    aliases:
+    - margin
+    - point margin
+    - score margin
+    - scoring margin
   - name: assists
     kind: measure
     source_column: assists
@@ -2031,12 +2036,26 @@ objects:
     - point_differential
     expression: SUM(point_differential)
     executable: true
+    aliases:
+    - margin
+    - point margin
+    - score margin
+    - scoring margin
+    - total margin
+    - total point margin
+    - total score margin
+    - total scoring margin
   - name: average_point_differential
     aggregation: avg
     source_attributes:
     - point_differential
     expression: AVG(point_differential)
     executable: true
+    aliases:
+    - average margin
+    - average point margin
+    - average score margin
+    - average scoring margin
   - name: total_possessions
     aggregation: sum
     source_attributes:

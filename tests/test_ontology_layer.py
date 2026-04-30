@@ -55,7 +55,8 @@ class OntologyLayerTests(unittest.TestCase):
     def test_validation_rejects_metric_source_attributes_outside_object(self) -> None:
         ontology = yaml.safe_load(yaml.safe_dump(self.ontology))
         player_game = next(obj for obj in ontology["objects"] if obj["name"] == "PlayerGame")
-        player_game["metrics"][0]["source_attributes"] = ["missing_points"]
+        total_points = next(metric for metric in player_game["metrics"] if metric["name"] == "total_points")
+        total_points["source_attributes"] = ["missing_points"]
         path = write_temp_ontology(ontology)
         self.addCleanup(path.unlink, missing_ok=True)
 

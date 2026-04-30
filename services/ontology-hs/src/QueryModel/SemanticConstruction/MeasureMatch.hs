@@ -63,7 +63,7 @@ metricMatchScore rawMeasure metricValue =
 
 metricAliases :: OT.MetricDef -> [(Text, Int)]
 metricAliases metricValue =
-  baseAliases <> aggregationAliases <> sourceAliases
+  baseAliases <> semanticAliases <> aggregationAliases <> sourceAliases
   where
     metricKey = normalizedMeasureKey (metricName metricValue)
     sourceKeys = map normalizedMeasureKey (metricSourceAttributes metricValue)
@@ -71,6 +71,11 @@ metricAliases metricValue =
     baseAliases =
       (metricKey, 100)
         : aliasMetricKey metricKey
+    semanticAliases =
+      [ (normalizedMeasureKey aliasValue, 100)
+      | aliasValue <- OT.metric_aliases metricValue
+      , normalizedMeasureKey aliasValue /= ""
+      ]
     sourceAliases =
       [ (sourceKey, 80)
       | sourceKey <- sourceKeys
@@ -209,11 +214,17 @@ measureAttributeScore rawField objectValue attributeValue =
         ]
           <> pointsAttributeAliases attributeKey
           <> minutesAttributeAliases attributeKey
+          <> semanticAttributeAliases
     suffixScores =
       [ 80
       | rawKeyValue <- rawAliasKeys
       , rawKeyValue /= ""
       , rawKeyValue `T.isSuffixOf` attributeKey
+      ]
+    semanticAttributeAliases =
+      [ (normalizedMeasureKey aliasValue, 100)
+      | aliasValue <- OT.semantic_aliases attributeValue
+      , normalizedMeasureKey aliasValue /= ""
       ]
 
 pointsAttributeAliases :: Text -> [(Text, Int)]

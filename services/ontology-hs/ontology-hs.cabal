@@ -77,6 +77,7 @@ executable ontology-hs
     , QueryModel.SemanticConstruction.FilterGrounding
     , QueryModel.SemanticConstruction.Find.Display
     , QueryModel.SemanticConstruction.Find.Predicate
+    , QueryModel.SemanticConstruction.Find.Role
     , QueryModel.SemanticConstruction.Grouping
     , QueryModel.SemanticConstruction.Match
     , QueryModel.SemanticConstruction.MatchAccessors

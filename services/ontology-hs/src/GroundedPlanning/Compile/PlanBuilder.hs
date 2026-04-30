@@ -221,6 +221,11 @@ planFindPredicateTree predicateTree =
           { QI.predicateFieldTargetObject = treePredicateTargetObjectName predicateLeaf
           , QI.predicateFieldAttribute = treePredicateLabel predicateLeaf
           , QI.predicateLocation = QI.PredicateRowField
+          , QI.predicateFieldLinkRole = treePredicateLinkRole predicateLeaf
+          , QI.predicateFieldLabel =
+              case treePredicateLinkRole predicateLeaf of
+                Just _ -> Just (treePredicateLabel predicateLeaf)
+                Nothing -> Nothing
           }
         (treePredicateOperator predicateLeaf)
         (treePredicateValue predicateLeaf)

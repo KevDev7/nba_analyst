@@ -9,7 +9,7 @@ import Data.Text (Text)
 import GroundedPlanning.Resolve.Common.Ontology
 import GroundedPlanning.Resolve.Common.PredicateTrees
 import GroundedPlanning.Resolve.Common.Types
-import OntologyLayer.Graph (findAttribute)
+import OntologyLayer.Graph (findAttribute, findPathByLastLinkName)
 import OntologyLayer.Types (Attribute (source_column), Ontology)
 import QueryModel.IR
 
@@ -29,7 +29,14 @@ resolveRowPredicateTree ontology factObjectName predicateTree =
 
 resolveRowPredicateLeaf :: Ontology -> Text -> PredicateField -> PredicateOperator -> PredicateValue -> Either Text ResolvedRowPredicateLeaf
 resolveRowPredicateLeaf ontology factObjectName fieldValue operatorValue predicateValue = do
-  predicatePathValue <- requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
+  predicatePathValue <-
+    case predicateFieldLinkRole fieldValue of
+      Just linkRoleValue ->
+        maybe
+          (Left ("Could not resolve an ontology path from '" <> factObjectName <> "' to '" <> predicateFieldTargetObject fieldValue <> "' through link role '" <> linkRoleValue <> "'."))
+          Right
+          (findPathByLastLinkName ontology 2 factObjectName (predicateFieldTargetObject fieldValue) linkRoleValue)
+      Nothing -> requirePath ontology factObjectName (predicateFieldTargetObject fieldValue)
   predicateObject <- requireObject ontology (predicateFieldTargetObject fieldValue)
   attributeValue <-
     maybe
@@ -56,6 +63,8 @@ planRowPredicateTree predicateTree =
           { predicateFieldTargetObject = rowPredicateTargetObjectName predicateLeaf
           , predicateFieldAttribute = rowPredicateLabel predicateLeaf
           , predicateLocation = PredicateRowField
+          , predicateFieldLinkRole = Nothing
+          , predicateFieldLabel = Nothing
           }
         (rowPredicateOperator predicateLeaf)
         (rowPredicateValue predicateLeaf)

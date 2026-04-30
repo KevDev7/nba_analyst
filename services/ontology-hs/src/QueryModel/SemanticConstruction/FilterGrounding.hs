@@ -44,6 +44,8 @@ groundDraftPredicate ontology factObjectValue draftPredicate =
               { QI.predicateFieldTargetObject = objectName targetObjectValue
               , QI.predicateFieldAttribute = attributeName attributeValue
               , QI.predicateLocation = QI.PredicateRowField
+              , QI.predicateFieldLinkRole = Nothing
+              , QI.predicateFieldLabel = Nothing
               }
             opValue
             rawValue
@@ -96,6 +98,8 @@ groundDraftFilterPredicate ontology factObjectValue draftFilter = do
           { QI.predicateFieldTargetObject = objectName targetObjectValue
           , QI.predicateFieldAttribute = attributeName attributeValue
           , QI.predicateLocation = QI.PredicateRowField
+          , QI.predicateFieldLinkRole = Nothing
+          , QI.predicateFieldLabel = Nothing
           }
         opValue
         (QI.PredicateScalar groundedValue)
