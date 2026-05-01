@@ -76,41 +76,47 @@ Why this is valuable:
 - gives cleaner inputs for future team-game or team-season derived metrics
 
 Follow-up discovered from semantic assistant testing:
-- Current local semantic snapshots only have reliable `team_game` scoring fields
-  such as `score`, `opponent_score`, and `point_differential`.
-- Team-game boxscore detail fields such as assists, rebounds, steals, blocks,
-  and many shooting/rebound columns are currently empty in `team_game`, and
-  their `team_season` rollups become zero/empty as a result.
-- A later profile of the local DuckDB semantic snapshot showed the same broader
-  issue: `TeamGame` has many measure columns in the contract, but only a small
-  scoring/possession/rating subset has real populated signal. `TeamSeason` also
-  has far fewer reliable populated measures than the contract shape suggests.
-- This is a data-quality / semantic-gold completeness problem, not an assistant
-  planning problem. The ontology should not expose broad team-grain metrics until
-  the underlying `team_game` and `team_season` values are actually populated.
-- Likely root cause: `semantic_gold/transform_to_team_game_parquet.py` reads
-  those fields from rows built with the narrower `TEAM_GAME_REQUIRED_COLUMNS`
-  imported from the gold `fct_team_game` transform, so fields like `assists`
-  and `reboundsTotal` are not present when the semantic row builder asks for
-  them.
+- Earlier local semantic snapshots only had reliable `team_game` scoring fields
+  such as `score`, `opponent_score`, and `point_differential`; broader team-game
+  boxscore fields such as assists, rebounds, steals, and blocks were empty.
+- That data-quality issue has since been fixed in the local DuckDB semantic
+  snapshot. As of the latest metric-quality audit, `TeamGame` has 76 populated
+  public measure columns and `TeamSeason` has 65 populated public measure
+  columns.
+- The ontology now exposes populated, non-rate TeamGame boxscore metrics through
+  the normal metric-generation path. This includes team-grain metrics such as
+  assists, rebounds, steals, blocks, shooting makes/attempts, fouls, turnovers,
+  and opponent mirrors.
+- `TeamSeason` now exposes all populated public measure columns as season-grain
+  identity metrics.
+- Planner/runtime regression now verifies the expanded metric surface end to
+  end through Haskell planning, Python execution, and answer formatting. Covered
+  examples include TeamGame assists/rebounds aggregates, TeamGame rebound
+  rankings, TeamSeason assist rankings, TeamSeason multi-metric object output,
+  and find-row display of TeamGame assists/rebounds.
+- `TeamGame` rate, percentage, pace, and ratio fields remain intentionally
+  deferred from metric exposure until their scale/formula semantics are audited.
+  Current examples include `pace`, `field_goals_percentage`,
+  `true_shooting_percentage`, and `assist_to_turnover_ratio`.
+
+Current guardrail:
+- Run `python3 scripts/audit_semantic_metric_quality.py` to inspect exposed,
+  deferred, missing-data, and unexpected-unexposed metric columns.
+- Run `python3 scripts/audit_semantic_metric_quality.py --fail-on-unexpected`
+  in future data/ontology refreshes to catch populated exposure-ready measures
+  that are not actually exposed through ontology metrics.
+- Run `python3 -m unittest tests.test_team_metric_runtime_regression` after
+  ontology refreshes that change team metric exposure.
 
 Later fix:
-- Make the semantic-gold team-game transform source its team boxscore measures
-  from `silver/boxscore_team_game` or from the richer gold team-game inputs,
-  instead of relying on the minimal `fct_team_game` required-column list.
-- After that, regenerate `semantic_gold.team_game`,
-  `semantic_gold.team_season`, the local DuckDB snapshot, and the ontology so
-  team-grain questions like "points, assists, and rebounds by team" are
-  answerable because the data exists, not because the assistant falls back to a
-  player-grain workaround.
-- Once those team-game and team-season measure columns are populated with real
-  signal, expose them as ontology metrics through the normal metric-generation
-  path. The long-term goal is broad team-grain metric coverage from the semantic
-  contract, not one-off assistant fixes for individual questions.
-- Add a data-quality check that fails or warns when a semantic-gold measure
-  column exists in the contract but is entirely null or constant-zero in the
-  generated snapshot. This would catch the `TeamGame` / `TeamSeason` issue before
-  it leaks into ontology generation or assistant behavior.
+- Audit the deferred `TeamGame` rate, percentage, pace, and ratio fields for
+  scale consistency and formula correctness.
+- Once those deferred fields have clear semantics, expose them as ontology
+  metrics through the normal metric-generation path rather than one-off assistant
+  fixes.
+- Keep the metric-quality audit in the semantic refresh loop so a future
+  `TeamGame` / `TeamSeason` population regression is caught before it leaks into
+  assistant behavior.
 
 ### 3. Structured birthplace fields for players
 

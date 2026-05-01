@@ -3,7 +3,7 @@
 This file tracks meaningful remaining gaps after the current deterministic chat surface. It is the current deferred-gap register for the warehouse and application layers.
 
 Review note:
-- reviewed against the current live Athena gold surface on March 29, 2026
+- reviewed against the current live semantic assistant surface on April 30, 2026
 - this file is intentionally directional rather than a schema inventory, so the warehouse metadata and deploy scripts remain the source of truth for current implemented fields and views
 
 ## Current shipped foundation
@@ -17,17 +17,25 @@ The app already supports:
 - date-range support
 - clarification for ambiguous player names
 - warehouse freshness metadata
+- ontology-backed `Player`, `Team`, `Arena`, `Game`, `PlayerGame`,
+  `TeamGame`, `PlayerSeason`, `PlayerSeasonTeam`, and `TeamSeason` objects
+- expanded TeamGame and TeamSeason boxscore metric coverage for team-grain
+  scoring, assists, rebounds, steals, blocks, fouls, turnovers, shooting
+  makes/attempts, and opponent mirrors where the local semantic snapshot has
+  populated signal
 
 ## Deferred gaps
 
 ### 1. Ontology and richer semantic abstraction
 
-The current semantic contract is strong enough for deterministic asks, but it is not yet a full ontology.
+The current semantic contract now has a real ontology-backed object and metric
+surface for the supported one-step assistant path, but it is not yet a full
+domain ontology for broad routed reasoning.
 
 Still missing:
 
-- richer entity semantics beyond current player/team/game/season coverage
-- explicit relationship metadata for broader routed reasoning
+- richer entity semantics beyond the current basketball stat objects
+- broader relationship metadata for routed reasoning outside the current graph
 - curated role/archetype metadata for evaluative and hypothetical analysis
 - stronger metric-family metadata for broader open-ended planning
 
@@ -59,16 +67,26 @@ Still missing:
 
 ### 4. Advanced basketball semantics
 
-Not modeled strongly enough yet:
+The semantic layer now exposes broad team boxscore totals and averages where the
+snapshot has populated signal. The remaining gap is stronger advanced-basketball
+meaning and lineage, not basic team assists/rebounds/boxscore coverage.
 
-- offensive / defensive / net rating
-- pace and possession-derived metrics
+Still not modeled strongly enough:
+
+- metric-family metadata that explains rate, percentage, possession, and
+  efficiency concepts to planning and answer synthesis
+- audited TeamGame rate/percentage/pace/ratio metric exposure; fields such as
+  `pace`, `field_goals_percentage`, `true_shooting_percentage`, and
+  `assist_to_turnover_ratio` are populated but intentionally deferred from
+  ontology metric exposure until scale/formula semantics are verified
 - lineup and on/off analytics
 - clutch and play-type splits
 - shot-location / tracking data
 
 Why deferred:
-- these need clearer lineage, broader source coverage, and stronger gold definitions before the app can expose them safely
+- these need clearer lineage, broader source coverage, stronger gold
+  definitions, or explicit semantic metadata before the app can expose them
+  safely
 
 ### 5. Retrieval and knowledge grounding
 

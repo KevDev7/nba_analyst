@@ -2006,6 +2006,18 @@ objects:
       source_attribute: game_date
       sql_expression: STRFTIME({fact_alias}.game_date, '%Y-%m')
   metrics:
+  - name: total_minutes
+    aggregation: sum
+    source_attributes:
+    - minutes_played
+    expression: SUM(minutes_played)
+    executable: true
+  - name: average_minutes
+    aggregation: avg
+    source_attributes:
+    - minutes_played
+    expression: AVG(minutes_played)
+    executable: true
   - name: total_points
     aggregation: sum
     source_attributes:
@@ -2056,6 +2068,558 @@ objects:
     - average point margin
     - average score margin
     - average scoring margin
+  - name: total_assists
+    aggregation: sum
+    source_attributes:
+    - assists
+    expression: SUM(assists)
+    executable: true
+  - name: average_assists
+    aggregation: avg
+    source_attributes:
+    - assists
+    expression: AVG(assists)
+    executable: true
+  - name: total_opponent_assists
+    aggregation: sum
+    source_attributes:
+    - opponent_assists
+    expression: SUM(opponent_assists)
+    executable: true
+  - name: average_opponent_assists
+    aggregation: avg
+    source_attributes:
+    - opponent_assists
+    expression: AVG(opponent_assists)
+    executable: true
+  - name: total_turnovers
+    aggregation: sum
+    source_attributes:
+    - turnovers
+    expression: SUM(turnovers)
+    executable: true
+  - name: average_turnovers
+    aggregation: avg
+    source_attributes:
+    - turnovers
+    expression: AVG(turnovers)
+    executable: true
+  - name: total_opponent_turnovers
+    aggregation: sum
+    source_attributes:
+    - opponent_turnovers
+    expression: SUM(opponent_turnovers)
+    executable: true
+  - name: average_opponent_turnovers
+    aggregation: avg
+    source_attributes:
+    - opponent_turnovers
+    expression: AVG(opponent_turnovers)
+    executable: true
+  - name: total_rebounds
+    aggregation: sum
+    source_attributes:
+    - total_rebounds
+    expression: SUM(total_rebounds)
+    executable: true
+  - name: average_rebounds
+    aggregation: avg
+    source_attributes:
+    - total_rebounds
+    expression: AVG(total_rebounds)
+    executable: true
+  - name: total_offensive_rebounds
+    aggregation: sum
+    source_attributes:
+    - offensive_rebounds
+    expression: SUM(offensive_rebounds)
+    executable: true
+  - name: average_offensive_rebounds
+    aggregation: avg
+    source_attributes:
+    - offensive_rebounds
+    expression: AVG(offensive_rebounds)
+    executable: true
+  - name: total_defensive_rebounds
+    aggregation: sum
+    source_attributes:
+    - defensive_rebounds
+    expression: SUM(defensive_rebounds)
+    executable: true
+  - name: average_defensive_rebounds
+    aggregation: avg
+    source_attributes:
+    - defensive_rebounds
+    expression: AVG(defensive_rebounds)
+    executable: true
+  - name: total_opponent_rebounds
+    aggregation: sum
+    source_attributes:
+    - opponent_total_rebounds
+    expression: SUM(opponent_total_rebounds)
+    executable: true
+  - name: average_opponent_rebounds
+    aggregation: avg
+    source_attributes:
+    - opponent_total_rebounds
+    expression: AVG(opponent_total_rebounds)
+    executable: true
+  - name: total_opponent_offensive_rebounds
+    aggregation: sum
+    source_attributes:
+    - opponent_offensive_rebounds
+    expression: SUM(opponent_offensive_rebounds)
+    executable: true
+  - name: average_opponent_offensive_rebounds
+    aggregation: avg
+    source_attributes:
+    - opponent_offensive_rebounds
+    expression: AVG(opponent_offensive_rebounds)
+    executable: true
+  - name: total_opponent_defensive_rebounds
+    aggregation: sum
+    source_attributes:
+    - opponent_defensive_rebounds
+    expression: SUM(opponent_defensive_rebounds)
+    executable: true
+  - name: average_opponent_defensive_rebounds
+    aggregation: avg
+    source_attributes:
+    - opponent_defensive_rebounds
+    expression: AVG(opponent_defensive_rebounds)
+    executable: true
+  - name: total_steals
+    aggregation: sum
+    source_attributes:
+    - steals
+    expression: SUM(steals)
+    executable: true
+  - name: average_steals
+    aggregation: avg
+    source_attributes:
+    - steals
+    expression: AVG(steals)
+    executable: true
+  - name: total_opponent_steals
+    aggregation: sum
+    source_attributes:
+    - opponent_steals
+    expression: SUM(opponent_steals)
+    executable: true
+  - name: average_opponent_steals
+    aggregation: avg
+    source_attributes:
+    - opponent_steals
+    expression: AVG(opponent_steals)
+    executable: true
+  - name: total_blocks
+    aggregation: sum
+    source_attributes:
+    - blocks
+    expression: SUM(blocks)
+    executable: true
+  - name: average_blocks
+    aggregation: avg
+    source_attributes:
+    - blocks
+    expression: AVG(blocks)
+    executable: true
+  - name: total_opponent_blocks
+    aggregation: sum
+    source_attributes:
+    - opponent_blocks
+    expression: SUM(opponent_blocks)
+    executable: true
+  - name: average_opponent_blocks
+    aggregation: avg
+    source_attributes:
+    - opponent_blocks
+    expression: AVG(opponent_blocks)
+    executable: true
+  - name: total_offensive_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - offensive_fouls_committed
+    expression: SUM(offensive_fouls_committed)
+    executable: true
+  - name: average_offensive_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - offensive_fouls_committed
+    expression: AVG(offensive_fouls_committed)
+    executable: true
+  - name: total_opponent_offensive_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - opponent_offensive_fouls_committed
+    expression: SUM(opponent_offensive_fouls_committed)
+    executable: true
+  - name: average_opponent_offensive_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - opponent_offensive_fouls_committed
+    expression: AVG(opponent_offensive_fouls_committed)
+    executable: true
+  - name: total_personal_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - personal_fouls_committed
+    expression: SUM(personal_fouls_committed)
+    executable: true
+  - name: average_personal_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - personal_fouls_committed
+    expression: AVG(personal_fouls_committed)
+    executable: true
+  - name: total_opponent_personal_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - opponent_personal_fouls_committed
+    expression: SUM(opponent_personal_fouls_committed)
+    executable: true
+  - name: average_opponent_personal_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - opponent_personal_fouls_committed
+    expression: AVG(opponent_personal_fouls_committed)
+    executable: true
+  - name: total_technical_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - technical_fouls_committed
+    expression: SUM(technical_fouls_committed)
+    executable: true
+  - name: average_technical_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - technical_fouls_committed
+    expression: AVG(technical_fouls_committed)
+    executable: true
+  - name: total_opponent_technical_fouls_committed
+    aggregation: sum
+    source_attributes:
+    - opponent_technical_fouls_committed
+    expression: SUM(opponent_technical_fouls_committed)
+    executable: true
+  - name: average_opponent_technical_fouls_committed
+    aggregation: avg
+    source_attributes:
+    - opponent_technical_fouls_committed
+    expression: AVG(opponent_technical_fouls_committed)
+    executable: true
+  - name: total_fouls_drawn
+    aggregation: sum
+    source_attributes:
+    - fouls_drawn
+    expression: SUM(fouls_drawn)
+    executable: true
+  - name: average_fouls_drawn
+    aggregation: avg
+    source_attributes:
+    - fouls_drawn
+    expression: AVG(fouls_drawn)
+    executable: true
+  - name: total_opponent_fouls_drawn
+    aggregation: sum
+    source_attributes:
+    - opponent_fouls_drawn
+    expression: SUM(opponent_fouls_drawn)
+    executable: true
+  - name: average_opponent_fouls_drawn
+    aggregation: avg
+    source_attributes:
+    - opponent_fouls_drawn
+    expression: AVG(opponent_fouls_drawn)
+    executable: true
+  - name: total_fast_break_points
+    aggregation: sum
+    source_attributes:
+    - fast_break_points
+    expression: SUM(fast_break_points)
+    executable: true
+  - name: average_fast_break_points
+    aggregation: avg
+    source_attributes:
+    - fast_break_points
+    expression: AVG(fast_break_points)
+    executable: true
+  - name: total_opponent_fast_break_points
+    aggregation: sum
+    source_attributes:
+    - opponent_fast_break_points
+    expression: SUM(opponent_fast_break_points)
+    executable: true
+  - name: average_opponent_fast_break_points
+    aggregation: avg
+    source_attributes:
+    - opponent_fast_break_points
+    expression: AVG(opponent_fast_break_points)
+    executable: true
+  - name: total_points_in_paint
+    aggregation: sum
+    source_attributes:
+    - points_in_paint
+    expression: SUM(points_in_paint)
+    executable: true
+  - name: average_points_in_paint
+    aggregation: avg
+    source_attributes:
+    - points_in_paint
+    expression: AVG(points_in_paint)
+    executable: true
+  - name: total_opponent_points_in_paint
+    aggregation: sum
+    source_attributes:
+    - opponent_points_in_paint
+    expression: SUM(opponent_points_in_paint)
+    executable: true
+  - name: average_opponent_points_in_paint
+    aggregation: avg
+    source_attributes:
+    - opponent_points_in_paint
+    expression: AVG(opponent_points_in_paint)
+    executable: true
+  - name: total_second_chance_points
+    aggregation: sum
+    source_attributes:
+    - second_chance_points
+    expression: SUM(second_chance_points)
+    executable: true
+  - name: average_second_chance_points
+    aggregation: avg
+    source_attributes:
+    - second_chance_points
+    expression: AVG(second_chance_points)
+    executable: true
+  - name: total_opponent_second_chance_points
+    aggregation: sum
+    source_attributes:
+    - opponent_second_chance_points
+    expression: SUM(opponent_second_chance_points)
+    executable: true
+  - name: average_opponent_second_chance_points
+    aggregation: avg
+    source_attributes:
+    - opponent_second_chance_points
+    expression: AVG(opponent_second_chance_points)
+    executable: true
+  - name: total_points_off_turnovers
+    aggregation: sum
+    source_attributes:
+    - points_off_turnovers
+    expression: SUM(points_off_turnovers)
+    executable: true
+  - name: average_points_off_turnovers
+    aggregation: avg
+    source_attributes:
+    - points_off_turnovers
+    expression: AVG(points_off_turnovers)
+    executable: true
+  - name: total_opponent_points_off_turnovers
+    aggregation: sum
+    source_attributes:
+    - opponent_points_off_turnovers
+    expression: SUM(opponent_points_off_turnovers)
+    executable: true
+  - name: average_opponent_points_off_turnovers
+    aggregation: avg
+    source_attributes:
+    - opponent_points_off_turnovers
+    expression: AVG(opponent_points_off_turnovers)
+    executable: true
+  - name: total_field_goals_made
+    aggregation: sum
+    source_attributes:
+    - field_goals_made
+    expression: SUM(field_goals_made)
+    executable: true
+  - name: average_field_goals_made
+    aggregation: avg
+    source_attributes:
+    - field_goals_made
+    expression: AVG(field_goals_made)
+    executable: true
+  - name: total_field_goals_attempted
+    aggregation: sum
+    source_attributes:
+    - field_goals_attempted
+    expression: SUM(field_goals_attempted)
+    executable: true
+  - name: average_field_goals_attempted
+    aggregation: avg
+    source_attributes:
+    - field_goals_attempted
+    expression: AVG(field_goals_attempted)
+    executable: true
+  - name: total_opponent_field_goals_made
+    aggregation: sum
+    source_attributes:
+    - opponent_field_goals_made
+    expression: SUM(opponent_field_goals_made)
+    executable: true
+  - name: average_opponent_field_goals_made
+    aggregation: avg
+    source_attributes:
+    - opponent_field_goals_made
+    expression: AVG(opponent_field_goals_made)
+    executable: true
+  - name: total_opponent_field_goals_attempted
+    aggregation: sum
+    source_attributes:
+    - opponent_field_goals_attempted
+    expression: SUM(opponent_field_goals_attempted)
+    executable: true
+  - name: average_opponent_field_goals_attempted
+    aggregation: avg
+    source_attributes:
+    - opponent_field_goals_attempted
+    expression: AVG(opponent_field_goals_attempted)
+    executable: true
+  - name: total_two_pointers_made
+    aggregation: sum
+    source_attributes:
+    - two_pointers_made
+    expression: SUM(two_pointers_made)
+    executable: true
+  - name: average_two_pointers_made
+    aggregation: avg
+    source_attributes:
+    - two_pointers_made
+    expression: AVG(two_pointers_made)
+    executable: true
+  - name: total_two_pointers_attempted
+    aggregation: sum
+    source_attributes:
+    - two_pointers_attempted
+    expression: SUM(two_pointers_attempted)
+    executable: true
+  - name: average_two_pointers_attempted
+    aggregation: avg
+    source_attributes:
+    - two_pointers_attempted
+    expression: AVG(two_pointers_attempted)
+    executable: true
+  - name: total_opponent_two_pointers_made
+    aggregation: sum
+    source_attributes:
+    - opponent_two_pointers_made
+    expression: SUM(opponent_two_pointers_made)
+    executable: true
+  - name: average_opponent_two_pointers_made
+    aggregation: avg
+    source_attributes:
+    - opponent_two_pointers_made
+    expression: AVG(opponent_two_pointers_made)
+    executable: true
+  - name: total_opponent_two_pointers_attempted
+    aggregation: sum
+    source_attributes:
+    - opponent_two_pointers_attempted
+    expression: SUM(opponent_two_pointers_attempted)
+    executable: true
+  - name: average_opponent_two_pointers_attempted
+    aggregation: avg
+    source_attributes:
+    - opponent_two_pointers_attempted
+    expression: AVG(opponent_two_pointers_attempted)
+    executable: true
+  - name: total_three_pointers_made
+    aggregation: sum
+    source_attributes:
+    - three_pointers_made
+    expression: SUM(three_pointers_made)
+    executable: true
+  - name: average_three_pointers_made
+    aggregation: avg
+    source_attributes:
+    - three_pointers_made
+    expression: AVG(three_pointers_made)
+    executable: true
+  - name: total_three_pointers_attempted
+    aggregation: sum
+    source_attributes:
+    - three_pointers_attempted
+    expression: SUM(three_pointers_attempted)
+    executable: true
+  - name: average_three_pointers_attempted
+    aggregation: avg
+    source_attributes:
+    - three_pointers_attempted
+    expression: AVG(three_pointers_attempted)
+    executable: true
+  - name: total_opponent_three_pointers_made
+    aggregation: sum
+    source_attributes:
+    - opponent_three_pointers_made
+    expression: SUM(opponent_three_pointers_made)
+    executable: true
+  - name: average_opponent_three_pointers_made
+    aggregation: avg
+    source_attributes:
+    - opponent_three_pointers_made
+    expression: AVG(opponent_three_pointers_made)
+    executable: true
+  - name: total_opponent_three_pointers_attempted
+    aggregation: sum
+    source_attributes:
+    - opponent_three_pointers_attempted
+    expression: SUM(opponent_three_pointers_attempted)
+    executable: true
+  - name: average_opponent_three_pointers_attempted
+    aggregation: avg
+    source_attributes:
+    - opponent_three_pointers_attempted
+    expression: AVG(opponent_three_pointers_attempted)
+    executable: true
+  - name: total_free_throws_made
+    aggregation: sum
+    source_attributes:
+    - free_throws_made
+    expression: SUM(free_throws_made)
+    executable: true
+  - name: average_free_throws_made
+    aggregation: avg
+    source_attributes:
+    - free_throws_made
+    expression: AVG(free_throws_made)
+    executable: true
+  - name: total_free_throws_attempted
+    aggregation: sum
+    source_attributes:
+    - free_throws_attempted
+    expression: SUM(free_throws_attempted)
+    executable: true
+  - name: average_free_throws_attempted
+    aggregation: avg
+    source_attributes:
+    - free_throws_attempted
+    expression: AVG(free_throws_attempted)
+    executable: true
+  - name: total_opponent_free_throws_made
+    aggregation: sum
+    source_attributes:
+    - opponent_free_throws_made
+    expression: SUM(opponent_free_throws_made)
+    executable: true
+  - name: average_opponent_free_throws_made
+    aggregation: avg
+    source_attributes:
+    - opponent_free_throws_made
+    expression: AVG(opponent_free_throws_made)
+    executable: true
+  - name: total_opponent_free_throws_attempted
+    aggregation: sum
+    source_attributes:
+    - opponent_free_throws_attempted
+    expression: SUM(opponent_free_throws_attempted)
+    executable: true
+  - name: average_opponent_free_throws_attempted
+    aggregation: avg
+    source_attributes:
+    - opponent_free_throws_attempted
+    expression: AVG(opponent_free_throws_attempted)
+    executable: true
   - name: total_possessions
     aggregation: sum
     source_attributes:
@@ -4293,6 +4857,18 @@ objects:
     - win_percentage
     expression: win_percentage
     executable: true
+  - name: minutes
+    aggregation: identity
+    source_attributes:
+    - minutes
+    expression: minutes
+    executable: true
+  - name: minutes_per_game
+    aggregation: identity
+    source_attributes:
+    - minutes_per_game
+    expression: minutes_per_game
+    executable: true
   - name: points_total
     aggregation: identity
     source_attributes:
@@ -4304,6 +4880,240 @@ objects:
     source_attributes:
     - points_per_game
     expression: points_per_game
+    executable: true
+  - name: assists_total
+    aggregation: identity
+    source_attributes:
+    - assists_total
+    expression: assists_total
+    executable: true
+  - name: assists_per_game
+    aggregation: identity
+    source_attributes:
+    - assists_per_game
+    expression: assists_per_game
+    executable: true
+  - name: turnovers_total
+    aggregation: identity
+    source_attributes:
+    - turnovers_total
+    expression: turnovers_total
+    executable: true
+  - name: turnovers_per_game
+    aggregation: identity
+    source_attributes:
+    - turnovers_per_game
+    expression: turnovers_per_game
+    executable: true
+  - name: rebounds_total
+    aggregation: identity
+    source_attributes:
+    - rebounds_total
+    expression: rebounds_total
+    executable: true
+  - name: rebounds_per_game
+    aggregation: identity
+    source_attributes:
+    - rebounds_per_game
+    expression: rebounds_per_game
+    executable: true
+  - name: offensive_rebounds_total
+    aggregation: identity
+    source_attributes:
+    - offensive_rebounds_total
+    expression: offensive_rebounds_total
+    executable: true
+  - name: offensive_rebounds_per_game
+    aggregation: identity
+    source_attributes:
+    - offensive_rebounds_per_game
+    expression: offensive_rebounds_per_game
+    executable: true
+  - name: defensive_rebounds_total
+    aggregation: identity
+    source_attributes:
+    - defensive_rebounds_total
+    expression: defensive_rebounds_total
+    executable: true
+  - name: defensive_rebounds_per_game
+    aggregation: identity
+    source_attributes:
+    - defensive_rebounds_per_game
+    expression: defensive_rebounds_per_game
+    executable: true
+  - name: steals_total
+    aggregation: identity
+    source_attributes:
+    - steals_total
+    expression: steals_total
+    executable: true
+  - name: steals_per_game
+    aggregation: identity
+    source_attributes:
+    - steals_per_game
+    expression: steals_per_game
+    executable: true
+  - name: blocks_total
+    aggregation: identity
+    source_attributes:
+    - blocks_total
+    expression: blocks_total
+    executable: true
+  - name: blocks_per_game
+    aggregation: identity
+    source_attributes:
+    - blocks_per_game
+    expression: blocks_per_game
+    executable: true
+  - name: offensive_fouls_committed_total
+    aggregation: identity
+    source_attributes:
+    - offensive_fouls_committed_total
+    expression: offensive_fouls_committed_total
+    executable: true
+  - name: personal_fouls_committed_total
+    aggregation: identity
+    source_attributes:
+    - personal_fouls_committed_total
+    expression: personal_fouls_committed_total
+    executable: true
+  - name: personal_fouls_committed_per_game
+    aggregation: identity
+    source_attributes:
+    - personal_fouls_committed_per_game
+    expression: personal_fouls_committed_per_game
+    executable: true
+  - name: technical_fouls_committed_total
+    aggregation: identity
+    source_attributes:
+    - technical_fouls_committed_total
+    expression: technical_fouls_committed_total
+    executable: true
+  - name: fouls_drawn_total
+    aggregation: identity
+    source_attributes:
+    - fouls_drawn_total
+    expression: fouls_drawn_total
+    executable: true
+  - name: field_goals_made_total
+    aggregation: identity
+    source_attributes:
+    - field_goals_made_total
+    expression: field_goals_made_total
+    executable: true
+  - name: field_goals_made_per_game
+    aggregation: identity
+    source_attributes:
+    - field_goals_made_per_game
+    expression: field_goals_made_per_game
+    executable: true
+  - name: field_goals_attempted_total
+    aggregation: identity
+    source_attributes:
+    - field_goals_attempted_total
+    expression: field_goals_attempted_total
+    executable: true
+  - name: field_goals_attempted_per_game
+    aggregation: identity
+    source_attributes:
+    - field_goals_attempted_per_game
+    expression: field_goals_attempted_per_game
+    executable: true
+  - name: field_goals_percentage
+    aggregation: identity
+    source_attributes:
+    - field_goals_percentage
+    expression: field_goals_percentage
+    executable: true
+  - name: two_pointers_made_total
+    aggregation: identity
+    source_attributes:
+    - two_pointers_made_total
+    expression: two_pointers_made_total
+    executable: true
+  - name: two_pointers_made_per_game
+    aggregation: identity
+    source_attributes:
+    - two_pointers_made_per_game
+    expression: two_pointers_made_per_game
+    executable: true
+  - name: two_pointers_attempted_total
+    aggregation: identity
+    source_attributes:
+    - two_pointers_attempted_total
+    expression: two_pointers_attempted_total
+    executable: true
+  - name: two_pointers_attempted_per_game
+    aggregation: identity
+    source_attributes:
+    - two_pointers_attempted_per_game
+    expression: two_pointers_attempted_per_game
+    executable: true
+  - name: two_pointers_percentage
+    aggregation: identity
+    source_attributes:
+    - two_pointers_percentage
+    expression: two_pointers_percentage
+    executable: true
+  - name: three_pointers_made_total
+    aggregation: identity
+    source_attributes:
+    - three_pointers_made_total
+    expression: three_pointers_made_total
+    executable: true
+  - name: three_pointers_made_per_game
+    aggregation: identity
+    source_attributes:
+    - three_pointers_made_per_game
+    expression: three_pointers_made_per_game
+    executable: true
+  - name: three_pointers_attempted_total
+    aggregation: identity
+    source_attributes:
+    - three_pointers_attempted_total
+    expression: three_pointers_attempted_total
+    executable: true
+  - name: three_pointers_attempted_per_game
+    aggregation: identity
+    source_attributes:
+    - three_pointers_attempted_per_game
+    expression: three_pointers_attempted_per_game
+    executable: true
+  - name: three_pointers_percentage
+    aggregation: identity
+    source_attributes:
+    - three_pointers_percentage
+    expression: three_pointers_percentage
+    executable: true
+  - name: free_throws_made_total
+    aggregation: identity
+    source_attributes:
+    - free_throws_made_total
+    expression: free_throws_made_total
+    executable: true
+  - name: free_throws_made_per_game
+    aggregation: identity
+    source_attributes:
+    - free_throws_made_per_game
+    expression: free_throws_made_per_game
+    executable: true
+  - name: free_throws_attempted_total
+    aggregation: identity
+    source_attributes:
+    - free_throws_attempted_total
+    expression: free_throws_attempted_total
+    executable: true
+  - name: free_throws_attempted_per_game
+    aggregation: identity
+    source_attributes:
+    - free_throws_attempted_per_game
+    expression: free_throws_attempted_per_game
+    executable: true
+  - name: free_throws_percentage
+    aggregation: identity
+    source_attributes:
+    - free_throws_percentage
+    expression: free_throws_percentage
     executable: true
   - name: possessions
     aggregation: identity
@@ -4323,6 +5133,12 @@ objects:
     - defensive_possessions
     expression: defensive_possessions
     executable: true
+  - name: pace
+    aggregation: identity
+    source_attributes:
+    - pace
+    expression: pace
+    executable: true
   - name: offensive_rating
     aggregation: identity
     source_attributes:
@@ -4340,6 +5156,72 @@ objects:
     source_attributes:
     - net_rating
     expression: net_rating
+    executable: true
+  - name: assist_percentage
+    aggregation: identity
+    source_attributes:
+    - assist_percentage
+    expression: assist_percentage
+    executable: true
+  - name: assist_to_turnover_ratio
+    aggregation: identity
+    source_attributes:
+    - assist_to_turnover_ratio
+    expression: assist_to_turnover_ratio
+    executable: true
+  - name: offensive_rebound_percentage
+    aggregation: identity
+    source_attributes:
+    - offensive_rebound_percentage
+    expression: offensive_rebound_percentage
+    executable: true
+  - name: defensive_rebound_percentage
+    aggregation: identity
+    source_attributes:
+    - defensive_rebound_percentage
+    expression: defensive_rebound_percentage
+    executable: true
+  - name: rebound_percentage
+    aggregation: identity
+    source_attributes:
+    - rebound_percentage
+    expression: rebound_percentage
+    executable: true
+  - name: steal_percentage
+    aggregation: identity
+    source_attributes:
+    - steal_percentage
+    expression: steal_percentage
+    executable: true
+  - name: block_percentage
+    aggregation: identity
+    source_attributes:
+    - block_percentage
+    expression: block_percentage
+    executable: true
+  - name: effective_field_goal_percentage
+    aggregation: identity
+    source_attributes:
+    - effective_field_goal_percentage
+    expression: effective_field_goal_percentage
+    executable: true
+  - name: three_point_attempt_rate
+    aggregation: identity
+    source_attributes:
+    - three_point_attempt_rate
+    expression: three_point_attempt_rate
+    executable: true
+  - name: free_throw_attempt_rate
+    aggregation: identity
+    source_attributes:
+    - free_throw_attempt_rate
+    expression: free_throw_attempt_rate
+    executable: true
+  - name: true_shooting_percentage
+    aggregation: identity
+    source_attributes:
+    - true_shooting_percentage
+    expression: true_shooting_percentage
     executable: true
   - name: average_points
     aggregation: identity

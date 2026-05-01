@@ -5,9 +5,13 @@ This document records the next planned semantic objects after the current
 
 - `player`
 - `team`
+- `arena`
 - `game`
 - `player_game`
 - `team_game`
+- `player_season`
+- `player_season_team`
+- `team_season`
 
 It is intentionally a roadmap artifact, not an implementation contract. The
 goal is to make the future object surface explicit early so ontology work does
@@ -33,16 +37,20 @@ The current live semantic objects are:
 
 - `Player`
 - `Team`
+- `Arena`
 - `Game`
 - `PlayerGame`
 - `TeamGame`
+- `PlayerSeason`
+- `PlayerSeasonTeam`
+- `TeamSeason`
 
-## Next Object Batch
+## Shipped Season Object Batch
 
 ### `PlayerSeason`
 
-Priority:
-- next major semantic object
+Status:
+- shipped semantic object
 
 Why it matters:
 - users naturally ask season-level questions about players
@@ -52,35 +60,61 @@ Why it matters:
   questions through game-level facts
 
 Expected grain:
-- one row per `(person_id, season_year, season_type)` or equivalent canonical
-  season key once a `Season` object exists
+- one row per `(person_id, season_year, season_type)`
 
-Likely backing surface:
-- future `semantic_gold.player_season`
+Backing surface:
+- `semantic_gold.player_season`
 
-Likely core links:
+Current core links:
 - `PlayerSeason -> Player`
-- `PlayerSeason -> Season` later
-- possibly `PlayerSeason -> Team` when season-team semantics are made explicit
 
-Likely dimensions:
+Current dimensions include:
 - `person_id`
-- `full_name`
 - `season_year`
 - `season_type`
-- team identity for that season
-- position / role / status fields that are meaningful at season grain
 
-Likely measures:
+Current measures include:
 - season totals
 - season averages
 - season rates
 - season games played
 
+### `PlayerSeasonTeam`
+
+Status:
+- shipped semantic object
+
+Why it matters:
+- users ask about player production for a specific team in a season
+- it handles multi-team player seasons without forcing one ambiguous season row
+- it is the clean home for team-filtered player season object outputs
+
+Expected grain:
+- one row per `(person_id, team_id, season_year, season_type)`
+
+Backing surface:
+- `semantic_gold.player_season_team`
+
+Current core links:
+- `PlayerSeasonTeam -> Player`
+- `PlayerSeasonTeam -> Team`
+
+Current dimensions include:
+- `person_id`
+- `team_id`
+- `season_year`
+- `season_type`
+- team stint context
+
+Current measures include:
+- season-team totals
+- season-team per-game metrics
+- season-team advanced/rate fields where supported
+
 ### `TeamSeason`
 
-Priority:
-- next major semantic object
+Status:
+- shipped semantic object
 
 Why it matters:
 - team-level season questions are a first-class business concept
@@ -89,28 +123,26 @@ Why it matters:
 - it gives the ontology a clean home for season-level team metrics
 
 Expected grain:
-- one row per `(team_id, season_year, season_type)` or equivalent canonical
-  season key once a `Season` object exists
+- one row per `(team_id, season_year, season_type)`
 
-Likely backing surface:
-- future `semantic_gold.team_season`
+Backing surface:
+- `semantic_gold.team_season`
 
-Likely core links:
+Current core links:
 - `TeamSeason -> Team`
-- `TeamSeason -> Season` later
 
-Likely dimensions:
+Current dimensions include:
 - `team_id`
-- `team_name`
 - `season_year`
 - `season_type`
-- conference / division if added to the semantic surface later
 
-Likely measures:
+Current measures include:
 - wins
 - losses
 - win percentage
-- season scoring and efficiency metrics
+- season scoring
+- assists, rebounds, steals, blocks, fouls, turnovers, shooting totals, per-game
+  metrics, percentages, and other populated public season measures
 
 ## Later Supporting Objects
 

@@ -57,6 +57,14 @@ RATE_MEASURE_TOKENS = (
 
 GAME_GRAIN_OBJECTS = {"PlayerGame", "TeamGame"}
 SEASON_GRAIN_OBJECTS = {"PlayerSeason", "PlayerSeasonTeam", "TeamSeason"}
+TEAM_GAME_ALLOWED_RATE_COLUMNS = {
+    # These were already exposed before the broader team-game boxscore data
+    # became populated. Keep them stable while deferring newly populated
+    # team-game rate/percentage surfaces whose scales still need audit.
+    "offensive_rating",
+    "defensive_rating",
+    "net_rating",
+}
 
 GAME_METRIC_BASE_OVERRIDES = {
     "score": "points",
@@ -475,7 +483,12 @@ def generated_season_metric(column: dict[str, object]) -> dict[str, object]:
 
 
 def generated_metrics_for_object(object_name: str, columns: list[dict[str, object]]) -> list[dict[str, object]]:
-    public_measure_columns = [column for column in columns if is_public_measure_column(column)]
+    public_measure_columns = [
+        column
+        for column in columns
+        if is_public_measure_column(column)
+        and metric_column_is_exposure_ready(object_name, str(column["name"]))
+    ]
     if object_name in GAME_GRAIN_OBJECTS:
         return [
             metric
@@ -485,6 +498,14 @@ def generated_metrics_for_object(object_name: str, columns: list[dict[str, objec
     if object_name in SEASON_GRAIN_OBJECTS:
         return [generated_season_metric(column) for column in public_measure_columns]
     return []
+
+
+def metric_column_is_exposure_ready(object_name: str, column_name: str) -> bool:
+    if object_name != "TeamGame":
+        return True
+    if column_name in TEAM_GAME_ALLOWED_RATE_COLUMNS:
+        return True
+    return not is_rate_measure(column_name)
 
 
 def dedupe_metrics(metrics: list[dict[str, object]]) -> list[dict[str, object]]:

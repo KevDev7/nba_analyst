@@ -338,30 +338,48 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIn("f.is_starter AS metric_source", sql)
         self.assertIn("SUM(CASE WHEN metric_source THEN 1 ELSE 0 END) AS metric_value", sql)
 
-    def test_haskell_does_not_fallback_to_player_rows_for_unsupported_team_multi_stats(self) -> None:
-        with self.assertRaises(AssertionError) as context:
-            call_plan_semantic_draft(
-                {
-                    "task": "aggregate",
-                    "subject": "teams",
-                    "measure": "points",
-                    "measures": ["points", "assists", "rebounds"],
-                    "dimensions": ["team"],
-                    "filters": [],
-                    "time_window": {"kind": "last_n_games", "value": 10},
-                    "grain": None,
-                    "order": [],
-                    "limit": None,
-                    "sort": None,
-                    "entities": [],
-                    "operations": [],
-                    "assumptions": [],
-                }
-            )
+    def test_haskell_grounds_team_multi_stats_from_team_game_metrics(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "aggregate",
+                "subject": "teams",
+                "measure": "points",
+                "measures": ["points", "assists", "rebounds"],
+                "dimensions": ["team"],
+                "filters": [],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [],
+                "limit": None,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
 
-        self.assertIn(
-            "Could not ground aggregate draft with subject 'teams'",
-            str(context.exception),
+        shared = payload["query"]["spec"]["sharedQuery"]
+        resolved = payload["resolved_query"]["resolved"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["metrics"], ["total_points", "total_assists", "total_rebounds"])
+        self.assertEqual(resolved["rowObjectName"], "Team")
+        self.assertEqual(resolved["factTableName"], "team_game")
+        self.assertEqual(
+            [metric["metricKey"] for metric in resolved["displayMetricFormulas"]],
+            ["total_points", "total_assists", "total_rebounds"],
+        )
+        self.assertEqual(
+            [metric["metric"] for metric in plan["display_metrics"]],
+            ["total_points", "total_assists", "total_rebounds"],
+        )
+        self.assertIn("f.assists AS __metric_2_source", sql)
+        self.assertIn("f.total_rebounds AS __metric_3_source", sql)
+        self.assertNotIn(
+            "FROM player_game",
+            sql,
         )
 
     def test_haskell_grounds_season_object_draft_with_generated_box_score_metrics(self) -> None:
