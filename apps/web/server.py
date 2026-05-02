@@ -48,4 +48,9 @@ def chat(request: ChatRequest) -> ChatResponse:
     except Exception as exc:
         return ChatResponse(ok=False, error=str(exc))
 
-    return ChatResponse(ok=True, answer=result.answer, debug=result.debug)
+    return ChatResponse(
+        ok=True,
+        answer=result.answer,
+        artifacts=result.artifacts or [],
+        debug=result.debug,
+    )

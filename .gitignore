@@ -22,3 +22,9 @@ dist/
 dist-newstyle/
 services/ontology-hs/dist/
 services/ontology-hs/dist-newstyle/
+
+# Node / SvelteKit
+node_modules/
+.svelte-kit/
+build/
+coverage/
