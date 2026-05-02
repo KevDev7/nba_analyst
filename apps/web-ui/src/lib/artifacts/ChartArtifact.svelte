@@ -54,7 +54,6 @@
       <p class="label">Chart artifact</p>
       <h3>{artifact.title}</h3>
     </div>
-    <p class="chart-renderer">{artifact.renderer}</p>
   </div>
 
   {#if chartModel.status === "unsupported"}

@@ -15,13 +15,3 @@ export function formatCellValue(value: unknown, columnType: ArtifactColumnType):
 export function columnAlignment(columnType: ArtifactColumnType): "left" | "right" {
   return columnType === "number" || columnType === "integer" ? "right" : "left";
 }
-
-export function columnTypeIcon(columnType: ArtifactColumnType): string {
-  if (columnType === "number" || columnType === "integer") {
-    return "#";
-  }
-  if (columnType === "date") {
-    return "cal";
-  }
-  return "Aa";
-}

@@ -64,7 +64,7 @@ def _build_chart_artifact(table: AnalysisTable, operation: ChartOperation, mark:
     frame = _dataframe_from_table(table)
     _coerce_numeric_column(frame, y_column)
 
-    chart = alt.Chart(frame, title=_chart_title(table, operation, x_column, y_column))
+    chart = alt.Chart(frame)
     if mark == "line":
         chart = chart.mark_line(point=True)
     else:
@@ -82,7 +82,7 @@ def _build_chart_artifact(table: AnalysisTable, operation: ChartOperation, mark:
             title=series_column.label,
         )
 
-    spec = chart.encode(**encodings).to_dict()
+    spec = _configure_chart(chart.encode(**encodings)).to_dict()
     return ChartArtifact(
         renderer="vega_lite",
         title=_chart_title(table, operation, x_column, y_column),
@@ -160,6 +160,34 @@ def _vega_lite_type(column: AnalysisTableColumn) -> str:
     if column.type == "boolean":
         return "nominal"
     return "nominal"
+
+
+def _configure_chart(chart: alt.Chart) -> alt.Chart:
+    return (
+        chart.configure_axis(
+            labelColor="#3d3d3a",
+            labelFont="Inter",
+            labelFontSize=12,
+            titleColor="#252523",
+            titleFont="Inter",
+            titleFontSize=12,
+            titleFontWeight=500,
+            gridColor="#ebe6df",
+            domainColor="#e6dfd8",
+            tickColor="#e6dfd8",
+        )
+        .configure_legend(
+            labelColor="#3d3d3a",
+            labelFont="Inter",
+            labelFontSize=12,
+            titleColor="#252523",
+            titleFont="Inter",
+            titleFontSize=12,
+            titleFontWeight=500,
+            symbolSize=80,
+        )
+        .configure_view(stroke=None)
+    )
 
 
 def _tooltip_columns(columns: list[AnalysisTableColumn]) -> list[alt.Tooltip]:
