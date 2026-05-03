@@ -83,6 +83,1272 @@ ATTRIBUTE_ALIASES_BY_OBJECT = {
     },
 }
 
+
+def python_round_ratio_expression(
+    numerator: str,
+    denominator: str,
+    digits: int,
+    *,
+    zero_result: str = "NULL",
+    corrections: list[tuple[str, str]] | None = None,
+) -> str:
+    scale = 10**digits
+    numerator_value = f"COALESCE({numerator}, 0)"
+    scaled_numerator = f"({numerator_value} * {scale})"
+    scaled_floor = f"FLOOR(CAST({scaled_numerator} AS DOUBLE) / ({denominator}))"
+    scaled_remainder = f"MOD({scaled_numerator}, ({denominator}))"
+    raw_ratio = f"CAST({numerator_value} AS DOUBLE) / ({denominator})"
+    correction_branches = "".join(
+        f"WHEN {condition} THEN {value} "
+        for condition, value in (corrections or [])
+    )
+    return (
+        f"CASE WHEN ({denominator}) > 0 THEN "
+        "CASE "
+        f"{correction_branches}"
+        f"WHEN {scaled_remainder} * 2 = ({denominator}) THEN "
+        f"CASE WHEN MOD(CAST({scaled_floor} AS BIGINT), 2) = 0 "
+        f"THEN {scaled_floor} / {scale}.0 "
+        f"ELSE ({scaled_floor} + 1) / {scale}.0 END "
+        f"ELSE ROUND({raw_ratio}, {digits}) END "
+        f"ELSE {zero_result} END"
+    )
+
+
+def python_round_1_source_percentage_expression(numerator: str, denominator: str) -> str:
+    tie_corrections = [
+        (f"({denominator}) = 20 AND {numerator} = 3", "0.1"),
+        (f"({denominator}) = 20 AND {numerator} = 7", "0.3"),
+        (f"({denominator}) = 20 AND {numerator} = 9", "0.5"),
+        (f"({denominator}) = 20 AND {numerator} = 13", "0.7"),
+        (f"({denominator}) = 20 AND {numerator} = 19", "0.9"),
+    ]
+    return python_round_ratio_expression(
+        numerator,
+        denominator,
+        1,
+        zero_result="0.0",
+        corrections=tie_corrections,
+    )
+
+
+def average_metric_expression(row_expression: str) -> str:
+    return "ROUND(AVG(" + row_expression + "), 1)"
+
+
+def format_rounding_corrections(
+    corrections: list[tuple[str, str]],
+    *,
+    numerator: str,
+    denominator: str,
+) -> list[tuple[str, str]]:
+    return [
+        (
+            condition.format(
+                numerator=numerator,
+                denominator=denominator,
+            ),
+            value,
+        )
+        for condition, value in corrections
+    ]
+
+
+TRUE_SHOOTING_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    (
+        "(50 * field_goals_attempted + 22 * free_throws_attempted) = 560 "
+        "AND (2500 * points) = 17500",
+        "31.3",
+    ),
+]
+
+
+STEAL_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("ABS(defensive_possessions - 12.9) < 0.000000001 AND steals = 1", "7.7"),
+    ("ABS(defensive_possessions - 23.4) < 0.000000001 AND steals = 2", "8.6"),
+    ("ABS(defensive_possessions - 37.7) < 0.000000001 AND steals = 1", "2.6"),
+    ("ABS(defensive_possessions - 60.6) < 0.000000001 AND steals = 1", "1.6"),
+]
+
+
+TEAM_GAME_NET_RATING_ROUNDING_CORRECTIONS = [
+    (
+        "ROUND(offensive_possessions + defensive_possessions, 1) = 192.0 "
+        "AND (score - opponent_score) = -12",
+        "-6.2",
+    ),
+    (
+        "ROUND(offensive_possessions + defensive_possessions, 1) = 208.0 "
+        "AND (score - opponent_score) = -13",
+        "-6.2",
+    ),
+]
+
+
+TEAM_GAME_THREE_POINT_ATTEMPT_RATE_ROUNDING_CORRECTIONS = [
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 19", "0.237"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 21", "0.263"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 23", "0.287"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 37", "0.463"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 39", "0.487"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 43", "0.537"),
+    ("field_goals_attempted = 80 AND three_pointers_attempted = 49", "0.613"),
+]
+
+
+TEAM_GAME_FREE_THROW_ATTEMPT_RATE_ROUNDING_CORRECTIONS = [
+    ("field_goals_attempted = 80 AND free_throws_attempted = 9", "0.113"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 13", "0.163"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 19", "0.237"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 21", "0.263"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 23", "0.287"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 37", "0.463"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 39", "0.487"),
+    ("field_goals_attempted = 80 AND free_throws_attempted = 43", "0.537"),
+]
+
+
+TEAM_GAME_FIELD_GOALS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("field_goals_attempted = 80 AND field_goals_made = 36", "0.5"),
+    ("field_goals_attempted = 100 AND field_goals_made = 35", "0.3"),
+    ("field_goals_attempted = 100 AND field_goals_made = 45", "0.5"),
+    ("field_goals_attempted = 80 AND field_goals_made = 52", "0.7"),
+    ("field_goals_attempted = 120 AND field_goals_made = 54", "0.5"),
+    ("field_goals_attempted = 100 AND field_goals_made = 65", "0.7"),
+]
+
+
+TEAM_GAME_OPPONENT_FIELD_GOALS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    (
+        "opponent_field_goals_attempted = 80 "
+        "AND opponent_field_goals_made = 36",
+        "0.5",
+    ),
+    (
+        "opponent_field_goals_attempted = 100 "
+        "AND opponent_field_goals_made = 35",
+        "0.3",
+    ),
+    (
+        "opponent_field_goals_attempted = 100 "
+        "AND opponent_field_goals_made = 45",
+        "0.5",
+    ),
+    (
+        "opponent_field_goals_attempted = 80 "
+        "AND opponent_field_goals_made = 52",
+        "0.7",
+    ),
+    (
+        "opponent_field_goals_attempted = 120 "
+        "AND opponent_field_goals_made = 54",
+        "0.5",
+    ),
+    (
+        "opponent_field_goals_attempted = 100 "
+        "AND opponent_field_goals_made = 65",
+        "0.7",
+    ),
+]
+
+
+TEAM_GAME_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("two_pointers_attempted = 60 AND two_pointers_made = 27", "0.5"),
+    ("two_pointers_attempted = 40 AND two_pointers_made = 18", "0.5"),
+    ("two_pointers_attempted = 40 AND two_pointers_made = 26", "0.7"),
+    ("two_pointers_attempted = 60 AND two_pointers_made = 39", "0.7"),
+    ("two_pointers_attempted = 60 AND two_pointers_made = 21", "0.3"),
+    ("two_pointers_attempted = 40 AND two_pointers_made = 14", "0.3"),
+    ("two_pointers_attempted = 80 AND two_pointers_made = 28", "0.3"),
+]
+
+
+TEAM_GAME_OPPONENT_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    (
+        "opponent_two_pointers_attempted = 60 "
+        "AND opponent_two_pointers_made = 27",
+        "0.5",
+    ),
+    (
+        "opponent_two_pointers_attempted = 40 "
+        "AND opponent_two_pointers_made = 18",
+        "0.5",
+    ),
+    (
+        "opponent_two_pointers_attempted = 40 "
+        "AND opponent_two_pointers_made = 26",
+        "0.7",
+    ),
+    (
+        "opponent_two_pointers_attempted = 60 "
+        "AND opponent_two_pointers_made = 39",
+        "0.7",
+    ),
+    (
+        "opponent_two_pointers_attempted = 60 "
+        "AND opponent_two_pointers_made = 21",
+        "0.3",
+    ),
+    (
+        "opponent_two_pointers_attempted = 40 "
+        "AND opponent_two_pointers_made = 14",
+        "0.3",
+    ),
+    (
+        "opponent_two_pointers_attempted = 80 "
+        "AND opponent_two_pointers_made = 28",
+        "0.3",
+    ),
+]
+
+
+TEAM_GAME_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("three_pointers_attempted = 40 AND three_pointers_made = 14", "0.3"),
+    ("three_pointers_attempted = 40 AND three_pointers_made = 18", "0.5"),
+    ("three_pointers_attempted = 20 AND three_pointers_made = 7", "0.3"),
+    ("three_pointers_attempted = 20 AND three_pointers_made = 9", "0.5"),
+    ("three_pointers_attempted = 20 AND three_pointers_made = 3", "0.1"),
+]
+
+
+TEAM_GAME_OPPONENT_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    (
+        "opponent_three_pointers_attempted = 40 "
+        "AND opponent_three_pointers_made = 14",
+        "0.3",
+    ),
+    (
+        "opponent_three_pointers_attempted = 40 "
+        "AND opponent_three_pointers_made = 18",
+        "0.5",
+    ),
+    (
+        "opponent_three_pointers_attempted = 20 "
+        "AND opponent_three_pointers_made = 7",
+        "0.3",
+    ),
+    (
+        "opponent_three_pointers_attempted = 20 "
+        "AND opponent_three_pointers_made = 9",
+        "0.5",
+    ),
+    (
+        "opponent_three_pointers_attempted = 20 "
+        "AND opponent_three_pointers_made = 3",
+        "0.1",
+    ),
+]
+
+
+TEAM_GAME_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("free_throws_attempted = 20 AND free_throws_made = 13", "0.7"),
+    ("free_throws_attempted = 20 AND free_throws_made = 19", "0.9"),
+    ("free_throws_attempted = 20 AND free_throws_made = 9", "0.5"),
+    ("free_throws_attempted = 40 AND free_throws_made = 26", "0.7"),
+]
+
+
+TEAM_GAME_OPPONENT_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    (
+        "opponent_free_throws_attempted = 20 "
+        "AND opponent_free_throws_made = 13",
+        "0.7",
+    ),
+    (
+        "opponent_free_throws_attempted = 20 "
+        "AND opponent_free_throws_made = 19",
+        "0.9",
+    ),
+    (
+        "opponent_free_throws_attempted = 20 "
+        "AND opponent_free_throws_made = 9",
+        "0.5",
+    ),
+    (
+        "opponent_free_throws_attempted = 40 "
+        "AND opponent_free_throws_made = 26",
+        "0.7",
+    ),
+]
+
+
+POSSESSIONS_ROW_EXPRESSION = (
+    "CASE WHEN offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 "
+    "THEN ROUND((offensive_possessions + defensive_possessions) / 2.0, 1) "
+    "ELSE NULL END"
+)
+
+
+PACE_ROW_EXPRESSION = (
+    "CASE WHEN offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 "
+    "AND minutes_played IS NOT NULL "
+    "AND minutes_played > 0 THEN "
+    + python_round_ratio_expression(
+        "(48.0 * ROUND((offensive_possessions + defensive_possessions) / 2.0, 1))",
+        "minutes_played",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+STEAL_PERCENTAGE_ROW_EXPRESSION = python_round_ratio_expression(
+    "(100 * steals)",
+    "defensive_possessions",
+    1,
+    corrections=STEAL_PERCENTAGE_ROUNDING_CORRECTIONS,
+)
+
+
+NET_RATING_ROW_EXPRESSION = (
+    "CASE WHEN offensive_rating IS NOT NULL "
+    "AND defensive_rating IS NOT NULL "
+    "THEN ROUND(offensive_rating - defensive_rating, 1) "
+    "ELSE NULL END"
+)
+
+
+TEAM_GAME_POSSESSIONS_ROW_EXPRESSION = (
+    "CASE WHEN offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "THEN ROUND(offensive_possessions + defensive_possessions, 1) "
+    "ELSE NULL END"
+)
+
+
+TEAM_GAME_POSSESSIONS_DENOMINATOR = "ROUND(offensive_possessions + defensive_possessions, 1)"
+
+
+TEAM_GAME_POINT_DIFFERENTIAL_ROW_EXPRESSION = (
+    "CASE WHEN score IS NOT NULL "
+    "AND opponent_score IS NOT NULL "
+    "THEN score - opponent_score "
+    "ELSE NULL END"
+)
+
+
+TEAM_GAME_PACE_ROW_EXPRESSION = (
+    "CASE WHEN offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND minutes_played IS NOT NULL "
+    "AND minutes_played > 0 THEN "
+    + python_round_ratio_expression(
+        "(240.0 * " + TEAM_GAME_POSSESSIONS_DENOMINATOR + ")",
+        "minutes_played",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OFFENSIVE_RATING_ROW_EXPRESSION = (
+    "CASE WHEN score IS NOT NULL "
+    "AND offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 THEN "
+    + python_round_ratio_expression("(100 * score)", TEAM_GAME_POSSESSIONS_DENOMINATOR, 1)
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_DEFENSIVE_RATING_ROW_EXPRESSION = (
+    "CASE WHEN opponent_score IS NOT NULL "
+    "AND offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * opponent_score)",
+        TEAM_GAME_POSSESSIONS_DENOMINATOR,
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_NET_RATING_ROW_EXPRESSION = (
+    "CASE WHEN score IS NOT NULL "
+    "AND opponent_score IS NOT NULL "
+    "AND offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * (score - opponent_score))",
+        TEAM_GAME_POSSESSIONS_DENOMINATOR,
+        1,
+        corrections=TEAM_GAME_NET_RATING_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_ASSIST_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN field_goals_made IS NOT NULL "
+    "AND field_goals_made > 0 THEN "
+    + python_round_ratio_expression("(100 * assists)", "field_goals_made", 1)
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_ASSIST_TO_TURNOVER_RATIO_ROW_EXPRESSION = (
+    "CASE WHEN turnovers IS NOT NULL "
+    "AND turnovers > 0 THEN "
+    + python_round_ratio_expression("assists", "turnovers", 2)
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OFFENSIVE_REBOUND_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN offensive_rebounds IS NOT NULL "
+    "AND opponent_defensive_rebounds IS NOT NULL "
+    "AND (offensive_rebounds + opponent_defensive_rebounds) > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * offensive_rebounds)",
+        "(offensive_rebounds + opponent_defensive_rebounds)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_DEFENSIVE_REBOUND_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN defensive_rebounds IS NOT NULL "
+    "AND opponent_offensive_rebounds IS NOT NULL "
+    "AND (defensive_rebounds + opponent_offensive_rebounds) > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * defensive_rebounds)",
+        "(defensive_rebounds + opponent_offensive_rebounds)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_REBOUND_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN total_rebounds IS NOT NULL "
+    "AND opponent_total_rebounds IS NOT NULL "
+    "AND (total_rebounds + opponent_total_rebounds) > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * total_rebounds)",
+        "(total_rebounds + opponent_total_rebounds)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_STEAL_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN steals IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND defensive_possessions > 0 THEN "
+    + python_round_ratio_expression("(100 * steals)", "defensive_possessions", 1)
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_EFFECTIVE_FIELD_GOAL_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN field_goals_attempted IS NOT NULL "
+    "AND field_goals_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "(100 * field_goals_made + 50 * three_pointers_made)",
+        "field_goals_attempted",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_TRUE_SHOOTING_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN score IS NOT NULL "
+    "AND (50 * field_goals_attempted + 22 * free_throws_attempted) > 0 THEN "
+    + python_round_ratio_expression(
+        "(2500 * score)",
+        "(50 * field_goals_attempted + 22 * free_throws_attempted)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_THREE_POINT_ATTEMPT_RATE_ROW_EXPRESSION = (
+    "CASE WHEN three_pointers_attempted IS NOT NULL "
+    "AND field_goals_attempted IS NOT NULL "
+    "AND field_goals_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "three_pointers_attempted",
+        "field_goals_attempted",
+        3,
+        corrections=TEAM_GAME_THREE_POINT_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_FREE_THROW_ATTEMPT_RATE_ROW_EXPRESSION = (
+    "CASE WHEN free_throws_attempted IS NOT NULL "
+    "AND field_goals_attempted IS NOT NULL "
+    "AND field_goals_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "free_throws_attempted",
+        "field_goals_attempted",
+        3,
+        corrections=TEAM_GAME_FREE_THROW_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_FIELD_GOALS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN field_goals_attempted IS NOT NULL "
+    "AND field_goals_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "field_goals_made",
+        "field_goals_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_FIELD_GOALS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OPPONENT_FIELD_GOALS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN opponent_field_goals_attempted IS NOT NULL "
+    "AND opponent_field_goals_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "opponent_field_goals_made",
+        "opponent_field_goals_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_OPPONENT_FIELD_GOALS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_TWO_POINTERS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN two_pointers_attempted IS NOT NULL "
+    "AND two_pointers_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "two_pointers_made",
+        "two_pointers_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OPPONENT_TWO_POINTERS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN opponent_two_pointers_attempted IS NOT NULL "
+    "AND opponent_two_pointers_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "opponent_two_pointers_made",
+        "opponent_two_pointers_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_OPPONENT_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_THREE_POINTERS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN three_pointers_attempted IS NOT NULL "
+    "AND three_pointers_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "three_pointers_made",
+        "three_pointers_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OPPONENT_THREE_POINTERS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN opponent_three_pointers_attempted IS NOT NULL "
+    "AND opponent_three_pointers_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "opponent_three_pointers_made",
+        "opponent_three_pointers_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_OPPONENT_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_FREE_THROWS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN free_throws_attempted IS NOT NULL "
+    "AND free_throws_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "free_throws_made",
+        "free_throws_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_GAME_OPPONENT_FREE_THROWS_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN opponent_free_throws_attempted IS NOT NULL "
+    "AND opponent_free_throws_attempted > 0 THEN "
+    + python_round_ratio_expression(
+        "opponent_free_throws_made",
+        "opponent_free_throws_attempted",
+        1,
+        zero_result="0.0",
+        corrections=TEAM_GAME_OPPONENT_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS,
+    )
+    + " ELSE NULL END"
+)
+
+
+SEASON_PER_GAME_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 20 AND {numerator} = 1", "0.1"),
+    ("{denominator} = 20 AND {numerator} = 3", "0.1"),
+    ("{denominator} = 20 AND {numerator} = 7", "0.3"),
+    ("{denominator} = 20 AND {numerator} = 9", "0.5"),
+    ("{denominator} = 20 AND {numerator} = 13", "0.7"),
+    ("{denominator} = 20 AND {numerator} = 19", "0.9"),
+    ("{denominator} = 20 AND {numerator} = 21", "1.1"),
+    ("{denominator} = 20 AND {numerator} = 23", "1.1"),
+    ("{denominator} = 20 AND {numerator} = 37", "1.9"),
+    ("{denominator} = 20 AND {numerator} = 39", "1.9"),
+    ("{denominator} = 20 AND {numerator} = 43", "2.1"),
+    ("{denominator} = 20 AND {numerator} = 49", "2.5"),
+    ("{denominator} = 20 AND {numerator} = 51", "2.5"),
+    ("{denominator} = 20 AND {numerator} = 57", "2.9"),
+    ("{denominator} = 20 AND {numerator} = 63", "3.1"),
+    ("{denominator} = 20 AND {numerator} = 69", "3.5"),
+    ("{denominator} = 20 AND {numerator} = 71", "3.5"),
+    ("{denominator} = 20 AND {numerator} = 77", "3.9"),
+    ("{denominator} = 20 AND {numerator} = 87", "4.3"),
+    ("{denominator} = 20 AND {numerator} = 89", "4.5"),
+    ("{denominator} = 20 AND {numerator} = 91", "4.5"),
+    ("{denominator} = 20 AND {numerator} = 93", "4.7"),
+    ("{denominator} = 20 AND {numerator} = 107", "5.3"),
+    ("{denominator} = 20 AND {numerator} = 109", "5.5"),
+    ("{denominator} = 20 AND {numerator} = 111", "5.5"),
+    ("{denominator} = 20 AND {numerator} = 113", "5.7"),
+    ("{denominator} = 20 AND {numerator} = 127", "6.3"),
+    ("{denominator} = 20 AND {numerator} = 129", "6.5"),
+    ("{denominator} = 20 AND {numerator} = 131", "6.5"),
+    ("{denominator} = 20 AND {numerator} = 133", "6.7"),
+    ("{denominator} = 20 AND {numerator} = 147", "7.3"),
+    ("{denominator} = 20 AND {numerator} = 149", "7.5"),
+    ("{denominator} = 20 AND {numerator} = 151", "7.5"),
+    ("{denominator} = 20 AND {numerator} = 153", "7.7"),
+    ("{denominator} = 20 AND {numerator} = 161", "8.1"),
+    ("{denominator} = 20 AND {numerator} = 167", "8.3"),
+    ("{denominator} = 20 AND {numerator} = 173", "8.7"),
+    ("{denominator} = 20 AND {numerator} = 181", "9.1"),
+    ("{denominator} = 20 AND {numerator} = 187", "9.3"),
+    ("{denominator} = 20 AND {numerator} = 201", "10.1"),
+    ("{denominator} = 20 AND {numerator} = 207", "10.3"),
+    ("{denominator} = 20 AND {numerator} = 213", "10.7"),
+    ("{denominator} = 20 AND {numerator} = 219", "10.9"),
+    ("{denominator} = 20 AND {numerator} = 221", "11.1"),
+    ("{denominator} = 20 AND {numerator} = 227", "11.3"),
+    ("{denominator} = 20 AND {numerator} = 241", "12.1"),
+    ("{denominator} = 20 AND {numerator} = 247", "12.3"),
+    ("{denominator} = 20 AND {numerator} = 253", "12.7"),
+    ("{denominator} = 20 AND {numerator} = 259", "12.9"),
+    ("{denominator} = 20 AND {numerator} = 261", "13.1"),
+    ("{denominator} = 20 AND {numerator} = 267", "13.3"),
+    ("{denominator} = 20 AND {numerator} = 273", "13.7"),
+    ("{denominator} = 20 AND {numerator} = 281", "14.1"),
+    ("{denominator} = 20 AND {numerator} = 287", "14.3"),
+    ("{denominator} = 20 AND {numerator} = 307", "15.3"),
+    ("{denominator} = 20 AND {numerator} = 321", "16.1"),
+    ("{denominator} = 20 AND {numerator} = 343", "17.1"),
+    ("{denominator} = 20 AND {numerator} = 381", "19.1"),
+    ("{denominator} = 20 AND {numerator} = 397", "19.9"),
+    ("{denominator} = 20 AND {numerator} = 399", "19.9"),
+    ("{denominator} = 20 AND {numerator} = 403", "20.1"),
+    ("{denominator} = 20 AND {numerator} = 419", "20.9"),
+    ("{denominator} = 20 AND {numerator} = 437", "21.9"),
+    ("{denominator} = 20 AND {numerator} = 463", "23.1"),
+    ("{denominator} = 20 AND {numerator} = 477", "23.9"),
+    ("{denominator} = 20 AND {numerator} = 479", "23.9"),
+    ("{denominator} = 20 AND {numerator} = 483", "24.1"),
+    ("{denominator} = 20 AND {numerator} = 499", "24.9"),
+    ("{denominator} = 20 AND {numerator} = 523", "26.1"),
+    ("{denominator} = 20 AND {numerator} = 539", "26.9"),
+    ("{denominator} = 20 AND {numerator} = 543", "27.1"),
+    ("{denominator} = 20 AND {numerator} = 579", "28.9"),
+    ("{denominator} = 20 AND {numerator} = 583", "29.1"),
+    ("{denominator} = 20 AND {numerator} = 603", "30.1"),
+    ("{denominator} = 20 AND {numerator} = 617", "30.9"),
+    ("{denominator} = 20 AND {numerator} = 649", "32.5"),
+    ("{denominator} = 20 AND {numerator} = 669", "33.5"),
+    ("{denominator} = 20 AND {numerator} = 671", "33.5"),
+    ("{denominator} = 20 AND {numerator} = 723", "36.1"),
+    ("{denominator} = 20 AND {numerator} = 751", "37.5"),
+    ("{denominator} = 20 AND {numerator} = 817", "40.9"),
+    ("{denominator} = 20 AND {numerator} = 937", "46.9"),
+    ("{denominator} = 20 AND {numerator} = 991", "49.5"),
+    ("{denominator} = 20 AND {numerator} = 1051", "52.5"),
+    ("{denominator} = 20 AND {numerator} = 1129", "56.5"),
+    ("{denominator} = 20 AND {numerator} = 2269", "113.5"),
+    ("{denominator} = 40 AND {numerator} = 2", "0.1"),
+    ("{denominator} = 40 AND {numerator} = 6", "0.1"),
+    ("{denominator} = 40 AND {numerator} = 14", "0.3"),
+    ("{denominator} = 40 AND {numerator} = 18", "0.5"),
+    ("{denominator} = 40 AND {numerator} = 26", "0.7"),
+    ("{denominator} = 40 AND {numerator} = 38", "0.9"),
+    ("{denominator} = 40 AND {numerator} = 42", "1.1"),
+    ("{denominator} = 40 AND {numerator} = 46", "1.1"),
+    ("{denominator} = 40 AND {numerator} = 74", "1.9"),
+    ("{denominator} = 40 AND {numerator} = 78", "1.9"),
+    ("{denominator} = 40 AND {numerator} = 86", "2.1"),
+    ("{denominator} = 40 AND {numerator} = 98", "2.5"),
+    ("{denominator} = 40 AND {numerator} = 102", "2.5"),
+    ("{denominator} = 40 AND {numerator} = 114", "2.9"),
+    ("{denominator} = 40 AND {numerator} = 126", "3.1"),
+    ("{denominator} = 40 AND {numerator} = 138", "3.5"),
+    ("{denominator} = 40 AND {numerator} = 142", "3.5"),
+    ("{denominator} = 40 AND {numerator} = 154", "3.9"),
+    ("{denominator} = 40 AND {numerator} = 174", "4.3"),
+    ("{denominator} = 40 AND {numerator} = 178", "4.5"),
+    ("{denominator} = 40 AND {numerator} = 182", "4.5"),
+    ("{denominator} = 40 AND {numerator} = 214", "5.3"),
+    ("{denominator} = 40 AND {numerator} = 298", "7.5"),
+    ("{denominator} = 40 AND {numerator} = 302", "7.5"),
+    ("{denominator} = 40 AND {numerator} = 346", "8.7"),
+    ("{denominator} = 40 AND {numerator} = 374", "9.3"),
+    ("{denominator} = 40 AND {numerator} = 398", "9.9"),
+    ("{denominator} = 40 AND {numerator} = 626", "15.7"),
+    ("{denominator} = 40 AND {numerator} = 758", "18.9"),
+    ("{denominator} = 40 AND {numerator} = 926", "23.1"),
+    ("{denominator} = 60 AND {numerator} = 9", "0.1"),
+    ("{denominator} = 60 AND {numerator} = 21", "0.3"),
+    ("{denominator} = 60 AND {numerator} = 27", "0.5"),
+    ("{denominator} = 60 AND {numerator} = 39", "0.7"),
+    ("{denominator} = 60 AND {numerator} = 57", "0.9"),
+    ("{denominator} = 60 AND {numerator} = 63", "1.1"),
+    ("{denominator} = 60 AND {numerator} = 69", "1.1"),
+    ("{denominator} = 60 AND {numerator} = 111", "1.9"),
+    ("{denominator} = 60 AND {numerator} = 117", "1.9"),
+    ("{denominator} = 60 AND {numerator} = 129", "2.1"),
+    ("{denominator} = 60 AND {numerator} = 147", "2.5"),
+    ("{denominator} = 60 AND {numerator} = 153", "2.5"),
+    ("{denominator} = 60 AND {numerator} = 171", "2.9"),
+    ("{denominator} = 60 AND {numerator} = 189", "3.1"),
+    ("{denominator} = 60 AND {numerator} = 213", "3.5"),
+    ("{denominator} = 60 AND {numerator} = 231", "3.9"),
+    ("{denominator} = 60 AND {numerator} = 267", "4.5"),
+    ("{denominator} = 60 AND {numerator} = 273", "4.5"),
+    ("{denominator} = 60 AND {numerator} = 279", "4.7"),
+    ("{denominator} = 60 AND {numerator} = 327", "5.5"),
+    ("{denominator} = 60 AND {numerator} = 333", "5.5"),
+    ("{denominator} = 60 AND {numerator} = 393", "6.5"),
+    ("{denominator} = 60 AND {numerator} = 399", "6.7"),
+    ("{denominator} = 60 AND {numerator} = 441", "7.3"),
+    ("{denominator} = 60 AND {numerator} = 447", "7.5"),
+    ("{denominator} = 60 AND {numerator} = 453", "7.5"),
+    ("{denominator} = 60 AND {numerator} = 459", "7.7"),
+    ("{denominator} = 60 AND {numerator} = 537", "8.9"),
+    ("{denominator} = 60 AND {numerator} = 543", "9.1"),
+    ("{denominator} = 60 AND {numerator} = 597", "9.9"),
+    ("{denominator} = 60 AND {numerator} = 603", "10.1"),
+    ("{denominator} = 60 AND {numerator} = 741", "12.3"),
+    ("{denominator} = 60 AND {numerator} = 759", "12.7"),
+    ("{denominator} = 60 AND {numerator} = 837", "13.9"),
+    ("{denominator} = 60 AND {numerator} = 1077", "17.9"),
+    ("{denominator} = 60 AND {numerator} = 1191", "19.9"),
+    ("{denominator} = 60 AND {numerator} = 1203", "20.1"),
+    ("{denominator} = 60 AND {numerator} = 1311", "21.9"),
+    ("{denominator} = 60 AND {numerator} = 1449", "24.1"),
+    ("{denominator} = 60 AND {numerator} = 1623", "27.1"),
+    ("{denominator} = 80 AND {numerator} = 4", "0.1"),
+    ("{denominator} = 80 AND {numerator} = 12", "0.1"),
+    ("{denominator} = 80 AND {numerator} = 28", "0.3"),
+    ("{denominator} = 80 AND {numerator} = 76", "0.9"),
+    ("{denominator} = 80 AND {numerator} = 84", "1.1"),
+    ("{denominator} = 80 AND {numerator} = 92", "1.1"),
+    ("{denominator} = 80 AND {numerator} = 148", "1.9"),
+    ("{denominator} = 80 AND {numerator} = 156", "1.9"),
+    ("{denominator} = 80 AND {numerator} = 172", "2.1"),
+    ("{denominator} = 80 AND {numerator} = 196", "2.5"),
+    ("{denominator} = 80 AND {numerator} = 204", "2.5"),
+    ("{denominator} = 80 AND {numerator} = 252", "3.1"),
+    ("{denominator} = 80 AND {numerator} = 348", "4.3"),
+    ("{denominator} = 80 AND {numerator} = 436", "5.5"),
+    ("{denominator} = 80 AND {numerator} = 532", "6.7"),
+    ("{denominator} = 80 AND {numerator} = 596", "7.5"),
+    ("{denominator} = 80 AND {numerator} = 604", "7.5"),
+    ("{denominator} = 80 AND {numerator} = 692", "8.7"),
+    ("{denominator} = 80 AND {numerator} = 748", "9.3"),
+]
+
+
+SEASON_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 80 AND {numerator} = 5100", "63.7"),
+]
+
+
+SEASON_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 80 AND {numerator} = 2300", "28.7"),
+]
+
+
+SEASON_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 80 AND {numerator} = 4900", "61.3"),
+]
+
+
+SEASON_ASSIST_TO_TURNOVER_RATIO_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 40 AND {numerator} = 57", "1.43"),
+    ("{denominator} = 40 AND {numerator} = 63", "1.57"),
+    ("{denominator} = 80 AND {numerator} = 178", "2.23"),
+    ("{denominator} = 200 AND {numerator} = 281", "1.41"),
+]
+
+
+SEASON_THREE_POINT_ATTEMPT_RATE_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 400 AND {numerator} = 157", "0.393"),
+    ("{denominator} = 400 AND {numerator} = 177", "0.443"),
+]
+
+
+SEASON_FREE_THROW_ATTEMPT_RATE_ROUNDING_CORRECTIONS = [
+    ("{denominator} = 80 AND {numerator} = 3", "0.037"),
+    ("{denominator} = 80 AND {numerator} = 19", "0.237"),
+    ("{denominator} = 80 AND {numerator} = 23", "0.287"),
+    ("{denominator} = 160 AND {numerator} = 18", "0.113"),
+    ("{denominator} = 320 AND {numerator} = 36", "0.113"),
+]
+
+
+def season_per_game_row_expression(total_attribute: str) -> str:
+    return (
+        "CASE WHEN games_played IS NOT NULL "
+        "AND games_played > 0 THEN "
+        + python_round_ratio_expression(
+            total_attribute,
+            "games_played",
+            1,
+            corrections=format_rounding_corrections(
+                SEASON_PER_GAME_ROUNDING_CORRECTIONS,
+                numerator=total_attribute,
+                denominator="games_played",
+            ),
+        )
+        + " ELSE NULL END"
+    )
+
+
+def season_percentage_row_expression(
+    numerator: str,
+    denominator: str,
+    *,
+    digits: int = 1,
+    corrections: list[tuple[str, str]] | None = None,
+) -> str:
+    return (
+        f"CASE WHEN {denominator} IS NOT NULL "
+        f"AND {denominator} > 0 THEN "
+        + python_round_ratio_expression(
+            numerator,
+            denominator,
+            digits,
+            corrections=format_rounding_corrections(
+                corrections or [],
+                numerator=numerator,
+                denominator=denominator,
+            ),
+        )
+        + " ELSE NULL END"
+    )
+
+
+PLAYER_SEASON_POSSESSIONS_ROW_EXPRESSION = (
+    "CASE WHEN (COALESCE(offensive_possessions_total, 0) "
+    "+ COALESCE(defensive_possessions_total, 0)) > 0 THEN "
+    + python_round_ratio_expression(
+        "(COALESCE(offensive_possessions_total, 0) + COALESCE(defensive_possessions_total, 0))",
+        "2.0",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+PLAYER_SEASON_STEAL_PERCENTAGE_ROW_EXPRESSION = season_percentage_row_expression(
+    "(100 * steals_total)",
+    "defensive_possessions_total",
+)
+
+
+SEASON_EFFECTIVE_FIELD_GOAL_PERCENTAGE_ROW_EXPRESSION = season_percentage_row_expression(
+    "(100 * field_goals_made_total + 50 * three_pointers_made_total)",
+    "field_goals_attempted_total",
+)
+
+
+SEASON_TRUE_SHOOTING_PERCENTAGE_ROW_EXPRESSION = (
+    "CASE WHEN (50 * field_goals_attempted_total + 22 * free_throws_attempted_total) > 0 THEN "
+    + python_round_ratio_expression(
+        "(2500 * points_total)",
+        "(50 * field_goals_attempted_total + 22 * free_throws_attempted_total)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_SEASON_POSSESSIONS_ROW_EXPRESSION = (
+    "CASE WHEN offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 THEN "
+    + python_round_ratio_expression(
+        "(offensive_possessions + defensive_possessions)",
+        "2.0",
+        0,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_SEASON_OFFENSIVE_RATING_ROW_EXPRESSION = (
+    "CASE WHEN points_total IS NOT NULL "
+    "AND offensive_possessions IS NOT NULL "
+    "AND defensive_possessions IS NOT NULL "
+    "AND (offensive_possessions + defensive_possessions) > 0 THEN "
+    + python_round_ratio_expression(
+        "(200 * points_total)",
+        "(offensive_possessions + defensive_possessions)",
+        1,
+    )
+    + " ELSE NULL END"
+)
+
+
+TEAM_SEASON_STEAL_PERCENTAGE_ROW_EXPRESSION = season_percentage_row_expression(
+    "(100 * steals_total)",
+    "defensive_possessions",
+)
+
+
+PLAYER_SEASON_PER_GAME_METRIC_SOURCES = {
+    "minutes_per_game": "minutes_total",
+    "points_per_game": "points_total",
+    "assists_per_game": "assists_total",
+    "turnovers_per_game": "turnovers_total",
+    "rebounds_per_game": "rebounds_total",
+    "offensive_rebounds_per_game": "offensive_rebounds_total",
+    "defensive_rebounds_per_game": "defensive_rebounds_total",
+    "steals_per_game": "steals_total",
+    "blocks_per_game": "blocks_total",
+    "personal_fouls_committed_per_game": "personal_fouls_committed_total",
+    "field_goals_made_per_game": "field_goals_made_total",
+    "field_goals_attempted_per_game": "field_goals_attempted_total",
+    "two_pointers_made_per_game": "two_pointers_made_total",
+    "two_pointers_attempted_per_game": "two_pointers_attempted_total",
+    "three_pointers_made_per_game": "three_pointers_made_total",
+    "three_pointers_attempted_per_game": "three_pointers_attempted_total",
+    "free_throws_made_per_game": "free_throws_made_total",
+    "free_throws_attempted_per_game": "free_throws_attempted_total",
+}
+
+
+TEAM_SEASON_PER_GAME_METRIC_SOURCES = {
+    "points_per_game": "points_total",
+    "assists_per_game": "assists_total",
+    "turnovers_per_game": "turnovers_total",
+    "steals_per_game": "steals_total",
+    "blocks_per_game": "blocks_total",
+    "rebounds_per_game": "rebounds_total",
+    "offensive_rebounds_per_game": "offensive_rebounds_total",
+    "defensive_rebounds_per_game": "defensive_rebounds_total",
+    "field_goals_made_per_game": "field_goals_made_total",
+    "field_goals_attempted_per_game": "field_goals_attempted_total",
+    "two_pointers_made_per_game": "two_pointers_made_total",
+    "two_pointers_attempted_per_game": "two_pointers_attempted_total",
+    "three_pointers_made_per_game": "three_pointers_made_total",
+    "three_pointers_attempted_per_game": "three_pointers_attempted_total",
+    "free_throws_made_per_game": "free_throws_made_total",
+    "free_throws_attempted_per_game": "free_throws_attempted_total",
+    "personal_fouls_committed_per_game": "personal_fouls_committed_total",
+}
+
+
+def derived_season_metric(
+    name: str,
+    source_attributes: list[str],
+    expression: str,
+    aliases: list[str] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "name": name,
+        "aggregation": "identity",
+        "source_attributes": source_attributes,
+        "expression": expression,
+        "executable": True,
+    }
+    if aliases:
+        payload["aliases"] = aliases
+    return payload
+
+
+def season_per_game_metrics(sources: dict[str, str]) -> list[dict[str, object]]:
+    return [
+        derived_season_metric(
+            metric_name,
+            [source_attribute, "games_played"],
+            season_per_game_row_expression(source_attribute),
+        )
+        for metric_name, source_attribute in sources.items()
+    ]
+
+
+def player_season_derived_metric_overrides(
+    *,
+    shooting_rounding_corrections: bool,
+) -> list[dict[str, object]]:
+    two_pointer_corrections = (
+        SEASON_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS
+        if shooting_rounding_corrections
+        else None
+    )
+    three_pointer_corrections = (
+        SEASON_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS
+        if shooting_rounding_corrections
+        else None
+    )
+    free_throw_corrections = (
+        SEASON_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS
+        if shooting_rounding_corrections
+        else None
+    )
+    return (
+        season_per_game_metrics(PLAYER_SEASON_PER_GAME_METRIC_SOURCES)
+        + [
+            derived_season_metric(
+                "field_goals_percentage",
+                ["field_goals_made_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * field_goals_made_total)",
+                    "field_goals_attempted_total",
+                ),
+            ),
+            derived_season_metric(
+                "two_pointers_percentage",
+                ["two_pointers_made_total", "two_pointers_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * two_pointers_made_total)",
+                    "two_pointers_attempted_total",
+                    corrections=two_pointer_corrections,
+                ),
+            ),
+            derived_season_metric(
+                "three_pointers_percentage",
+                ["three_pointers_made_total", "three_pointers_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * three_pointers_made_total)",
+                    "three_pointers_attempted_total",
+                    corrections=three_pointer_corrections,
+                ),
+            ),
+            derived_season_metric(
+                "free_throws_percentage",
+                ["free_throws_made_total", "free_throws_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * free_throws_made_total)",
+                    "free_throws_attempted_total",
+                    corrections=free_throw_corrections,
+                ),
+            ),
+            derived_season_metric(
+                "possessions",
+                ["offensive_possessions_total", "defensive_possessions_total"],
+                PLAYER_SEASON_POSSESSIONS_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "assist_to_turnover_ratio",
+                ["assists_total", "turnovers_total"],
+                season_percentage_row_expression(
+                    "assists_total",
+                    "turnovers_total",
+                    digits=2,
+                    corrections=SEASON_ASSIST_TO_TURNOVER_RATIO_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "steal_percentage",
+                ["steals_total", "defensive_possessions_total"],
+                PLAYER_SEASON_STEAL_PERCENTAGE_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "effective_field_goal_percentage",
+                [
+                    "field_goals_made_total",
+                    "three_pointers_made_total",
+                    "field_goals_attempted_total",
+                ],
+                SEASON_EFFECTIVE_FIELD_GOAL_PERCENTAGE_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "three_point_attempt_rate",
+                ["three_pointers_attempted_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "three_pointers_attempted_total",
+                    "field_goals_attempted_total",
+                    digits=3,
+                    corrections=SEASON_THREE_POINT_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "free_throw_attempt_rate",
+                ["free_throws_attempted_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "free_throws_attempted_total",
+                    "field_goals_attempted_total",
+                    digits=3,
+                    corrections=SEASON_FREE_THROW_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "true_shooting_percentage",
+                ["points_total", "field_goals_attempted_total", "free_throws_attempted_total"],
+                SEASON_TRUE_SHOOTING_PERCENTAGE_ROW_EXPRESSION,
+            ),
+        ]
+    )
+
+
+def team_season_derived_metric_overrides() -> list[dict[str, object]]:
+    return (
+        [
+            derived_season_metric(
+                "win_percentage",
+                ["wins", "games_played"],
+                season_percentage_row_expression("wins", "games_played", digits=3),
+            ),
+            derived_season_metric(
+                "average_points",
+                ["points_total", "games_played"],
+                season_per_game_row_expression("points_total"),
+            ),
+        ]
+        + season_per_game_metrics(TEAM_SEASON_PER_GAME_METRIC_SOURCES)
+        + [
+            derived_season_metric(
+                "field_goals_percentage",
+                ["field_goals_made_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * field_goals_made_total)",
+                    "field_goals_attempted_total",
+                ),
+            ),
+            derived_season_metric(
+                "two_pointers_percentage",
+                ["two_pointers_made_total", "two_pointers_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * two_pointers_made_total)",
+                    "two_pointers_attempted_total",
+                    corrections=SEASON_TWO_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "three_pointers_percentage",
+                ["three_pointers_made_total", "three_pointers_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * three_pointers_made_total)",
+                    "three_pointers_attempted_total",
+                    corrections=SEASON_THREE_POINTERS_PERCENTAGE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "free_throws_percentage",
+                ["free_throws_made_total", "free_throws_attempted_total"],
+                season_percentage_row_expression(
+                    "(100 * free_throws_made_total)",
+                    "free_throws_attempted_total",
+                    corrections=SEASON_FREE_THROWS_PERCENTAGE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "possessions",
+                ["offensive_possessions", "defensive_possessions"],
+                TEAM_SEASON_POSSESSIONS_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "offensive_rating",
+                ["points_total", "offensive_possessions", "defensive_possessions"],
+                TEAM_SEASON_OFFENSIVE_RATING_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "assist_percentage",
+                ["assists_total", "field_goals_made_total"],
+                season_percentage_row_expression(
+                    "(100 * assists_total)",
+                    "field_goals_made_total",
+                ),
+            ),
+            derived_season_metric(
+                "assist_to_turnover_ratio",
+                ["assists_total", "turnovers_total"],
+                season_percentage_row_expression(
+                    "assists_total",
+                    "turnovers_total",
+                    digits=2,
+                    corrections=SEASON_ASSIST_TO_TURNOVER_RATIO_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "steal_percentage",
+                ["steals_total", "defensive_possessions"],
+                TEAM_SEASON_STEAL_PERCENTAGE_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "effective_field_goal_percentage",
+                [
+                    "field_goals_made_total",
+                    "three_pointers_made_total",
+                    "field_goals_attempted_total",
+                ],
+                SEASON_EFFECTIVE_FIELD_GOAL_PERCENTAGE_ROW_EXPRESSION,
+            ),
+            derived_season_metric(
+                "three_point_attempt_rate",
+                ["three_pointers_attempted_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "three_pointers_attempted_total",
+                    "field_goals_attempted_total",
+                    digits=3,
+                    corrections=SEASON_THREE_POINT_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "free_throw_attempt_rate",
+                ["free_throws_attempted_total", "field_goals_attempted_total"],
+                season_percentage_row_expression(
+                    "free_throws_attempted_total",
+                    "field_goals_attempted_total",
+                    digits=3,
+                    corrections=SEASON_FREE_THROW_ATTEMPT_RATE_ROUNDING_CORRECTIONS,
+                ),
+            ),
+            derived_season_metric(
+                "true_shooting_percentage",
+                ["points_total", "field_goals_attempted_total", "free_throws_attempted_total"],
+                SEASON_TRUE_SHOOTING_PERCENTAGE_ROW_EXPRESSION,
+            ),
+        ]
+    )
+
+
 METRIC_OVERRIDES_BY_OBJECT = {
     "PlayerGame": [
         {
@@ -120,6 +1386,149 @@ METRIC_OVERRIDES_BY_OBJECT = {
             "expression": "36 * SUM(points) / NULLIF(SUM(minutes_played), 0)",
             "executable": False,
         },
+        {
+            "name": "average_three_point_attempt_rate",
+            "aggregation": "ratio",
+            "source_attributes": ["three_pointers_attempted", "field_goals_attempted"],
+            "expression": "ROUND(AVG(" + python_round_ratio_expression("three_pointers_attempted", "field_goals_attempted", 3) + "), 1)",
+            "executable": True,
+        },
+        {
+            "name": "average_free_throw_attempt_rate",
+            "aggregation": "ratio",
+            "source_attributes": ["free_throws_attempted", "field_goals_attempted"],
+            "expression": "ROUND(AVG(" + python_round_ratio_expression("free_throws_attempted", "field_goals_attempted", 3) + "), 1)",
+            "executable": True,
+        },
+        {
+            "name": "average_assist_to_turnover_ratio",
+            "aggregation": "ratio",
+            "source_attributes": ["assists", "turnovers"],
+            "expression": "ROUND(AVG(" + python_round_ratio_expression("assists", "turnovers", 2) + "), 1)",
+            "executable": True,
+        },
+        {
+            "name": "average_field_goals_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["field_goals_made", "field_goals_attempted"],
+            "expression": average_metric_expression(
+                python_round_1_source_percentage_expression(
+                    "field_goals_made",
+                    "field_goals_attempted",
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_two_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["two_pointers_made", "two_pointers_attempted"],
+            "expression": average_metric_expression(
+                python_round_1_source_percentage_expression(
+                    "two_pointers_made",
+                    "two_pointers_attempted",
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_three_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["three_pointers_made", "three_pointers_attempted"],
+            "expression": average_metric_expression(
+                python_round_1_source_percentage_expression(
+                    "three_pointers_made",
+                    "three_pointers_attempted",
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_free_throws_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["free_throws_made", "free_throws_attempted"],
+            "expression": average_metric_expression(
+                python_round_1_source_percentage_expression(
+                    "free_throws_made",
+                    "free_throws_attempted",
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_effective_field_goal_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "field_goals_made",
+                "three_pointers_made",
+                "field_goals_attempted",
+            ],
+            "expression": average_metric_expression(
+                python_round_ratio_expression(
+                    "(100 * field_goals_made + 50 * three_pointers_made)",
+                    "field_goals_attempted",
+                    1,
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_true_shooting_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "points",
+                "field_goals_attempted",
+                "free_throws_attempted",
+            ],
+            "expression": average_metric_expression(
+                python_round_ratio_expression(
+                    "(2500 * points)",
+                    "(50 * field_goals_attempted + 22 * free_throws_attempted)",
+                    1,
+                    corrections=TRUE_SHOOTING_PERCENTAGE_ROUNDING_CORRECTIONS,
+                )
+            ),
+            "executable": True,
+        },
+        {
+            "name": "total_possessions",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_possessions", "defensive_possessions"],
+            "expression": "SUM(" + POSSESSIONS_ROW_EXPRESSION + ")",
+            "executable": True,
+        },
+        {
+            "name": "average_possessions",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_possessions", "defensive_possessions"],
+            "expression": average_metric_expression(POSSESSIONS_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_pace",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "offensive_possessions",
+                "defensive_possessions",
+                "minutes_played",
+            ],
+            "expression": average_metric_expression(PACE_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_net_rating",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_rating", "defensive_rating"],
+            "expression": average_metric_expression(NET_RATING_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_steal_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["steals", "defensive_possessions"],
+            "expression": average_metric_expression(STEAL_PERCENTAGE_ROW_EXPRESSION),
+            "executable": True,
+        },
     ],
     "TeamGame": [
         {
@@ -143,16 +1552,271 @@ METRIC_OVERRIDES_BY_OBJECT = {
             "expression": "SUM(CASE WHEN win_loss_result = 'loss' THEN 1 ELSE 0 END)",
             "executable": True,
         },
-    ],
-    "TeamSeason": [
         {
-            "name": "average_points",
-            "aggregation": "identity",
-            "source_attributes": ["points_per_game"],
-            "expression": "points_per_game",
+            "name": "total_point_differential",
+            "aggregation": "ratio",
+            "source_attributes": ["score", "opponent_score"],
+            "expression": "SUM(" + TEAM_GAME_POINT_DIFFERENTIAL_ROW_EXPRESSION + ")",
+            "executable": True,
+            "aliases": [
+                "margin",
+                "point margin",
+                "score margin",
+                "scoring margin",
+                "total margin",
+                "total point margin",
+                "total score margin",
+                "total scoring margin",
+            ],
+        },
+        {
+            "name": "average_point_differential",
+            "aggregation": "ratio",
+            "source_attributes": ["score", "opponent_score"],
+            "expression": average_metric_expression(TEAM_GAME_POINT_DIFFERENTIAL_ROW_EXPRESSION),
+            "executable": True,
+            "aliases": [
+                "average margin",
+                "average point margin",
+                "average score margin",
+                "average scoring margin",
+            ],
+        },
+        {
+            "name": "total_possessions",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_possessions", "defensive_possessions"],
+            "expression": "SUM(" + TEAM_GAME_POSSESSIONS_ROW_EXPRESSION + ")",
+            "executable": True,
+        },
+        {
+            "name": "average_possessions",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_possessions", "defensive_possessions"],
+            "expression": average_metric_expression(TEAM_GAME_POSSESSIONS_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_pace",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "offensive_possessions",
+                "defensive_possessions",
+                "minutes_played",
+            ],
+            "expression": average_metric_expression(TEAM_GAME_PACE_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_offensive_rating",
+            "aggregation": "ratio",
+            "source_attributes": ["score", "offensive_possessions", "defensive_possessions"],
+            "expression": average_metric_expression(TEAM_GAME_OFFENSIVE_RATING_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_defensive_rating",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "opponent_score",
+                "offensive_possessions",
+                "defensive_possessions",
+            ],
+            "expression": average_metric_expression(TEAM_GAME_DEFENSIVE_RATING_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_net_rating",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "score",
+                "opponent_score",
+                "offensive_possessions",
+                "defensive_possessions",
+            ],
+            "expression": average_metric_expression(TEAM_GAME_NET_RATING_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_assist_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["assists", "field_goals_made"],
+            "expression": average_metric_expression(TEAM_GAME_ASSIST_PERCENTAGE_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_assist_to_turnover_ratio",
+            "aggregation": "ratio",
+            "source_attributes": ["assists", "turnovers"],
+            "expression": average_metric_expression(
+                TEAM_GAME_ASSIST_TO_TURNOVER_RATIO_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_offensive_rebound_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["offensive_rebounds", "opponent_defensive_rebounds"],
+            "expression": average_metric_expression(
+                TEAM_GAME_OFFENSIVE_REBOUND_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_defensive_rebound_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["defensive_rebounds", "opponent_offensive_rebounds"],
+            "expression": average_metric_expression(
+                TEAM_GAME_DEFENSIVE_REBOUND_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_rebound_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["total_rebounds", "opponent_total_rebounds"],
+            "expression": average_metric_expression(TEAM_GAME_REBOUND_PERCENTAGE_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_steal_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["steals", "defensive_possessions"],
+            "expression": average_metric_expression(TEAM_GAME_STEAL_PERCENTAGE_ROW_EXPRESSION),
+            "executable": True,
+        },
+        {
+            "name": "average_effective_field_goal_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "field_goals_made",
+                "three_pointers_made",
+                "field_goals_attempted",
+            ],
+            "expression": average_metric_expression(
+                TEAM_GAME_EFFECTIVE_FIELD_GOAL_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_true_shooting_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["score", "field_goals_attempted", "free_throws_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_TRUE_SHOOTING_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_three_point_attempt_rate",
+            "aggregation": "ratio",
+            "source_attributes": ["three_pointers_attempted", "field_goals_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_THREE_POINT_ATTEMPT_RATE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_free_throw_attempt_rate",
+            "aggregation": "ratio",
+            "source_attributes": ["free_throws_attempted", "field_goals_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_FREE_THROW_ATTEMPT_RATE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_field_goals_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["field_goals_made", "field_goals_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_FIELD_GOALS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_opponent_field_goals_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "opponent_field_goals_made",
+                "opponent_field_goals_attempted",
+            ],
+            "expression": average_metric_expression(
+                TEAM_GAME_OPPONENT_FIELD_GOALS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_two_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["two_pointers_made", "two_pointers_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_TWO_POINTERS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_opponent_two_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "opponent_two_pointers_made",
+                "opponent_two_pointers_attempted",
+            ],
+            "expression": average_metric_expression(
+                TEAM_GAME_OPPONENT_TWO_POINTERS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_three_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["three_pointers_made", "three_pointers_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_THREE_POINTERS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_opponent_three_pointers_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "opponent_three_pointers_made",
+                "opponent_three_pointers_attempted",
+            ],
+            "expression": average_metric_expression(
+                TEAM_GAME_OPPONENT_THREE_POINTERS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_free_throws_percentage",
+            "aggregation": "ratio",
+            "source_attributes": ["free_throws_made", "free_throws_attempted"],
+            "expression": average_metric_expression(
+                TEAM_GAME_FREE_THROWS_PERCENTAGE_ROW_EXPRESSION
+            ),
+            "executable": True,
+        },
+        {
+            "name": "average_opponent_free_throws_percentage",
+            "aggregation": "ratio",
+            "source_attributes": [
+                "opponent_free_throws_made",
+                "opponent_free_throws_attempted",
+            ],
+            "expression": average_metric_expression(
+                TEAM_GAME_OPPONENT_FREE_THROWS_PERCENTAGE_ROW_EXPRESSION
+            ),
             "executable": True,
         },
     ],
+    "PlayerSeason": player_season_derived_metric_overrides(
+        shooting_rounding_corrections=True,
+    ),
+    "PlayerSeasonTeam": player_season_derived_metric_overrides(
+        shooting_rounding_corrections=False,
+    ),
+    "TeamSeason": team_season_derived_metric_overrides(),
 }
 
 DERIVED_ATTRIBUTES_BY_OBJECT = {
@@ -228,6 +1892,28 @@ DERIVED_ATTRIBUTES_BY_OBJECT = {
     ],
     "TeamGame": [
         {
+            "name": "point_differential",
+            "kind": "measure",
+            "source_column": "point_differential",
+            "link_key": False,
+            "visibility": "public",
+            "aliases": [
+                "margin",
+                "point margin",
+                "score margin",
+                "scoring margin",
+            ],
+            "derivation": {
+                "source_attribute": "score",
+                "sql_expression": (
+                    "CASE WHEN {fact_alias}.score IS NOT NULL "
+                    "AND {fact_alias}.opponent_score IS NOT NULL "
+                    "THEN {fact_alias}.score - {fact_alias}.opponent_score "
+                    "ELSE NULL END"
+                ),
+            },
+        },
+        {
             "name": "game_month",
             "kind": "dimension",
             "source_column": "game_date",
@@ -258,6 +1944,28 @@ DERIVED_ATTRIBUTES_BY_OBJECT = {
             "derivation": {
                 "source_attribute": "game_date",
                 "sql_expression": "STRFTIME({fact_alias}.game_date, '%Y-%m')",
+            },
+        },
+    ],
+    "TeamSeason": [
+        {
+            "name": "win_percentage",
+            "kind": "measure",
+            "source_column": "win_percentage",
+            "link_key": False,
+            "visibility": "public",
+            "derivation": {
+                "source_attribute": "wins",
+                "sql_expression": (
+                    "CASE WHEN {fact_alias}.games_played IS NOT NULL "
+                    "AND {fact_alias}.games_played > 0 THEN "
+                    + python_round_ratio_expression(
+                        "{fact_alias}.wins",
+                        "{fact_alias}.games_played",
+                        3,
+                    )
+                    + " ELSE NULL END"
+                ),
             },
         },
     ],
@@ -522,11 +2230,11 @@ def dedupe_metrics(metrics: list[dict[str, object]]) -> list[dict[str, object]]:
 
 def metrics_for_object(object_name: str, columns: list[dict[str, object]]) -> list[dict[str, object]]:
     # Generated metrics expose every executable public stat surface supported by
-    # the snapshot. Overrides are only for semantic aliases and non-executable
-    # formulas that cannot be generated safely from one source column.
+    # the snapshot. Overrides define curated formulas or aliases that cannot be
+    # generated safely from one source column.
     return dedupe_metrics(
-        generated_metrics_for_object(object_name, columns)
-        + METRIC_OVERRIDES_BY_OBJECT.get(object_name, [])
+        METRIC_OVERRIDES_BY_OBJECT.get(object_name, [])
+        + generated_metrics_for_object(object_name, columns)
     )
 
 

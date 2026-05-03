@@ -43,8 +43,8 @@ class SeasonQueryTests(unittest.TestCase):
     def test_player_season_average_points_output(self) -> None:
         output = run_cli("Show me players by average points in the 2025-26 regular season")
         self.assertIn("Players ranked by average points in the 2025-26 regular season", output)
-        self.assertIn("Rank | Player | Season | Season Type | Games Played | Minutes | Average Points", output)
-        self.assertIn("1 | Luka Dončić | 2025-26 | Regular Season | 62 | 36.0 | 33.7", output)
+        self.assertIn("Rank | Player | Season | Season Type | Games Played | Average Points", output)
+        self.assertIn("1 | Luka Dončić | 2025-26 | Regular Season | 62 | 33.7", output)
 
     def test_team_season_wins_query(self) -> None:
         _interpreted_query, planner_output = plan_question(
@@ -91,8 +91,8 @@ class SeasonQueryTests(unittest.TestCase):
 
         output = run_cli("Show me players and their total points in the 2025-26 regular season")
         self.assertIn("Players ordered by total points in the 2025-26 regular season", output)
-        self.assertIn("Player | Season | Season Type | Games Played | Minutes | Total Points", output)
-        self.assertIn("Luka Dončić | 2025-26 | Regular Season | 62 | 36.0 | 2089", output)
+        self.assertIn("Player | Season | Season Type | Games Played | Total Points", output)
+        self.assertIn("Luka Dončić | 2025-26 | Regular Season | 62 | 2089", output)
 
     def test_player_season_team_reconciliation_for_james_harden(self) -> None:
         database_path = load_database()

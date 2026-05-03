@@ -11,6 +11,7 @@ import GroundedPlanning.Compile.Sql.Common
   )
 import GroundedPlanning.Compile.Sql.Common.Primitives
   ( limitClause
+  , renderFactExpression
   , renderWhereLines
   )
 import GroundedPlanning.Compile.Sql.Predicates (renderPredicateCondition)
@@ -96,31 +97,52 @@ renderFindSelectLines targetPathValue displayValues predicateTreeLeaves =
   map renderDisplay (markLast (displaySelections <> predicateTreeSelections))
   where
     displaySelections =
-      [ (displayLabel displayValue, findDisplayAlias targetPathValue indexValue displayValue, displayColumn displayValue)
+      [ ( displayLabel displayValue
+        , findDisplayAlias targetPathValue indexValue displayValue
+        , displayColumn displayValue
+        , displayExpression displayValue
+        )
       | (indexValue, displayValue) <- zip [1 :: Int ..] displayValues
       ]
     predicateTreeSelections =
       uniqueSelectionsByLabel
-        [ (treePredicateLabel predicateValue, findPredicateTreeAlias indexValue predicateValue, treePredicateColumn predicateValue)
+        [ ( treePredicateLabel predicateValue
+          , findPredicateTreeAlias indexValue predicateValue
+          , treePredicateColumn predicateValue
+          , treePredicateExpression predicateValue
+          )
         | (indexValue, predicateValue) <- predicateTreeLeaves
         , treePredicateLabel predicateValue `notElem` map displayLabel displayValues
         ]
-    renderDisplay (isLastValue, (labelValue, aliasValue, columnValue)) =
-      "  " <> aliasValue <> "." <> columnValue <> " AS " <> labelValue <> if isLastValue then "" else ","
+    renderDisplay (isLastValue, (labelValue, aliasValue, columnValue, maybeExpression)) =
+      "  " <> renderFindValue aliasValue columnValue maybeExpression <> " AS " <> labelValue <> if isLastValue then "" else ","
 
 renderFindOrderSelectLines :: DiscoveredPath -> [ResolvedFindOrder] -> [Text]
 renderFindOrderSelectLines targetPathValue orderValues =
   map renderOrderSelect (zip [1 :: Int ..] orderValues)
   where
     renderOrderSelect (indexValue, orderValue) =
-      "  " <> findOrderAlias targetPathValue indexValue orderValue <> "." <> orderColumn orderValue <> " AS __find_order_" <> T.pack (show indexValue) <> ","
+      "  "
+        <> renderFindValue
+          (findOrderAlias targetPathValue indexValue orderValue)
+          (orderColumn orderValue)
+          (orderExpression orderValue)
+        <> " AS __find_order_"
+        <> T.pack (show indexValue)
+        <> ","
 
-uniqueSelectionsByLabel :: [(Text, Text, Text)] -> [(Text, Text, Text)]
+renderFindValue :: Text -> Text -> Maybe Text -> Text
+renderFindValue aliasValue columnValue maybeExpression =
+  case maybeExpression of
+    Just expressionValue -> renderFactExpression aliasValue expressionValue
+    Nothing -> aliasValue <> "." <> columnValue
+
+uniqueSelectionsByLabel :: [(Text, Text, Text, Maybe Text)] -> [(Text, Text, Text, Maybe Text)]
 uniqueSelectionsByLabel selections =
   case selections of
     [] -> []
-    selection@(labelValue, _, _) : remaining ->
-      selection : uniqueSelectionsByLabel [candidate | candidate@(candidateLabel, _, _) <- remaining, candidateLabel /= labelValue]
+    selection@(labelValue, _, _, _) : remaining ->
+      selection : uniqueSelectionsByLabel [candidate | candidate@(candidateLabel, _, _, _) <- remaining, candidateLabel /= labelValue]
 
 indentFindSelectLines :: [Text] -> [Text]
 indentFindSelectLines selectLines =
@@ -253,7 +275,11 @@ renderFindPredicateTreeCondition predicateTree =
 
 renderFindPredicateLeafCondition :: Int -> ResolvedFindPredicateLeaf -> Text
 renderFindPredicateLeafCondition indexValue predicateLeaf =
-  let columnRef = findPredicateTreeAlias indexValue predicateLeaf <> "." <> treePredicateColumn predicateLeaf
+  let columnRef =
+        renderFindValue
+          (findPredicateTreeAlias indexValue predicateLeaf)
+          (treePredicateColumn predicateLeaf)
+          (treePredicateExpression predicateLeaf)
    in case renderPredicateCondition columnRef (treePredicateOperator predicateLeaf) (treePredicateValue predicateLeaf) of
         Just conditionValue -> conditionValue
         Nothing -> error "Unsupported find predicate tree operator/value."
@@ -274,11 +300,15 @@ findOrderColumn targetPathValue displayValues orderValues useHiddenOrderAliases 
     _ -> T.intercalate ", " (map renderOrder (zip [1 :: Int ..] orderValues))
   where
     renderOrder (indexValue, orderValue) =
-      orderExpression indexValue orderValue <> " " <> directionText (orderDirection orderValue)
-    orderExpression indexValue orderValue =
+      renderOrderExpression indexValue orderValue <> " " <> directionText (orderDirection orderValue)
+    renderOrderExpression indexValue orderValue =
       if useHiddenOrderAliases
         then "__find_order_" <> T.pack (show indexValue)
-        else findOrderAlias targetPathValue indexValue orderValue <> "." <> orderColumn orderValue
+        else
+          renderFindValue
+            (findOrderAlias targetPathValue indexValue orderValue)
+            (orderColumn orderValue)
+            (orderExpression orderValue)
     directionText directionValue =
       case directionValue of
         FindOrderAsc -> "ASC"

@@ -54,6 +54,7 @@ data ResolvedRowPredicateLeaf = ResolvedRowPredicateLeaf
   { rowPredicateTargetObjectName :: Text
   , rowPredicatePath :: DiscoveredPath
   , rowPredicateColumn :: Text
+  , rowPredicateExpression :: Maybe Text
   , rowPredicateLabel :: Text
   , rowPredicateOperator :: PredicateOperator
   , rowPredicateValue :: PredicateValue
@@ -71,6 +72,8 @@ data ResolvedResultPredicateLeaf = ResolvedResultPredicateLeaf
   { resultPredicateKey :: Text
   , resultPredicateLabel :: Text
   , resultPredicateColumn :: Maybe Text
+  , resultPredicateSourceAttributes :: [Text]
+  , resultPredicateExpression :: Maybe Text
   , resultPredicateAggregation :: Text
   , resultPredicateOperator :: PredicateOperator
   , resultPredicateValue :: PredicateValue
@@ -175,6 +178,7 @@ data ResolvedObjectQuery = ResolvedObjectQuery
 data ResolvedFindDisplay = ResolvedFindDisplay
   { displayPath :: DiscoveredPath
   , displayColumn :: Text
+  , displayExpression :: Maybe Text
   , displayLabel :: Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -182,6 +186,7 @@ data ResolvedFindDisplay = ResolvedFindDisplay
 data ResolvedFindOrder = ResolvedFindOrder
   { orderPath :: DiscoveredPath
   , orderColumn :: Text
+  , orderExpression :: Maybe Text
   , orderLabel :: Text
   , orderDirection :: FindOrderDirection
   }
@@ -191,6 +196,7 @@ data ResolvedFindPredicateLeaf = ResolvedFindPredicateLeaf
   { treePredicateTargetObjectName :: Text
   , treePredicatePath :: DiscoveredPath
   , treePredicateColumn :: Text
+  , treePredicateExpression :: Maybe Text
   , treePredicateLabel :: Text
   , treePredicateLinkRole :: Maybe Text
   , treePredicateOperator :: PredicateOperator

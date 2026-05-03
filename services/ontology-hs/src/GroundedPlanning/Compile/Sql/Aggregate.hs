@@ -7,6 +7,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
   ( compileMetricAggregation
+  , renderMetricFormulaDirectValue
+  , renderMetricFormulaSourceSelectLines
   , renderGameDateFilterConditions
   , renderPathJoinClauses
   , renderResultPredicateConditions
@@ -37,7 +39,6 @@ import GroundedPlanning.Compile.Sql.Projection
   , renderMetadataAggregateSelectLines
   , renderMetadataFinalSelectLines
   , renderMetadataSourceSelectLines
-  , renderMetricValue
   , renderResultPredicateAggregateSelectLines
   , renderResultPredicateFinalSelectLines
   , renderResultPredicateSourceSelectLines
@@ -102,6 +103,7 @@ compileRecentAggregateSql resolved =
     , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
     , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
     ]
+      <> renderMetricFormulaSourceSelectLines "f" resolvedMetricFormulaValue
       <> renderMetadataSourceSelectLines "f" "r" "c" metricDisplayMetadata
       <> renderDisplayMetricSourceSelectLines "f" metricDisplayMetricFormulas
       <> renderResultPredicateSourceSelectLines "f" metricResultPredicate
@@ -172,8 +174,9 @@ compileSeasonAggregateSql resolved seasonLabelValue seasonTypeValue =
       <> renderGroupingSourceSelectLines metricGroupingDimensions
       <> [ "    " <> renderAggregateEntityName metricGroupingDimensions metricDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
-    , "    " <> renderMetricValue metricMetricSource <> " AS metric_source,"
+    , "    " <> renderMetricFormulaDirectValue "f" metricMetricSource metricFormulaValue <> " AS metric_source,"
     ]
+      <> renderMetricFormulaSourceSelectLines "f" metricFormulaValue
       <> renderMetadataSourceSelectLines "f" "r" "c" metricDisplayMetadata
       <> renderDisplayMetricSourceSelectLines "f" metricDisplayMetricFormulas
       <> renderResultPredicateSourceSelectLines "f" metricResultPredicate
@@ -184,7 +187,7 @@ compileSeasonAggregateSql resolved seasonLabelValue seasonTypeValue =
       <> renderGroupingJoinClauses metricGroupingDimensions
       <> renderRowPredicateJoinClauses "f" metricRowPredicate
       <> [ "  WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderRowPredicateConditions "f" metricRowPredicate)
-         , "    AND " <> renderMetricValue metricMetricSource <> " IS NOT NULL"
+         , "    AND " <> renderMetricFormulaDirectValue "f" metricMetricSource metricFormulaValue <> " IS NOT NULL"
          , "), aggregate_groups AS ("
          , "  SELECT"
          ]

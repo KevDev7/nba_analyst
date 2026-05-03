@@ -18,7 +18,7 @@ module GroundedPlanning.Compile.Sql.Projection
   ) where
 
 import Data.Text (Text)
-import GroundedPlanning.Compile.Sql.Common.Primitives (renderColumnRefWithContext)
+import GroundedPlanning.Compile.Sql.Common.Primitives (renderColumnRefWithContext, renderFactExpression)
 import GroundedPlanning.Resolve
 
 -- Render a metric column reference based on where it lives in the query shape.
@@ -74,7 +74,11 @@ compileDisplayMetricAggregation formula =
   case aggregationKind formula of
     "sum" -> "SUM(__" <> resultColumn formula <> "_source)"
     "avg" -> "ROUND(AVG(__" <> resultColumn formula <> "_source), 1)"
-    "identity" -> "MAX(__" <> resultColumn formula <> "_source)"
+    "identity" ->
+      if displayMetricUsesSourceExpression formula
+        then "MAX(" <> expressionText formula <> ")"
+        else "MAX(__" <> resultColumn formula <> "_source)"
+    "ratio" -> expressionText formula
     "count_win" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source = 'win' THEN 1 ELSE 0 END)"
     "count_loss" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source = 'loss' THEN 1 ELSE 0 END)"
     "count_true" -> "SUM(CASE WHEN __" <> resultColumn formula <> "_source THEN 1 ELSE 0 END)"
@@ -85,6 +89,13 @@ displayMetricSourceAttribute formula =
   case sourceAttributes formula of
     sourceAttribute : _ -> Just sourceAttribute
     [] -> Nothing
+
+displayMetricUsesSourceExpression :: ResolvedMetricFormula -> Bool
+displayMetricUsesSourceExpression formula =
+  aggregationKind formula == "identity"
+    && case sourceAttributes formula of
+      sourceAttribute : _ -> expressionText formula /= sourceAttribute
+      [] -> False
 
 extraDisplayMetricFormulas :: [ResolvedMetricFormula] -> [ResolvedMetricFormula]
 extraDisplayMetricFormulas metricFormulas =
@@ -97,8 +108,14 @@ renderDisplayMetricSourceSelectLines :: Text -> [ResolvedMetricFormula] -> [Text
 renderDisplayMetricSourceSelectLines factAlias metricFormulas =
   [ "    " <> factAlias <> "." <> sourceAttribute <> " AS __" <> resultColumn formula <> "_source,"
   | formula <- extraDisplayMetricFormulas metricFormulas
+  , not (displayMetricUsesSourceExpression formula || aggregationKind formula == "ratio")
   , Just sourceAttribute <- [displayMetricSourceAttribute formula]
   ]
+    <> [ "    " <> factAlias <> "." <> sourceAttribute <> " AS " <> sourceAttribute <> ","
+       | formula <- extraDisplayMetricFormulas metricFormulas
+       , displayMetricUsesSourceExpression formula || aggregationKind formula == "ratio"
+       , sourceAttribute <- sourceAttributes formula
+       ]
 
 renderDisplayMetricAggregateSelectLines :: [ResolvedMetricFormula] -> [Text]
 renderDisplayMetricAggregateSelectLines metricFormulas =
@@ -108,10 +125,17 @@ renderDisplayMetricAggregateSelectLines metricFormulas =
 
 renderDisplayMetricDirectSelectLines :: Text -> [ResolvedMetricFormula] -> [Text]
 renderDisplayMetricDirectSelectLines factAlias metricFormulas =
-  [ "    " <> factAlias <> "." <> sourceAttribute <> " AS " <> resultColumn formula <> ","
+  [ "    " <> renderDisplayMetricDirectValue factAlias formula <> " AS " <> resultColumn formula <> ","
   | formula <- extraDisplayMetricFormulas metricFormulas
-  , Just sourceAttribute <- [displayMetricSourceAttribute formula]
   ]
+
+renderDisplayMetricDirectValue :: Text -> ResolvedMetricFormula -> Text
+renderDisplayMetricDirectValue factAlias formula =
+  if displayMetricUsesSourceExpression formula || aggregationKind formula == "ratio"
+    then renderFactExpression factAlias (expressionText formula)
+    else case displayMetricSourceAttribute formula of
+      Just sourceAttribute -> factAlias <> "." <> sourceAttribute
+      Nothing -> "NULL"
 
 renderDisplayMetricFinalSelectLines :: [ResolvedMetricFormula] -> [Text]
 renderDisplayMetricFinalSelectLines metricFormulas =
@@ -124,7 +148,10 @@ compileResultPredicateAggregation predicateLeaf =
   case resultPredicateAggregation predicateLeaf of
     "sum" -> "SUM(__" <> resultPredicateKey predicateLeaf <> "_source)"
     "avg" -> "ROUND(AVG(__" <> resultPredicateKey predicateLeaf <> "_source), 1)"
-    "identity" -> "MAX(__" <> resultPredicateKey predicateLeaf <> "_source)"
+    "identity" ->
+      case resultPredicateExpression predicateLeaf of
+        Just expressionValue -> "MAX(" <> expressionValue <> ")"
+        Nothing -> "MAX(__" <> resultPredicateKey predicateLeaf <> "_source)"
     "count_win" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source = 'win' THEN 1 ELSE 0 END)"
     "count_loss" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source = 'loss' THEN 1 ELSE 0 END)"
     "count_true" -> "SUM(CASE WHEN __" <> resultPredicateKey predicateLeaf <> "_source THEN 1 ELSE 0 END)"
@@ -135,7 +162,13 @@ renderResultPredicateSourceSelectLines factAlias maybePredicateTree =
   [ "    " <> factAlias <> "." <> sourceColumn <> " AS __" <> resultPredicateKey predicateLeaf <> "_source,"
   | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
   , Just sourceColumn <- [resultPredicateColumn predicateLeaf]
+  , resultPredicateExpression predicateLeaf == Nothing
   ]
+    <> [ "    " <> factAlias <> "." <> sourceAttribute <> " AS " <> sourceAttribute <> ","
+       | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
+       , resultPredicateExpression predicateLeaf /= Nothing
+       , sourceAttribute <- resultPredicateSourceAttributes predicateLeaf
+       ]
 
 renderResultPredicateAggregateSelectLines :: Maybe ResolvedResultPredicateTree -> [Text]
 renderResultPredicateAggregateSelectLines maybePredicateTree =
@@ -145,10 +178,18 @@ renderResultPredicateAggregateSelectLines maybePredicateTree =
 
 renderResultPredicateDirectSelectLines :: Text -> Maybe ResolvedResultPredicateTree -> [Text]
 renderResultPredicateDirectSelectLines factAlias maybePredicateTree =
-  [ "    " <> factAlias <> "." <> sourceColumn <> " AS " <> resultPredicateKey predicateLeaf <> ","
+  [ "    " <> renderResultPredicateDirectValue factAlias predicateLeaf <> " AS " <> resultPredicateKey predicateLeaf <> ","
   | predicateLeaf <- resultPredicateAuxiliaryLeaves maybePredicateTree
-  , Just sourceColumn <- [resultPredicateColumn predicateLeaf]
   ]
+
+renderResultPredicateDirectValue :: Text -> ResolvedResultPredicateLeaf -> Text
+renderResultPredicateDirectValue factAlias predicateLeaf =
+  case resultPredicateExpression predicateLeaf of
+    Just expressionValue -> renderFactExpression factAlias expressionValue
+    Nothing ->
+      case resultPredicateColumn predicateLeaf of
+        Just sourceColumn -> factAlias <> "." <> sourceColumn
+        Nothing -> "NULL"
 
 renderResultPredicateFinalSelectLines :: Maybe ResolvedResultPredicateTree -> [Text]
 renderResultPredicateFinalSelectLines maybePredicateTree =

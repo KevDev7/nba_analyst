@@ -484,7 +484,7 @@ def test_team_game_required_columns_populate_semantic_measures() -> None:
     assert home_row["turnovers"] == 12
     assert home_row["fast_break_points"] == 15
     assert home_row["personal_fouls_committed"] == 17
-    assert home_row["assist_percentage"] == pytest.approx(68.2)
+    assert "assist_percentage" not in home_row
 
 
 def sample_bridge_table() -> pa.Table:
@@ -791,42 +791,23 @@ def test_build_player_game_rows_preserve_expected_grain() -> None:
     assert "minutes_played" in rows[0]
     assert "offensive_possessions" in rows[0]
     assert "defensive_possessions" in rows[0]
-    assert "possessions" in rows[0]
-    assert "pace" in rows[0]
     assert by_person[201939]["offensive_possessions"] == pytest.approx(74.0)
     assert by_person[201939]["defensive_possessions"] == pytest.approx(72.0)
-    assert by_person[201939]["possessions"] == pytest.approx(73.0)
-    assert by_person[201939]["pace"] == pytest.approx(96.8)
     assert by_person[201939]["assist_percentage"] == pytest.approx(25.0)
     assert by_person[201939]["usage_percentage"] == pytest.approx(32.4)
-    assert by_person[201939]["assist_to_turnover_ratio"] == pytest.approx(2.33)
-    assert by_person[201939]["three_point_attempt_rate"] == pytest.approx(0.55, abs=0.001)
-    assert by_person[201939]["free_throw_attempt_rate"] == pytest.approx(0.25, abs=0.001)
-    assert by_person[201939]["effective_field_goal_percentage"] == pytest.approx(75.0, abs=0.001)
-    assert by_person[201939]["true_shooting_percentage"] == pytest.approx(74.3)
     assert by_person[201939]["offensive_rating"] == pytest.approx(121.6)
     assert by_person[201939]["defensive_rating"] == pytest.approx(113.9)
-    assert by_person[201939]["net_rating"] == pytest.approx(7.7)
     assert by_person[201939]["offensive_rebound_percentage"] == pytest.approx(11.1)
     assert by_person[201939]["defensive_rebound_percentage"] == pytest.approx(16.7)
     assert by_person[201939]["rebound_percentage"] == pytest.approx(15.2)
-    assert by_person[201939]["steal_percentage"] == pytest.approx(2.8)
     assert by_person[201939]["block_percentage"] == pytest.approx(2.5)
     assert by_person[2544]["assist_percentage"] == pytest.approx(29.0)
-    assert by_person[2544]["pace"] == pytest.approx(103.1)
     assert by_person[2544]["usage_percentage"] == pytest.approx(31.0)
-    assert by_person[2544]["assist_to_turnover_ratio"] == pytest.approx(2.25)
-    assert by_person[2544]["three_point_attempt_rate"] == pytest.approx(0.278, abs=0.001)
-    assert by_person[2544]["free_throw_attempt_rate"] == pytest.approx(0.444, abs=0.001)
-    assert by_person[2544]["effective_field_goal_percentage"] == pytest.approx(66.7)
-    assert by_person[2544]["true_shooting_percentage"] == pytest.approx(69.7)
     assert by_person[2544]["offensive_rating"] == pytest.approx(118.3)
     assert by_person[2544]["defensive_rating"] == pytest.approx(118.7)
-    assert by_person[2544]["net_rating"] == pytest.approx(-0.4)
     assert by_person[2544]["offensive_rebound_percentage"] == pytest.approx(10.0)
     assert by_person[2544]["defensive_rebound_percentage"] == pytest.approx(31.8)
     assert by_person[2544]["rebound_percentage"] == pytest.approx(25.0)
-    assert by_person[2544]["steal_percentage"] == pytest.approx(1.3)
     assert by_person[2544]["block_percentage"] == pytest.approx(2.3)
     assert "fast_break_points" in rows[0]
     assert "points_in_paint" in rows[0]
@@ -837,6 +818,21 @@ def test_build_player_game_rows_preserve_expected_grain() -> None:
     assert "minutes_played_decimal" not in rows[0]
     assert "is_on_court" not in rows[0]
     assert "seconds_played_total" not in rows[0]
+    assert {
+        "field_goals_percentage",
+        "two_pointers_percentage",
+        "three_pointers_percentage",
+        "free_throws_percentage",
+        "assist_to_turnover_ratio",
+        "effective_field_goal_percentage",
+        "true_shooting_percentage",
+        "three_point_attempt_rate",
+        "free_throw_attempt_rate",
+        "possessions",
+        "pace",
+        "net_rating",
+        "steal_percentage",
+    }.isdisjoint(rows[0])
 
 
 def test_build_player_game_rows_fallback_usage_percentage_to_boxscore_proxy() -> None:
@@ -924,57 +920,55 @@ def test_build_team_game_rows_resolve_opponent_links() -> None:
     assert away_row["opponent_team_id"] == 1610612744
     assert home_row["blocks"] == 5
     assert home_row["opponent_blocks"] == 4
-    assert home_row["point_differential"] == 5
     assert home_row["win_loss_result"] == "win"
     assert away_row["win_loss_result"] == "loss"
-    assert home_row["possessions"] == pytest.approx(99.0)
     assert home_row["offensive_possessions"] == pytest.approx(100.0)
     assert home_row["defensive_possessions"] == pytest.approx(98.0)
-    assert home_row["pace"] == pytest.approx(99.0)
-    assert home_row["offensive_rating"] == pytest.approx(121.2)
-    assert home_row["defensive_rating"] == pytest.approx(116.2)
-    assert home_row["net_rating"] == pytest.approx(5.1)
-    assert home_row["assist_percentage"] == pytest.approx(68.2)
-    assert home_row["assist_to_turnover_ratio"] == pytest.approx(2.5)
-    assert home_row["effective_field_goal_percentage"] == pytest.approx(57.8)
-    assert home_row["three_point_attempt_rate"] == pytest.approx(0.422, abs=0.001)
-    assert home_row["free_throw_attempt_rate"] == pytest.approx(0.222, abs=0.001)
-    assert home_row["true_shooting_percentage"] == pytest.approx(60.7)
-    assert home_row["offensive_rebound_percentage"] == pytest.approx(24.4)
-    assert home_row["defensive_rebound_percentage"] == pytest.approx(78.6)
-    assert home_row["rebound_percentage"] == pytest.approx(51.8)
-    assert home_row["steal_percentage"] == pytest.approx(9.2)
     assert home_row["block_percentage"] == pytest.approx(9.4)
-    assert away_row["possessions"] == pytest.approx(99.0)
     assert away_row["offensive_possessions"] == pytest.approx(98.0)
     assert away_row["defensive_possessions"] == pytest.approx(100.0)
-    assert away_row["pace"] == pytest.approx(99.0)
-    assert away_row["assist_percentage"] == pytest.approx(66.7)
-    assert away_row["assist_to_turnover_ratio"] == pytest.approx(2.15)
-    assert away_row["three_point_attempt_rate"] == pytest.approx(0.398, abs=0.001)
-    assert away_row["free_throw_attempt_rate"] == pytest.approx(0.25, abs=0.001)
-    assert away_row["offensive_rebound_percentage"] == pytest.approx(21.4)
-    assert away_row["defensive_rebound_percentage"] == pytest.approx(75.6)
-    assert away_row["rebound_percentage"] == pytest.approx(48.2)
-    assert away_row["steal_percentage"] == pytest.approx(7.0, abs=0.001)
+    retired_team_game_columns = {
+        "point_differential",
+        "possessions",
+        "pace",
+        "offensive_rating",
+        "defensive_rating",
+        "net_rating",
+        "assist_percentage",
+        "assist_to_turnover_ratio",
+        "effective_field_goal_percentage",
+        "three_point_attempt_rate",
+        "free_throw_attempt_rate",
+        "true_shooting_percentage",
+        "offensive_rebound_percentage",
+        "defensive_rebound_percentage",
+        "rebound_percentage",
+        "steal_percentage",
+        "field_goals_percentage",
+        "opponent_field_goals_percentage",
+        "two_pointers_percentage",
+        "opponent_two_pointers_percentage",
+        "three_pointers_percentage",
+        "opponent_three_pointers_percentage",
+        "free_throws_percentage",
+        "opponent_free_throws_percentage",
+    }
+    assert retired_team_game_columns.isdisjoint(home_row)
+    assert retired_team_game_columns.isdisjoint(away_row)
     assert away_row["block_percentage"] == pytest.approx(7.7)
     assert home_row["opponent_field_goals_attempted"] == 88
     assert home_row["opponent_field_goals_made"] == 42
-    assert home_row["opponent_field_goals_percentage"] == 47.7
     assert home_row["opponent_offensive_fouls_committed"] == 3
     assert home_row["opponent_technical_fouls_committed"] == 0
     assert home_row["opponent_three_pointers_attempted"] == 35
     assert home_row["opponent_three_pointers_made"] == 12
-    assert home_row["opponent_three_pointers_percentage"] == 34.3
     assert home_row["opponent_free_throws_attempted"] == 22
     assert home_row["opponent_free_throws_made"] == 19
-    assert home_row["opponent_free_throws_percentage"] == 86.4
     assert home_row["opponent_offensive_rebounds"] == 9
     assert home_row["opponent_defensive_rebounds"] == 31
     assert home_row["opponent_total_rebounds"] == 40
     assert home_row["opponent_two_pointers_attempted"] == 53
     assert home_row["opponent_two_pointers_made"] == 30
-    assert home_row["opponent_two_pointers_percentage"] == 56.6
     assert home_row["opponent_assists"] == 28
     assert home_row["opponent_turnovers"] == 13
     assert home_row["opponent_steals"] == 7
@@ -982,21 +976,17 @@ def test_build_team_game_rows_resolve_opponent_links() -> None:
     assert home_row["opponent_fouls_drawn"] == 19
     assert away_row["opponent_field_goals_attempted"] == 90
     assert away_row["opponent_field_goals_made"] == 44
-    assert away_row["opponent_field_goals_percentage"] == 48.9
     assert away_row["opponent_offensive_fouls_committed"] == 2
     assert away_row["opponent_technical_fouls_committed"] == 0
     assert away_row["opponent_three_pointers_attempted"] == 38
     assert away_row["opponent_three_pointers_made"] == 16
-    assert away_row["opponent_three_pointers_percentage"] == 42.1
     assert away_row["opponent_free_throws_attempted"] == 20
     assert away_row["opponent_free_throws_made"] == 16
-    assert away_row["opponent_free_throws_percentage"] == 80.0
     assert away_row["opponent_offensive_rebounds"] == 10
     assert away_row["opponent_defensive_rebounds"] == 33
     assert away_row["opponent_total_rebounds"] == 43
     assert away_row["opponent_two_pointers_attempted"] == 52
     assert away_row["opponent_two_pointers_made"] == 28
-    assert away_row["opponent_two_pointers_percentage"] == 53.8
     assert away_row["opponent_assists"] == 30
     assert away_row["opponent_turnovers"] == 12
     assert away_row["opponent_steals"] == 9
@@ -1103,71 +1093,40 @@ def test_build_player_season_rows_aggregate_one_row_per_player_season() -> None:
     assert curry["games_played"] == 1
     assert curry["games_started"] == 1
     assert curry["minutes_total"] == 36.2
-    assert curry["minutes_per_game"] == 36.2
     assert curry["points_total"] == 33
-    assert curry["points_per_game"] == 33.0
     assert curry["assists_total"] == 7
-    assert curry["assists_per_game"] == 7.0
     assert curry["rebounds_total"] == 5
-    assert curry["rebounds_per_game"] == 5.0
     assert curry["offensive_rebounds_total"] == 1
     assert curry["defensive_rebounds_total"] == 4
-    assert curry["offensive_rebounds_per_game"] == 1.0
-    assert curry["defensive_rebounds_per_game"] == 4.0
     assert curry["field_goals_made_total"] == 12
-    assert curry["field_goals_made_per_game"] == 12.0
     assert curry["field_goals_attempted_total"] == 20
-    assert curry["field_goals_attempted_per_game"] == 20.0
-    assert curry["field_goals_percentage"] == 60.0
     assert curry["three_pointers_made_total"] == 6
-    assert curry["three_pointers_made_per_game"] == 6.0
     assert curry["three_pointers_attempted_total"] == 11
-    assert curry["three_pointers_attempted_per_game"] == 11.0
-    assert curry["three_pointers_percentage"] == 54.5
     assert curry["two_pointers_made_total"] == 6
-    assert curry["two_pointers_made_per_game"] == 6.0
     assert curry["two_pointers_attempted_total"] == 9
-    assert curry["two_pointers_attempted_per_game"] == 9.0
-    assert curry["two_pointers_percentage"] == 66.7
     assert curry["free_throws_made_total"] == 5
-    assert curry["free_throws_made_per_game"] == 5.0
     assert curry["free_throws_attempted_total"] == 5
-    assert curry["free_throws_attempted_per_game"] == 5.0
-    assert curry["free_throws_percentage"] == 100.0
     assert curry["opponent_blocks_total"] == 0
     assert curry["offensive_fouls_committed_total"] == 0
     assert curry["fouls_drawn_total"] == 4
     assert curry["personal_fouls_committed_total"] == 2
-    assert curry["personal_fouls_committed_per_game"] == 2.0
     assert curry["technical_fouls_committed_total"] == 0
     assert curry["fast_break_points_total"] == 2
     assert curry["points_in_paint_total"] == 6
     assert curry["second_chance_points_total"] == 0
     assert curry["steals_total"] == 2
-    assert curry["steals_per_game"] == 2.0
     assert curry["blocks_total"] == 1
-    assert curry["blocks_per_game"] == 1.0
     assert curry["turnovers_total"] == 3
-    assert curry["turnovers_per_game"] == 3.0
     assert curry["plus_minus_total"] == 8
-    assert curry["assist_to_turnover_ratio"] == pytest.approx(2.33)
-    assert curry["assist_percentage"] == pytest.approx(25.0)
     assert curry["offensive_rebound_percentage"] == pytest.approx(11.1)
     assert curry["defensive_rebound_percentage"] == pytest.approx(16.7)
     assert curry["rebound_percentage"] == pytest.approx(15.2)
-    assert curry["effective_field_goal_percentage"] == pytest.approx(75.0)
-    assert curry["three_point_attempt_rate"] == pytest.approx(0.55)
-    assert curry["free_throw_attempt_rate"] == pytest.approx(0.25)
-    assert curry["true_shooting_percentage"] == pytest.approx(74.3)
     assert curry["usage_percentage"] == pytest.approx(32.4)
     assert curry["offensive_possessions_total"] == pytest.approx(74.0)
     assert curry["defensive_possessions_total"] == pytest.approx(72.0)
-    assert curry["possessions"] == pytest.approx(73.0)
-    assert curry["offensive_rating"] == pytest.approx(121.6)
     assert curry["defensive_rating"] == pytest.approx(113.9)
     assert curry["net_rating"] == pytest.approx(7.7)
     assert curry["pace"] == pytest.approx(96.8)
-    assert curry["steal_percentage"] == pytest.approx(2.8)
     assert curry["block_percentage"] == pytest.approx(2.5)
     assert curry["team_count"] == 1
     assert curry["is_multi_team_season"] is False
@@ -1217,72 +1176,41 @@ def test_build_player_season_team_rows_keep_team_stint_grain() -> None:
     assert lebron["games_played"] == 1
     assert lebron["games_started"] == 1
     assert lebron["minutes_total"] == 34.0
-    assert lebron["minutes_per_game"] == 34.0
     assert lebron["points_total"] == 30
-    assert lebron["points_per_game"] == 30.0
     assert lebron["assists_total"] == 9
-    assert lebron["assists_per_game"] == 9.0
     assert lebron["rebounds_total"] == 8
-    assert lebron["rebounds_per_game"] == 8.0
     assert lebron["offensive_rebounds_total"] == 1
-    assert lebron["offensive_rebounds_per_game"] == 1.0
     assert lebron["defensive_rebounds_total"] == 7
-    assert lebron["defensive_rebounds_per_game"] == 7.0
     assert lebron["steals_total"] == 1
-    assert lebron["steals_per_game"] == 1.0
     assert lebron["blocks_total"] == 1
-    assert lebron["blocks_per_game"] == 1.0
     assert lebron["opponent_blocks_total"] == 1
     assert lebron["turnovers_total"] == 4
-    assert lebron["turnovers_per_game"] == 4.0
     assert lebron["plus_minus_total"] == -4
     assert lebron["offensive_fouls_committed_total"] == 1
     assert lebron["personal_fouls_committed_total"] == 3
-    assert lebron["personal_fouls_committed_per_game"] == 3.0
     assert lebron["technical_fouls_committed_total"] == 0
     assert lebron["fouls_drawn_total"] == 6
     assert lebron["fast_break_points_total"] == 4
     assert lebron["points_in_paint_total"] == 12
     assert lebron["second_chance_points_total"] == 2
     assert lebron["field_goals_made_total"] == 11
-    assert lebron["field_goals_made_per_game"] == 11.0
     assert lebron["field_goals_attempted_total"] == 18
-    assert lebron["field_goals_attempted_per_game"] == 18.0
-    assert lebron["field_goals_percentage"] == pytest.approx(61.1)
     assert lebron["two_pointers_made_total"] == 9
-    assert lebron["two_pointers_made_per_game"] == 9.0
     assert lebron["two_pointers_attempted_total"] == 13
-    assert lebron["two_pointers_attempted_per_game"] == 13.0
-    assert lebron["two_pointers_percentage"] == pytest.approx(69.2)
     assert lebron["three_pointers_made_total"] == 2
-    assert lebron["three_pointers_made_per_game"] == 2.0
     assert lebron["three_pointers_attempted_total"] == 5
-    assert lebron["three_pointers_attempted_per_game"] == 5.0
-    assert lebron["three_pointers_percentage"] == 40.0
     assert lebron["free_throws_made_total"] == 6
-    assert lebron["free_throws_made_per_game"] == 6.0
     assert lebron["free_throws_attempted_total"] == 8
-    assert lebron["free_throws_attempted_per_game"] == 8.0
-    assert lebron["free_throws_percentage"] == 75.0
     assert lebron["offensive_possessions_total"] == 71.0
     assert lebron["defensive_possessions_total"] == 75.0
-    assert lebron["possessions"] == 73.0
     assert lebron["pace"] == pytest.approx(103.1)
-    assert lebron["offensive_rating"] == pytest.approx(118.3)
     assert lebron["defensive_rating"] == pytest.approx(118.7)
     assert lebron["net_rating"] == pytest.approx(-0.4)
-    assert lebron["assist_to_turnover_ratio"] == pytest.approx(2.25)
-    assert lebron["assist_percentage"] == pytest.approx(29.0)
     assert lebron["usage_percentage"] == pytest.approx(31.0)
     assert lebron["offensive_rebound_percentage"] == pytest.approx(10.0)
     assert lebron["defensive_rebound_percentage"] == pytest.approx(31.8)
     assert lebron["rebound_percentage"] == pytest.approx(25.0)
-    assert lebron["steal_percentage"] == pytest.approx(1.3)
     assert lebron["block_percentage"] == pytest.approx(2.3)
-    assert lebron["effective_field_goal_percentage"] == pytest.approx(66.7)
-    assert lebron["three_point_attempt_rate"] == pytest.approx(0.278)
-    assert lebron["free_throw_attempt_rate"] == pytest.approx(0.444)
-    assert lebron["true_shooting_percentage"] == pytest.approx(69.7)
 
 
 def test_build_team_season_rows_aggregate_team_results() -> None:
@@ -1301,71 +1229,38 @@ def test_build_team_season_rows_aggregate_team_results() -> None:
     assert warriors["games_played"] == 1
     assert warriors["wins"] == 1
     assert warriors["losses"] == 0
-    assert warriors["win_percentage"] == 1.0
     assert warriors["minutes"] == 48
-    assert warriors["minutes_per_game"] == 48.0
     assert warriors["points_total"] == 120
-    assert warriors["points_per_game"] == 120.0
     assert warriors["assists_total"] == 30
-    assert warriors["assists_per_game"] == 30.0
     assert warriors["turnovers_total"] == 12
-    assert warriors["turnovers_per_game"] == 12.0
     assert warriors["steals_total"] == 9
-    assert warriors["steals_per_game"] == 9.0
     assert warriors["blocks_total"] == 5
-    assert warriors["blocks_per_game"] == 5.0
     assert warriors["rebounds_total"] == 43
-    assert warriors["rebounds_per_game"] == 43.0
     assert warriors["offensive_rebounds_total"] == 10
-    assert warriors["offensive_rebounds_per_game"] == 10.0
     assert warriors["defensive_rebounds_total"] == 33
-    assert warriors["defensive_rebounds_per_game"] == 33.0
     assert warriors["field_goals_made_total"] == 44
-    assert warriors["field_goals_made_per_game"] == 44.0
     assert warriors["field_goals_attempted_total"] == 90
-    assert warriors["field_goals_attempted_per_game"] == 90.0
-    assert warriors["field_goals_percentage"] == pytest.approx(48.9)
     assert warriors["three_pointers_made_total"] == 16
-    assert warriors["three_pointers_made_per_game"] == 16.0
     assert warriors["three_pointers_attempted_total"] == 38
-    assert warriors["three_pointers_attempted_per_game"] == 38.0
-    assert warriors["three_pointers_percentage"] == pytest.approx(42.1)
     assert warriors["two_pointers_made_total"] == 28
-    assert warriors["two_pointers_made_per_game"] == 28.0
     assert warriors["two_pointers_attempted_total"] == 52
-    assert warriors["two_pointers_attempted_per_game"] == 52.0
-    assert warriors["two_pointers_percentage"] == pytest.approx(53.8)
     assert warriors["free_throws_made_total"] == 16
-    assert warriors["free_throws_made_per_game"] == 16.0
     assert warriors["free_throws_attempted_total"] == 20
-    assert warriors["free_throws_attempted_per_game"] == 20.0
-    assert warriors["free_throws_percentage"] == pytest.approx(80.0)
     assert warriors["offensive_fouls_committed_total"] == 2
     assert warriors["fouls_drawn_total"] == 18
     assert warriors["personal_fouls_committed_total"] == 17
-    assert warriors["personal_fouls_committed_per_game"] == 17.0
     assert warriors["technical_fouls_committed_total"] == 0
-    assert warriors["possessions"] == 99
     assert warriors["offensive_possessions"] == pytest.approx(100.0)
     assert warriors["defensive_possessions"] == pytest.approx(98.0)
     assert warriors["pace"] == pytest.approx(99.0)
-    assert warriors["offensive_rating"] == pytest.approx(121.2)
     assert warriors["defensive_rating"] == pytest.approx(116.2)
     assert warriors["net_rating"] == pytest.approx(5.1)
-    assert warriors["steal_percentage"] == pytest.approx(9.2)
     assert warriors["block_percentage"] == pytest.approx(9.4)
-    assert warriors["assist_percentage"] == pytest.approx(68.2)
-    assert warriors["assist_to_turnover_ratio"] == pytest.approx(2.5)
     assert warriors["offensive_rebound_percentage"] == pytest.approx(24.4)
     assert warriors["defensive_rebound_percentage"] == pytest.approx(78.6)
     assert warriors["rebound_percentage"] == pytest.approx(51.8)
-    assert warriors["effective_field_goal_percentage"] == pytest.approx(57.8)
-    assert warriors["three_point_attempt_rate"] == pytest.approx(0.422)
-    assert warriors["free_throw_attempt_rate"] == pytest.approx(0.222)
-    assert warriors["true_shooting_percentage"] == pytest.approx(60.7)
 
     assert lakers["wins"] == 0
     assert lakers["losses"] == 1
     assert lakers["offensive_possessions"] == pytest.approx(98.0)
     assert lakers["defensive_possessions"] == pytest.approx(100.0)
-    assert lakers["win_percentage"] == 0.0

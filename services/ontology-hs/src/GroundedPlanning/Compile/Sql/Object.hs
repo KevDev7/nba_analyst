@@ -7,6 +7,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
   ( compileMetricAggregation
+  , renderMetricFormulaDirectValue
+  , renderMetricFormulaSourceSelectLines
   , renderGameDateFilterConditions
   , renderMaybePathJoinClauses
   , renderPathJoinClauses
@@ -30,7 +32,6 @@ import GroundedPlanning.Compile.Sql.Projection
   , renderMetadataDirectSelectLines
   , renderMetadataFinalSelectLines
   , renderMetadataSourceSelectLines
-  , renderMetricValue
   , renderResultPredicateAggregateSelectLines
   , renderResultPredicateDirectSelectLines
   , renderResultPredicateFinalSelectLines
@@ -94,6 +95,7 @@ compileObjectSql resolved@ResolvedObjectQuery {seasonLabel = maybeSeasonLabel, s
         , "    " <> renderColumnRefWithContext "f" "r" "c" objectGameDate <> " AS game_date,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" objectMetricSource <> " AS metric_source,"
         ]
+          <> renderMetricFormulaSourceSelectLines "f" objectMetricFormula
           <> renderMetadataSourceSelectLines "f" "r" "c" objectDisplayMetadata
           <> renderDisplayMetricSourceSelectLines "f" objectDisplayMetricFormulas
           <> renderResultPredicateSourceSelectLines "f" objectResultPredicate
@@ -150,6 +152,7 @@ compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
       , rowPath = objectRowPath
       , contextPath = objectContextPath
       , queryLimit = objectQueryLimit
+      , metricFormula = objectMetricFormula
       , objectRowPredicateResolved = objectRowPredicate
       , objectResultPredicateResolved = objectResultPredicate
       , objectOrderDirection = objectOrderDirectionValue
@@ -164,10 +167,11 @@ compileSeasonObjectSql resolved seasonLabelValue seasonTypeValue =
     , "    " <> renderColumnRefWithContext "f" "r" "c" objectDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" objectContextValue <> " AS context_value,"
     ]
+      <> renderMetricFormulaSourceSelectLines "f" objectMetricFormula
       <> renderMetadataDirectSelectLines "f" "r" "c" objectDisplayMetadata
       <> renderDisplayMetricDirectSelectLines "f" objectDisplayMetricFormulas
       <> renderResultPredicateDirectSelectLines "f" objectResultPredicate
-      <> [ "    " <> renderMetricValue objectMetricSource <> " AS metric_value"
+      <> [ "    " <> renderMetricFormulaDirectValue "f" objectMetricSource objectMetricFormula <> " AS metric_value"
     , "  FROM " <> objectFactTableName <> " f"
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" objectRowPath

@@ -123,7 +123,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertEqual(spec["findDisplayDimensions"], ["game_date", "score", "point_differential"])
         self.assertIn("r.game_date AS game_date", sql)
         self.assertIn("f.score AS score", sql)
-        self.assertIn("f.point_differential AS point_differential", sql)
+        self.assertIn("THEN f.score - f.opponent_score ELSE NULL END AS point_differential", sql)
         self.assertIn("pt1.team_name AS team_name", sql)
 
         if hasattr(ExecutionPlan, "model_validate"):
@@ -164,7 +164,7 @@ class FindQueryTests(unittest.TestCase):
             ],
         )
         self.assertIn("d2.team_name AS opponent", sql)
-        self.assertIn("f.point_differential AS point_differential", sql)
+        self.assertIn("THEN f.score - f.opponent_score ELSE NULL END AS point_differential", sql)
         self.assertIn("ORDER BY r.game_date DESC", sql)
 
     def test_haskell_uses_role_aware_opponent_find_display(self) -> None:

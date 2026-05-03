@@ -67,7 +67,6 @@ selectedMetricField selectedMetric rawField =
 executableMetricField :: Object -> Text -> Maybe QI.PredicateField
 executableMetricField factObjectValue rawField = do
   metricValue <- bestExecutableMetricMatch rawField factObjectValue
-  _ <- singleSourceMetric metricValue
   pure (resultField (metricName metricValue))
 
 publicMeasureAttributeField :: Object -> Text -> Maybe QI.PredicateField
@@ -85,12 +84,6 @@ resultField attributeValue =
     , QI.predicateFieldLinkRole = Nothing
     , QI.predicateFieldLabel = Nothing
     }
-
-singleSourceMetric :: OT.MetricDef -> Maybe Text
-singleSourceMetric metricValue =
-  case metricSourceAttributes metricValue of
-    [sourceAttributeValue] -> Just sourceAttributeValue
-    _ -> Nothing
 
 explicitAggregation :: Text -> Maybe Text
 explicitAggregation rawField =

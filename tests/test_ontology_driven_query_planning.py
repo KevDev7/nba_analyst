@@ -71,12 +71,12 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
         team_game_metrics = {metric["name"]: metric for metric in objects["TeamGame"]["metrics"]}
         team_game_attributes = {attribute["name"]: attribute for attribute in objects["TeamGame"]["attributes"]}
         self.assertEqual(team_game_metrics["total_points"]["source_attributes"], ["score"])
-        self.assertEqual(team_game_metrics["total_point_differential"]["aggregation"], "sum")
+        self.assertEqual(team_game_metrics["total_point_differential"]["aggregation"], "ratio")
         self.assertTrue(team_game_metrics["total_point_differential"]["executable"])
-        self.assertIn("margin", team_game_attributes["point_differential"]["aliases"])
+        self.assertIsNotNone(team_game_attributes["point_differential"]["derivation"])
         self.assertIn("margin", team_game_metrics["total_point_differential"]["aliases"])
         self.assertIn("average margin", team_game_metrics["average_point_differential"]["aliases"])
-        self.assertEqual(team_game_metrics["average_offensive_rating"]["aggregation"], "avg")
+        self.assertEqual(team_game_metrics["average_offensive_rating"]["aggregation"], "ratio")
         self.assertEqual(team_game_metrics["total_assists"]["source_attributes"], ["assists"])
         self.assertEqual(team_game_metrics["average_assists"]["aggregation"], "avg")
         self.assertEqual(team_game_metrics["total_rebounds"]["source_attributes"], ["total_rebounds"])
@@ -88,10 +88,26 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
             ["field_goals_made"],
         )
         self.assertNotIn("total_offensive_rating", team_game_metrics)
-        self.assertNotIn("average_pace", team_game_metrics)
-        self.assertNotIn("average_field_goals_percentage", team_game_metrics)
-        self.assertNotIn("average_assist_to_turnover_ratio", team_game_metrics)
-        self.assertNotIn("average_true_shooting_percentage", team_game_metrics)
+        self.assertEqual(
+            team_game_metrics["average_pace"]["source_attributes"],
+            ["offensive_possessions", "defensive_possessions", "minutes_played"],
+        )
+        self.assertEqual(
+            team_game_metrics["average_assist_to_turnover_ratio"]["source_attributes"],
+            ["assists", "turnovers"],
+        )
+        self.assertEqual(
+            team_game_metrics["average_true_shooting_percentage"]["source_attributes"],
+            ["score", "field_goals_attempted", "free_throws_attempted"],
+        )
+        self.assertEqual(
+            team_game_metrics["average_field_goals_percentage"]["source_attributes"],
+            ["field_goals_made", "field_goals_attempted"],
+        )
+        self.assertEqual(
+            team_game_metrics["average_opponent_field_goals_percentage"]["source_attributes"],
+            ["opponent_field_goals_made", "opponent_field_goals_attempted"],
+        )
 
         player_game_metrics = {metric["name"]: metric for metric in objects["PlayerGame"]["metrics"]}
         self.assertEqual(player_game_metrics["games_won"]["source_attributes"], ["win_loss_result"])

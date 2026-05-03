@@ -206,10 +206,12 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["total_point_differential"])
         self.assertEqual(plan["metric"], "total_point_differential")
-        self.assertEqual(plan["metric_aggregation"], "sum")
+        self.assertEqual(plan["metric_aggregation"], "ratio")
         self.assertEqual(plan["display_metrics"], [])
         self.assertIn("FROM team_game f", sql)
-        self.assertIn("f.point_differential AS metric_source", sql)
+        self.assertIn("f.score AS score", sql)
+        self.assertIn("f.opponent_score AS opponent_score", sql)
+        self.assertIn("SUM(CASE WHEN score IS NOT NULL", sql)
 
     def test_haskell_grounds_team_margin_metric_from_ontology_alias(self) -> None:
         payload = call_plan_semantic_draft(
@@ -238,7 +240,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["total_point_differential"])
         self.assertEqual(plan["metric"], "total_point_differential")
-        self.assertIn("f.point_differential AS metric_source", sql)
+        self.assertIn("f.score AS score", sql)
+        self.assertIn("f.opponent_score AS opponent_score", sql)
+        self.assertIn("SUM(CASE WHEN score IS NOT NULL", sql)
 
     def test_haskell_grounds_monthly_team_wins_trend_from_game_outcomes(self) -> None:
         payload = call_plan_semantic_draft(
@@ -646,7 +650,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             predicate_leaf("TeamSeason", "win_percentage", "greater_than", 0.6),
         )
         self.assertEqual(resolved["rowPredicateResolved"]["contents"]["rowPredicateValue"]["value"], 0.6)
-        self.assertIn("f.win_percentage > 0.6", sql)
+        self.assertIn("f.wins", sql)
+        self.assertIn("> 0.6", sql)
 
     def test_haskell_grounds_decimal_measure_filter_from_numeric_value(self) -> None:
         payload = call_plan_semantic_draft(
@@ -674,7 +679,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             predicate_leaf("TeamSeason", "win_percentage", "greater_than", 0.6),
         )
         self.assertEqual(resolved["rowPredicateResolved"]["contents"]["rowPredicateValue"]["value"], 0.6)
-        self.assertIn("f.win_percentage > 0.6", sql)
+        self.assertIn("f.wins", sql)
+        self.assertIn("> 0.6", sql)
 
     def test_haskell_grounds_aggregate_numeric_measure_filter_to_linked_filter(self) -> None:
         payload = call_plan_semantic_draft(
@@ -916,14 +922,15 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             shared["resultPredicate"],
             result_predicate_leaf("win_percentage", "greater_than", 0.6),
         )
-        self.assertEqual(resolved["resultPredicateResolved"]["contents"]["resultPredicateColumn"], "win_percentage")
+        self.assertIsNone(resolved["resultPredicateResolved"]["contents"]["resultPredicateColumn"])
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "win_percentage")
         self.assertEqual(plan["result_predicate"]["field"]["attribute"], "win_percentage")
         self.assertIn(
             {"column_key": "result_predicate_1", "label": "win_percentage", "column_type": "filter_metadata"},
             plan["display_metadata"],
         )
-        self.assertIn("f.win_percentage AS result_predicate_1", sql)
+        self.assertIn("f.wins", sql)
+        self.assertIn("AS result_predicate_1", sql)
         self.assertIn("  result_predicate_1,\n  metric_value", sql)
         self.assertIn("WHERE result_predicate_1 > 0.6", sql)
 

@@ -7,6 +7,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
   ( compileMetricAggregation
+  , renderMetricFormulaDirectValue
+  , renderMetricFormulaSourceSelectLines
   , renderGameDateFilterConditions
   , renderMaybePathJoinClauses
   , renderPathJoinClauses
@@ -39,7 +41,6 @@ import GroundedPlanning.Compile.Sql.Projection
   , renderMetadataDirectSelectLines
   , renderMetadataFinalSelectLines
   , renderMetadataSourceSelectLines
-  , renderMetricValue
   , renderResultPredicateAggregateSelectLines
   , renderResultPredicateDirectSelectLines
   , renderResultPredicateFinalSelectLines
@@ -107,6 +108,7 @@ compileRankingSql resolved@ResolvedMetricQuery {seasonLabel = maybeSeasonLabel, 
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricGameDate <> " AS game_date,"
         , "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_source,"
         ]
+          <> renderMetricFormulaSourceSelectLines "f" resolvedMetricFormulaValue
           <> renderMetadataSourceSelectLines "f" "r" "c" metricDisplayMetadata
           <> renderDisplayMetricSourceSelectLines "f" metricDisplayMetricFormulas
           <> renderResultPredicateSourceSelectLines "f" metricResultPredicate
@@ -170,6 +172,7 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
       , queryLimit = metricQueryLimit
       , rowPredicateResolved = metricRowPredicate
       , resultPredicateResolved = metricResultPredicate
+      , metricFormula = resolvedMetricFormulaValue
       , metricOrderDirection = metricOrderDirectionValue
       , displayMetadata = metricDisplayMetadata
       , displayMetricFormulas = metricDisplayMetricFormulas
@@ -184,10 +187,11 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
       <> [ "    " <> renderRankingEntityName metricGroupingDimensions metricDisplayName <> " AS entity_name,"
     , "    " <> renderMaybeColumnRef "f" "r" "c" metricContextValue <> " AS context_value,"
     ]
+      <> renderMetricFormulaSourceSelectLines "f" resolvedMetricFormulaValue
       <> renderMetadataDirectSelectLines "f" "r" "c" metricDisplayMetadata
       <> renderDisplayMetricDirectSelectLines "f" metricDisplayMetricFormulas
       <> renderResultPredicateDirectSelectLines "f" metricResultPredicate
-      <> [ "    " <> renderMetricValue metricMetricSource <> " AS metric_value"
+      <> [ "    " <> renderMetricFormulaDirectValue "f" metricMetricSource resolvedMetricFormulaValue <> " AS metric_value"
     , "  FROM " <> metricFactTableName <> " f"
     ]
       <> renderPathJoinClauses "JOIN" "f" "r" "rp" metricRowPath
@@ -195,7 +199,7 @@ compileSeasonRankingSql resolved seasonLabelValue seasonTypeValue =
       <> renderMaybePathJoinClauses "LEFT JOIN" "f" "c" "cp" metricContextPath
       <> renderRowPredicateJoinClauses "f" metricRowPredicate
       <> [ "  WHERE " <> combineWhereClauses (seasonWhereClause seasonLabelValue seasonTypeValue : renderRowPredicateConditions "f" metricRowPredicate)
-         , "    AND " <> renderMetricValue metricMetricSource <> " IS NOT NULL"
+         , "    AND " <> renderMetricFormulaDirectValue "f" metricMetricSource resolvedMetricFormulaValue <> " IS NOT NULL"
          , ")"
          , "SELECT"
     , "  ROW_NUMBER() OVER (ORDER BY metric_value " <> metricOrderDirectionValue <> ", entity_name ASC) AS rank,"

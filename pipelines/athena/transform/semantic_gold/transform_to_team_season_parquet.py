@@ -257,9 +257,6 @@ def build_team_season_rows_from_team_game_rows(
                 "games_played": games_played,
                 "wins": wins,
                 "losses": losses,
-                "win_percentage": round(safe_ratio(wins, games_played), 3)
-                if games_played > 0
-                else None,
                 "team_id": aggregate["team_id"],
                 "season_year": aggregate["season_year"],
                 "season_type": aggregate["season_type"],
@@ -268,67 +265,25 @@ def build_team_season_rows_from_team_game_rows(
                 else None,
                 "minutes_per_game": _rounded_ratio(minutes_played_total / 5.0, games_played),
                 "points_total": score_total,
-                "points_per_game": _rounded_ratio(score_total, games_played),
                 "assists_total": assists_total,
-                "assists_per_game": _rounded_ratio(assists_total, games_played),
                 "turnovers_total": turnovers_total,
-                "turnovers_per_game": _rounded_ratio(turnovers_total, games_played),
                 "steals_total": steals_total,
-                "steals_per_game": _rounded_ratio(steals_total, games_played),
                 "blocks_total": blocks_total,
-                "blocks_per_game": _rounded_ratio(blocks_total, games_played),
                 "rebounds_total": rebounds_total,
-                "rebounds_per_game": _rounded_ratio(rebounds_total, games_played),
                 "offensive_rebounds_total": rebounds_offensive_total,
-                "offensive_rebounds_per_game": _rounded_ratio(rebounds_offensive_total, games_played),
                 "defensive_rebounds_total": rebounds_defensive_total,
-                "defensive_rebounds_per_game": _rounded_ratio(rebounds_defensive_total, games_played),
                 "field_goals_made_total": field_goals_made_total,
-                "field_goals_made_per_game": _rounded_ratio(field_goals_made_total, games_played),
                 "field_goals_attempted_total": field_goals_attempted_total,
-                "field_goals_attempted_per_game": _rounded_ratio(field_goals_attempted_total, games_played),
-                "field_goals_percentage": _rounded_ratio(
-                    field_goals_made_total,
-                    field_goals_attempted_total,
-                    scale=100.0,
-                ),
                 "three_pointers_made_total": three_pointers_made_total,
-                "three_pointers_made_per_game": _rounded_ratio(three_pointers_made_total, games_played),
                 "three_pointers_attempted_total": three_pointers_attempted_total,
-                "three_pointers_attempted_per_game": _rounded_ratio(three_pointers_attempted_total, games_played),
-                "three_pointers_percentage": _rounded_ratio(
-                    three_pointers_made_total,
-                    three_pointers_attempted_total,
-                    scale=100.0,
-                ),
                 "two_pointers_made_total": two_pointers_made_total,
-                "two_pointers_made_per_game": _rounded_ratio(two_pointers_made_total, games_played),
                 "two_pointers_attempted_total": two_pointers_attempted_total,
-                "two_pointers_attempted_per_game": _rounded_ratio(two_pointers_attempted_total, games_played),
-                "two_pointers_percentage": _rounded_ratio(
-                    two_pointers_made_total,
-                    two_pointers_attempted_total,
-                    scale=100.0,
-                ),
                 "free_throws_made_total": free_throws_made_total,
-                "free_throws_made_per_game": _rounded_ratio(free_throws_made_total, games_played),
                 "free_throws_attempted_total": free_throws_attempted_total,
-                "free_throws_attempted_per_game": _rounded_ratio(free_throws_attempted_total, games_played),
-                "free_throws_percentage": _rounded_ratio(
-                    free_throws_made_total,
-                    free_throws_attempted_total,
-                    scale=100.0,
-                ),
                 "offensive_fouls_committed_total": offensive_fouls_committed_total,
                 "fouls_drawn_total": fouls_drawn_total,
                 "personal_fouls_committed_total": personal_fouls_committed_total,
-                "personal_fouls_committed_per_game": _rounded_ratio(
-                    personal_fouls_committed_total, games_played
-                ),
                 "technical_fouls_committed_total": technical_fouls_committed_total,
-                "possessions": int(round(hybrid_standard_possessions))
-                if hybrid_standard_possessions is not None
-                else None,
                 "offensive_possessions": round(offensive_possessions_total, 1)
                 if offensive_possessions_total > 0
                 else None,
@@ -337,9 +292,6 @@ def build_team_season_rows_from_team_game_rows(
                 else None,
                 "pace": round(hybrid_standard_possessions * 240.0 / minutes_played_total, 1)
                 if hybrid_standard_possessions is not None and minutes_played_total > 0
-                else None,
-                "offensive_rating": round(score_total * 100.0 / hybrid_standard_possessions, 1)
-                if hybrid_standard_possessions is not None
                 else None,
                 "defensive_rating": round(points_against_total * 100.0 / hybrid_standard_possessions, 1)
                 if hybrid_standard_possessions is not None
@@ -361,10 +313,6 @@ def build_team_season_rows_from_team_game_rows(
                     opponent_two_point_attempts_total,
                     scale=100.0,
                 ),
-                "assist_percentage": _rounded_ratio(assists_total, field_goals_made_total, scale=100.0),
-                "assist_to_turnover_ratio": _rounded_ratio(
-                    assists_total, turnovers_total, digits=2
-                ),
                 "offensive_rebound_percentage": _rounded_ratio(
                     rebounds_offensive_total,
                     rebounds_offensive_total + opponent_rebounds_defensive_total,
@@ -378,26 +326,6 @@ def build_team_season_rows_from_team_game_rows(
                 "rebound_percentage": _rounded_ratio(
                     rebounds_total,
                     rebounds_total + opponent_rebounds_total,
-                    scale=100.0,
-                ),
-                "effective_field_goal_percentage": _rounded_ratio(
-                    field_goals_made_total + (0.5 * three_pointers_made_total),
-                    field_goals_attempted_total,
-                    scale=100.0,
-                ),
-                "three_point_attempt_rate": _rounded_ratio(
-                    three_pointers_attempted_total,
-                    field_goals_attempted_total,
-                    digits=3,
-                ),
-                "free_throw_attempt_rate": _rounded_ratio(
-                    free_throws_attempted_total,
-                    field_goals_attempted_total,
-                    digits=3,
-                ),
-                "true_shooting_percentage": _rounded_ratio(
-                    score_total,
-                    true_shooting_denominator,
                     scale=100.0,
                 ),
             }

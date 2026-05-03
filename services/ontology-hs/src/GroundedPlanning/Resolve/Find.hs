@@ -10,7 +10,7 @@ import GroundedPlanning.Resolve.Common
 import GroundedPlanning.Resolve.Common.PredicateTrees
 import OntologyLayer.Graph (DiscoveredPath, findAllPathsFrom, findAttribute, findObject, findPath, findPathByLastLinkName, findPathsFrom)
 import qualified OntologyLayer.Graph as OG
-import OntologyLayer.Types (Attribute (source_column), Object (backing_table), Ontology)
+import OntologyLayer.Types (Attribute (derivation, source_column), AttributeDerivation (sql_expression), Object (backing_table), Ontology)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -47,8 +47,13 @@ resolveFindDisplay ontology factObjectValue targetObjectValue targetPathValue di
     ResolvedFindDisplay
       { displayPath = displayPathValue
       , displayColumn = source_column attributeValue
+      , displayExpression = attributeSqlExpression attributeValue
       , displayLabel = findDisplayOutputLabel displaySpec
       }
+
+attributeSqlExpression :: OT.Attribute -> Maybe Text
+attributeSqlExpression attributeValue =
+  sql_expression <$> derivation attributeValue
 
 findDisplayOutputLabel :: FindDisplaySpec -> Text
 findDisplayOutputLabel displaySpec =
@@ -125,6 +130,7 @@ resolveFindOrder ontology factObjectValue targetObjectValue targetPathValue orde
     ResolvedFindOrder
       { orderPath = orderPathValue
       , orderColumn = source_column attributeValue
+      , orderExpression = attributeSqlExpression attributeValue
       , orderLabel = findDisplayOutputLabel (findOrderField orderSpec)
       , orderDirection = findOrderDirection orderSpec
       }
@@ -160,6 +166,7 @@ resolveFindPredicateLeaf ontology factObjectName fieldValue operatorValue predic
       { treePredicateTargetObjectName = predicateFieldTargetObject fieldValue
       , treePredicatePath = predicatePathValue
       , treePredicateColumn = source_column attributeValue
+      , treePredicateExpression = attributeSqlExpression attributeValue
       , treePredicateLabel = predicateOutputLabel fieldValue
       , treePredicateLinkRole = predicateFieldLinkRole fieldValue
       , treePredicateOperator = operatorValue

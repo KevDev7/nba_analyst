@@ -11,7 +11,7 @@ import qualified Data.Text as T
 import Control.Applicative ((<|>))
 import GroundedPlanning.Resolve.Common.Types
 import OntologyLayer.Graph (findAttribute)
-import OntologyLayer.Types (MetricDef (aggregation, executable, name, source_attributes), Object)
+import OntologyLayer.Types (MetricDef (aggregation, executable, expression, name, source_attributes), Object)
 import qualified OntologyLayer.Types as OT
 import QueryModel.IR
 
@@ -67,6 +67,8 @@ resolveResultPredicateField factObject selectedMetric indexValue rawAttribute op
           { resultPredicateKey = "metric_value"
           , resultPredicateLabel = if rawAttribute == "metric_value" then name selectedMetric else rawAttribute
           , resultPredicateColumn = Nothing
+          , resultPredicateSourceAttributes = []
+          , resultPredicateExpression = Nothing
           , resultPredicateAggregation = aggregation selectedMetric
           , resultPredicateOperator = operatorValue
           , resultPredicateValue = predicateValue
@@ -85,18 +87,25 @@ resolveMetricResultField factObject indexValue rawAttribute operatorValue predic
     case [metricDef | metricDef <- OT.metrics factObject, executable metricDef, name metricDef == rawAttribute] of
       metricDef : _ -> Just metricDef
       [] -> Nothing
-  sourceAttributeName <-
-    case source_attributes metricValue of
-      [sourceAttributeValue] -> Just sourceAttributeValue
-      _ -> Nothing
-  attributeValue <- findAttribute factObject sourceAttributeName
-  if OT.kind attributeValue == OT.Measure && OT.visibility attributeValue == OT.Public
+  attributeValues <- mapM (findAttribute factObject) (source_attributes metricValue)
+  if all (\attributeValue -> OT.kind attributeValue == OT.Measure && OT.visibility attributeValue == OT.Public) attributeValues
     then
       Just
         ResolvedResultPredicateLeaf
           { resultPredicateKey = indexedResultPredicateKey indexValue
           , resultPredicateLabel = name metricValue
-          , resultPredicateColumn = Just (OT.source_column attributeValue)
+          , resultPredicateColumn =
+              case attributeValues of
+                [attributeValue] -> Just (OT.source_column attributeValue)
+                _ -> Nothing
+          , resultPredicateSourceAttributes = source_attributes metricValue
+          , resultPredicateExpression =
+              if aggregation metricValue == "identity" || aggregation metricValue == "ratio"
+                then
+                  case source_attributes metricValue of
+                    [sourceAttributeValue] | expression metricValue == sourceAttributeValue -> Nothing
+                    _ -> Just (expression metricValue)
+                else Nothing
           , resultPredicateAggregation = aggregation metricValue
           , resultPredicateOperator = operatorValue
           , resultPredicateValue = predicateValue
@@ -114,6 +123,8 @@ resolveMeasureResultField factObject indexValue rawAttribute operatorValue predi
           { resultPredicateKey = indexedResultPredicateKey indexValue
           , resultPredicateLabel = rawAttribute
           , resultPredicateColumn = Just (OT.source_column attributeValue)
+          , resultPredicateSourceAttributes = [OT.source_column attributeValue]
+          , resultPredicateExpression = Nothing
           , resultPredicateAggregation = aggregationValue
           , resultPredicateOperator = operatorValue
           , resultPredicateValue = predicateValue

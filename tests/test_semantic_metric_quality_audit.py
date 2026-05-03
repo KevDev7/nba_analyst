@@ -18,7 +18,7 @@ class SemanticMetricQualityAuditTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.audit = audit_metric_quality()
 
-    def test_team_game_exposes_populated_boxscore_metrics_and_defers_rate_surfaces(self) -> None:
+    def test_team_game_exposes_populated_boxscore_metrics_and_defers_remaining_rate_surfaces(self) -> None:
         team_game = self.audit["objects"]["TeamGame"]
         exposed = columns_by_status(team_game, "exposed")
         deferred = columns_by_status(team_game, "deferred_quality")
@@ -29,13 +29,16 @@ class SemanticMetricQualityAuditTests(unittest.TestCase):
         self.assertIn("total_rebounds", exposed)
         self.assertIn("steals", exposed)
         self.assertIn("blocks", exposed)
-        self.assertIn("offensive_rating", exposed)
-        self.assertIn("defensive_rating", exposed)
-        self.assertIn("net_rating", exposed)
-        self.assertIn("pace", deferred)
-        self.assertIn("field_goals_percentage", deferred)
-        self.assertIn("true_shooting_percentage", deferred)
-        self.assertIn("assist_to_turnover_ratio", deferred)
+        self.assertNotIn("offensive_rating", exposed)
+        self.assertNotIn("defensive_rating", exposed)
+        self.assertNotIn("net_rating", exposed)
+        self.assertNotIn("pace", deferred)
+        self.assertIn("block_percentage", deferred)
+        self.assertNotIn("field_goals_percentage", deferred)
+        self.assertNotIn("three_pointers_percentage", deferred)
+        self.assertNotIn("free_throws_percentage", deferred)
+        self.assertNotIn("true_shooting_percentage", deferred)
+        self.assertNotIn("assist_to_turnover_ratio", deferred)
 
     def test_team_season_exposes_all_populated_measure_metrics(self) -> None:
         team_season = self.audit["objects"]["TeamSeason"]
@@ -46,7 +49,7 @@ class SemanticMetricQualityAuditTests(unittest.TestCase):
         self.assertEqual(team_season["counts"]["unexpected_unexposed"], 0)
         self.assertIn("assists_total", exposed)
         self.assertIn("rebounds_total", exposed)
-        self.assertIn("true_shooting_percentage", exposed)
+        self.assertIn("points_total", exposed)
         self.assertIn("pace", exposed)
 
     def test_markdown_report_surfaces_deferred_quality_columns(self) -> None:
@@ -56,8 +59,8 @@ class SemanticMetricQualityAuditTests(unittest.TestCase):
         self.assertIn("## TeamGame", markdown)
         self.assertIn("- unexpected unexposed: 0", markdown)
         self.assertIn("### Deferred Quality Columns", markdown)
-        self.assertIn("| pace |", markdown)
-        self.assertIn("TeamGame rate, percentage, pace, and ratio metrics", markdown)
+        self.assertIn("| block_percentage |", markdown)
+        self.assertIn("Remaining TeamGame percentage metrics", markdown)
 
 
 if __name__ == "__main__":

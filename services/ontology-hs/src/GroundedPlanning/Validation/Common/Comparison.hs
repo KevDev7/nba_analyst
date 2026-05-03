@@ -91,7 +91,7 @@ validateComparisonMetric :: BaseQuery -> OT.MetricDef -> Either Text ()
 validateComparisonMetric base metricDef =
   if comparisonRuntimeMetricSupported base metricDef
     then pure ()
-    else Left "Comparison supports executable sum/avg metrics for recent rows and executable identity metrics for season surfaces."
+    else Left "Comparison supports executable single-source metrics and single selected ratio metrics for recent rows, and executable identity metrics for season surfaces."
 
 validateComparisonEntities :: [EntityRef] -> Either Text ()
 validateComparisonEntities entityRefs =
@@ -145,8 +145,11 @@ comparisonRuntimeMetricSupported base metricDef =
   executable metricDef
     && if isExactSeasonBundle (filters base) && timeGrain base == Nothing
       then aggregation metricDef `elem` ["identity"]
-      else aggregation metricDef `elem` ["sum", "avg", "count_win", "count_loss", "count_true"]
-    && length (source_attributes metricDef) == 1
+      else
+        if aggregation metricDef == "ratio"
+          then length (metrics base) == 1 && not (null (source_attributes metricDef))
+          else aggregation metricDef `elem` ["sum", "avg", "count_win", "count_loss", "count_true"]
+            && length (source_attributes metricDef) == 1
 
 validateNoComparisonResultPredicate :: Maybe Predicate -> Either Text ()
 validateNoComparisonResultPredicate maybePredicate =

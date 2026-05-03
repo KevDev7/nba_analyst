@@ -10,6 +10,7 @@ from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
+from scripts.generate_semantic_ontology import season_per_game_row_expression
 from scripts.load_gold_snapshot import load_database
 
 
@@ -256,13 +257,13 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             (index + 1, row[0], None, self._metric_value(row[1]))
             for index, row in enumerate(
                 self._fetchall(
-                    """
-                    SELECT p.full_name, ps.points_per_game AS average_points
+                    f"""
+                    SELECT p.full_name, {season_per_game_row_expression("points_total")} AS average_points
                     FROM player_season ps
                     JOIN player p ON ps.person_id = p.person_id
                     WHERE ps.season_year = '2025-26'
                       AND ps.season_type = 'regular_season'
-                    ORDER BY ps.points_per_game DESC, p.full_name ASC
+                    ORDER BY average_points DESC, p.full_name ASC
                     LIMIT 5
                     """
                 )
@@ -390,15 +391,15 @@ class TruthEvalSnapshotTests(unittest.TestCase):
             (index + 1, row[0], row[1], self._metric_value(row[2]))
             for index, row in enumerate(
                 self._fetchall(
-                    """
-                    SELECT p.full_name, t.team_abbreviation, pst.points_per_game AS average_points
+                    f"""
+                    SELECT p.full_name, t.team_abbreviation, {season_per_game_row_expression("points_total")} AS average_points
                     FROM player_season_team pst
                     JOIN player p ON pst.person_id = p.person_id
                     JOIN team t ON pst.team_id = t.team_id
                     WHERE pst.season_year = '2025-26'
                       AND pst.season_type = 'regular_season'
                       AND t.team_name = 'Lakers'
-                    ORDER BY pst.points_per_game DESC, p.full_name ASC
+                    ORDER BY average_points DESC, p.full_name ASC
                     LIMIT 5
                     """
                 )

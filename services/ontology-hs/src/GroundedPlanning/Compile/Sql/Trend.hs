@@ -7,6 +7,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
   ( compileMetricAggregation
+  , renderMetricFormulaSourceSelectLines
   , renderResultPredicateConditions
   , renderRowPredicateConditions
   , renderRowPredicateJoinClauses
@@ -58,6 +59,7 @@ compileTrendSql resolved =
       stripLastTrailingComma $
         [ "    " <> renderColumnRefWithContext "f" "s" "c" trendMetricSource <> " AS metric_source,"
         ]
+          <> renderMetricFormulaSourceSelectLines "f" trendMetricFormula
           <> renderDisplayMetricSourceSelectLines "f" trendMetricFormulas
           <> renderResultPredicateSourceSelectLines "f" trendResultPredicate
     resultFilterWhereClause =

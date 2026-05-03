@@ -83,12 +83,6 @@ TEAM_GAME_USAGE_REQUIRED_COLUMNS = [
     "turnoversTotal",
 ]
 
-
-def _rounded_value(value: object, digits: int) -> float | None:
-    numeric = to_float_or_none(value)
-    return round(numeric, digits) if numeric is not None else None
-
-
 def build_player_game_possession_context_map_from_table(
     player_game_possession_context_table: pa.Table | None,
 ) -> dict[tuple[str, int], dict[str, object]]:
@@ -334,20 +328,6 @@ def build_player_game_rows_from_tables(
         minutes_played = round(seconds_played_total / 60.0, 1) if seconds_played_total is not None else None
         offensive_possessions = to_float_or_none(player_possession_context.get("offensive_possessions"))
         defensive_possessions = to_float_or_none(player_possession_context.get("defensive_possessions"))
-        possessions = (
-            round((offensive_possessions + defensive_possessions) / 2.0, 1)
-            if offensive_possessions is not None
-            and defensive_possessions is not None
-            and (offensive_possessions + defensive_possessions) > 0
-            else None
-        )
-        pace = (
-            round((48.0 * possessions) / minutes_played, 1)
-            if possessions is not None
-            and minutes_played is not None
-            and minutes_played > 0
-            else None
-        )
         team_points_for_while_on_court = to_float_or_none(
             player_possession_context.get("team_points_for_while_on_court")
         )
@@ -361,40 +341,6 @@ def build_player_game_rows_from_tables(
         field_goals_attempted = to_int_or_none(row.get("fieldGoalsAttempted"))
         free_throws_attempted = to_int_or_none(row.get("freeThrowsAttempted"))
         turnovers = to_int_or_none(row.get("turnovers"))
-        assist_to_turnover_ratio = (
-            round((assists or 0) / turnovers, 2)
-            if turnovers is not None and turnovers > 0
-            else None
-        )
-        effective_field_goal_percentage = (
-            round(
-                ((to_int_or_none(row.get("fieldGoalsMade")) or 0) + (0.5 * (to_int_or_none(row.get("threePointersMade")) or 0)))
-                * 100.0
-                / field_goals_attempted,
-                1,
-            )
-            if field_goals_attempted is not None and field_goals_attempted > 0
-            else None
-        )
-        true_shooting_denominator = 2.0 * (
-            float(field_goals_attempted or 0)
-            + (0.44 * float(free_throws_attempted or 0))
-        )
-        true_shooting_percentage = (
-            round((float(to_int_or_none(row.get("points")) or 0) * 100.0) / true_shooting_denominator, 1)
-            if true_shooting_denominator > 0
-            else None
-        )
-        three_point_attempt_rate = (
-            round((float(to_int_or_none(row.get("threePointersAttempted")) or 0)) / field_goals_attempted, 3)
-            if field_goals_attempted is not None and field_goals_attempted > 0
-            else None
-        )
-        free_throw_attempt_rate = (
-            round((float(free_throws_attempted or 0)) / field_goals_attempted, 3)
-            if field_goals_attempted is not None and field_goals_attempted > 0
-            else None
-        )
         offensive_rating = (
             round((team_points_for_while_on_court * 100.0) / offensive_possessions, 1)
             if team_points_for_while_on_court is not None
@@ -407,16 +353,6 @@ def build_player_game_rows_from_tables(
             if team_points_against_while_on_court is not None
             and defensive_possessions is not None
             and defensive_possessions > 0
-            else None
-        )
-        net_rating = (
-            round(offensive_rating - defensive_rating, 1)
-            if offensive_rating is not None and defensive_rating is not None
-            else None
-        )
-        steal_percentage = (
-            round(((to_int_or_none(row.get("steals")) or 0) * 100.0) / defensive_possessions, 1)
-            if defensive_possessions is not None and defensive_possessions > 0
             else None
         )
         block_percentage = (
@@ -468,34 +404,24 @@ def build_player_game_rows_from_tables(
             "defensive_possessions": round(defensive_possessions, 1)
             if defensive_possessions is not None
             else None,
-            "possessions": possessions,
-            "pace": pace,
             "assist_percentage": round((assists or 0) * 100.0 / teammate_field_goals_made_while_on_court, 1)
             if teammate_field_goals_made_while_on_court not in {None, 0}
             else None,
             "usage_percentage": usage_percentage,
-            "assist_to_turnover_ratio": assist_to_turnover_ratio,
-            "three_point_attempt_rate": three_point_attempt_rate,
-            "free_throw_attempt_rate": free_throw_attempt_rate,
             "plus_minus": to_int_or_none(row.get("plusMinusPoints")),
             "assists": assists,
             "blocks": to_int_or_none(row.get("blocks")),
             "opponent_blocks": to_int_or_none(row.get("blocksReceived")),
             "field_goals_attempted": field_goals_attempted,
             "field_goals_made": to_int_or_none(row.get("fieldGoalsMade")),
-            "field_goals_percentage": _rounded_value(row.get("fieldGoalsPercentage"), 1),
-            "effective_field_goal_percentage": effective_field_goal_percentage,
             "offensive_fouls_committed": to_int_or_none(row.get("foulsOffensive")),
             "fouls_drawn": to_int_or_none(row.get("foulsDrawn")),
             "personal_fouls_committed": to_int_or_none(row.get("foulsPersonal")),
             "technical_fouls_committed": to_int_or_none(row.get("foulsTechnical")),
             "free_throws_attempted": free_throws_attempted,
             "free_throws_made": to_int_or_none(row.get("freeThrowsMade")),
-            "free_throws_percentage": _rounded_value(row.get("freeThrowsPercentage"), 1),
-            "true_shooting_percentage": true_shooting_percentage,
             "offensive_rating": offensive_rating,
             "defensive_rating": defensive_rating,
-            "net_rating": net_rating,
             "defensive_rebounds": defensive_rebounds,
             "offensive_rebounds": offensive_rebounds,
             "total_rebounds": total_rebounds,
@@ -515,16 +441,13 @@ def build_player_game_rows_from_tables(
             if rebound_opportunities_while_on_court not in {None, 0}
             else None,
             "steals": to_int_or_none(row.get("steals")),
-            "steal_percentage": steal_percentage,
             "block_percentage": block_percentage,
             "turnovers": turnovers,
             "points": to_int_or_none(row.get("points")),
             "three_pointers_attempted": to_int_or_none(row.get("threePointersAttempted")),
             "three_pointers_made": to_int_or_none(row.get("threePointersMade")),
-            "three_pointers_percentage": _rounded_value(row.get("threePointersPercentage"), 1),
             "two_pointers_attempted": to_int_or_none(row.get("twoPointersAttempted")),
             "two_pointers_made": to_int_or_none(row.get("twoPointersMade")),
-            "two_pointers_percentage": _rounded_value(row.get("twoPointersPercentage"), 1),
             "fast_break_points": to_int_or_none(row.get("pointsFastBreak")),
             "points_in_paint": to_int_or_none(row.get("pointsInThePaint")),
             "second_chance_points": to_int_or_none(row.get("pointsSecondChance")),

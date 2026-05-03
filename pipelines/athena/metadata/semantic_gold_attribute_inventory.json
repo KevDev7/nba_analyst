@@ -445,12 +445,6 @@
           "visibility": "public"
         },
         {
-          "name": "field_goals_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "two_pointers_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -458,12 +452,6 @@
         },
         {
           "name": "two_pointers_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -481,12 +469,6 @@
           "visibility": "public"
         },
         {
-          "name": "three_pointers_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "free_throws_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -494,12 +476,6 @@
         },
         {
           "name": "free_throws_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -517,18 +493,6 @@
           "visibility": "public"
         },
         {
-          "name": "possessions",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "pace",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "offensive_rating",
           "attribute_kind": "measure",
           "link_key": false,
@@ -536,18 +500,6 @@
         },
         {
           "name": "defensive_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "net_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_to_turnover_ratio",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -583,37 +535,7 @@
           "visibility": "public"
         },
         {
-          "name": "steal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "block_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "effective_field_goal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "true_shooting_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_point_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throw_attempt_rate",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -692,12 +614,6 @@
         },
         {
           "name": "opponent_score",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "point_differential",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -895,12 +811,6 @@
           "visibility": "public"
         },
         {
-          "name": "field_goals_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "opponent_field_goals_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -908,12 +818,6 @@
         },
         {
           "name": "opponent_field_goals_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "opponent_field_goals_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -931,12 +835,6 @@
           "visibility": "public"
         },
         {
-          "name": "two_pointers_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "opponent_two_pointers_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -944,12 +842,6 @@
         },
         {
           "name": "opponent_two_pointers_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "opponent_two_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -967,12 +859,6 @@
           "visibility": "public"
         },
         {
-          "name": "three_pointers_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "opponent_three_pointers_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -980,12 +866,6 @@
         },
         {
           "name": "opponent_three_pointers_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "opponent_three_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1003,12 +883,6 @@
           "visibility": "public"
         },
         {
-          "name": "free_throws_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "opponent_free_throws_made",
           "attribute_kind": "measure",
           "link_key": false,
@@ -1016,18 +890,6 @@
         },
         {
           "name": "opponent_free_throws_attempted",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "opponent_free_throws_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "possessions",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1045,91 +907,7 @@
           "visibility": "public"
         },
         {
-          "name": "pace",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "offensive_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "defensive_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "net_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_to_turnover_ratio",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "offensive_rebound_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "defensive_rebound_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "rebound_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "steal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "block_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "effective_field_goal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "true_shooting_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_point_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throw_attempt_rate",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1195,12 +973,6 @@
           "visibility": "public"
         },
         {
-          "name": "minutes_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "plus_minus_total",
           "attribute_kind": "measure",
           "link_key": false,
@@ -1213,19 +985,7 @@
           "visibility": "public"
         },
         {
-          "name": "points_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "assists_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assists_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1237,19 +997,7 @@
           "visibility": "public"
         },
         {
-          "name": "turnovers_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1261,19 +1009,7 @@
           "visibility": "public"
         },
         {
-          "name": "offensive_rebounds_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "defensive_rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "defensive_rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1285,19 +1021,7 @@
           "visibility": "public"
         },
         {
-          "name": "steals_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "blocks_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "blocks_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1316,12 +1040,6 @@
         },
         {
           "name": "personal_fouls_committed_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "personal_fouls_committed_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1363,25 +1081,7 @@
           "visibility": "public"
         },
         {
-          "name": "field_goals_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "field_goals_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1393,25 +1093,7 @@
           "visibility": "public"
         },
         {
-          "name": "two_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "two_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1423,25 +1105,7 @@
           "visibility": "public"
         },
         {
-          "name": "three_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "three_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1453,25 +1117,7 @@
           "visibility": "public"
         },
         {
-          "name": "free_throws_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "free_throws_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1484,12 +1130,6 @@
         },
         {
           "name": "defensive_possessions_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "possessions",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1514,12 +1154,6 @@
         },
         {
           "name": "net_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_to_turnover_ratio",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1555,37 +1189,7 @@
           "visibility": "public"
         },
         {
-          "name": "steal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "block_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "effective_field_goal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_point_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throw_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "true_shooting_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1639,19 +1243,7 @@
           "visibility": "public"
         },
         {
-          "name": "minutes_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "points_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "points_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1663,19 +1255,7 @@
           "visibility": "public"
         },
         {
-          "name": "assists_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1687,19 +1267,7 @@
           "visibility": "public"
         },
         {
-          "name": "offensive_rebounds_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "defensive_rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "defensive_rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1711,19 +1279,7 @@
           "visibility": "public"
         },
         {
-          "name": "steals_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "blocks_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "blocks_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1736,12 +1292,6 @@
         },
         {
           "name": "turnovers_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "turnovers_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1760,12 +1310,6 @@
         },
         {
           "name": "personal_fouls_committed_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "personal_fouls_committed_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1807,25 +1351,7 @@
           "visibility": "public"
         },
         {
-          "name": "field_goals_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "field_goals_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1837,25 +1363,7 @@
           "visibility": "public"
         },
         {
-          "name": "two_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "two_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1867,25 +1375,7 @@
           "visibility": "public"
         },
         {
-          "name": "three_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "three_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1897,25 +1387,7 @@
           "visibility": "public"
         },
         {
-          "name": "free_throws_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "free_throws_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1928,12 +1400,6 @@
         },
         {
           "name": "defensive_possessions_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "possessions",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1958,12 +1424,6 @@
         },
         {
           "name": "net_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_to_turnover_ratio",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -1999,37 +1459,7 @@
           "visibility": "public"
         },
         {
-          "name": "steal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "block_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "effective_field_goal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_point_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throw_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "true_shooting_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2077,12 +1507,6 @@
           "visibility": "public"
         },
         {
-          "name": "win_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "minutes",
           "attribute_kind": "measure",
           "link_key": false,
@@ -2101,19 +1525,7 @@
           "visibility": "public"
         },
         {
-          "name": "points_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "assists_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assists_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2125,19 +1537,7 @@
           "visibility": "public"
         },
         {
-          "name": "turnovers_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2149,19 +1549,7 @@
           "visibility": "public"
         },
         {
-          "name": "offensive_rebounds_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "defensive_rebounds_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "defensive_rebounds_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2173,19 +1561,7 @@
           "visibility": "public"
         },
         {
-          "name": "steals_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "blocks_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "blocks_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2198,12 +1574,6 @@
         },
         {
           "name": "personal_fouls_committed_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "personal_fouls_committed_per_game",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2227,25 +1597,7 @@
           "visibility": "public"
         },
         {
-          "name": "field_goals_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "field_goals_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "field_goals_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2257,25 +1609,7 @@
           "visibility": "public"
         },
         {
-          "name": "two_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "two_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "two_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2287,25 +1621,7 @@
           "visibility": "public"
         },
         {
-          "name": "three_pointers_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "three_pointers_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_pointers_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2317,31 +1633,7 @@
           "visibility": "public"
         },
         {
-          "name": "free_throws_made_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "free_throws_attempted_total",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_attempted_per_game",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throws_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "possessions",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2365,12 +1657,6 @@
           "visibility": "public"
         },
         {
-          "name": "offensive_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "defensive_rating",
           "attribute_kind": "measure",
           "link_key": false,
@@ -2378,18 +1664,6 @@
         },
         {
           "name": "net_rating",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "assist_to_turnover_ratio",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"
@@ -2413,37 +1687,7 @@
           "visibility": "public"
         },
         {
-          "name": "steal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
           "name": "block_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "effective_field_goal_percentage",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "three_point_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "free_throw_attempt_rate",
-          "attribute_kind": "measure",
-          "link_key": false,
-          "visibility": "public"
-        },
-        {
-          "name": "true_shooting_percentage",
           "attribute_kind": "measure",
           "link_key": false,
           "visibility": "public"

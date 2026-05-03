@@ -10,7 +10,7 @@ import GroundedPlanning.Resolve.Common.Ontology
 import GroundedPlanning.Resolve.Common.PredicateTrees
 import GroundedPlanning.Resolve.Common.Types
 import OntologyLayer.Graph (findAttribute, findPathByLastLinkName)
-import OntologyLayer.Types (Attribute (source_column), Ontology)
+import OntologyLayer.Types (Attribute (derivation, source_column), AttributeDerivation (sql_expression), Ontology)
 import QueryModel.IR
 
 resolveBaseRowPredicate :: Ontology -> Text -> Maybe Predicate -> Either Text (Maybe ResolvedRowPredicateTree)
@@ -48,6 +48,7 @@ resolveRowPredicateLeaf ontology factObjectName fieldValue operatorValue predica
       { rowPredicateTargetObjectName = predicateFieldTargetObject fieldValue
       , rowPredicatePath = predicatePathValue
       , rowPredicateColumn = source_column attributeValue
+      , rowPredicateExpression = sql_expression <$> derivation attributeValue
       , rowPredicateLabel = predicateFieldAttribute fieldValue
       , rowPredicateOperator = operatorValue
       , rowPredicateValue =

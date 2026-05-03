@@ -137,8 +137,8 @@ def metric_quality_reason(object_name: str, column: str, status: str) -> str:
         return "Column is all null or constant zero in the current DuckDB snapshot."
     if status == "deferred_quality":
         return (
-            "TeamGame rate, percentage, pace, and ratio metrics need scale/formula "
-            "audit before ontology exposure."
+            "Remaining TeamGame percentage metrics need exact scale/formula audit "
+            "before ontology exposure."
         )
     if status == "unexpected_unexposed":
         return "Column appears populated and exposure-ready but is not used by any ontology metric."

@@ -6,7 +6,9 @@ module GroundedPlanning.Compile.Sql.Comparison (compileComparisonSql) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import GroundedPlanning.Compile.Sql.Common
-  ( renderGameDateFilterConditions
+  ( metricFormulaRowExpression
+  , renderGameDateFilterConditions
+  , renderMetricFormulaSourceSelectLines
   , renderMaybePathJoinClauses
   , renderPathJoinClauses
   , renderRowPredicateConditions
@@ -59,6 +61,7 @@ compileRecentComparisonSql resolved =
         , rowPredicateResolved = metricRowPredicate
         , groupingDimensions = metricGroupingDimensions
         , displayMetricFormulas = comparisonMetricFormulas
+        , metricFormula = comparisonMetricFormula
         } = resolved
       entityList =
         T.intercalate
@@ -89,12 +92,18 @@ compileRecentComparisonSql resolved =
           "" -> ""
           orderValue -> ", " <> orderValue
       metricSourceLines =
-        [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
-        ]
+        ( case aggregationKind comparisonMetricFormula of
+            "ratio" -> renderMetricFormulaSourceSelectLines "f" comparisonMetricFormula
+            _ ->
+              [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
+              ]
+        )
           <> renderDisplayMetricDirectSelectLines "f" comparisonMetricFormulas
       metricFinalSelectLines =
         stripLastTrailingComma $
-          [ "  metric_value,"
+          [ case aggregationKind comparisonMetricFormula of
+              "ratio" -> "  " <> metricFormulaRowExpression comparisonMetricFormula <> " AS metric_value,"
+              _ -> "  metric_value,"
           ]
             <> renderDisplayMetricFinalSelectLines comparisonMetricFormulas
    in T.unlines $
@@ -155,6 +164,7 @@ compileSeasonComparisonSql resolved =
         , displayMetadata = metricDisplayMetadata
         , displayMetricFormulas = comparisonMetricFormulas
         , groupingDimensions = metricGroupingDimensions
+        , metricFormula = comparisonMetricFormula
         } = resolved
       entityList =
         T.intercalate
@@ -192,12 +202,18 @@ compileSeasonComparisonSql resolved =
           orderValue -> ", " <> orderValue
       metricSourceLines =
         stripLastTrailingComma $
-          [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
-          ]
+          ( case aggregationKind comparisonMetricFormula of
+              "ratio" -> renderMetricFormulaSourceSelectLines "f" comparisonMetricFormula
+              _ ->
+                [ "    " <> renderColumnRefWithContext "f" "r" "c" metricMetricSource <> " AS metric_value,"
+                ]
+          )
             <> renderDisplayMetricDirectSelectLines "f" comparisonMetricFormulas
       metricFinalSelectLines =
         stripLastTrailingComma $
-          [ "  metric_value,"
+          [ case aggregationKind comparisonMetricFormula of
+              "ratio" -> "  " <> metricFormulaRowExpression comparisonMetricFormula <> " AS metric_value,"
+              _ -> "  metric_value,"
           ]
             <> renderDisplayMetricFinalSelectLines comparisonMetricFormulas
    in T.unlines $

@@ -4,6 +4,9 @@
 module GroundedPlanning.Compile.Sql.Common
   ( combineWhereClauses
   , compileMetricAggregation
+  , metricFormulaRowExpression
+  , renderMetricFormulaDirectValue
+  , renderMetricFormulaSourceSelectLines
   , escapeSqlLiteral
   , labelsForRowObject
   , limitClause
@@ -51,13 +54,55 @@ data IndexedResultPredicateTree
 compileMetricAggregation :: ResolvedMetricFormula -> Text
 compileMetricAggregation formula =
   case aggregationKind formula of
+    "ratio" -> expressionText formula
     "sum" -> "SUM(metric_source)"
     "avg" -> "ROUND(AVG(metric_source), 1)"
-    "identity" -> "MAX(metric_source)"
+    "identity" ->
+      if metricFormulaUsesSourceExpression formula
+        then "MAX(" <> expressionText formula <> ")"
+        else "MAX(metric_source)"
     "count_win" -> "SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END)"
     "count_loss" -> "SUM(CASE WHEN metric_source = 'loss' THEN 1 ELSE 0 END)"
     "count_true" -> "SUM(CASE WHEN metric_source THEN 1 ELSE 0 END)"
     _ -> error "Unsupported executable metric aggregation."
+
+metricFormulaRowExpression :: ResolvedMetricFormula -> Text
+metricFormulaRowExpression formula =
+  case aggregationKind formula of
+    "ratio" ->
+      case T.stripSuffix "), 1)" =<< T.stripPrefix "ROUND(AVG(" (expressionText formula) of
+        Just rowExpression -> rowExpression
+        Nothing ->
+          case T.stripSuffix ")" =<< T.stripPrefix "SUM(" (expressionText formula) of
+            Just rowExpression -> rowExpression
+            Nothing -> expressionText formula
+    "identity" ->
+      if metricFormulaUsesSourceExpression formula
+        then expressionText formula
+        else "metric_value"
+    _ -> "metric_value"
+
+metricFormulaUsesSourceExpression :: ResolvedMetricFormula -> Bool
+metricFormulaUsesSourceExpression formula =
+  aggregationKind formula == "identity"
+    && case sourceAttributes formula of
+      sourceAttribute : _ -> expressionText formula /= sourceAttribute
+      [] -> False
+
+renderMetricFormulaDirectValue :: Text -> ColumnRef -> ResolvedMetricFormula -> Text
+renderMetricFormulaDirectValue factAlias fallbackColumn formula =
+  if aggregationKind formula == "ratio" || metricFormulaUsesSourceExpression formula
+    then renderFactExpression factAlias (metricFormulaRowExpression formula)
+    else renderColumnRefWithContext factAlias "r" "c" fallbackColumn
+
+renderMetricFormulaSourceSelectLines :: Text -> ResolvedMetricFormula -> [Text]
+renderMetricFormulaSourceSelectLines factAlias formula =
+  if aggregationKind formula == "ratio" || metricFormulaUsesSourceExpression formula
+    then
+      [ "    " <> factAlias <> "." <> sourceAttribute <> " AS " <> sourceAttribute <> ","
+      | sourceAttribute <- sourceAttributes formula
+      ]
+    else []
 
 renderTrendFilterConditions :: Text -> [Filter] -> [Text]
 renderTrendFilterConditions trendFactTableName filterValues =
@@ -278,7 +323,11 @@ renderRowPredicateTreeCondition predicateTree =
 
 renderRowPredicateLeafCondition :: Int -> ResolvedRowPredicateLeaf -> Text
 renderRowPredicateLeafCondition indexValue predicateLeaf =
-  let columnRef = rowPredicateAlias indexValue predicateLeaf <> "." <> rowPredicateColumn predicateLeaf
+  let predicateAlias = rowPredicateAlias indexValue predicateLeaf
+      columnRef =
+        case rowPredicateExpression predicateLeaf of
+          Just expressionValue -> renderFactExpression predicateAlias expressionValue
+          Nothing -> predicateAlias <> "." <> rowPredicateColumn predicateLeaf
    in case renderPredicateCondition columnRef (rowPredicateOperator predicateLeaf) (rowPredicateValue predicateLeaf) of
         Just conditionValue -> conditionValue
         Nothing -> error "Unsupported row predicate tree operator/value."
