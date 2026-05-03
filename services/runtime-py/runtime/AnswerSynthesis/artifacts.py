@@ -40,6 +40,13 @@ class TableColumnBuilder:
     getter: Callable[[Any], object]
 
 
+@dataclass(frozen=True)
+class TableProjection:
+    title: str
+    columns: Sequence[TableColumnBuilder]
+    rows: Sequence[Any]
+
+
 def build_artifacts(answer: FinalAnswer) -> list[JsonDict]:
     artifacts: list[JsonDict] = [
         {
@@ -63,16 +70,32 @@ def build_artifacts(answer: FinalAnswer) -> list[JsonDict]:
             }
         )
 
-    table = _build_primary_table(answer)
+    table = build_primary_table_artifact(answer)
     if table is not None:
         artifacts.append(table)
     return artifacts
 
 
-def _build_primary_table(answer: FinalAnswer) -> JsonDict | None:
+def build_primary_table_artifact(
+    answer: FinalAnswer,
+    *,
+    row_limit: int | None = DISPLAY_ROW_LIMIT,
+) -> JsonDict | None:
+    projection = _primary_table_projection(answer)
+    if projection is None:
+        return None
+    return _build_table_artifact(
+        title=projection.title,
+        columns=projection.columns,
+        rows=projection.rows,
+        row_limit=row_limit,
+    )
+
+
+def _primary_table_projection(answer: FinalAnswer) -> TableProjection | None:
     if answer.comparison is not None:
         if answer.comparison.breakdown_rows:
-            return _build_table_artifact(
+            return TableProjection(
                 title="Comparison",
                 columns=_comparison_breakdown_columns(answer, answer.comparison.breakdown_rows),
                 rows=answer.comparison.breakdown_rows,
@@ -81,37 +104,37 @@ def _build_primary_table(answer: FinalAnswer) -> JsonDict | None:
             answer.comparison.entity_a,
             answer.comparison.entity_b,
         ]
-        return _build_table_artifact(
+        return TableProjection(
             title="Comparison",
             columns=_comparison_entity_columns(answer, compared_entities),
             rows=compared_entities,
         )
     if answer.find_rows:
-        return _build_table_artifact(
+        return TableProjection(
             title=f"Matching {answer.entity_label_plural}",
             columns=_find_columns(answer.find_rows),
             rows=answer.find_rows,
         )
     if answer.aggregate_rows:
-        return _build_table_artifact(
+        return TableProjection(
             title=answer.summary,
             columns=_row_table_columns(answer, answer.aggregate_rows, include_rank=False),
             rows=answer.aggregate_rows,
         )
     if answer.object_rows:
-        return _build_table_artifact(
+        return TableProjection(
             title=answer.summary,
             columns=_row_table_columns(answer, answer.object_rows, include_rank=False),
             rows=answer.object_rows,
         )
     if answer.time_series_rows:
-        return _build_table_artifact(
+        return TableProjection(
             title=answer.summary,
             columns=_time_series_columns(answer, answer.time_series_rows),
             rows=answer.time_series_rows,
         )
     if answer.rows:
-        return _build_table_artifact(
+        return TableProjection(
             title=answer.summary,
             columns=_row_table_columns(answer, answer.rows, include_rank=True),
             rows=answer.rows,
@@ -124,8 +147,9 @@ def _build_table_artifact(
     title: str,
     columns: Sequence[TableColumnBuilder],
     rows: Sequence[Any],
+    row_limit: int | None,
 ) -> JsonDict:
-    display_rows = list(rows[:DISPLAY_ROW_LIMIT])
+    display_rows = list(rows if row_limit is None else rows[:row_limit])
     return {
         "kind": "table",
         "title": title,
@@ -143,7 +167,7 @@ def _build_table_artifact(
         ],
         "row_count": len(rows),
         "displayed_row_count": len(display_rows),
-        "display_limit": DISPLAY_ROW_LIMIT,
+        "display_limit": len(display_rows) if row_limit is None else row_limit,
     }
 
 

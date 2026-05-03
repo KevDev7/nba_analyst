@@ -7,7 +7,6 @@
   let { artifact }: { artifact: TableArtifact } = $props();
   let sorting = $state<SortingState>([]);
   const renderedTable = $derived(renderArtifactTable(artifact, sorting));
-  const isTruncated = $derived(artifact.displayed_row_count < artifact.row_count);
 
   function sortColumn(columnId: string) {
     sorting = nextSortingState(sorting, columnId);
@@ -15,20 +14,6 @@
 </script>
 
 <article class="table-artifact">
-  <div class="table-toolbar">
-    <div>
-      <p class="label">Table artifact</p>
-      <h3>{artifact.title}</h3>
-    </div>
-  </div>
-
-  {#if isTruncated}
-    <p class="table-note">
-      Sorting applies to the {artifact.displayed_row_count} displayed rows. Ask a narrower question to change the
-      grounded result set.
-    </p>
-  {/if}
-
   <div class="table-shell">
     <div class="table-frame" role="region" aria-label={artifact.title}>
       <table>

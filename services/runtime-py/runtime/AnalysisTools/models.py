@@ -21,6 +21,9 @@ from pydantic import BaseModel, Field, model_validator
 ColumnType = Literal["text", "number", "integer", "date", "boolean"]
 AnalysisRuntimeName = Literal["local_trusted"]
 ChartRenderer = Literal["vega_lite", "plotly"]
+ChartOrientation = Literal["vertical", "horizontal"]
+ChartSortChannel = Literal["x", "y"]
+ChartSortOrder = Literal["ascending", "descending"]
 
 
 class AnalysisTableColumn(BaseModel):
@@ -55,13 +58,21 @@ class AnalysisTable(BaseModel):
         return self
 
 
+class ChartSort(BaseModel):
+    channel: ChartSortChannel
+    field: Optional[str] = None
+    order: Optional[ChartSortOrder] = None
+
+
 class ChartOperation(BaseModel):
     # Controlled chart operation. This is intentionally not arbitrary Python code.
-    kind: Literal["line_chart", "bar_chart"]
+    kind: Literal["line_chart", "bar_chart", "point_chart"]
     input_table_id: str
     x: str
     y: str
     series: Optional[str] = None
+    orientation: ChartOrientation = "vertical"
+    sort: Optional[ChartSort] = None
     title: Optional[str] = None
     renderer: ChartRenderer = "vega_lite"
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -88,6 +99,8 @@ class AnalysisRequest(BaseModel):
         referenced_columns = [self.operation.x, self.operation.y]
         if self.operation.series:
             referenced_columns.append(self.operation.series)
+        if self.operation.sort and self.operation.sort.field:
+            referenced_columns.append(self.operation.sort.field)
         missing_columns = [column for column in referenced_columns if column not in column_ids]
         if missing_columns:
             raise ValueError(f"Operation references unknown columns: {', '.join(missing_columns)}")

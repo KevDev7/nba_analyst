@@ -1,8 +1,8 @@
 <script lang="ts">
   import { askAssistant } from "$lib/api";
+  import AnswerArtifact from "$lib/artifacts/AnswerArtifact.svelte";
   import ChartArtifact from "$lib/artifacts/ChartArtifact.svelte";
   import TableArtifact from "$lib/artifacts/TableArtifact.svelte";
-  import TextArtifact from "$lib/artifacts/TextArtifact.svelte";
   import type { Artifact } from "$lib/artifacts/types";
   import { assistantChatParts } from "$lib/chat/chatParts";
   import "@fontsource/cormorant-garamond/500.css";
@@ -82,7 +82,7 @@
   <aside class="sidebar" aria-label="NBA Analyst navigation">
     <a class="brand" href="/">
       <span class="brand-mark" aria-hidden="true">*</span>
-      <span>NBA Analyst</span>
+      <span>NBA Insights (beta)</span>
     </a>
 
     <button
@@ -110,7 +110,7 @@
   <header class="mobile-topbar" aria-label="NBA Analyst">
     <a class="brand" href="/">
       <span class="brand-mark" aria-hidden="true">*</span>
-      <span>NBA Analyst</span>
+      <span>NBA Insights (beta)</span>
     </a>
     <span class:loading={status === "loading"} class:error-state={status === "error"} class="status">
       {status === "loading" ? "Thinking" : status === "ready" ? "Ready" : status === "error" ? "Error" : "Idle"}
@@ -148,8 +148,8 @@
         <article class="message assistant-message">
           <div class="message-avatar" aria-hidden="true">*</div>
           <div class="message-body">
-            {#if part.kind === "text"}
-              <TextArtifact artifact={part.artifact} />
+            {#if part.kind === "answer"}
+              <AnswerArtifact artifact={part.artifact} />
             {:else if part.kind === "chart"}
               <ChartArtifact artifact={part.artifact} />
             {:else if part.kind === "table"}

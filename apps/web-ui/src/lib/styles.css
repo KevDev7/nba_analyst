@@ -87,7 +87,7 @@ button:disabled {
 
 .chat-shell {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 100vh;
 }
@@ -97,7 +97,7 @@ button:disabled {
   inset: 0 auto 0 0;
   z-index: 3;
   display: flex;
-  width: 260px;
+  width: 320px;
   flex-direction: column;
   gap: 20px;
   border-right: 1px solid var(--color-hairline);
@@ -294,7 +294,7 @@ h3 {
   position: fixed;
   right: 0;
   bottom: 0;
-  left: 260px;
+  left: 320px;
   z-index: 4;
   padding: 18px 24px 24px;
   background: linear-gradient(180deg, rgba(250, 249, 245, 0), var(--color-canvas) 30%);
@@ -396,7 +396,7 @@ textarea:focus {
   fill: currentColor;
 }
 
-.text-artifact,
+.answer-artifact,
 .table-artifact,
 .chart-artifact,
 .debug-artifact,
@@ -408,7 +408,7 @@ textarea:focus {
   background: var(--color-canvas);
 }
 
-.text-artifact,
+.answer-artifact,
 .table-artifact,
 .chart-artifact,
 .debug-artifact,
@@ -417,7 +417,7 @@ textarea:focus {
   padding: 24px;
 }
 
-.text-artifact p,
+.answer-artifact p,
 .loading-card p,
 .empty {
   margin-bottom: 0;
@@ -427,21 +427,47 @@ textarea:focus {
   line-height: 1.55;
 }
 
-.text-artifact[data-role="interpretation"] {
+.answer-artifact {
+  display: grid;
+  gap: 14px;
   background: var(--color-surface-card);
 }
 
-.text-artifact[data-role="interpretation"] .eyebrow {
-  color: var(--color-primary-active);
-  letter-spacing: 0.08em;
+.answer-interpretation {
+  color: var(--color-body);
 }
 
-.text-artifact ul {
+.answer-summary {
+  color: var(--color-body);
+}
+
+.answer-assumptions {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--color-hairline-soft);
+  padding-top: 14px;
+}
+
+.answer-assumptions p {
+  font-size: var(--text-body-md);
+}
+
+.answer-artifact ul {
   margin: 0;
   padding-left: 1.2rem;
   color: var(--color-body);
   font-size: var(--text-body-md);
   line-height: 1.55;
+}
+
+.answer-assumptions .label {
+  margin-bottom: 0;
+  color: var(--color-body);
+  font-size: var(--text-body-md);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .table-artifact,
@@ -451,16 +477,7 @@ textarea:focus {
   background: var(--color-surface-card);
 }
 
-.table-toolbar,
-.chart-toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.row-count,
-.table-note {
+.row-count {
   margin: 0;
   color: var(--color-muted);
   font-size: var(--text-body-sm);
@@ -470,15 +487,41 @@ textarea:focus {
 .chart-frame {
   min-height: 360px;
   overflow: auto;
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  background: var(--color-canvas);
 }
 
 .chart-frame :global(canvas),
 .chart-frame :global(svg) {
   max-width: 100%;
+}
+
+#vg-tooltip-element {
+  width: max-content;
+  max-width: min(360px, calc(100vw - 24px));
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+}
+
+#vg-tooltip-element table {
+  width: auto;
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  white-space: normal;
+}
+
+#vg-tooltip-element table tr:hover {
+  background: transparent;
+}
+
+#vg-tooltip-element table tr td.key,
+#vg-tooltip-element table tr td.value {
+  display: table-cell;
+  width: auto;
+  max-width: min(220px, 42vw);
+  border-bottom: 1px solid var(--color-hairline-soft);
+  padding: 2px 6px;
+  white-space: normal;
 }
 
 .chart-message {
@@ -744,7 +787,7 @@ tbody tr:hover {
     padding: 24px 0 186px;
   }
 
-  .text-artifact,
+  .answer-artifact,
   .table-artifact,
   .chart-artifact,
   .debug-artifact,
@@ -772,8 +815,6 @@ tbody tr:hover {
   }
 
   .composer-footer,
-  .table-toolbar,
-  .chart-toolbar,
   .loading-card {
     align-items: flex-start;
     flex-direction: column;

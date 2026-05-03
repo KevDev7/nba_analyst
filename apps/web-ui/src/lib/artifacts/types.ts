@@ -4,6 +4,22 @@ export type ArtifactColumnType = "text" | "number" | "integer" | "date" | string
 
 export type ChartRenderer = "vega_lite" | "plotly" | string;
 
+export type ChartArtifactMetadata = {
+  source_table_id?: string;
+  operation_kind?: string;
+  chart_family?: string;
+  x?: string;
+  y?: string;
+  x_type?: ArtifactColumnType;
+  y_type?: ArtifactColumnType;
+  series?: string | null;
+  orientation?: "vertical" | "horizontal" | string;
+  series_count?: number;
+  category_count?: number;
+  row_count?: number;
+  [key: string]: unknown;
+};
+
 export type TextArtifact = {
   kind: "text";
   role: string;
@@ -31,7 +47,7 @@ export type ChartArtifact = {
   title: string;
   spec: Record<string, unknown>;
   data?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  metadata?: ChartArtifactMetadata;
 };
 
 export type DebugArtifact = {

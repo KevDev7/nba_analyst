@@ -38,6 +38,22 @@ def sample_table() -> AnalysisTable:
     )
 
 
+def sample_ranking_table() -> AnalysisTable:
+    return AnalysisTable(
+        id="player_points",
+        title="Player points",
+        columns=[
+            AnalysisTableColumn(id="rank", label="Rank", type="integer"),
+            AnalysisTableColumn(id="player", label="Player", type="text"),
+            AnalysisTableColumn(id="total_points", label="Total Points", type="number"),
+        ],
+        rows=[
+            {"rank": 1, "player": "Jalen Brunson", "total_points": 312},
+            {"rank": 2, "player": "Jayson Tatum", "total_points": 298},
+        ],
+    )
+
+
 class AnalysisToolContractTests(unittest.TestCase):
     def test_valid_chart_analysis_request_parses(self) -> None:
         request = AnalysisRequest(
@@ -56,6 +72,57 @@ class AnalysisToolContractTests(unittest.TestCase):
         self.assertEqual(request.runtime, "local_trusted")
         self.assertEqual(request.operation.kind, "line_chart")
         self.assertEqual(request.operation.renderer, "vega_lite")
+
+    def test_horizontal_sorted_bar_analysis_request_parses(self) -> None:
+        request = AnalysisRequest(
+            tables=[sample_ranking_table()],
+            operation={
+                "kind": "bar_chart",
+                "input_table_id": "player_points",
+                "x": "total_points",
+                "y": "player",
+                "orientation": "horizontal",
+                "sort": {"channel": "y", "field": "rank", "order": "ascending"},
+                "title": "Player points",
+            },
+        )
+
+        self.assertEqual(request.operation.kind, "bar_chart")
+        self.assertEqual(request.operation.orientation, "horizontal")
+        self.assertIsNotNone(request.operation.sort)
+        self.assertEqual(request.operation.sort.channel if request.operation.sort else None, "y")
+        self.assertEqual(request.operation.sort.field if request.operation.sort else None, "rank")
+        self.assertEqual(request.operation.sort.order if request.operation.sort else None, "ascending")
+
+    def test_point_chart_analysis_request_parses(self) -> None:
+        table = AnalysisTable(
+            id="player_metrics",
+            title="Player metrics",
+            columns=[
+                AnalysisTableColumn(id="player", label="Player", type="text"),
+                AnalysisTableColumn(id="points", label="Points", type="number"),
+                AnalysisTableColumn(id="assists", label="Assists", type="number"),
+            ],
+            rows=[
+                {"player": "Jalen Brunson", "points": 312, "assists": 74},
+                {"player": "Jayson Tatum", "points": 298, "assists": 81},
+            ],
+        )
+
+        request = AnalysisRequest(
+            tables=[table],
+            operation={
+                "kind": "point_chart",
+                "input_table_id": "player_metrics",
+                "x": "points",
+                "y": "assists",
+                "title": "Points and assists",
+            },
+        )
+
+        self.assertEqual(request.operation.kind, "point_chart")
+        self.assertEqual(request.operation.x, "points")
+        self.assertEqual(request.operation.y, "assists")
 
     def test_request_rejects_unknown_operation_kind(self) -> None:
         with self.assertRaises(ValidationError) as context:
@@ -97,6 +164,23 @@ class AnalysisToolContractTests(unittest.TestCase):
             )
 
         self.assertIn("Operation references unknown columns", str(context.exception))
+
+    def test_request_rejects_unknown_sort_field_reference(self) -> None:
+        with self.assertRaises(ValidationError) as context:
+            AnalysisRequest(
+                tables=[sample_ranking_table()],
+                operation={
+                    "kind": "bar_chart",
+                    "input_table_id": "player_points",
+                    "x": "total_points",
+                    "y": "player",
+                    "orientation": "horizontal",
+                    "sort": {"channel": "y", "field": "missing_rank", "order": "ascending"},
+                },
+            )
+
+        self.assertIn("Operation references unknown columns", str(context.exception))
+        self.assertIn("missing_rank", str(context.exception))
 
     def test_table_rejects_rows_with_undeclared_columns(self) -> None:
         with self.assertRaises(ValidationError) as context:

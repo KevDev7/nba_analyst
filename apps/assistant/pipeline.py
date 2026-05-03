@@ -36,7 +36,7 @@ from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.artifacts import build_artifacts
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
-from apps.assistant.chart_artifacts import append_requested_chart_artifacts
+from apps.assistant.chart_artifacts import append_chart_artifacts
 from apps.assistant.predicate_observability import build_predicate_trace
 from apps.assistant.value_resolution_observability import build_value_resolution_trace
 from apps.assistant.semantic.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
@@ -126,7 +126,7 @@ def run_assistant(question: str, debug: bool = False) -> AssistantResult:
     packaged = package_results(runtime_result)
     answer = synthesize_answer(packaged)
     formatted = format_response(answer)
-    artifacts = append_requested_chart_artifacts(question, answer, build_artifacts(answer))
+    artifacts = append_chart_artifacts(question, answer, build_artifacts(answer))
 
     if not debug:
         return AssistantResult(answer=formatted, artifacts=artifacts)
