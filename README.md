@@ -101,22 +101,31 @@ Run it with:
 python3 apps/cli/main.py "Show me the top 10 players by points over the last 10 games" --debug
 ```
 
-Run the localhost web app with:
+Run the assistant API with:
 
 ```bash
 uvicorn apps.web.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Or use the optional Portless helper for a stable local URL:
+The FastAPI service is API-only. It does not serve a browser UI at `/`.
+
+Or use the optional Portless helper for a stable local API URL:
 
 ```bash
-scripts/run_web_portless.sh
+scripts/run_api_portless.sh
 ```
 
-Then open:
+The structured browser UI lives in `apps/web-ui` and should be run separately:
 
-```text
-https://nba-analyst.localhost
+```bash
+npm --prefix apps/web-ui run dev
+```
+
+For Portless local URLs, use:
+
+```bash
+scripts/run_api_portless.sh      # https://nba-insight-api.localhost
+scripts/run_web_ui_portless.sh   # https://nba-insight-ui.localhost
 ```
 
 Run the assistant test suite with:

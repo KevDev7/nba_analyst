@@ -1,38 +1,24 @@
 # Purpose:
-# Serve the localhost NBA analyst web assistant.
+# Serve the localhost NBA analyst assistant API.
 #
 # Uses:
 # - the shared assistant pipeline from apps/assistant
-# - a tiny static HTML/JS frontend
 #
 # Produces:
-# - a browser page and POST /api/chat endpoint
+# - POST /api/chat endpoint
 #
 # Next:
-# - static/index.html
+# - apps/web-ui for the structured frontend
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from apps.assistant import pipeline as assistant_pipeline
 from apps.web.models import ChatRequest, ChatResponse
 
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-
-app = FastAPI(title="NBA Analyst Web")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
-@app.get("/")
-def index() -> FileResponse:
-    # Serve the single local page. The page itself calls POST /api/chat.
-    return FileResponse(STATIC_DIR / "index.html")
+app = FastAPI(title="NBA Analyst API")
 
 
 @app.post("/api/chat", response_model=ChatResponse)

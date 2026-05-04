@@ -6,7 +6,7 @@
 # - deterministic web/API tests
 #
 # Produces:
-# - importable web app modules
+# - importable assistant API modules
 #
 # Next:
 # - server.py

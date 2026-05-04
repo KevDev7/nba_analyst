@@ -1,6 +1,6 @@
-# Web App
+# Assistant API
 
-Localhost web surface for `nba_analyst`.
+FastAPI API surface for `nba_analyst`.
 
 Run it with:
 
@@ -8,29 +8,22 @@ Run it with:
 uvicorn apps.web.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Then open:
+The service is intentionally API-only:
 
-```text
-http://127.0.0.1:8000
-```
+- `POST /api/chat` calls the shared assistant pipeline.
+- `GET /` does not serve a browser UI.
+- Semantic interpretation, ontology grounding, SQL planning, runtime execution, and answer synthesis stay outside the web layer.
 
-Optional Portless dev URL:
+The structured browser UI lives in `apps/web-ui` and runs as a separate SvelteKit dev server that proxies `/api/*` to this API.
+
+Optional Portless API URL:
 
 ```bash
-scripts/run_web_portless.sh
+scripts/run_api_portless.sh
 ```
 
-Then open:
+That exposes the API at:
 
 ```text
-https://nba-analyst.localhost
+https://nba-insight-api.localhost
 ```
-
-Portless is only a local dev convenience. The web app still works without it.
-
-The web app is intentionally thin:
-
-- `POST /api/chat` calls the shared assistant pipeline
-- the browser page renders one answer or one clear error
-- debug mode shows the same major pipeline handoffs as CLI `--debug`
-- semantic interpretation, ontology grounding, SQL planning, runtime execution, and answer synthesis stay outside the web layer

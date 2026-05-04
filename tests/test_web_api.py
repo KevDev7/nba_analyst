@@ -13,11 +13,11 @@ class WebApiTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
 
-    def test_index_page_loads(self) -> None:
+    def test_root_does_not_serve_legacy_static_ui(self) -> None:
         response = self.client.get("/")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Ask the NBA analyst", response.text)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"detail": "Not Found"})
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
     def test_chat_returns_answer_from_shared_assistant_boundary(self, mock_run_assistant) -> None:
