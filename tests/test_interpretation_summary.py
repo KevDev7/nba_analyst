@@ -94,6 +94,89 @@ class InterpretationSummaryTests(unittest.TestCase):
             "Bottom 10 players by average points over the last 10 games: Abdul Gaddy is lowest with 0.0 average points.",
         )
 
+    def test_best_lower_is_better_ranking_does_not_present_as_bottom(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Team",
+            entity_label_plural="Teams",
+            context_label="Abbrev",
+            metric="defensive_rating",
+            metric_order_direction="ASC",
+            rank_intent_label="best",
+            window_games=0,
+            season_label="2025-26",
+            season_type="regular_season",
+            limit=10,
+            rows=[RankingRow(rank=1, entity_name="Thunder", metric_value=106.2)],
+        )
+
+        answer = synthesize_answer(payload)
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Best 10 teams by defensive rating in the 2025-26 regular season.",
+        )
+        self.assertEqual(
+            answer.summary,
+            "Best 10 teams by defensive rating in the 2025-26 regular season: Thunder ranks first with 106 defensive rating.",
+        )
+        self.assertNotIn("Bottom", answer.summary)
+
+    def test_bottom_intent_keeps_bottom_wording_for_ascending_rankings(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Team",
+            entity_label_plural="Teams",
+            context_label="Abbrev",
+            metric="net_rating",
+            metric_order_direction="ASC",
+            rank_intent_label="bottom",
+            window_games=0,
+            season_label="2025-26",
+            season_type="regular_season",
+            limit=10,
+            rows=[RankingRow(rank=1, entity_name="Nets", metric_value=-8.4)],
+        )
+
+        answer = synthesize_answer(payload)
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Bottom 10 teams by net rating in the 2025-26 regular season.",
+        )
+        self.assertEqual(
+            answer.summary,
+            "Bottom 10 teams by net rating in the 2025-26 regular season: Nets ranks last with -8 net rating.",
+        )
+
+    def test_fewest_quantity_ranking_uses_fewest_wording(self) -> None:
+        payload = SynthesisPayload(
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Player",
+            entity_label_plural="Players",
+            context_label="Team",
+            metric="total_turnovers",
+            metric_order_direction="ASC",
+            rank_intent_label="fewest",
+            window_games=10,
+            limit=5,
+            rows=[RankingRow(rank=1, entity_name="Tyus Jones", metric_value=4.0)],
+        )
+
+        answer = synthesize_answer(payload)
+
+        self.assertEqual(
+            build_interpretation(payload),
+            "Fewest 5 players by total turnovers over the last 10 games.",
+        )
+        self.assertEqual(
+            answer.summary,
+            "Fewest 5 players by total turnovers over the last 10 games: Tyus Jones has the fewest with 4 total turnovers.",
+        )
+
     def test_player_by_team_grouping_uses_distinct_grouping_labels(self) -> None:
         payload = SynthesisPayload(
             query_kind="metric_query",

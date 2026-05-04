@@ -13,7 +13,7 @@ import QueryModel.SemanticConstruction.Match
 import QueryModel.SemanticConstruction.Types
 import QueryModel.SemanticConstruction.FilterGrounding (groundDraftRowPredicate)
 import QueryModel.SemanticConstruction.TimeScope (rankingTimeScope, timeScopeFilters)
-import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasure, requireOptionalPositiveLimit, requireRankingSort)
+import QueryModel.SemanticDraft.Filters (draftMeasurePhrases, requireDraftMeasure, requireOptionalPositiveLimit, resolveRankingIntentLabel, resolveRankingOrder)
 import QueryModel.SemanticConstruction.ResultFilterGrounding (groundDraftResultPredicate)
 import QueryModel.SemanticDraft.Types
 
@@ -24,11 +24,11 @@ semanticRankDraftToQuery ontology draft = do
   rawMeasure <- requireDraftMeasure draft
   rankingTimeScopeValue <- rankingTimeScope (timeWindow draft) (filters draft)
   limitValue <- requireOptionalPositiveLimit (limit draft)
-  orderBuilder <- requireRankingSort (sort draft)
   subjectObject <- resolveSubjectObject ontology (subject draft)
   rankingDimensions <- resolveRankingDimensions ontology subjectObject (dimensions draft)
   grounded <- resolveRankingGrounding ontology draft rawMeasure subjectObject rankingDimensions rankingTimeScopeValue limitValue
-  pure (rankingQuery orderBuilder grounded)
+  orderBuilder <- resolveRankingOrder draft (metricDef grounded)
+  pure (rankingQuery orderBuilder (resolveRankingIntentLabel draft) grounded)
 
 resolveRankingDimensions :: Ontology -> Object -> [Text] -> Either Text [SemanticGroupingDimension]
 resolveRankingDimensions ontology subjectObject rawDimensions = do
@@ -110,8 +110,8 @@ groundFactCandidate ontology draft subjectObject rankingDimensions rankingTimeSc
     metricValue = candidateMetricDef candidate
     metricValues = candidateMetricDefs candidate
 
-rankingQuery :: (QI.MetricName -> QI.Order) -> GroundedRanking -> QI.Query
-rankingQuery orderBuilder grounded =
+rankingQuery :: (QI.MetricName -> QI.Order) -> Maybe Text -> GroundedRanking -> QI.Query
+rankingQuery orderBuilder maybeRankIntentLabel grounded =
   -- Build the typed Query IR consumed by GroundedPlanning.
   -- This is where user-facing draft language becomes ontology-backed structure.
   QI.MetricQuery
@@ -131,4 +131,5 @@ rankingQuery orderBuilder grounded =
             }
       , QI.entityFilters = []
       , QI.comparison = Nothing
+      , QI.rankIntentLabel = maybeRankIntentLabel
       }

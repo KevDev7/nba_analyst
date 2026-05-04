@@ -64,6 +64,34 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
             self.assertEqual(attrs["game_year_month"]["source_column"], "game_date")
             self.assertIsNotNone(attrs["game_year_month"]["derivation"])
 
+    def test_generated_ontology_includes_metric_ranking_polarity(self) -> None:
+        ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
+        objects = {obj["name"]: obj for obj in ontology["objects"]}
+
+        allowed_polarities = {"higher_is_better", "lower_is_better", "neutral"}
+        for ontology_object in objects.values():
+            for metric in ontology_object["metrics"]:
+                self.assertIn("ranking_polarity", metric)
+                self.assertIn(metric["ranking_polarity"], allowed_polarities)
+
+        team_game_metrics = {metric["name"]: metric for metric in objects["TeamGame"]["metrics"]}
+        player_game_metrics = {metric["name"]: metric for metric in objects["PlayerGame"]["metrics"]}
+        team_season_metrics = {metric["name"]: metric for metric in objects["TeamSeason"]["metrics"]}
+
+        self.assertEqual(team_game_metrics["average_defensive_rating"]["ranking_polarity"], "lower_is_better")
+        self.assertEqual(team_game_metrics["average_net_rating"]["ranking_polarity"], "higher_is_better")
+        self.assertEqual(
+            team_game_metrics["average_opponent_field_goals_percentage"]["ranking_polarity"],
+            "lower_is_better",
+        )
+        self.assertEqual(team_game_metrics["average_opponent_turnovers"]["ranking_polarity"], "higher_is_better")
+        self.assertEqual(team_game_metrics["average_pace"]["ranking_polarity"], "neutral")
+        self.assertEqual(team_game_metrics["total_field_goals_attempted"]["ranking_polarity"], "neutral")
+        self.assertEqual(player_game_metrics["total_turnovers"]["ranking_polarity"], "lower_is_better")
+        self.assertEqual(player_game_metrics["total_fouls_drawn"]["ranking_polarity"], "higher_is_better")
+        self.assertEqual(team_season_metrics["defensive_rating"]["ranking_polarity"], "lower_is_better")
+        self.assertEqual(team_season_metrics["pace"]["ranking_polarity"], "neutral")
+
     def test_generated_ontology_promotes_public_stat_columns_to_executable_metrics(self) -> None:
         ontology = yaml.safe_load(ONTOLOGY_PATH.read_text(encoding="utf-8"))
         objects = {obj["name"]: obj for obj in ontology["objects"]}
@@ -77,16 +105,26 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
         self.assertIn("margin", team_game_metrics["total_point_differential"]["aliases"])
         self.assertIn("average margin", team_game_metrics["average_point_differential"]["aliases"])
         self.assertEqual(team_game_metrics["average_offensive_rating"]["aggregation"], "ratio")
+        self.assertIn("ortg", team_game_metrics["average_offensive_rating"]["aliases"])
         self.assertEqual(team_game_metrics["total_assists"]["source_attributes"], ["assists"])
+        self.assertIn("ast", team_game_metrics["total_assists"]["aliases"])
+        self.assertIn("asts", team_game_metrics["total_assists"]["aliases"])
         self.assertEqual(team_game_metrics["average_assists"]["aggregation"], "avg")
         self.assertEqual(team_game_metrics["total_rebounds"]["source_attributes"], ["total_rebounds"])
+        self.assertIn("boards", team_game_metrics["total_rebounds"]["aliases"])
+        self.assertIn("rebs", team_game_metrics["total_rebounds"]["aliases"])
         self.assertEqual(team_game_metrics["average_rebounds"]["source_attributes"], ["total_rebounds"])
         self.assertEqual(team_game_metrics["total_steals"]["source_attributes"], ["steals"])
+        self.assertIn("stl", team_game_metrics["total_steals"]["aliases"])
+        self.assertIn("stls", team_game_metrics["total_steals"]["aliases"])
         self.assertEqual(team_game_metrics["total_blocks"]["source_attributes"], ["blocks"])
+        self.assertIn("blk", team_game_metrics["total_blocks"]["aliases"])
+        self.assertIn("blks", team_game_metrics["total_blocks"]["aliases"])
         self.assertEqual(
             team_game_metrics["total_field_goals_made"]["source_attributes"],
             ["field_goals_made"],
         )
+        self.assertIn("fgm", team_game_metrics["total_field_goals_made"]["aliases"])
         self.assertNotIn("total_offensive_rating", team_game_metrics)
         self.assertEqual(
             team_game_metrics["average_pace"]["source_attributes"],
@@ -96,18 +134,32 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
             team_game_metrics["average_assist_to_turnover_ratio"]["source_attributes"],
             ["assists", "turnovers"],
         )
+        self.assertIn("ast/to", team_game_metrics["average_assist_to_turnover_ratio"]["aliases"])
         self.assertEqual(
             team_game_metrics["average_true_shooting_percentage"]["source_attributes"],
             ["score", "field_goals_attempted", "free_throws_attempted"],
         )
+        self.assertIn("ts%", team_game_metrics["average_true_shooting_percentage"]["aliases"])
         self.assertEqual(
             team_game_metrics["average_field_goals_percentage"]["source_attributes"],
             ["field_goals_made", "field_goals_attempted"],
         )
+        self.assertIn("fg%", team_game_metrics["average_field_goals_percentage"]["aliases"])
         self.assertEqual(
             team_game_metrics["average_opponent_field_goals_percentage"]["source_attributes"],
             ["opponent_field_goals_made", "opponent_field_goals_attempted"],
         )
+        self.assertIn("opp points", team_game_metrics["total_opponent_points"]["aliases"])
+        self.assertIn("opponents pts", team_game_metrics["total_opponent_points"]["aliases"])
+        self.assertIn("points allowed", team_game_metrics["total_opponent_points"]["aliases"])
+        self.assertIn("fg% allowed", team_game_metrics["average_opponent_field_goals_percentage"]["aliases"])
+        self.assertIn("allowed 3pa", team_game_metrics["total_opponent_three_pointers_attempted"]["aliases"])
+        self.assertIn("points off to", team_game_metrics["total_points_off_turnovers"]["aliases"])
+        self.assertIn("plusminus", team_game_metrics["total_point_differential"]["aliases"])
+        self.assertIn("blka", team_game_metrics["total_opponent_blocks"]["aliases"])
+        self.assertIn("pfd", team_game_metrics["total_fouls_drawn"]["aliases"])
+        self.assertIn("w", team_game_metrics["wins"]["aliases"])
+        self.assertIn("l", team_game_metrics["losses"]["aliases"])
 
         player_game_metrics = {metric["name"]: metric for metric in objects["PlayerGame"]["metrics"]}
         self.assertEqual(player_game_metrics["games_won"]["source_attributes"], ["win_loss_result"])
@@ -115,6 +167,15 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
         self.assertEqual(player_game_metrics["games_lost"]["aggregation"], "count_loss")
         self.assertEqual(player_game_metrics["games_started"]["source_attributes"], ["is_starter"])
         self.assertEqual(player_game_metrics["games_started"]["aggregation"], "count_true")
+        self.assertIn("pf", player_game_metrics["total_personal_fouls_committed"]["aliases"])
+        self.assertIn("pfs", player_game_metrics["total_personal_fouls_committed"]["aliases"])
+        self.assertIn("techs", player_game_metrics["total_technical_fouls_committed"]["aliases"])
+        self.assertIn("drawn fouls", player_game_metrics["total_fouls_drawn"]["aliases"])
+        self.assertIn("pfd", player_game_metrics["total_fouls_drawn"]["aliases"])
+        self.assertIn("blka", player_game_metrics["total_opponent_blocks"]["aliases"])
+        self.assertIn("fb points", player_game_metrics["total_fast_break_points"]["aliases"])
+        self.assertIn("pitp", player_game_metrics["total_points_in_paint"]["aliases"])
+        self.assertIn("2nd chance points", player_game_metrics["total_second_chance_points"]["aliases"])
 
         player_season_team_metrics = {
             metric["name"]: metric for metric in objects["PlayerSeasonTeam"]["metrics"]
@@ -134,6 +195,12 @@ class OntologyDrivenQueryPlanningTests(unittest.TestCase):
         self.assertIn("steals_total", team_season_metrics)
         self.assertIn("blocks_total", team_season_metrics)
         self.assertIn("true_shooting_percentage", team_season_metrics)
+        self.assertIn("ppg", team_season_metrics["points_per_game"]["aliases"])
+        self.assertIn("wpct", team_season_metrics["win_percentage"]["aliases"])
+        self.assertIn("efg%", team_season_metrics["effective_field_goal_percentage"]["aliases"])
+        self.assertIn("3par", team_season_metrics["three_point_attempt_rate"]["aliases"])
+        self.assertIn("gp", team_season_metrics["games_played"]["aliases"])
+        self.assertIn("fg3%", team_season_metrics["three_pointers_percentage"]["aliases"])
 
     def test_team_average_points_query_is_ontology_driven(self) -> None:
         output = run_cli("Show me teams by average points over the last 10 games")

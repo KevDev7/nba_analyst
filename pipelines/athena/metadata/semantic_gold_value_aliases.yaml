@@ -300,3 +300,153 @@ Team:
     northwest:
     - northwest
     - northwest division
+Game:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final
+PlayerGame:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final
+  team_home_or_away:
+    home:
+    - home
+    - at home
+    - home games
+    away:
+    - away
+    - road
+    - on the road
+    - road games
+    - away games
+  is_starter:
+    'true':
+    - starter
+    - starters
+    - starting
+    - starts
+    - started
+    - starting lineup
+    'false':
+    - bench
+    - off the bench
+    - reserve
+    - reserves
+    - second unit
+TeamGame:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final
+  team_home_or_away:
+    home:
+    - home
+    - at home
+    - home games
+    away:
+    - away
+    - road
+    - on the road
+    - road games
+    - away games
+PlayerSeason:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final
+PlayerSeasonTeam:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final
+TeamSeason:
+  season_type:
+    regular_season:
+    - regular
+    - regular season
+    playoffs:
+    - playoff
+    - playoffs
+    - postseason
+    play_in:
+    - play in
+    - play-in
+    - play-in tournament
+    preseason:
+    - preseason
+    - pre-season
+    nba_cup_final:
+    - nba cup final
+    - cup final

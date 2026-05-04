@@ -49,6 +49,7 @@ data SemanticDraft = SemanticDraft
   , order :: [DraftOrder]
   , limit :: Maybe Int
   , sort :: Maybe Text
+  , rankIntent :: Maybe Text
   , entities :: [Text]
   , resolvedEntities :: [QI.EntityRef]
   , operations :: [DraftFreeformObject]
@@ -146,6 +147,7 @@ instance FromJSON SemanticDraft where
       <*> obj .:? "order" .!= []
       <*> obj .:? "limit"
       <*> obj .:? "sort"
+      <*> obj .:? "rank_intent"
       <*> obj .:? "entities" .!= []
       <*> obj .:? "resolved_entities" .!= []
       <*> obj .:? "operations" .!= []

@@ -42,6 +42,7 @@ resolveAggregateMetricQuery ontology metricQuery = do
       , rowObjectName = objectName rowObject
       , metricResultShape = "aggregate"
       , metricOrderDirection = "ASC"
+      , metricRankIntentLabel = Nothing
       , rowPath = discoveredRowPath
       , contextPath = Nothing
       , partitionKey = pathPartitionKey rowPrimaryKey discoveredRowPath

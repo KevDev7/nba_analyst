@@ -69,6 +69,7 @@ class SemanticDraft(BaseModel):
     order: list[dict[str, Any]] = Field(default_factory=list)
     limit: Optional[int] = None
     sort: Optional[str] = None
+    rank_intent: Optional[str] = None
     entities: list[str] = Field(default_factory=list)
     operations: list[dict[str, Any]] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
@@ -107,6 +108,20 @@ def _strip_json_fences(raw_text: str) -> str:
     return cleaned.strip()
 
 
+def _load_interpreter_json(cleaned: str) -> dict[str, Any]:
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        try:
+            parsed, end_index = json.JSONDecoder().raw_decode(cleaned)
+        except json.JSONDecodeError:
+            raise exc
+        trailing = cleaned[end_index:].strip()
+        if isinstance(parsed, dict) and trailing and all(character == "}" or character.isspace() for character in trailing):
+            return parsed
+        raise exc
+
+
 @lru_cache(maxsize=1)
 def _semantic_draft_prompt_preamble() -> str:
     # These are Gemini's instructions. The key rule: preserve user intent,
@@ -140,16 +155,45 @@ Question family rules:
 - For compare questions, preserve requested breakdowns in dimensions, such as "by season type", "by team", or "by conference".
 - For compare questions with calendar/time buckets like "by month" or "monthly", keep task "compare" and set grain to the requested bucket.
 - If a compare question has no explicit time scope, keep time_window null; the policy layer will apply the product default.
-- If a rank question does not explicitly ask for a limit, keep limit null but still include a descending order for positive performance metrics unless the user asks for ascending/lowest.
+- For rank questions, preserve the user's ranking wording in rank_intent when present. Examples: top, bottom, best, worst, highest, lowest, most, fewest, least, leaders.
+- Do not decide metric polarity. Haskell uses ontology metric semantics to decide whether quality intents like best/worst/top/bottom should sort ascending or descending.
+- Keep sort null unless the user literally asks for ascending, descending, asc, or desc. Do not use sort to represent best, worst, top, bottom, highest, lowest, most, fewest, or least.
+- If a rank question does not explicitly ask for a limit, keep limit null.
 - When the user asks for multiple measures, put every requested measure phrase in "measures" in user-facing order.
 - Keep "measure" as the primary measure used for ranking, ordering, and summary. For object/aggregate questions without an explicit primary measure, use the first requested measure.
 - Do not invent multi-sort. Extra measures are display measures unless the user clearly names one as the ranking/order measure.
 - For find questions, put requested display fields after words like "show" in dimensions, and put requested sort fields in order using user-facing phrases. Example: "show date and score, sorted newest first" should use dimensions ["date","score"] and order [{"by":"date","direction":"desc"}].
 
+Time grain rules:
+- Time grain means how a trend or time-bucketed comparison is grouped, not which rows are included.
+- For trend questions, set task "trend" and put the normalized bucket in grain.
+- For compare questions with time bucket language, keep task "compare" and put the normalized bucket in grain.
+- Daily language such as "daily", "by day", "day by day", and "calendar day" should use grain "day".
+- Weekly language such as "weekly", "by week", "per week", "week by week", "week over week", and "calendar week" should use grain "week".
+- Monthly language such as "monthly", "by month", "per month", "month by month", "month over month", and "calendar month" should use grain "month".
+- Season/year language such as "by season", "season by season", "season over season", "yearly", "annual", "by year", and "year over year" should use grain "season" for NBA season-grain answers.
+- "Season by season" and "year over year" describe a cross-season trend. Use time_window {"kind":"all","value":null} unless the user also gives an explicit date or season scope.
+- Do not put time grain phrases in dimensions when they duplicate grain. Example: "by calendar month" should set grain "month", not dimensions ["calendar month"].
+
+Game log rules:
+- Use "find" for game-level row requests such as "game log", "box score", "boxscore", "game by game stats", and "last N games log".
+- For player game logs, use subject "players", add a row filter for the player name, and put requested game-row fields/stats in dimensions.
+- For team game logs, use subject "games", add a row filter for the team name, and put requested game-row fields/stats in dimensions.
+- For game logs, prefer date-descending order when the user asks for recent/latest/last games or does not specify a different game order.
+- "Game by game over the last N games" should use "find" with time_window {"kind":"last_n_games","value":N}, not a trend, because those are concrete game rows.
+- Only use "trend" with grain "day" when the user clearly asks for a date-bucketed time series over a calendar/date/season scope, not a game log.
+
 Filter rules:
 - Put row-level constraints in filters using the user's field phrase, operator, and value.
 - Preserve numeric filter values as numbers when possible, including decimals such as 0.6.
 - Examples of row-level filters: "minutes over 30" -> {"field":"minutes","op":">","value":30}; "win percentage above .600" -> {"field":"win percentage","op":">","value":0.6}.
+- Preserve contextual value phrases as row-level filters instead of folding them into the subject or measure.
+- Home/road phrasing should use field "team home or away": "at home", "home games" -> value "home"; "on the road", "road games", "away games" -> value "road".
+- Starter/bench phrasing should use field "is starter": "starters", "starting lineup", "starting players" -> value "starter"; "off the bench", "bench players", "bench scorers", "reserves", "second unit" -> value "bench".
+- Conference phrasing should use field "conference": "east" or "Eastern Conference" -> value "east"; "west" or "Western Conference" -> value "west".
+- Season-type phrasing should use field "season type": "regular season" -> value "regular season"; "playoffs", "playoff", or "postseason" -> value "playoffs".
+- Do not invent a time_window kind for playoffs or postseason. Represent playoffs/postseason as a "season type" filter and keep the normal season/time window separately.
+- Keep subject and measure separate from contextual filters: "bench scorers" means subject "players", measure "scoring", and filter {"field":"is starter","op":"=","value":"bench"}; "road teams" means subject "teams" plus filter {"field":"team home or away","op":"=","value":"road"}.
 - For any question family with OR, NOT, IN, BETWEEN, or CONTAINS row-level logic, put the richer condition in predicate instead of flattening it into filters.
 - Predicate leaves still use user-facing field phrases, not ontology/table/column names.
 - Predicate examples:
@@ -186,6 +230,7 @@ JSON template for supported drafts:
     "order": [{"by":"<user-facing measure/dimension phrase>","direction":"asc" | "desc"}],
     "limit": "<positive integer explicitly requested by the user, or null>",
     "sort": "asc" | "desc" | null,
+    "rank_intent": "top" | "bottom" | "best" | "worst" | "highest" | "lowest" | "most" | "fewest" | "least" | "leaders" | "ranked" | null,
     "entities": ["<raw entity names from user>"],
     "operations": [
       {
@@ -208,16 +253,43 @@ Assumption rules:
 
 Examples:
 Q: Show me the top 10 players by points over the last 10 games
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":10,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":10,"sort":null,"rank_intent":"top","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Who are the top 10 scorers over the last 10 games?
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"scoring","direction":"desc"}],"limit":10,"sort":"desc","entities":[],"operations":[],"assumptions":["Interpreted 'scorers' as players ranked by points."]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"scoring","direction":"desc"}],"limit":10,"sort":null,"rank_intent":"top","entities":[],"operations":[],"assumptions":["Interpreted 'scorers' as players ranked by points."]}}
+
+Q: Who are the top bench scorers over the last 10 games?
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[{"field":"is starter","op":"=","value":"bench"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"scoring","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"top","entities":[],"operations":[],"assumptions":["Interpreted 'scorers' as players ranked by points."]}}
+
+Q: Who has the best defensive rating this season?
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"defensive rating","measures":["defensive rating"],"dimensions":[],"filters":[],"time_window":{"kind":"season","value":null},"grain":null,"order":[],"limit":1,"sort":null,"rank_intent":"best","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Who has the highest defensive rating this season?
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"defensive rating","measures":["defensive rating"],"dimensions":[],"filters":[],"time_window":{"kind":"season","value":null},"grain":null,"order":[],"limit":1,"sort":null,"rank_intent":"highest","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Best Eastern Conference teams by defensive rating this season
+A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"defensive rating","measures":["defensive rating"],"dimensions":[],"filters":[{"field":"conference","op":"=","value":"east"}],"time_window":{"kind":"season","value":null},"grain":null,"order":[],"limit":null,"sort":null,"rank_intent":"best","entities":[],"operations":[],"assumptions":[]}}
 
 Q: What are monthly team average points over the past year?
 A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
+Q: Show month over month team net rating over the past year
+A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"net rating","measures":["net rating"],"dimensions":["team"],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
+
 Q: Rank players by average points over the last 30 days
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_days","value":30},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_days","value":30},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Rank teams by net rating on the road over the last 10 games
+A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"net rating","measures":["net rating"],"dimensions":[],"filters":[{"field":"team home or away","op":"=","value":"road"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"net rating","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Top players by points in the 2024-25 postseason
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points"],"dimensions":[],"filters":[{"field":"season type","op":"=","value":"playoffs"}],"time_window":{"kind":"season","value":"2024-25"},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"top","entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show week over week average points by team over the past year
+A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"week","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
+
+Q: Show season by season team wins
+A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"wins","measures":["wins"],"dimensions":["team"],"filters":[],"time_window":{"kind":"all","value":null},"grain":"season","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
 Q: Show me monthly team wins since 2023-01-01
 A: {"status":"ok","draft":{"task":"trend","subject":"teams","measure":"wins","measures":["wins"],"dimensions":["team"],"filters":[],"time_window":{"kind":"since_date","value":"2023-01-01"},"grain":"month","order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
@@ -229,7 +301,7 @@ Q: Calculate average points by team over the last 10 games
 A: {"status":"ok","draft":{"task":"aggregate","subject":"teams","measure":"average points","measures":["average points"],"dimensions":["team"],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":[],"operations":[],"assumptions":[]}}
 
 Q: Show me players by average points this season
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"season","value":null},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"season","value":null},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Show me players and their total points over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
@@ -238,7 +310,7 @@ Q: Show me players with points, rebounds, and assists over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"points","measures":["points","rebounds","assists"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Rank players by points over the last 10 games and show assists and rebounds
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points","assists","rebounds"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"points","measures":["points","assists","rebounds"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"points","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Show me players with their scoring totals over the last 10 games
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"scoring totals","measures":["scoring totals"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":["Interpreted 'scoring' as total points."]}}
@@ -247,16 +319,25 @@ Q: Show me the top 5 players and their total points for the Knicks over the last
 A: {"status":"ok","draft":{"task":"object","subject":"players","measure":"total points","measures":["total points"],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Knicks"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"total points","direction":"desc"}],"limit":5,"sort":"desc","entities":["Knicks"],"operations":[],"assumptions":[]}}
 
 Q: Show me players by average points with minutes over 30 over the last 10 games
-A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[{"field":"minutes","op":">","value":30}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"players","measure":"average points","measures":["average points"],"dimensions":[],"filters":[{"field":"minutes","op":">","value":30}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"average points","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Show me teams by wins with win percentage above .600 in the 2025-26 regular season
-A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"wins","measures":["wins"],"dimensions":[],"filters":[{"field":"win percentage","op":">","value":0.6},{"field":"season type","op":"=","value":"regular season"}],"time_window":{"kind":"season","value":"2025-26"},"grain":null,"order":[{"by":"wins","direction":"desc"}],"limit":null,"sort":"desc","entities":[],"operations":[],"assumptions":[]}}
+A: {"status":"ok","draft":{"task":"rank","subject":"teams","measure":"wins","measures":["wins"],"dimensions":[],"filters":[{"field":"win percentage","op":">","value":0.6},{"field":"season type","op":"=","value":"regular season"}],"time_window":{"kind":"season","value":"2025-26"},"grain":null,"order":[{"by":"wins","direction":"desc"}],"limit":null,"sort":null,"rank_intent":"ranked","entities":[],"operations":[],"assumptions":[]}}
 
 Q: Find Lakers games over the last 10 games
 A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":[],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
 
 Q: Find Lakers games over 120 points and show date, opponent, score, sorted newest first
 A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":["date","opponent","score"],"filters":[{"field":"team","op":"=","value":"Lakers"},{"field":"points","op":">","value":120}],"time_window":{"kind":"all","value":null},"grain":null,"order":[{"by":"date","direction":"desc"}],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
+
+Q: Show Jalen Brunson's game log over his last 10 games
+A: {"status":"ok","draft":{"task":"find","subject":"players","measure":null,"measures":[],"dimensions":["date","team","opponent","points"],"filters":[{"field":"player","op":"=","value":"Jalen Brunson"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"date","direction":"desc"}],"limit":null,"sort":null,"entities":["Jalen Brunson"],"operations":[],"assumptions":[]}}
+
+Q: Show Jalen Brunson game by game points over his last 10 games
+A: {"status":"ok","draft":{"task":"find","subject":"players","measure":null,"measures":[],"dimensions":["date","team","opponent","points"],"filters":[{"field":"player","op":"=","value":"Jalen Brunson"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"date","direction":"desc"}],"limit":null,"sort":null,"entities":["Jalen Brunson"],"operations":[],"assumptions":[]}}
+
+Q: Show Lakers game log over the last 10 games
+A: {"status":"ok","draft":{"task":"find","subject":"games","measure":null,"measures":[],"dimensions":["date","opponent","score"],"filters":[{"field":"team","op":"=","value":"Lakers"}],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[{"by":"date","direction":"desc"}],"limit":null,"sort":null,"entities":["Lakers"],"operations":[],"assumptions":[]}}
 
 Q: Compare Brunson and Tatum scoring over the last 10 games
 A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"scoring","measures":["scoring"],"dimensions":[],"filters":[],"time_window":{"kind":"last_n_games","value":10},"grain":null,"order":[],"limit":null,"sort":null,"entities":["Brunson","Tatum"],"operations":[],"assumptions":["Interpreted 'scoring' as points."]}}
@@ -266,6 +347,9 @@ A: {"status":"ok","draft":{"task":"compare","subject":"players","measure":"avera
 
 Q: Compare Lakers and Warriors average points by month over the past year
 A: {"status":"ok","draft":{"task":"compare","subject":"teams","measure":"average points","measures":["average points"],"dimensions":[],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":["Lakers","Warriors"],"operations":[],"assumptions":[]}}
+
+Q: Compare Lakers and Warriors by points month by month over the past year
+A: {"status":"ok","draft":{"task":"compare","subject":"teams","measure":"points","measures":["points"],"dimensions":[],"filters":[],"time_window":{"kind":"past_year","value":null},"grain":"month","order":[],"limit":null,"sort":null,"entities":["Lakers","Warriors"],"operations":[],"assumptions":[]}}
 """.strip()
 
 
@@ -282,7 +366,7 @@ def _parse_interpreter_response(
     # Turn Gemini's JSON text into either a supported draft or an unsupported reason.
     cleaned = _strip_json_fences(raw_text)
     try:
-        parsed = json.loads(cleaned)
+        parsed = _load_interpreter_json(cleaned)
     except json.JSONDecodeError as exc:
         raise SemanticInterpreterError(f"Gemini returned malformed JSON: {exc}") from exc
 

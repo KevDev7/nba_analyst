@@ -71,6 +71,7 @@ data ExecutionPlan = ExecutionPlan
   , metric :: Text
   , metric_aggregation :: Text
   , metric_order_direction :: Text
+  , rank_intent_label :: Maybe Text
   , window_games :: Int
   , time_grain :: Maybe Text
   , time_filter :: Maybe Text

@@ -388,7 +388,7 @@ class RankingMetricQueryTests(unittest.TestCase):
 
     def test_highest_average_scoring_variant(self) -> None:
         output = run_cli("Who has the highest average scoring over the last 10 games?")
-        self.assertIn("Top 1 players by average points", output)
+        self.assertIn("Highest 1 players by average points", output)
         self.assertIn("average scoring", output)
         self.assertIn("average points", output)
         self.assertIn("1 | Luka Dončić | LAL |", output)

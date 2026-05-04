@@ -93,6 +93,7 @@ data ResolvedMetricQuery = ResolvedMetricQuery
   , rowObjectName :: Text
   , metricResultShape :: Text
   , metricOrderDirection :: Text
+  , metricRankIntentLabel :: Maybe Text
   , rowPath :: DiscoveredPath
   , contextPath :: Maybe DiscoveredPath
   , partitionKey :: ColumnRef

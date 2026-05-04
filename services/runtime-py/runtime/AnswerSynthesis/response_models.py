@@ -42,6 +42,7 @@ class SynthesisPayload(BaseModel):
     context_label: str
     metric: str
     metric_order_direction: str = "DESC"
+    rank_intent_label: Optional[str] = None
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None
@@ -78,6 +79,7 @@ class FinalAnswer(BaseModel):
     context_label: str
     metric: str
     metric_order_direction: str = "DESC"
+    rank_intent_label: Optional[str] = None
     window_games: int
     time_grain: Optional[str] = None
     time_filter: Optional[str] = None

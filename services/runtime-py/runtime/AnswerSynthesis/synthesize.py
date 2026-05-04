@@ -96,16 +96,57 @@ def _is_ascending_metric_order(payload: SynthesisPayload) -> bool:
     return str(payload.metric_order_direction).lower() in {"asc", "ascending"}
 
 
+def _ranking_intent_label(payload: SynthesisPayload) -> str:
+    label = str(payload.rank_intent_label or "").strip().lower()
+    return label if label in {"best", "worst", "top", "bottom", "highest", "lowest", "most", "fewest", "ranked"} else ""
+
+
 def _ranking_limit_phrase(payload: SynthesisPayload) -> str:
+    intent_label = _ranking_intent_label(payload)
     if payload.limit > 0:
-        direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
+        direction_label = {
+            "best": "Best",
+            "worst": "Worst",
+            "top": "Top",
+            "bottom": "Bottom",
+            "highest": "Highest",
+            "lowest": "Lowest",
+            "most": "Most",
+            "fewest": "Fewest",
+        }.get(intent_label)
+        if direction_label is None:
+            direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
         return f"{direction_label} {payload.limit}"
+    unlimited_phrase = {
+        "best": "ranked best to worst",
+        "worst": "ranked worst to best",
+        "highest": "ranked from highest to lowest",
+        "most": "ranked from most to fewest",
+        "lowest": "ranked from lowest to highest",
+        "fewest": "ranked from fewest to most",
+        "bottom": "ranked from lowest to highest",
+    }.get(intent_label)
+    if unlimited_phrase is not None:
+        return unlimited_phrase
     return "ranked from lowest to highest" if _is_ascending_metric_order(payload) else "ranked"
 
 
 def _ranking_leader_phrase(payload: SynthesisPayload, entity_name: str, metric: str, value: float) -> str:
     metric_value = _format_metric_value(metric, value)
     metric_label = _human_metric(metric)
+    intent_label = _ranking_intent_label(payload)
+    if intent_label in {"best", "top"}:
+        return f"{entity_name} ranks first with {metric_value} {metric_label}."
+    if intent_label in {"worst", "bottom"}:
+        return f"{entity_name} ranks last with {metric_value} {metric_label}."
+    if intent_label == "highest":
+        return f"{entity_name} has the highest with {metric_value} {metric_label}."
+    if intent_label == "lowest":
+        return f"{entity_name} has the lowest with {metric_value} {metric_label}."
+    if intent_label == "most":
+        return f"{entity_name} has the most with {metric_value} {metric_label}."
+    if intent_label == "fewest":
+        return f"{entity_name} has the fewest with {metric_value} {metric_label}."
     if _is_ascending_metric_order(payload):
         return f"{entity_name} is lowest with {metric_value} {metric_label}."
     return f"{entity_name} leads with {metric_value} {metric_label}."

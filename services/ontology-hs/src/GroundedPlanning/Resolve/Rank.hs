@@ -48,6 +48,7 @@ resolveRankMetricQuery ontology metricQuery = do
       , rowObjectName = objectName rowObject
       , metricResultShape = "ranking"
       , metricOrderDirection = orderDirectionText (orders base)
+      , metricRankIntentLabel = rankIntentLabel metricQuery
       , rowPath = discoveredRowPath
       , contextPath = selectedContextPath contextSelection
       , partitionKey = partitionColumn

@@ -17,7 +17,7 @@
 
 module OntologyLayer.Types where
 
-import Data.Aeson ((.:), (.:?), (.!=), FromJSON (parseJSON), ToJSON, withObject, withText)
+import Data.Aeson ((.:), (.:?), (.!=), FromJSON (parseJSON), ToJSON (toJSON), Value (String), withObject, withText)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -90,6 +90,30 @@ instance FromJSON AttributeVisibility where
       "internal" -> pure Internal
       _ -> fail ("Unknown attribute visibility: " <> show value)
 
+data MetricRankingPolarity
+  -- Semantic ranking polarity for quality-language ranking.
+  -- Example: lower defensive_rating is better, while higher net_rating is better.
+  = HigherIsBetter
+  | LowerIsBetter
+  | NeutralRankingPolarity
+  deriving (Show, Eq, Generic)
+
+instance ToJSON MetricRankingPolarity where
+  toJSON polarityValue =
+    String $
+      case polarityValue of
+        HigherIsBetter -> "higher_is_better"
+        LowerIsBetter -> "lower_is_better"
+        NeutralRankingPolarity -> "neutral"
+
+instance FromJSON MetricRankingPolarity where
+  parseJSON = withText "MetricRankingPolarity" $ \value ->
+    case value of
+      "higher_is_better" -> pure HigherIsBetter
+      "lower_is_better" -> pure LowerIsBetter
+      "neutral" -> pure NeutralRankingPolarity
+      _ -> fail ("Unknown metric ranking polarity: " <> show value)
+
 data MetricDef = MetricDef
   -- A named calculation defined on one object.
   -- source_attributes must refer to attributes on the same object; the metric
@@ -99,6 +123,7 @@ data MetricDef = MetricDef
   , source_attributes :: [Text]
   , expression :: Text
   , executable :: Bool
+  , ranking_polarity :: MetricRankingPolarity
   , metric_aliases :: [Text]
   }
   deriving (Show, Eq, Generic, ToJSON)
@@ -111,6 +136,7 @@ instance FromJSON MetricDef where
       <*> obj .: "source_attributes"
       <*> obj .: "expression"
       <*> obj .:? "executable" .!= False
+      <*> obj .: "ranking_polarity"
       <*> obj .:? "aliases" .!= []
 
 data LinkRelation

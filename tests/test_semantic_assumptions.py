@@ -107,6 +107,26 @@ class SemanticAssumptionTests(unittest.TestCase):
 
         self.assertEqual(enriched["task"], "rank")
 
+    def test_season_grain_language_does_not_default_to_current_season(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Show year over year team wins",
+            season_rank_draft(
+                task="trend",
+                subject="teams",
+                measure="wins",
+                measures=["wins"],
+                dimensions=["team"],
+                time_window={"kind": "all", "value": None},
+                grain="season",
+                limit=None,
+            ),
+        )
+
+        self.assertEqual(enriched["time_window"], {"kind": "all", "value": None})
+        self.assertEqual(enriched["grain"], "season")
+        self.assertEqual(enriched["filters"], [])
+        self.assertEqual(enriched["assumptions"], [])
+
     def test_scoring_totals_adds_grounded_user_facing_assumption(self) -> None:
         enriched = apply_semantic_assumptions(
             "Show me players with their scoring totals over the last 10 games",

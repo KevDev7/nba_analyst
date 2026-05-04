@@ -10,12 +10,15 @@ module QueryModel.SemanticDraft.Filters
   , requireRankingSort
   , requireResolvedComparisonEntities
   , requireTrendGrain
+  , resolveRankingOrder
+  , resolveRankingIntentLabel
   ) where
 
 import Control.Applicative ((<|>))
 import Data.List (nub)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified OntologyLayer.Types as OT
 import qualified QueryModel.IR as QI
 import QueryModel.SemanticDraft.Normalize
 import QueryModel.SemanticDraft.Types
@@ -110,3 +113,102 @@ requireRankingSort maybeSort =
     Just "lowest" -> Right QI.Asc
     Just "least" -> Right QI.Asc
     _ -> Left "Could not ground ranking sort direction against the requested metric."
+
+resolveRankingOrder :: SemanticDraft -> OT.MetricDef -> Either Text (QI.MetricName -> QI.Order)
+resolveRankingOrder draft metricDef =
+  -- Resolve user ranking intent after metric grounding, so quality words like
+  -- "best" can use ontology metric polarity instead of a prompt-level guess.
+  case normalizedRankIntent (rankIntent draft) of
+    Just intentValue -> resolveRankingIntent intentValue metricDef
+    Nothing -> resolveRankingSortFallback (sort draft) metricDef
+
+resolveRankingIntentLabel :: SemanticDraft -> Maybe Text
+resolveRankingIntentLabel draft =
+  case normalizedRankIntent (rankIntent draft) of
+    Just intentValue -> canonicalRankingIntentLabel True intentValue
+    Nothing ->
+      case normalizedRankIntent (sort draft) of
+        Just sortValue -> canonicalRankingIntentLabel False sortValue
+        Nothing -> Nothing
+
+resolveRankingSortFallback :: Maybe Text -> OT.MetricDef -> Either Text (QI.MetricName -> QI.Order)
+resolveRankingSortFallback maybeSort metricDef =
+  case normalizedRankIntent maybeSort of
+    Nothing -> Right QI.Desc
+    Just intentValue -> resolveRankingIntent intentValue metricDef
+
+normalizedRankIntent :: Maybe Text -> Maybe Text
+normalizedRankIntent maybeValue =
+  case fmap normalizedKey maybeValue of
+    Just value | not (T.null value) -> Just value
+    _ -> Nothing
+
+resolveRankingIntent :: Text -> OT.MetricDef -> Either Text (QI.MetricName -> QI.Order)
+resolveRankingIntent intentValue metricDef =
+  case intentValue of
+    "desc" -> Right QI.Desc
+    "descending" -> Right QI.Desc
+    "highest" -> Right QI.Desc
+    "high" -> Right QI.Desc
+    "most" -> Right QI.Desc
+    "asc" -> Right QI.Asc
+    "ascending" -> Right QI.Asc
+    "lowest" -> Right QI.Asc
+    "low" -> Right QI.Asc
+    "fewest" -> Right QI.Asc
+    "least" -> Right QI.Asc
+    "best" -> Right (qualityOrder bestOrderByPolarity metricDef)
+    "top" -> Right (qualityOrder bestOrderByPolarity metricDef)
+    "leader" -> Right (qualityOrder bestOrderByPolarity metricDef)
+    "leaders" -> Right (qualityOrder bestOrderByPolarity metricDef)
+    "leaderboard" -> Right (qualityOrder bestOrderByPolarity metricDef)
+    "worst" -> Right (qualityOrder worstOrderByPolarity metricDef)
+    "bottom" -> Right (qualityOrder worstOrderByPolarity metricDef)
+    "rank" -> Right QI.Desc
+    "ranked" -> Right QI.Desc
+    "ranking" -> Right QI.Desc
+    _ -> Left "Could not ground ranking intent against the requested metric."
+
+canonicalRankingIntentLabel :: Bool -> Text -> Maybe Text
+canonicalRankingIntentLabel fromRankIntent intentValue =
+  case intentValue of
+    "highest" -> Just "highest"
+    "high" -> Just "highest"
+    "most" -> Just "most"
+    "lowest" -> Just "lowest"
+    "low" -> Just "lowest"
+    "fewest" -> Just "fewest"
+    "least" -> Just "fewest"
+    "best" -> Just "best"
+    "top" -> Just "top"
+    "leader" -> Just "top"
+    "leaders" -> Just "top"
+    "leaderboard" -> Just "top"
+    "worst" -> Just "worst"
+    "bottom" -> Just "bottom"
+    "rank" -> Just "ranked"
+    "ranked" -> Just "ranked"
+    "ranking" -> Just "ranked"
+    "asc" | fromRankIntent -> Just "lowest"
+    "ascending" | fromRankIntent -> Just "lowest"
+    "desc" | fromRankIntent -> Just "highest"
+    "descending" | fromRankIntent -> Just "highest"
+    _ -> Nothing
+
+qualityOrder :: (OT.MetricRankingPolarity -> QI.MetricName -> QI.Order) -> OT.MetricDef -> QI.MetricName -> QI.Order
+qualityOrder orderForPolarity metricDef =
+  orderForPolarity (OT.ranking_polarity metricDef)
+
+bestOrderByPolarity :: OT.MetricRankingPolarity -> QI.MetricName -> QI.Order
+bestOrderByPolarity polarityValue =
+  case polarityValue of
+    OT.HigherIsBetter -> QI.Desc
+    OT.LowerIsBetter -> QI.Asc
+    OT.NeutralRankingPolarity -> QI.Desc
+
+worstOrderByPolarity :: OT.MetricRankingPolarity -> QI.MetricName -> QI.Order
+worstOrderByPolarity polarityValue =
+  case polarityValue of
+    OT.HigherIsBetter -> QI.Asc
+    OT.LowerIsBetter -> QI.Desc
+    OT.NeutralRankingPolarity -> QI.Asc

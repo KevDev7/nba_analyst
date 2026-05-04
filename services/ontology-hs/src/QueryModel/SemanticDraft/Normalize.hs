@@ -48,16 +48,32 @@ normalizeTrendGrain rawGrain =
     "date" -> Just "day"
     "game" -> Just "day"
     "gameday" -> Just "day"
+    "calendarday" -> Just "day"
+    "daybyday" -> Just "day"
     "week" -> Just "week"
     "weekly" -> Just "week"
     "calendarweek" -> Just "week"
     "gameweek" -> Just "week"
+    "perweek" -> Just "week"
+    "weekbyweek" -> Just "week"
+    "weekoverweek" -> Just "week"
     "month" -> Just "month"
     "monthly" -> Just "month"
     "calendarmonth" -> Just "month"
     "gamemonth" -> Just "month"
+    "permonth" -> Just "month"
+    "monthbymonth" -> Just "month"
+    "monthovermonth" -> Just "month"
     "season" -> Just "season"
     "seasonal" -> Just "season"
+    "year" -> Just "season"
+    "yearly" -> Just "season"
+    "annual" -> Just "season"
+    "byyear" -> Just "season"
+    "seasonbyseason" -> Just "season"
+    "seasonoverseason" -> Just "season"
+    "yearbyyear" -> Just "season"
+    "yearoveryear" -> Just "season"
     _ -> Nothing
 
 normalizeSeasonType :: Text -> Maybe Text
@@ -95,7 +111,7 @@ subjectMatchKey rawValue =
 normalizedMeasureKey :: Text -> Text
 normalizedMeasureKey rawValue =
   -- Normalize common measure aliases before metric matching.
-  case normalizedKey rawValue of
+  case normalizedKey (normalizeMeasureSymbols rawValue) of
     "pts" -> "points"
     "point" -> "points"
     "scoring" -> "points"
@@ -103,6 +119,12 @@ normalizedMeasureKey rawValue =
     "averagescoring" -> "averagepoints"
     "ppg" -> "ppg"
     keyValue -> keyValue
+
+normalizeMeasureSymbols :: Text -> Text
+normalizeMeasureSymbols rawValue =
+  T.replace "±" " plus minus " $
+    T.replace "+/-" " plus minus " $
+      T.replace "%" " pct " rawValue
 
 normalizedKey :: Text -> Text
 normalizedKey =

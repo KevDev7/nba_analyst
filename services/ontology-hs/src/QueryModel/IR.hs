@@ -612,6 +612,7 @@ data MetricQuerySpec = MetricQuerySpec
   { sharedQuery :: BaseQuery
   , entityFilters :: [EntityRef]
   , comparison :: Maybe ComparisonIntent
+  , rankIntentLabel :: Maybe Text
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 

@@ -44,6 +44,26 @@ class SemanticValueAliasGeneratorTests(unittest.TestCase):
             ["Cavaliers", "CLE", "Cleveland Cavaliers", "Cavs"],
         )
 
+    def test_curated_dimension_value_aliases_preserve_boolean_canonical_text(self) -> None:
+        aliases = merge_aliases(
+            {},
+            {
+                "PlayerGame": {
+                    "team_home_or_away": {
+                        "away": ["road", "on the road"],
+                    },
+                    "is_starter": {
+                        "true": ["starter"],
+                        "false": ["bench", "off the bench"],
+                    },
+                }
+            },
+        )
+
+        self.assertEqual(aliases["PlayerGame"]["team_home_or_away"]["away"], ["road", "on the road"])
+        self.assertEqual(aliases["PlayerGame"]["is_starter"]["true"], ["starter"])
+        self.assertEqual(aliases["PlayerGame"]["is_starter"]["false"], ["bench", "off the bench"])
+
     def test_detects_ambiguous_aliases_before_ontology_generation(self) -> None:
         aliases = {
             "Team": {

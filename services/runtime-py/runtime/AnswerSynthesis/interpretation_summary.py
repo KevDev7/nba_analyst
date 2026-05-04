@@ -110,10 +110,38 @@ def _is_ascending_metric_order(payload: SynthesisPayload) -> bool:
     return str(payload.metric_order_direction).lower() in {"asc", "ascending"}
 
 
+def _ranking_intent_label(payload: SynthesisPayload) -> str:
+    label = str(payload.rank_intent_label or "").strip().lower()
+    return label if label in {"best", "worst", "top", "bottom", "highest", "lowest", "most", "fewest", "ranked"} else ""
+
+
 def _ranking_limit_phrase(payload: SynthesisPayload) -> str:
+    intent_label = _ranking_intent_label(payload)
     if payload.limit > 0:
-        direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
+        direction_label = {
+            "best": "Best",
+            "worst": "Worst",
+            "top": "Top",
+            "bottom": "Bottom",
+            "highest": "Highest",
+            "lowest": "Lowest",
+            "most": "Most",
+            "fewest": "Fewest",
+        }.get(intent_label)
+        if direction_label is None:
+            direction_label = "Bottom" if _is_ascending_metric_order(payload) else "Top"
         return f"{direction_label} {payload.limit}"
+    unlimited_phrase = {
+        "best": "Ranked best to worst",
+        "worst": "Ranked worst to best",
+        "highest": "Ranked from highest to lowest",
+        "most": "Ranked from most to fewest",
+        "lowest": "Ranked from lowest to highest",
+        "fewest": "Ranked from fewest to most",
+        "bottom": "Ranked from lowest to highest",
+    }.get(intent_label)
+    if unlimited_phrase is not None:
+        return unlimited_phrase
     return "Ranked from lowest to highest" if _is_ascending_metric_order(payload) else "Ranked"
 
 

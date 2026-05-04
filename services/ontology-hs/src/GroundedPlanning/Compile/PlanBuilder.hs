@@ -36,7 +36,7 @@ compileExecutionPlan resolvedQuery =
 -- Build the top-level execution plan for metric questions.
 -- This covers both ordinary ranking questions and comparison questions.
 compileMetricExecutionPlan :: ResolvedMetricQuery -> ExecutionPlan
-compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, timeFilterKind = metricTimeFilterKindValue, timeFilters = metricTimeFilters, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName, seasonLabel = metricSeasonLabel, seasonType = metricSeasonType, metricResultShape = resolvedResultShape, metricOrderDirection = metricOrderDirectionValue, rowPredicateResolved = metricRowPredicate, resultPredicateResolved = metricResultPredicate, groupingDimensions = metricGroupingDimensions, displayMetadata = metricDisplayMetadata, displayMetricFormulas = metricDisplayMetricFormulas, metricTimeGrain = maybeMetricTimeGrain} =
+compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWindowGames, timeFilterKind = metricTimeFilterKindValue, timeFilters = metricTimeFilters, queryLimit = metricQueryLimit, resolvedAssumptions = metricAssumptions, rowObjectName = metricRowObjectName, seasonLabel = metricSeasonLabel, seasonType = metricSeasonType, metricResultShape = resolvedResultShape, metricOrderDirection = metricOrderDirectionValue, metricRankIntentLabel = maybeRankIntentLabel, rowPredicateResolved = metricRowPredicate, resultPredicateResolved = metricResultPredicate, groupingDimensions = metricGroupingDimensions, displayMetadata = metricDisplayMetadata, displayMetricFormulas = metricDisplayMetricFormulas, metricTimeGrain = maybeMetricTimeGrain} =
   let formula =
         case resolved of
           ResolvedMetricQuery {metricFormula = currentFormula} -> currentFormula
@@ -58,6 +58,7 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
     , metric_order_direction = metricOrderDirectionValue
+    , rank_intent_label = maybeRankIntentLabel
     , window_games = metricWindowGames
     , time_grain = maybeMetricTimeGrain
     , time_filter = Just metricTimeFilterKindValue
@@ -99,6 +100,7 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
     , metric_order_direction = ""
+    , rank_intent_label = Nothing
     , window_games = 0
     , time_grain = Just trendTimeGrain
     , time_filter = Just trendTimeFilter
@@ -145,6 +147,7 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
     , metric = metricKey formula
     , metric_aggregation = aggregationKind formula
     , metric_order_direction = objectOrderDirectionValue
+    , rank_intent_label = Nothing
     , window_games = objectWindowGames
     , time_grain = Nothing
     , time_filter = Just objectTimeFilterKind
@@ -185,6 +188,7 @@ compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectNam
         , metric = ""
         , metric_aggregation = ""
         , metric_order_direction = ""
+        , rank_intent_label = Nothing
         , window_games = 0
         , time_grain = Nothing
         , time_filter = Just (metricTimeFilterKind filterValues)

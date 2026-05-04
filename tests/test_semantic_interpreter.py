@@ -43,6 +43,27 @@ class SemanticInterpreterTests(unittest.TestCase):
         self.assertIn("row-level constraints", prompt)
         self.assertIn('"field":"minutes","op":">","value":30', prompt)
         self.assertIn('"field":"win percentage","op":">","value":0.6', prompt)
+        self.assertIn('"rank_intent"', prompt)
+        self.assertIn("Do not decide metric polarity", prompt)
+        self.assertIn("Who has the best defensive rating this season?", prompt)
+        self.assertIn('"team home or away"', prompt)
+        self.assertIn('"is starter"', prompt)
+        self.assertIn('"conference"', prompt)
+        self.assertIn('"season type"', prompt)
+        self.assertIn("bench scorers", prompt)
+        self.assertIn("on the road", prompt)
+        self.assertIn("postseason", prompt)
+        self.assertIn("Do not invent a time_window kind for playoffs or postseason", prompt)
+        self.assertIn("Time grain rules", prompt)
+        self.assertIn("month over month", prompt)
+        self.assertIn("week over week", prompt)
+        self.assertIn("season by season", prompt)
+        self.assertIn("year over year", prompt)
+        self.assertIn('"grain":"season"', prompt)
+        self.assertIn("Game log rules", prompt)
+        self.assertIn("game by game stats", prompt)
+        self.assertIn("last N games log", prompt)
+        self.assertIn("Show Jalen Brunson's game log over his last 10 games", prompt)
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_returns_basic_validated_semantic_draft(self, mock_call_gemini) -> None:
@@ -60,6 +81,30 @@ class SemanticInterpreterTests(unittest.TestCase):
         sent_prompt = mock_call_gemini.call_args.args[0]
         self.assertIn("User question:", sent_prompt)
         self.assertIn("top 10 players", sent_prompt)
+
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
+    def test_interpreter_preserves_rank_intent_without_sort_direction(self, mock_call_gemini) -> None:
+        draft = dict(SAMPLE_DRAFT)
+        draft["measure"] = "defensive rating"
+        draft["measures"] = ["defensive rating"]
+        draft["sort"] = None
+        draft["rank_intent"] = "best"
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft("Who has the best defensive rating this season?")
+
+        self.assertEqual(interpreted["rank_intent"], "best")
+        self.assertIsNone(interpreted["sort"])
+
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
+    def test_interpreter_tolerates_extra_trailing_close_braces(self, mock_call_gemini) -> None:
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": SAMPLE_DRAFT}) + "\n}\n}\n"
+
+        draft = interpret_question_to_semantic_draft(
+            "Show me the top 10 players by points over the last 10 games"
+        )
+
+        self.assertEqual(draft["measure"], "points")
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_raises_for_non_analytics_unsupported_response(self, mock_call_gemini) -> None:
@@ -165,6 +210,107 @@ class SemanticInterpreterTests(unittest.TestCase):
             interpreted["filters"],
             [{"field": "win percentage", "op": ">", "value": 0.6}],
         )
+
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
+    def test_interpreter_preserves_contextual_value_phrase_filters(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "rank",
+            "subject": "players",
+            "measure": "scoring",
+            "measures": ["scoring"],
+            "dimensions": [],
+            "filters": [
+                {"field": "is starter", "op": "=", "value": "bench"},
+                {"field": "team home or away", "op": "=", "value": "road"},
+                {"field": "conference", "op": "=", "value": "east"},
+                {"field": "season type", "op": "=", "value": "playoffs"},
+            ],
+            "time_window": {"kind": "season", "value": "2024-25"},
+            "grain": None,
+            "order": [{"by": "scoring", "direction": "desc"}],
+            "limit": None,
+            "sort": None,
+            "rank_intent": "top",
+            "entities": [],
+            "operations": [],
+            "assumptions": ["Interpreted 'scorers' as players ranked by points."],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Top East road bench scorers in the 2024-25 postseason"
+        )
+
+        self.assertEqual(
+            interpreted["filters"],
+            [
+                {"field": "is starter", "op": "=", "value": "bench"},
+                {"field": "team home or away", "op": "=", "value": "road"},
+                {"field": "conference", "op": "=", "value": "east"},
+                {"field": "season type", "op": "=", "value": "playoffs"},
+            ],
+        )
+
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
+    def test_interpreter_preserves_calendar_and_season_grain_language(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "trend",
+            "subject": "teams",
+            "measure": "net rating",
+            "measures": ["net rating"],
+            "dimensions": ["team"],
+            "filters": [],
+            "time_window": {"kind": "all", "value": None},
+            "grain": "season",
+            "order": [],
+            "limit": None,
+            "sort": None,
+            "entities": [],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Show year over year team net rating"
+        )
+
+        self.assertEqual(interpreted["task"], "trend")
+        self.assertEqual(interpreted["time_window"], {"kind": "all", "value": None})
+        self.assertEqual(interpreted["grain"], "season")
+        self.assertEqual(interpreted["dimensions"], ["team"])
+
+    @patch("apps.assistant.semantic.interpreter._call_gemini")
+    def test_interpreter_maps_game_by_game_recent_stats_to_find_rows(self, mock_call_gemini) -> None:
+        draft = {
+            "task": "find",
+            "subject": "players",
+            "measure": None,
+            "measures": [],
+            "dimensions": ["date", "team", "opponent", "points"],
+            "filters": [{"field": "player", "op": "=", "value": "Jalen Brunson"}],
+            "time_window": {"kind": "last_n_games", "value": 10},
+            "grain": None,
+            "order": [{"by": "date", "direction": "desc"}],
+            "limit": None,
+            "sort": None,
+            "entities": ["Jalen Brunson"],
+            "operations": [],
+            "assumptions": [],
+        }
+        mock_call_gemini.return_value = json.dumps({"status": "ok", "draft": draft})
+
+        interpreted = interpret_question_to_semantic_draft(
+            "Show Jalen Brunson game by game points over his last 10 games"
+        )
+
+        self.assertEqual(interpreted["task"], "find")
+        self.assertEqual(interpreted["subject"], "players")
+        self.assertEqual(interpreted["dimensions"], ["date", "team", "opponent", "points"])
+        self.assertEqual(interpreted["filters"], [{"field": "player", "op": "=", "value": "Jalen Brunson"}])
+        self.assertEqual(interpreted["time_window"], {"kind": "last_n_games", "value": 10})
+        self.assertIsNone(interpreted["grain"])
+        self.assertEqual(interpreted["order"], [{"by": "date", "direction": "desc"}])
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_still_requires_non_find_time_window(self, mock_call_gemini) -> None:

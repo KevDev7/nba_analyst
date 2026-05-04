@@ -144,4 +144,5 @@ trendQuery grounded =
             }
       , QI.entityFilters = []
       , QI.comparison = Nothing
+      , QI.rankIntentLabel = Nothing
       }

@@ -363,6 +363,80 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("d2.team_name AS team_name", sql)
         self.assertIn("f.minutes_played AS minutes_played", sql)
 
+    def test_haskell_uses_player_game_opponent_team_for_player_game_logs(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": ["date", "team", "opponent", "points"],
+                "filters": [{"field": "player", "op": "=", "value": "Jalen Brunson"}],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "grain": None,
+                "order": [{"by": "date", "direction": "desc"}],
+                "limit": None,
+                "sort": None,
+                "entities": ["Jalen Brunson"],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        spec = payload["query"]["spec"]
+        resolved_displays = payload["resolved_query"]["resolved"]["resolvedFindDisplays"]
+        execution_plan = payload["execution_plan"]
+        sql = execution_plan["steps"][0]["sql"]
+
+        self.assertEqual(spec["findCoreFactObject"], "PlayerGame")
+        self.assertEqual(spec["findTargetObject"], "Player")
+        self.assertEqual(
+            spec["findDisplayDimensions"],
+            [
+                "game_date",
+                "team_name",
+                {
+                    "attribute": "team_name",
+                    "targetObject": "Team",
+                    "linkRole": "player_game_opponent_team",
+                    "label": "opponent",
+                },
+                "points",
+            ],
+        )
+        self.assertEqual(resolved_displays[2]["displayLabel"], "opponent")
+        self.assertEqual(resolved_displays[2]["displayPath"]["steps"][0]["linkName"], "player_game_opponent_team")
+        assert_has_predicate_leaf(
+            self,
+            spec["findPredicateTree"],
+            target="Player",
+            attribute="full_name",
+            operator="equals",
+            value="Jalen Brunson",
+        )
+        self.assertEqual(spec["findFilters"], [{"kind": "last_n_games", "value": 10}])
+        self.assertEqual(execution_plan["result_shape"], "find_rows")
+        self.assertIn("d3.team_name AS opponent", sql)
+        self.assertIn("ON f.opponent_team_id = d3.team_id", sql)
+        self.assertIn("pt1.full_name = 'Jalen Brunson'", sql)
+        self.assertIn("ROW_NUMBER() OVER (ORDER BY f.game_date DESC)", sql)
+        self.assertIn("WHERE __find_row_rank <= 10", sql)
+        self.assertIn("ORDER BY __find_order_1 DESC", sql)
+
+        if hasattr(ExecutionPlan, "model_validate"):
+            plan = ExecutionPlan.model_validate(execution_plan)
+        else:
+            plan = ExecutionPlan.parse_obj(execution_plan)
+        runtime_result = execute_plan(plan)
+
+        self.assertTrue(runtime_result.find_rows)
+        self.assertLessEqual(len(runtime_result.find_rows), 10)
+        self.assertEqual(
+            list(runtime_result.find_rows[0].keys()),
+            ["game_date", "team_name", "opponent", "points", "full_name"],
+        )
+        self.assertEqual(runtime_result.find_rows[0]["full_name"], "Jalen Brunson")
+
     def test_haskell_preserves_find_last_n_games_time_window(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
             lakers_games_draft(time_window={"kind": "last_n_games", "value": 10})
@@ -756,6 +830,66 @@ class FindQueryTests(unittest.TestCase):
 
         self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "east")
         self.assertIn("f.conference = 'east'", payload["execution_plan"]["steps"][0]["sql"])
+
+    def test_haskell_canonicalizes_home_away_find_value(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "games",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [{"field": "team home or away", "op": "=", "value": "road"}],
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 3,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        assert_has_predicate_leaf(
+            self,
+            payload["execution_plan"]["find_predicate_tree"],
+            target="PlayerGame",
+            attribute="team_home_or_away",
+            operator="equals",
+            value="away",
+        )
+        self.assertIn("f.team_home_or_away = 'away'", payload["execution_plan"]["steps"][0]["sql"])
+
+    def test_haskell_canonicalizes_starter_find_value(self) -> None:
+        payload = call_haskell_planner_for_semantic_draft(
+            {
+                "task": "find",
+                "subject": "players",
+                "measure": None,
+                "measures": [],
+                "dimensions": [],
+                "filters": [{"field": "is starter", "op": "=", "value": "bench"}],
+                "time_window": {"kind": "all", "value": None},
+                "grain": None,
+                "order": [],
+                "limit": 3,
+                "sort": None,
+                "entities": [],
+                "operations": [],
+                "assumptions": [],
+            }
+        )
+
+        assert_has_predicate_leaf(
+            self,
+            payload["execution_plan"]["find_predicate_tree"],
+            target="PlayerGame",
+            attribute="is_starter",
+            operator="equals",
+            value="false",
+        )
+        self.assertIn("f.is_starter = 'false'", payload["execution_plan"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_team_name_find_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(

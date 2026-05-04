@@ -56,6 +56,7 @@ resolveCompareMetricQuery ontology metricQuery = do
       , rowObjectName = objectName rowObject
       , metricResultShape = "comparison"
       , metricOrderDirection = "DESC"
+      , metricRankIntentLabel = Nothing
       , rowPath = discoveredRowPath
       , contextPath = selectedContextPath contextSelection
       , partitionKey = pathPartitionKey rowPrimaryKey discoveredRowPath

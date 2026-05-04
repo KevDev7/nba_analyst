@@ -598,6 +598,87 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
         self.assertEqual(payload["execution_plan"]["row_predicate"]["value"]["value"], "west")
 
+    def test_haskell_canonicalizes_player_home_away_value_aliases(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "players",
+                "measure": "points",
+                "measures": ["points"],
+                "filters": [{"field": "team home or away", "op": "=", "value": "road"}],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "limit": 5,
+                "sort": "desc",
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["rowPredicate"], predicate_leaf("PlayerGame", "team_home_or_away", "equals", "road"))
+        self.assertEqual(plan["row_predicate"], predicate_leaf("PlayerGame", "team_home_or_away", "equals", "away"))
+        self.assertIn("f.team_home_or_away = 'away'", sql)
+        self.assertNotIn("f.team_home_or_away = 'road'", sql)
+
+    def test_haskell_canonicalizes_team_home_away_value_aliases(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "net rating",
+                "measures": ["net rating"],
+                "filters": [{"field": "team home or away", "op": "=", "value": "on the road"}],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "limit": 5,
+                "sort": "desc",
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
+        sql = plan["steps"][0]["sql"]
+
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["rowPredicate"], predicate_leaf("TeamGame", "team_home_or_away", "equals", "on the road"))
+        self.assertEqual(plan["row_predicate"], predicate_leaf("TeamGame", "team_home_or_away", "equals", "away"))
+        self.assertIn("f.team_home_or_away = 'away'", sql)
+        self.assertNotIn("f.team_home_or_away = 'on the road'", sql)
+
+    def test_haskell_canonicalizes_starter_and_bench_value_aliases(self) -> None:
+        cases = [
+            ("bench", "false"),
+            ("off the bench", "false"),
+            ("starter", "true"),
+            ("starting lineup", "true"),
+        ]
+
+        for raw_value, expected_value in cases:
+            with self.subTest(raw_value=raw_value):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": "players",
+                        "measure": "points",
+                        "measures": ["points"],
+                        "filters": [{"field": "is starter", "op": "=", "value": raw_value}],
+                        "time_window": {"kind": "last_n_games", "value": 10},
+                        "limit": 5,
+                        "sort": "desc",
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                plan = payload["execution_plan"]
+                sql = plan["steps"][0]["sql"]
+
+                self.assertEqual(shared["rowPredicate"], predicate_leaf("PlayerGame", "is_starter", "equals", raw_value))
+                self.assertEqual(plan["row_predicate"], predicate_leaf("PlayerGame", "is_starter", "equals", expected_value))
+                self.assertIn(f"f.is_starter = '{expected_value}'", sql)
+
     def test_haskell_grounds_row_level_numeric_measure_filter_to_linked_filter(self) -> None:
         payload = call_plan_semantic_draft(
             {
@@ -934,6 +1015,212 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIn("  result_predicate_1,\n  metric_value", sql)
         self.assertIn("WHERE result_predicate_1 > 0.6", sql)
 
+    def test_haskell_grounds_team_season_rating_abbreviations_from_ontology_aliases(self) -> None:
+        cases = [
+            ("net rtg", "net_rating", "desc"),
+            ("ORtg", "offensive_rating", "desc"),
+            ("DRtg", "defensive_rating", "asc"),
+        ]
+
+        for measure, expected_metric, sort_direction in cases:
+            with self.subTest(measure=measure):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": "teams",
+                        "measure": measure,
+                        "measures": [measure],
+                        "filters": [
+                            {"field": "season", "op": "=", "value": "2025-26"},
+                            {"field": "season type", "op": "=", "value": "regular season"},
+                        ],
+                        "time_window": {"kind": "season", "value": "2025-26"},
+                        "limit": 29,
+                        "sort": sort_direction,
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["coreFactObject"], "TeamSeason")
+                self.assertEqual(shared["metrics"], [expected_metric])
+                self.assertEqual(shared["dimensions"], ["team_name"])
+                self.assertEqual(shared["orders"], [{"kind": sort_direction, "metric": expected_metric}])
+                self.assertEqual(shared["limit"], 29)
+
+    def test_haskell_grounds_recent_team_netrtg_to_game_rating_metric(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "NetRtg",
+                "measures": ["NetRtg"],
+                "time_window": {"kind": "last_n_games", "value": 10},
+                "limit": 5,
+                "sort": "desc",
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["coreFactObject"], "TeamGame")
+        self.assertEqual(shared["metrics"], ["average_net_rating"])
+        self.assertEqual(shared["dimensions"], ["team_name"])
+        self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
+
+    def test_haskell_grounds_common_box_score_abbreviations_from_ontology_aliases(self) -> None:
+        cases = [
+            ("players", "last_n_games", 10, [], "+/-", "PlayerGame", "total_plus_minus"),
+            ("players", "last_n_games", 10, [], "ts%", "PlayerGame", "average_true_shooting_percentage"),
+            ("players", "last_n_games", 10, [], "3PA", "PlayerGame", "total_three_pointers_attempted"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "PPG", "PlayerSeason", "points_per_game"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "AST/TO", "PlayerSeason", "assist_to_turnover_ratio"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "FG_PCT", "PlayerSeason", "field_goals_percentage"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "FG3_PCT", "PlayerSeason", "three_pointers_percentage"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "FT_PCT", "PlayerSeason", "free_throws_percentage"),
+            ("teams", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "eFG%", "TeamSeason", "effective_field_goal_percentage"),
+            ("teams", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "3PAr", "TeamSeason", "three_point_attempt_rate"),
+        ]
+
+        for subject, window_kind, window_value, filters, measure, expected_fact, expected_metric in cases:
+            with self.subTest(measure=measure):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": subject,
+                        "measure": measure,
+                        "measures": [measure],
+                        "filters": filters,
+                        "time_window": {"kind": window_kind, "value": window_value},
+                        "limit": 5,
+                        "sort": "desc",
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["coreFactObject"], expected_fact)
+                self.assertEqual(shared["metrics"], [expected_metric])
+                self.assertEqual(shared["orders"], [{"kind": "desc", "metric": expected_metric}])
+
+    def test_haskell_grounds_composed_opponent_and_allowed_aliases(self) -> None:
+        cases = [
+            ("opp points", "total_opponent_points"),
+            ("opponents pts", "total_opponent_points"),
+            ("points allowed", "total_opponent_points"),
+            ("against points", "total_opponent_points"),
+            ("opponents fg%", "average_opponent_field_goals_percentage"),
+            ("fg% allowed", "average_opponent_field_goals_percentage"),
+            ("allowed 3pa", "total_opponent_three_pointers_attempted"),
+            ("3pa against", "total_opponent_three_pointers_attempted"),
+        ]
+
+        for measure, expected_metric in cases:
+            with self.subTest(measure=measure):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": "teams",
+                        "measure": measure,
+                        "measures": [measure],
+                        "time_window": {"kind": "last_n_games", "value": 10},
+                        "limit": 5,
+                        "sort": "desc",
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["coreFactObject"], "TeamGame")
+                self.assertEqual(shared["metrics"], [expected_metric])
+
+    def test_haskell_grounds_audited_specialty_stat_aliases(self) -> None:
+        cases = [
+            ("players", "last_n_games", 10, [], "pf", "PlayerGame", "total_personal_fouls_committed"),
+            ("players", "last_n_games", 10, [], "pfs", "PlayerGame", "total_personal_fouls_committed"),
+            ("players", "last_n_games", 10, [], "techs", "PlayerGame", "total_technical_fouls_committed"),
+            ("players", "last_n_games", 10, [], "drawn fouls", "PlayerGame", "total_fouls_drawn"),
+            ("players", "last_n_games", 10, [], "PFD", "PlayerGame", "total_fouls_drawn"),
+            ("players", "last_n_games", 10, [], "fast break pts", "PlayerGame", "total_fast_break_points"),
+            ("players", "last_n_games", 10, [], "paint points", "PlayerGame", "total_points_in_paint"),
+            ("players", "last_n_games", 10, [], "2nd chance points", "PlayerGame", "total_second_chance_points"),
+            ("players", "last_n_games", 10, [], "stls", "PlayerGame", "total_steals"),
+            ("players", "last_n_games", 10, [], "asts", "PlayerGame", "total_assists"),
+            ("players", "last_n_games", 10, [], "rebs", "PlayerGame", "total_rebounds"),
+            ("players", "last_n_games", 10, [], "tovs", "PlayerGame", "total_turnovers"),
+            ("players", "last_n_games", 10, [], "blks", "PlayerGame", "total_blocks"),
+            ("players", "last_n_games", 10, [], "BLKA", "PlayerGame", "total_opponent_blocks"),
+            ("teams", "last_n_games", 10, [], "points off TO", "TeamGame", "total_points_off_turnovers"),
+            ("teams", "last_n_games", 10, [], "PLUS_MINUS", "TeamGame", "total_point_differential"),
+            ("teams", "last_n_games", 10, [], "w", "TeamGame", "wins"),
+            ("teams", "last_n_games", 10, [], "l", "TeamGame", "losses"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "gp", "PlayerSeason", "games_played"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "gs", "PlayerSeason", "games_started"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "fg3m", "PlayerSeason", "three_pointers_made_total"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "fg3%", "PlayerSeason", "three_pointers_percentage"),
+            ("teams", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "W_PCT", "TeamSeason", "win_percentage"),
+            ("players", "season", "2025-26", [
+                {"field": "season", "op": "=", "value": "2025-26"},
+                {"field": "season type", "op": "=", "value": "regular season"},
+            ], "a:t", "PlayerSeason", "assist_to_turnover_ratio"),
+        ]
+
+        for subject, window_kind, window_value, filters, measure, expected_fact, expected_metric in cases:
+            with self.subTest(measure=measure):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": subject,
+                        "measure": measure,
+                        "measures": [measure],
+                        "filters": filters,
+                        "time_window": {"kind": window_kind, "value": window_value},
+                        "limit": 5,
+                        "sort": "desc",
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["coreFactObject"], expected_fact)
+                self.assertEqual(shared["metrics"], [expected_metric])
+
     def test_haskell_grounds_auxiliary_result_filter_for_aggregate(self) -> None:
         payload = call_plan_semantic_draft(
             {
@@ -1139,6 +1426,120 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "total_points"}])
         self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
         self.assertIn("ORDER BY metric_value ASC, entity_name ASC", sql)
+
+    def test_haskell_uses_rank_intent_and_metric_polarity_for_defensive_rating(self) -> None:
+        cases = [
+            ("best", "asc", "best"),
+            ("top", "asc", "top"),
+            ("worst", "desc", "worst"),
+            ("highest", "desc", "highest"),
+            ("lowest", "asc", "lowest"),
+        ]
+
+        for rank_intent, expected_direction, expected_label in cases:
+            with self.subTest(rank_intent=rank_intent):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": "teams",
+                        "measure": "defensive rating",
+                        "measures": ["defensive rating"],
+                        "filters": [
+                            {"field": "season", "op": "=", "value": "2025-26"},
+                            {"field": "season type", "op": "=", "value": "regular season"},
+                        ],
+                        "time_window": {"kind": "season", "value": "2025-26"},
+                        "limit": 10,
+                        "sort": None,
+                        "rank_intent": rank_intent,
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["metrics"], ["defensive_rating"])
+                self.assertEqual(shared["orders"], [{"kind": expected_direction, "metric": "defensive_rating"}])
+                self.assertEqual(payload["query"]["spec"]["rankIntentLabel"], expected_label)
+                self.assertEqual(payload["resolved_query"]["resolved"]["metricRankIntentLabel"], expected_label)
+                self.assertEqual(payload["execution_plan"]["rank_intent_label"], expected_label)
+                self.assertEqual(
+                    payload["execution_plan"]["metric_order_direction"],
+                    expected_direction.upper(),
+                )
+
+    def test_haskell_rank_intent_overrides_stale_sort_direction(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "defensive rating",
+                "measures": ["defensive rating"],
+                "filters": [
+                    {"field": "season", "op": "=", "value": "2025-26"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "limit": 10,
+                "sort": "desc",
+                "rank_intent": "best",
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "defensive_rating"}])
+        self.assertEqual(payload["execution_plan"]["rank_intent_label"], "best")
+        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
+
+    def test_haskell_falls_back_to_metric_aware_legacy_sort_words(self) -> None:
+        payload = call_plan_semantic_draft(
+            {
+                "task": "rank",
+                "subject": "teams",
+                "measure": "defensive rating",
+                "measures": ["defensive rating"],
+                "filters": [
+                    {"field": "season", "op": "=", "value": "2025-26"},
+                    {"field": "season type", "op": "=", "value": "regular season"},
+                ],
+                "time_window": {"kind": "season", "value": "2025-26"},
+                "limit": 10,
+                "sort": "best",
+                "assumptions": [],
+            }
+        )
+
+        shared = payload["query"]["spec"]["sharedQuery"]
+        self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "defensive_rating"}])
+        self.assertEqual(payload["execution_plan"]["rank_intent_label"], "best")
+        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
+
+    def test_haskell_uses_quantity_intent_independent_of_metric_polarity(self) -> None:
+        cases = [
+            ("most", "desc", "most"),
+            ("fewest", "asc", "fewest"),
+        ]
+
+        for rank_intent, expected_direction, expected_label in cases:
+            with self.subTest(rank_intent=rank_intent):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "rank",
+                        "subject": "players",
+                        "measure": "turnovers",
+                        "measures": ["turnovers"],
+                        "time_window": {"kind": "last_n_games", "value": 10},
+                        "limit": 10,
+                        "sort": None,
+                        "rank_intent": rank_intent,
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["metrics"], ["total_turnovers"])
+                self.assertEqual(shared["orders"], [{"kind": expected_direction, "metric": "total_turnovers"}])
+                self.assertEqual(payload["execution_plan"]["rank_intent_label"], expected_label)
 
     def test_haskell_grounds_season_rank_draft_through_ontology_surface(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1392,6 +1793,37 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["timeGrain"], "week")
         self.assertIn("DATE_TRUNC('week'", resolved["timeBucketExpression"])
         self.assertEqual(payload["execution_plan"]["time_grain"], "week")
+
+    def test_haskell_normalizes_user_facing_trend_grain_phrases(self) -> None:
+        cases = [
+            ("day by day", "day"),
+            ("calendar day", "day"),
+            ("week over week", "week"),
+            ("per week", "week"),
+            ("month over month", "month"),
+            ("per month", "month"),
+            ("season by season", "season"),
+            ("year over year", "season"),
+            ("annual", "season"),
+        ]
+
+        for raw_grain, expected_grain in cases:
+            with self.subTest(raw_grain=raw_grain):
+                payload = call_plan_semantic_draft(
+                    {
+                        "task": "trend",
+                        "subject": "teams",
+                        "measure": "average points" if expected_grain != "season" else "wins",
+                        "dimensions": ["team"],
+                        "time_window": {"kind": "past_year" if expected_grain != "season" else "all", "value": None},
+                        "grain": raw_grain,
+                        "assumptions": [],
+                    }
+                )
+
+                shared = payload["query"]["spec"]["sharedQuery"]
+                self.assertEqual(shared["timeGrain"], expected_grain)
+                self.assertEqual(payload["execution_plan"]["time_grain"], expected_grain)
 
     def test_haskell_grounds_season_team_trend_through_season_surface(self) -> None:
         payload = call_plan_semantic_draft(

@@ -66,6 +66,188 @@ TEAM_GAME_ALLOWED_RATE_COLUMNS = {
     "net_rating",
 }
 
+RATING_ATTRIBUTE_ALIASES = {
+    "offensive_rating": [
+        "offensive rtg",
+        "off rtg",
+        "off rating",
+        "ortg",
+        "o rtg",
+    ],
+    "defensive_rating": [
+        "defensive rtg",
+        "def rtg",
+        "def rating",
+        "drtg",
+        "d rtg",
+    ],
+    "net_rating": [
+        "net rtg",
+        "netrtg",
+        "nrtg",
+    ],
+}
+
+STAT_ALIASES_BY_NAME = {
+    "games_played": ["gp", "games", "appearances"],
+    "games_started": ["gs", "starts", "started"],
+    "wins": ["w"],
+    "losses": ["l"],
+    "plus_minus": ["plus minus", "+/-", "plusminus"],
+    "points": ["pts", "scoring"],
+    "score": ["points", "pts", "scoring"],
+    "assists": ["ast", "asts", "dimes"],
+    "turnovers": ["tov", "tovs", "to", "tos"],
+    "rebounds": ["reb", "rebs", "boards", "total rebounds", "trb", "trbs"],
+    "total_rebounds": ["reb", "rebs", "boards", "rebounds", "trb", "trbs"],
+    "offensive_rebounds": ["oreb", "orebs", "orb", "orbs", "offensive boards"],
+    "defensive_rebounds": ["dreb", "drebs", "drb", "drbs", "defensive boards"],
+    "steals": ["stl", "stls"],
+    "blocks": ["blk", "blks"],
+    "opponent_blocks": ["blka", "blocked attempts", "blocks against", "blocked shots against"],
+    "opponent_blocks_total": ["blka", "blocked attempts", "blocks against", "blocked shots against"],
+    "minutes": ["mins", "min", "mp"],
+    "minutes_played": ["minutes", "mins", "min", "mp"],
+    "field_goals_made": ["fgm", "field goals made", "fg made"],
+    "field_goals_attempted": ["fga", "field goal attempts", "field goals attempted", "fg attempts"],
+    "two_pointers_made": ["2pm", "2pt made", "two point makes", "two pointers made"],
+    "two_pointers_attempted": ["2pa", "2pt attempts", "two point attempts", "two pointers attempted"],
+    "three_pointers_made": ["3pm", "3pt made", "three point makes", "three pointers made", "threes made", "fg3m", "fg3 made"],
+    "three_pointers_attempted": ["3pa", "3pt attempts", "three point attempts", "three pointers attempted", "threes attempted", "fg3a", "fg3 attempts", "fg3 attempted"],
+    "free_throws_made": ["ftm", "free throws made", "ft made"],
+    "free_throws_attempted": ["fta", "free throw attempts", "free throws attempted", "ft attempts"],
+    "possessions": ["poss"],
+    "offensive_possessions": ["offensive poss", "off poss"],
+    "defensive_possessions": ["defensive poss", "def poss"],
+    "personal_fouls_committed": ["personal fouls", "fouls", "pf", "pfs", "fouls committed"],
+    "offensive_fouls_committed": ["offensive fouls", "off fouls"],
+    "technical_fouls_committed": ["technical fouls", "technical fouls committed", "technicals", "techs", "tech fouls"],
+    "fouls_drawn": ["drawn fouls", "foul draws", "fouls earned", "pfd"],
+    "fast_break_points": ["fast break pts", "fastbreak points", "fastbreak pts", "fb points", "fb pts", "transition points", "transition pts"],
+    "points_in_paint": ["paint points", "paint pts", "points in the paint", "pts in paint", "pitp", "in-paint points"],
+    "second_chance_points": ["second chance pts", "second-chance points", "second-chance pts", "2nd chance points", "2nd chance pts"],
+    "points_off_turnovers": ["points off tos", "points off to", "pts off turnovers", "pts off tos", "pts off to", "turnover points"],
+    "field_goals_percentage": ["fg%", "fg pct", "fg percentage", "field goal pct", "field goal percentage"],
+    "two_pointers_percentage": ["2p%", "2p pct", "2pt pct", "two point pct", "two point percentage"],
+    "three_pointers_percentage": ["3p%", "3p pct", "3pt pct", "three point pct", "three point percentage", "fg3%", "fg3 pct", "fg3 percentage", "3pt percentage"],
+    "free_throws_percentage": ["ft%", "ft pct", "free throw pct", "free throw percentage", "free throws pct", "free throws percentage"],
+    "effective_field_goal_percentage": ["efg", "efg%", "efg pct", "effective fg", "effective field goal pct"],
+    "true_shooting_percentage": ["ts", "ts%", "ts pct", "true shooting", "true shooting pct"],
+    "assist_percentage": ["ast%", "ast pct", "assist pct", "assist percentage"],
+    "usage_percentage": ["usg", "usg%", "usg pct", "usage", "usage pct"],
+    "steal_percentage": ["stl%", "stl pct", "steal pct"],
+    "block_percentage": ["blk%", "blk pct", "block pct"],
+    "offensive_rebound_percentage": ["oreb%", "oreb pct", "orb%", "orb pct", "offensive rebound pct"],
+    "defensive_rebound_percentage": ["dreb%", "dreb pct", "drb%", "drb pct", "defensive rebound pct"],
+    "rebound_percentage": ["reb%", "reb pct", "trb%", "trb pct", "rebound pct"],
+    "three_point_attempt_rate": ["3par", "3pa rate", "three point attempt rate"],
+    "free_throw_attempt_rate": ["ftr", "fta rate", "free throw rate", "free throw attempt rate"],
+    "assist_to_turnover_ratio": ["ast/to", "ast to", "ast tov", "assist turnover ratio", "assist to turnover", "a:t", "a/to", "ast:tov", "ast/to ratio", "ast to tov", "ast to turnover", "assist to tov"],
+    "win_percentage": ["win pct", "win%", "winning percentage", "w pct", "w%", "wpct"],
+}
+
+PER_GAME_ALIASES_BY_BASE = {
+    "points": ["ppg"],
+    "assists": ["apg"],
+    "rebounds": ["rpg"],
+    "offensive_rebounds": ["orpg"],
+    "defensive_rebounds": ["drpg"],
+    "steals": ["spg"],
+    "blocks": ["bpg"],
+    "turnovers": ["topg", "tovpg"],
+    "minutes": ["mpg"],
+    "field_goals_made": ["fgm per game"],
+    "field_goals_attempted": ["fga per game"],
+    "two_pointers_made": ["2pm per game"],
+    "two_pointers_attempted": ["2pa per game"],
+    "three_pointers_made": ["3pm per game"],
+    "three_pointers_attempted": ["3pa per game"],
+    "free_throws_made": ["ftm per game"],
+    "free_throws_attempted": ["fta per game"],
+}
+
+OPPONENT_ROLE_ALIASES = ["opponent", "opp", "opponents", "opponent's"]
+ALLOWED_STAT_SUFFIXES = ["allowed", "against"]
+GAME_DATE_DIMENSION_ALIASES = {
+    "game_month": ["month", "game month"],
+    "game_year": ["year", "game year"],
+    "game_year_month": ["year month", "year-month", "month year", "month-year"],
+}
+
+HIGHER_IS_BETTER_RANKING_BASES = {
+    "assist_percentage",
+    "assist_to_turnover_ratio",
+    "assists",
+    "block_percentage",
+    "blocks",
+    "defensive_rebound_percentage",
+    "defensive_rebounds",
+    "effective_field_goal_percentage",
+    "fast_break_points",
+    "field_goals_made",
+    "field_goals_percentage",
+    "fouls_drawn",
+    "free_throws_made",
+    "free_throws_percentage",
+    "games_won",
+    "net_rating",
+    "offensive_rating",
+    "offensive_rebound_percentage",
+    "offensive_rebounds",
+    "opponent_turnovers",
+    "plus_minus",
+    "point_differential",
+    "points",
+    "points_in_paint",
+    "points_off_turnovers",
+    "points_per_36",
+    "rebound_percentage",
+    "rebounds",
+    "second_chance_points",
+    "steal_percentage",
+    "steals",
+    "three_pointers_made",
+    "three_pointers_percentage",
+    "true_shooting_percentage",
+    "two_pointers_made",
+    "two_pointers_percentage",
+    "win_percentage",
+    "wins",
+}
+
+LOWER_IS_BETTER_RANKING_BASES = {
+    "defensive_rating",
+    "games_lost",
+    "losses",
+    "offensive_fouls_committed",
+    "opponent_assists",
+    "opponent_blocks",
+    "opponent_defensive_rebounds",
+    "opponent_fast_break_points",
+    "opponent_field_goals_attempted",
+    "opponent_field_goals_made",
+    "opponent_field_goals_percentage",
+    "opponent_free_throws_attempted",
+    "opponent_free_throws_made",
+    "opponent_free_throws_percentage",
+    "opponent_offensive_rebounds",
+    "opponent_points",
+    "opponent_points_in_paint",
+    "opponent_points_off_turnovers",
+    "opponent_rebounds",
+    "opponent_second_chance_points",
+    "opponent_steals",
+    "opponent_three_pointers_attempted",
+    "opponent_three_pointers_made",
+    "opponent_three_pointers_percentage",
+    "opponent_two_pointers_attempted",
+    "opponent_two_pointers_made",
+    "opponent_two_pointers_percentage",
+    "personal_fouls_committed",
+    "technical_fouls_committed",
+    "turnovers",
+}
+
 GAME_METRIC_BASE_OVERRIDES = {
     "score": "points",
     "opponent_score": "opponent_points",
@@ -73,14 +255,24 @@ GAME_METRIC_BASE_OVERRIDES = {
 }
 
 ATTRIBUTE_ALIASES_BY_OBJECT = {
+    "PlayerGame": RATING_ATTRIBUTE_ALIASES,
+    "PlayerSeason": RATING_ATTRIBUTE_ALIASES,
+    "PlayerSeasonTeam": RATING_ATTRIBUTE_ALIASES,
     "TeamGame": {
+        **RATING_ATTRIBUTE_ALIASES,
         "point_differential": [
             "margin",
             "point margin",
             "score margin",
             "scoring margin",
+            "plus minus",
+            "+/-",
+            "plusminus",
+            "plus-minus",
+            "plus minus differential",
         ],
     },
+    "TeamSeason": RATING_ATTRIBUTE_ALIASES,
 }
 
 
@@ -1083,6 +1275,101 @@ TEAM_SEASON_PER_GAME_METRIC_SOURCES = {
 }
 
 
+def dedupe_aliases(aliases: list[str]) -> list[str]:
+    return list(dict.fromkeys(alias for alias in aliases if alias))
+
+
+def canonical_stat_phrase(stat_name: str) -> str:
+    return stat_name.replace("_", " ")
+
+
+def stat_aliases(stat_name: str) -> list[str]:
+    aliases: list[str] = [canonical_stat_phrase(stat_name)]
+    aliases.extend(STAT_ALIASES_BY_NAME.get(stat_name, []))
+    aliases.extend(RATING_ATTRIBUTE_ALIASES.get(stat_name, []))
+
+    if stat_name.startswith("opponent_"):
+        base_aliases = stat_aliases(stat_name.removeprefix("opponent_"))
+        for role_alias in OPPONENT_ROLE_ALIASES:
+            aliases.extend(f"{role_alias} {alias}" for alias in base_aliases)
+        for suffix_alias in ALLOWED_STAT_SUFFIXES:
+            aliases.extend(f"{alias} {suffix_alias}" for alias in base_aliases)
+            aliases.extend(f"{suffix_alias} {alias}" for alias in base_aliases)
+
+    if stat_name.endswith("_total"):
+        base_name = stat_name.removesuffix("_total")
+        aliases.extend(stat_aliases(base_name))
+
+    return dedupe_aliases(aliases)
+
+
+def generated_metric_aliases(metric_name: str) -> list[str]:
+    aliases: list[str] = []
+    base_name = metric_name
+    is_average = False
+    is_total = False
+    is_per_game = False
+
+    if base_name.startswith("average_"):
+        is_average = True
+        base_name = base_name.removeprefix("average_")
+    elif base_name.startswith("total_"):
+        is_total = True
+        base_name = base_name.removeprefix("total_")
+
+    if base_name.endswith("_per_game"):
+        is_per_game = True
+        base_name = base_name.removesuffix("_per_game")
+
+    base_aliases = stat_aliases(base_name)
+    aliases.extend(stat_aliases(metric_name))
+
+    if is_average:
+        if any(token in base_name for token in RATE_MEASURE_TOKENS):
+            aliases.extend(base_aliases)
+        aliases.extend(f"average {alias}" for alias in base_aliases)
+        aliases.extend(f"avg {alias}" for alias in base_aliases)
+
+    if is_total:
+        aliases.extend(base_aliases)
+        aliases.extend(f"total {alias}" for alias in base_aliases)
+
+    if is_per_game:
+        per_game_aliases = PER_GAME_ALIASES_BY_BASE.get(base_name, [])
+        aliases.extend(per_game_aliases)
+        aliases.extend(f"{alias} per game" for alias in base_aliases)
+        aliases.extend(f"{alias} pg" for alias in base_aliases)
+
+    if not is_average and not is_total and not is_per_game:
+        aliases.extend(base_aliases)
+
+    return dedupe_aliases(aliases)
+
+
+def metric_ranking_base_name(metric_name: str) -> str:
+    base_name = metric_name
+    if base_name.startswith("average_"):
+        base_name = base_name.removeprefix("average_")
+    elif base_name.startswith("total_"):
+        base_name = base_name.removeprefix("total_")
+
+    if base_name.endswith("_per_game"):
+        base_name = base_name.removesuffix("_per_game")
+    elif base_name.endswith("_total"):
+        base_name = base_name.removesuffix("_total")
+
+    return base_name
+
+
+def ranking_polarity_for_metric(metric_name: str) -> str:
+    base_name = metric_ranking_base_name(metric_name)
+    if base_name in HIGHER_IS_BETTER_RANKING_BASES:
+        return "higher_is_better"
+    if base_name in LOWER_IS_BETTER_RANKING_BASES:
+        return "lower_is_better"
+    return "neutral"
+
+
 def derived_season_metric(
     name: str,
     source_attributes: list[str],
@@ -1096,8 +1383,9 @@ def derived_season_metric(
         "expression": expression,
         "executable": True,
     }
-    if aliases:
-        payload["aliases"] = aliases
+    metric_aliases = aliases if aliases is not None else generated_metric_aliases(name)
+    if metric_aliases:
+        payload["aliases"] = list(dict.fromkeys(metric_aliases))
     return payload
 
 
@@ -1521,6 +1809,15 @@ METRIC_OVERRIDES_BY_OBJECT = {
             "source_attributes": ["offensive_rating", "defensive_rating"],
             "expression": average_metric_expression(NET_RATING_ROW_EXPRESSION),
             "executable": True,
+            "aliases": [
+                "net rtg",
+                "netrtg",
+                "nrtg",
+                "average net rtg",
+                "average netrtg",
+                "avg net rtg",
+                "avg netrtg",
+            ],
         },
         {
             "name": "average_steal_percentage",
@@ -1563,10 +1860,20 @@ METRIC_OVERRIDES_BY_OBJECT = {
                 "point margin",
                 "score margin",
                 "scoring margin",
+                "plus minus",
+                "+/-",
+                "plusminus",
+                "plus-minus",
+                "plus minus differential",
                 "total margin",
                 "total point margin",
                 "total score margin",
                 "total scoring margin",
+                "total plus minus",
+                "total +/-",
+                "total plusminus",
+                "total plus-minus",
+                "total plus minus differential",
             ],
         },
         {
@@ -1580,6 +1887,11 @@ METRIC_OVERRIDES_BY_OBJECT = {
                 "average point margin",
                 "average score margin",
                 "average scoring margin",
+                "average plus minus",
+                "average +/-",
+                "average plusminus",
+                "average plus-minus",
+                "average plus minus differential",
             ],
         },
         {
@@ -1613,6 +1925,19 @@ METRIC_OVERRIDES_BY_OBJECT = {
             "source_attributes": ["score", "offensive_possessions", "defensive_possessions"],
             "expression": average_metric_expression(TEAM_GAME_OFFENSIVE_RATING_ROW_EXPRESSION),
             "executable": True,
+            "aliases": [
+                "offensive rtg",
+                "off rtg",
+                "off rating",
+                "ortg",
+                "o rtg",
+                "average offensive rtg",
+                "average off rtg",
+                "average ortg",
+                "avg offensive rtg",
+                "avg off rtg",
+                "avg ortg",
+            ],
         },
         {
             "name": "average_defensive_rating",
@@ -1624,6 +1949,19 @@ METRIC_OVERRIDES_BY_OBJECT = {
             ],
             "expression": average_metric_expression(TEAM_GAME_DEFENSIVE_RATING_ROW_EXPRESSION),
             "executable": True,
+            "aliases": [
+                "defensive rtg",
+                "def rtg",
+                "def rating",
+                "drtg",
+                "d rtg",
+                "average defensive rtg",
+                "average def rtg",
+                "average drtg",
+                "avg defensive rtg",
+                "avg def rtg",
+                "avg drtg",
+            ],
         },
         {
             "name": "average_net_rating",
@@ -1636,6 +1974,15 @@ METRIC_OVERRIDES_BY_OBJECT = {
             ],
             "expression": average_metric_expression(TEAM_GAME_NET_RATING_ROW_EXPRESSION),
             "executable": True,
+            "aliases": [
+                "net rtg",
+                "netrtg",
+                "nrtg",
+                "average net rtg",
+                "average netrtg",
+                "avg net rtg",
+                "avg netrtg",
+            ],
         },
         {
             "name": "average_assist_percentage",
@@ -2010,6 +2357,14 @@ LINKS = [
         "target_key": "team_id",
     },
     {
+        "name": "player_game_opponent_team",
+        "source_object": "PlayerGame",
+        "target_object": "Team",
+        "relation_type": "many_to_one",
+        "source_key": "opponent_team_id",
+        "target_key": "team_id",
+    },
+    {
         "name": "team_game_game",
         "source_object": "TeamGame",
         "target_object": "Game",
@@ -2104,7 +2459,10 @@ def build_attribute_payload(
     )
     if attribute_aliases:
         payload["value_aliases"] = attribute_aliases
-    semantic_aliases = ATTRIBUTE_ALIASES_BY_OBJECT.get(object_name, {}).get(column["name"], [])
+    semantic_aliases = dedupe_aliases(
+        ATTRIBUTE_ALIASES_BY_OBJECT.get(object_name, {}).get(column["name"], [])
+        + stat_aliases(str(column["name"]))
+    )
     if semantic_aliases:
         payload["aliases"] = semantic_aliases
     return payload
@@ -2127,7 +2485,7 @@ def metric_payload(
         "executable": executable,
     }
     if aliases:
-        payload["aliases"] = aliases
+        payload["aliases"] = dedupe_aliases(aliases)
     return payload
 
 
@@ -2159,7 +2517,11 @@ def generated_game_metrics(object_name: str, column: dict[str, object]) -> list[
             aggregation="avg",
             source_attribute=source_attribute,
             expression=f"AVG({source_attribute})",
-            aliases=prefixed_metric_aliases("average", source_aliases),
+            aliases=(
+                source_aliases + prefixed_metric_aliases("average", source_aliases)
+                if is_rate_measure(source_attribute)
+                else prefixed_metric_aliases("average", source_aliases)
+            ),
         )
     ]
     if not is_rate_measure(source_attribute):
@@ -2180,13 +2542,14 @@ def prefixed_metric_aliases(prefix: str, aliases: list[str]) -> list[str]:
     return [f"{prefix} {alias}" for alias in aliases]
 
 
-def generated_season_metric(column: dict[str, object]) -> dict[str, object]:
+def generated_season_metric(object_name: str, column: dict[str, object]) -> dict[str, object]:
     source_attribute = str(column["name"])
     return metric_payload(
         name=source_attribute,
         aggregation="identity",
         source_attribute=source_attribute,
         expression=source_attribute,
+        aliases=ATTRIBUTE_ALIASES_BY_OBJECT.get(object_name, {}).get(source_attribute, []),
     )
 
 
@@ -2204,7 +2567,7 @@ def generated_metrics_for_object(object_name: str, columns: list[dict[str, objec
             for metric in generated_game_metrics(object_name, column)
         ]
     if object_name in SEASON_GRAIN_OBJECTS:
-        return [generated_season_metric(column) for column in public_measure_columns]
+        return [generated_season_metric(object_name, column) for column in public_measure_columns]
     return []
 
 
@@ -2228,14 +2591,36 @@ def dedupe_metrics(metrics: list[dict[str, object]]) -> list[dict[str, object]]:
     return deduped
 
 
+def enrich_metric_aliases(metric: dict[str, object]) -> dict[str, object]:
+    enriched = dict(metric)
+    enriched["ranking_polarity"] = ranking_polarity_for_metric(str(enriched["name"]))
+    aliases = dedupe_aliases(
+        list(enriched.get("aliases", [])) + generated_metric_aliases(str(enriched["name"]))
+    )
+    if aliases:
+        enriched["aliases"] = aliases
+    return enriched
+
+
 def metrics_for_object(object_name: str, columns: list[dict[str, object]]) -> list[dict[str, object]]:
     # Generated metrics expose every executable public stat surface supported by
     # the snapshot. Overrides define curated formulas or aliases that cannot be
     # generated safely from one source column.
-    return dedupe_metrics(
+    return [enrich_metric_aliases(metric) for metric in dedupe_metrics(
         METRIC_OVERRIDES_BY_OBJECT.get(object_name, [])
         + generated_metrics_for_object(object_name, columns)
+    )]
+
+
+def enrich_derived_attribute_aliases(attribute: dict[str, object]) -> dict[str, object]:
+    aliases = dedupe_aliases(
+        list(attribute.get("aliases", []))
+        + GAME_DATE_DIMENSION_ALIASES.get(str(attribute["name"]), [])
+        + stat_aliases(str(attribute["name"]))
     )
+    if aliases:
+        return {**attribute, "aliases": aliases}
+    return attribute
 
 
 def quote_identifier(identifier: str) -> str:
@@ -2311,7 +2696,10 @@ def build_ontology_payload() -> dict[str, object]:
                 build_attribute_payload(object_name, column, value_aliases)
                 for column in table["columns"]
             ]
-            + DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, []),
+            + [
+                enrich_derived_attribute_aliases(attribute)
+                for attribute in DERIVED_ATTRIBUTES_BY_OBJECT.get(object_name, [])
+            ],
             "metrics": metrics_for_object(object_name, metric_columns),
         }
         objects.append(object_payload)

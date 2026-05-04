@@ -169,6 +169,7 @@ comparisonQuery grounded =
                 (objectName (comparisonSubjectObject grounded))
                 (comparisonEntitiesValue grounded)
             )
+      , QI.rankIntentLabel = Nothing
       }
 
 requireComparisonFactSurface :: Maybe Text -> TimeScope -> Object -> Maybe ()

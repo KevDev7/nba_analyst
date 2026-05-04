@@ -25,7 +25,6 @@ from runtime.AnalysisRuntime.models import (
     TimeSeriesRow,
 )
 from runtime.AnswerSynthesis.artifacts import build_artifacts
-from runtime.AnswerSynthesis.format_response import DISPLAY_ROW_LIMIT
 from runtime.AnswerSynthesis.response_models import FinalAnswer
 
 
@@ -110,7 +109,7 @@ class ChartArtifactBridgeTests(unittest.TestCase):
         self.assertEqual(chart["spec"]["encoding"]["y"]["type"], "quantitative")
         self.assertEqual(chart["spec"]["encoding"]["color"]["field"], "team_name")
 
-    def test_chart_uses_full_time_series_rows_while_table_remains_display_limited(self) -> None:
+    def test_chart_and_table_artifacts_use_full_time_series_rows(self) -> None:
         full_rows = [
             TimeSeriesRow(
                 time_bucket=f"2026-{month:02d}",
@@ -131,10 +130,10 @@ class ChartArtifactBridgeTests(unittest.TestCase):
 
         chart = artifacts[2]
         table = artifacts[3]
-        self.assertEqual(len(full_rows), DISPLAY_ROW_LIMIT + 10)
+        self.assertEqual(len(full_rows), 60)
         self.assertEqual(table["row_count"], len(full_rows))
-        self.assertEqual(table["displayed_row_count"], DISPLAY_ROW_LIMIT)
-        self.assertEqual(len(table["rows"]), DISPLAY_ROW_LIMIT)
+        self.assertEqual(table["displayed_row_count"], len(full_rows))
+        self.assertEqual(len(table["rows"]), len(full_rows))
         self.assertEqual(chart["metadata"]["row_count"], len(full_rows))
         self.assertEqual(len(self._chart_rows(chart)), len(full_rows))
         self.assertEqual(self._chart_rows(chart)[-1]["time_bucket"], "2026-06-01T00:00:00")

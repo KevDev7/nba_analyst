@@ -19,7 +19,6 @@ from typing import Any, Callable, Sequence
 from .answer_language import field_label, metric_header, time_header
 from .format_response import (
     DISPLAY_METADATA_TYPE_ORDER,
-    DISPLAY_ROW_LIMIT,
     _context_header,
     _display_metadata_value,
     _grouping_header,
@@ -79,7 +78,7 @@ def build_artifacts(answer: FinalAnswer) -> list[JsonDict]:
 def build_primary_table_artifact(
     answer: FinalAnswer,
     *,
-    row_limit: int | None = DISPLAY_ROW_LIMIT,
+    row_limit: int | None = None,
 ) -> JsonDict | None:
     projection = _primary_table_projection(answer)
     if projection is None:

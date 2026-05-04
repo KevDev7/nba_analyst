@@ -107,6 +107,92 @@ class ValueResolutionObservabilityTests(unittest.TestCase):
             ],
         )
 
+    def test_traces_game_context_value_resolutions(self) -> None:
+        trace = build_value_resolution_trace(
+            {},
+            {
+                "query": {
+                    "kind": "metric_query",
+                    "spec": {
+                        "sharedQuery": {
+                            "rowPredicate": {
+                                "kind": "and",
+                                "predicates": [
+                                    {
+                                        "kind": "leaf",
+                                        "field": {
+                                            "targetObject": "PlayerGame",
+                                            "attribute": "team_home_or_away",
+                                            "location": "row",
+                                        },
+                                        "operator": "equals",
+                                        "value": {"kind": "scalar", "value": "road"},
+                                    },
+                                    {
+                                        "kind": "leaf",
+                                        "field": {
+                                            "targetObject": "PlayerGame",
+                                            "attribute": "is_starter",
+                                            "location": "row",
+                                        },
+                                        "operator": "equals",
+                                        "value": {"kind": "scalar", "value": "bench"},
+                                    },
+                                ],
+                            }
+                        }
+                    },
+                },
+                "execution_plan": {
+                    "row_predicate": {
+                        "kind": "and",
+                        "predicates": [
+                            {
+                                "kind": "leaf",
+                                "field": {
+                                    "targetObject": "PlayerGame",
+                                    "attribute": "team_home_or_away",
+                                    "location": "row",
+                                },
+                                "operator": "equals",
+                                "value": {"kind": "scalar", "value": "away"},
+                            },
+                            {
+                                "kind": "leaf",
+                                "field": {
+                                    "targetObject": "PlayerGame",
+                                    "attribute": "is_starter",
+                                    "location": "row",
+                                },
+                                "operator": "equals",
+                                "value": {"kind": "scalar", "value": "false"},
+                            },
+                        ],
+                    }
+                },
+            },
+        )
+
+        self.assertEqual(
+            trace["predicate_value_resolutions"],
+            [
+                {
+                    "raw_value": "road",
+                    "canonical_value": "away",
+                    "target_object": "PlayerGame",
+                    "attribute": "team_home_or_away",
+                    "source": "ontology_value_aliases",
+                },
+                {
+                    "raw_value": "bench",
+                    "canonical_value": "false",
+                    "target_object": "PlayerGame",
+                    "attribute": "is_starter",
+                    "source": "ontology_value_aliases",
+                },
+            ],
+        )
+
     def test_omits_values_that_did_not_change(self) -> None:
         trace = build_value_resolution_trace(
             {},
