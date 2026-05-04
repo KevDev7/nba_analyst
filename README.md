@@ -48,7 +48,9 @@ Product adapters:
 - `apps/cli`
   - terminal surface over the shared assistant pipeline
 - `apps/web`
-  - localhost FastAPI + simple HTML/JS surface over the same pipeline
+- API-only FastAPI surface over the same pipeline
+- `apps/web-ui`
+  - SvelteKit structured artifact frontend over the FastAPI API
 
 5. `contracts`
 Shared contract surface for:

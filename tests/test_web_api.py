@@ -21,7 +21,11 @@ class WebApiTests(unittest.TestCase):
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
     def test_chat_returns_answer_from_shared_assistant_boundary(self, mock_run_assistant) -> None:
-        mock_run_assistant.return_value = AssistantResult(answer="Top players table")
+        artifacts = [{"kind": "text", "role": "summary", "text": "Top players table"}]
+        mock_run_assistant.return_value = AssistantResult(
+            answer="Top players table",
+            artifacts=artifacts,
+        )
 
         response = self.client.post(
             "/api/chat",
@@ -38,6 +42,7 @@ class WebApiTests(unittest.TestCase):
                 "ok": True,
                 "answer": "Top players table",
                 "error": None,
+                "artifacts": artifacts,
                 "debug": None,
             },
         )
@@ -62,6 +67,7 @@ class WebApiTests(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIsNone(payload["answer"])
         self.assertIn("Could not resolve metric", payload["error"])
+        self.assertEqual(payload["artifacts"], [])
         self.assertIsNone(payload["debug"])
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
@@ -80,6 +86,7 @@ class WebApiTests(unittest.TestCase):
         payload = response.json()
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["answer"], "Debug answer")
+        self.assertEqual(payload["artifacts"], [])
         self.assertEqual(payload["debug"], {"semantic_draft": {"task": "rank"}})
         mock_run_assistant.assert_called_once_with("Show me players by points", debug=True)
 
@@ -94,6 +101,7 @@ class WebApiTests(unittest.TestCase):
                 "ok": False,
                 "answer": None,
                 "error": "Question is required.",
+                "artifacts": [],
                 "debug": None,
             },
         )

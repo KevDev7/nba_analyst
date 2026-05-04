@@ -27,13 +27,13 @@ The primary interface is a basic web page with:
 - an error section
 - an optional debug display
 
-The implementation direction is:
+The original Scope 2 implementation direction was:
 
 ```text
-FastAPI + simple HTML/JS
+local static page over the FastAPI API
 ```
 
-This is a Scope 2 implementation choice, not a permanent product commitment. The web layer should stay thin enough that a future Next.js, SvelteKit, or other frontend can replace it without rewriting the assistant pipeline.
+This was a Scope 2 implementation choice, not a permanent product commitment. The product has since moved to a SvelteKit frontend in `apps/web-ui`; FastAPI is now API-only.
 
 ## User Experience
 

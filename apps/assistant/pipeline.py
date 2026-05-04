@@ -33,8 +33,10 @@ if str(RUNTIME_ROOT) not in sys.path:
 from runtime.AnalysisRuntime.models import ExecutionPlan
 from runtime.AnalysisRuntime.runner import execute_plan
 from runtime.AnswerSynthesis.format_response import format_response
+from runtime.AnswerSynthesis.artifacts import build_artifacts
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
+from apps.assistant.chart_artifacts import append_chart_artifacts
 from apps.assistant.predicate_observability import build_predicate_trace
 from apps.assistant.value_resolution_observability import build_value_resolution_trace
 from apps.assistant.semantic.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
@@ -53,6 +55,7 @@ class AssistantResult:
     # Plain English: the answer is what the user sees; debug is optional context
     # for developers who want to inspect each pipeline handoff.
     answer: str
+    artifacts: list[dict[str, Any]] | None = None
     debug: dict[str, Any] | None = None
 
 
@@ -123,13 +126,15 @@ def run_assistant(question: str, debug: bool = False) -> AssistantResult:
     packaged = package_results(runtime_result)
     answer = synthesize_answer(packaged)
     formatted = format_response(answer)
+    artifacts = append_chart_artifacts(question, answer, build_artifacts(answer))
 
     if not debug:
-        return AssistantResult(answer=formatted)
+        return AssistantResult(answer=formatted, artifacts=artifacts)
 
     # In debug mode, preserve each major transformation stage for adapters to render.
     return AssistantResult(
         answer=formatted,
+        artifacts=artifacts,
         debug={
             "query_type": planner_output.get("query_type"),
             "semantic_draft": semantic_draft,

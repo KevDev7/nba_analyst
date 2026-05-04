@@ -2,7 +2,7 @@
 # Define the local web API request and response shapes.
 #
 # Uses:
-# - browser requests from the simple HTML/JS page
+# - browser requests from the SvelteKit UI
 # - FastAPI response validation
 #
 # Produces:
@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -31,4 +31,5 @@ class ChatResponse(BaseModel):
     ok: bool
     answer: Optional[str] = None
     error: Optional[str] = None
+    artifacts: List[Dict[str, Any]] = Field(default_factory=list)
     debug: Optional[Dict[str, Any]] = None

@@ -23,6 +23,10 @@ dist-newstyle/
 services/ontology-hs/dist/
 services/ontology-hs/dist-newstyle/
 
-# SvelteKit / frontend local artifacts
+# Node / SvelteKit
+node_modules/
+.svelte-kit/
+build/
+coverage/
 apps/web-ui/.svelte-kit/
 apps/web-ui/node_modules/
