@@ -42,6 +42,14 @@
       >
         Data &amp; Glossary
       </a>
+      <a
+        class:active={isActive("/capabilities")}
+        class="chat-link"
+        href="/capabilities"
+        aria-current={isActive("/capabilities") ? "page" : undefined}
+      >
+        Capabilities
+      </a>
     </nav>
 
     <nav class="sidebar-section" aria-label="Threads">
@@ -58,6 +66,7 @@
     <nav class="mobile-nav" aria-label="Pages">
       <a class:active={isActive("/")} href="/">Home</a>
       <a class:active={isActive("/glossary")} href="/glossary">Glossary</a>
+      <a class:active={isActive("/capabilities")} href="/capabilities">Capabilities</a>
     </nav>
   </header>
 
