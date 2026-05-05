@@ -55,13 +55,17 @@
       "notes": "Limit-handling variant retained to protect query-shape flexibility."
     },
     {
-      "id": "slice1_trend_rejection",
+      "id": "slice1_last_month_points_trend",
       "slice_introduced": 1,
       "question": "What is the trend in points over the last month?",
-      "status": "unsupported",
+      "status": "supported",
       "query_kind": "metric_query",
       "capability": "trend_analysis",
-      "notes": "Retained narrow failure case until trend analysis is intentionally implemented."
+      "core_fact_object": "PlayerGame",
+      "metrics": ["total_points"],
+      "filters": ["last_n_days:30"],
+      "time_grain": "day",
+      "notes": "Daily points trend over the last 30 days; current interpreter defaults the unspecified subject to players."
     },
     {
       "id": "slice2_compare_players_canonical",
@@ -131,7 +135,7 @@
       "notes": "Ambiguous player alias should fail clearly rather than guess."
     },
     {
-      "id": "slice2_three_player_rejection",
+      "id": "slice2_three_player_comparison",
       "slice_introduced": 2,
       "question": "Compare Brunson, Haliburton, and Tatum scoring over the last 10 games",
       "status": "supported",
@@ -202,13 +206,17 @@
       "notes": "Compositional object-query proof combined with the existing linked team-filter family."
     },
     {
-      "id": "slice3_assists_rejection",
+      "id": "slice3_object_query_assists",
       "slice_introduced": 3,
       "question": "Show me players and their assists over the last 10 games",
-      "status": "unsupported",
+      "status": "supported",
       "query_kind": "object_query",
       "capability": "player_object_assists",
-      "notes": "Retained narrow failure case until assists metrics are intentionally surfaced in the ontology."
+      "core_fact_object": "PlayerGame",
+      "row_object": "Player",
+      "metrics": ["total_assists"],
+      "filters": ["last_n_games:10"],
+      "notes": "Object-row assists are now supported through the executable total_assists metric."
     },
     {
       "id": "slice3_games_and_players_rejection",

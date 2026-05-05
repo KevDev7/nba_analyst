@@ -308,11 +308,35 @@ button:disabled {
   line-height: 1.35;
 }
 
-.capability-copy p:last-child {
+.capability-copy > p:not(.section-kicker) {
   margin: 0;
   color: var(--color-body);
   font-size: var(--text-body-sm);
   line-height: 1.55;
+}
+
+.capability-strengths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capability-strengths li,
+.capability-list li {
+  border: 1px solid rgba(91, 155, 213, 0.2);
+  border-radius: var(--radius-pill);
+  color: var(--color-primary-active);
+  background: rgba(91, 155, 213, 0.08);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.capability-strengths li {
+  padding: 5px 9px;
 }
 
 .capability-prompts {
@@ -342,6 +366,64 @@ button:disabled {
   color: var(--color-muted);
   font-size: var(--text-body-sm);
   line-height: 1.55;
+}
+
+.capabilities-reference {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.capability-reference-card {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  background: var(--color-surface-card);
+}
+
+.capability-reference-card h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--text-title-md);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.capability-list-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.capability-list {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--color-hairline-soft);
+  padding-top: 16px;
+}
+
+.capability-list h3 {
+  margin: 0;
+  color: var(--color-body-strong);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.capability-list ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capability-list li {
+  padding: 6px 10px;
 }
 
 .glossary-card {
@@ -863,6 +945,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .capabilities-reference {
+    grid-template-columns: 1fr;
+  }
+
   .composer-shell {
     left: 0;
   }
@@ -890,7 +976,8 @@ textarea:focus {
   .loading-card,
   .empty,
   .glossary-card,
-  .capability-section {
+  .capability-section,
+  .capability-reference-card {
     padding: 16px;
   }
 
