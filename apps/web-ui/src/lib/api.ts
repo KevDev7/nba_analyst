@@ -1,7 +1,8 @@
+import { env } from "$env/dynamic/public";
 import type { ChatRequest, ChatResponse } from "./artifacts/types";
 
 export function assistantApiUrl(path: string = "/api/chat"): string {
-  const apiBaseUrl = (import.meta.env.PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+  const apiBaseUrl = (env.PUBLIC_API_BASE_URL || import.meta.env.PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${apiBaseUrl}${normalizedPath}`;
 }
