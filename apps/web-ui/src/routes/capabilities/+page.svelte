@@ -103,6 +103,27 @@
       ]
     },
     {
+      kicker: "Result Filters",
+      title: "Filter After Stats Are Calculated",
+      description:
+        "Ask for only the players or teams whose calculated totals, averages, or ratings clear a threshold.",
+      strengths: ["total thresholds", "average thresholds", "rating thresholds", "calculated stat filters"],
+      examples: [
+        {
+          prompt: "Show players with more than 200 points over the last 10 games",
+          note: "Filters by total points after each player is summarized."
+        },
+        {
+          prompt: "Show teams averaging more than 120 points this season",
+          note: "Filters by an average after each team is calculated."
+        },
+        {
+          prompt: "Show teams with net rating above 5 this season",
+          note: "Keeps only teams above a calculated efficiency threshold."
+        }
+      ]
+    },
+    {
       kicker: "Find",
       title: "Filtered Game Logs And Rows",
       description:
@@ -179,8 +200,17 @@
       items: ["this season", "last 10 games", "past year", "date ranges", "playoffs"]
     },
     {
-      title: "Shape",
-      items: ["rankings", "trends", "comparisons", "tables", "matching games"]
+      title: "Ordering And Limits",
+      items: ["top 5", "top 10", "best to worst", "fewest to most", "highest and lowest"]
+    },
+    {
+      title: "Result Filters",
+      items: [
+        "more than 200 points",
+        "averaging more than 120 points",
+        "net rating above 5",
+        "under 10 turnovers"
+      ]
     }
   ];
 </script>
@@ -250,7 +280,7 @@
     <article class="capability-reference-card">
       <div>
         <p class="section-kicker">Context</p>
-        <h2>Ways To Narrow Or Reshape A Question</h2>
+        <h2>Ways To Narrow, Filter, Or Order Results</h2>
       </div>
 
       <div class="capability-list-grid">
