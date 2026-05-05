@@ -1,251 +1,284 @@
 <script lang="ts">
-  type CapabilityExample = {
+  type Example = {
     prompt: string;
     note: string;
   };
 
-  type CapabilityGroup = {
+  type Capability = {
     kicker: string;
     title: string;
     description: string;
-    strengths: string[];
-    examples: CapabilityExample[];
+    signals: string[];
+    examples: Example[];
   };
 
-  type CapabilityList = {
+  type ReferenceGroup = {
     title: string;
     items: string[];
   };
 
-  const capabilityGroups: CapabilityGroup[] = [
+  const capabilities: Capability[] = [
     {
-      kicker: "Rankings",
-      title: "Leaderboards That Understand Basketball",
+      kicker: "Rank",
+      title: "Order players or teams by what matters",
       description:
-        "Rank players or teams by volume, efficiency, role, location, season, and low-is-good defensive ideas.",
-      strengths: ["top and bottom", "best and worst", "most and fewest", "player or team scope"],
+        "Ask for top, bottom, best, worst, most, or fewest. NBA Insights can use basketball-aware ordering when lower is actually better.",
+      signals: ["top and bottom", "best and worst", "most and fewest", "player or team leaderboards"],
       examples: [
         {
           prompt: "Who are the best defensive teams this season?",
-          note: "Understands that lower defensive rating is better."
+          note: "Ranks defense in the right direction instead of treating every stat as higher-is-better."
         },
         {
           prompt: "Which players have the fewest turnovers over the last 10 games?",
-          note: "Handles low-is-good quantity rankings."
+          note: "Understands low-volume rankings for mistakes, fouls, and other lower-is-better stats."
         },
         {
-          prompt: "Top 10 Eastern Conference teams by wins this season",
-          note: "Combines conference context with a season leaderboard."
-        }
-      ]
-    },
-    {
-      kicker: "Trends",
-      title: "Trends Across Basketball Time",
-      description:
-        "Move from daily recency to weekly, monthly, yearly, and season-by-season views without changing how you ask.",
-      strengths: ["daily", "weekly", "monthly", "yearly", "season by season"],
-      examples: [
-        {
-          prompt: "Show month over month team net rating over the past year",
-          note: "Buckets team efficiency by calendar month."
-        },
-        {
-          prompt: "Show weekly average assists by team over the past year",
-          note: "Turns a passing question into a weekly team trend."
-        },
-        {
-          prompt: "Show season by season team win percentage",
-          note: "Uses NBA seasons instead of calendar years."
-        }
-      ]
-    },
-    {
-      kicker: "Comparisons",
-      title: "Player And Team Comparisons",
-      description:
-        "Compare two or more named players or teams, including direct totals and time-bucketed head-to-head views.",
-      strengths: ["two-way comparisons", "multi-entity comparisons", "team comparisons", "time buckets"],
-      examples: [
-        {
-          prompt: "Compare Brunson and Tatum by assists over the last 10 games",
-          note: "Resolves player names and summarizes the gap."
-        },
-        {
-          prompt: "Compare Lakers and Warriors by rebounds month by month over the past year",
-          note: "Compares two teams across monthly buckets."
-        },
-        {
-          prompt: "Compare Celtics, Nuggets, and Thunder net rating this season",
-          note: "Handles more than two teams in one comparison."
-        }
-      ]
-    },
-    {
-      kicker: "Tables",
-      title: "Custom Stat Tables",
-      description:
-        "Ask for player or team rows with the stats you care about, recent windows, team filters, and natural limits.",
-      strengths: ["player rows", "team rows", "multi-stat tables", "team-filtered tables"],
-      examples: [
-        {
-          prompt: "Show me players and their assists over the last 10 games",
-          note: "Returns a player table ordered by assists."
-        },
-        {
-          prompt: "Show teams and their steals, blocks, and rebounds in the 2025-26 regular season",
-          note: "Returns multiple defensive and rebounding stats in one table."
-        },
-        {
-          prompt: "Show me the top 5 players and their total rebounds for the Knicks over the last 10 games",
-          note: "Builds a player table inside a team context."
-        }
-      ]
-    },
-    {
-      kicker: "Result Filters",
-      title: "Filter After Stats Are Calculated",
-      description:
-        "Ask for only the players or teams whose calculated totals, averages, or ratings clear a threshold.",
-      strengths: ["total thresholds", "average thresholds", "rating thresholds", "calculated stat filters"],
-      examples: [
-        {
-          prompt: "Show players with more than 200 points over the last 10 games",
-          note: "Filters by total points after each player is summarized."
-        },
-        {
-          prompt: "Show teams averaging more than 120 points this season",
-          note: "Filters by an average after each team is calculated."
-        },
-        {
-          prompt: "Show teams with net rating above 5 this season",
-          note: "Keeps only teams above a calculated efficiency threshold."
-        }
-      ]
-    },
-    {
-      kicker: "Find",
-      title: "Filtered Game Logs And Rows",
-      description:
-        "Find matching games or player-game rows when the question is about specific rows rather than one summary.",
-      strengths: ["game logs", "player game logs", "numeric filters", "display columns"],
-      examples: [
-        {
-          prompt: "Find Lakers games over 120 points and show date, opponent, score",
-          note: "Combines team, score, opponent, and date fields."
-        },
-        {
-          prompt: "Find Celtics games with more than 15 threes and show date, opponent, three-pointers made",
-          note: "Filters games by shooting volume and chooses display columns."
-        },
-        {
-          prompt: "Show Jalen Brunson game by game assists over his last 10 games",
-          note: "Returns a player game log instead of a trend summary."
+          prompt: "Top 10 road rebounding teams over the last 10 games",
+          note: "Combines location context, recency, team scope, and a ranking."
         }
       ]
     },
     {
       kicker: "Context",
-      title: "Basketball Context Filters",
+      title: "Narrow the basketball situation",
       description:
-        "Layer basketball context onto the same question shape: home, road, starters, bench, conference, regular season, and playoffs.",
-      strengths: ["home and road", "starter and bench", "conference", "regular season and playoffs"],
+        "Layer real NBA context onto the same question: home, road, starter, bench, opponent, conference, regular season, playoffs, and named teams or players.",
+      signals: ["home or road", "starter or bench", "opponent context", "regular season or playoffs"],
       examples: [
         {
-          prompt: "Rank teams by net rating on the road over the last 10 games",
-          note: "Treats road as away-game context."
-        },
-        {
           prompt: "Top bench scorers over the last 10 games",
-          note: "Connects bench language to non-starter player games."
+          note: "Uses bench language as a player-game context instead of a separate stat."
         },
         {
-          prompt: "Top players by points in the 2024-25 postseason",
-          note: "Separates season scope from playoff season type."
+          prompt: "Rank Eastern Conference teams by win percentage this season",
+          note: "Applies a team context before ranking the result."
+        },
+        {
+          prompt: "Which players had the highest true shooting in the 2024-25 playoffs?",
+          note: "Separates season and season type without needing rigid wording."
+        }
+      ]
+    },
+    {
+      kicker: "Filter",
+      title: "Filter before or after the stat is calculated",
+      description:
+        "Some questions narrow the games first. Others ask for only the players or teams whose calculated totals, averages, or ratings clear a threshold.",
+      signals: ["before calculation", "after calculation", "numeric thresholds", "and/or style conditions"],
+      examples: [
+        {
+          prompt: "Show teams with net rating above 5 this season",
+          note: "Filters by a calculated team efficiency result."
+        },
+        {
+          prompt: "Show players averaging at least 8 assists over the last 10 games",
+          note: "Keeps only players whose average clears the threshold."
+        },
+        {
+          prompt: "Rank teams by net rating on the road over the last 10 games",
+          note: "Narrows to road games before calculating each team's rating."
+        }
+      ]
+    },
+    {
+      kicker: "Compare",
+      title: "Compare named players or teams",
+      description:
+        "Compare two or more entities across one metric, several metrics, or time buckets, then get a plain-language read on the gap.",
+      signals: ["two-way comparisons", "multi-entity comparisons", "multi-stat comparisons", "time-bucketed comparisons"],
+      examples: [
+        {
+          prompt: "Compare Brunson and Tatum by points, assists, and rebounds over the last 10 games",
+          note: "Compares multiple player stats in one answer."
+        },
+        {
+          prompt: "Compare Lakers and Warriors by rebounds month by month over the past year",
+          note: "Turns the comparison into a monthly team view."
+        },
+        {
+          prompt: "Compare Celtics, Nuggets, and Thunder by net rating this season",
+          note: "Handles more than two teams in the same comparison."
+        }
+      ]
+    },
+    {
+      kicker: "Trend",
+      title: "Track movement over basketball time",
+      description:
+        "Ask for daily, weekly, monthly, yearly, or season-by-season movement when you want to see how a stat changes instead of a single table.",
+      signals: ["daily", "weekly", "monthly", "yearly", "season by season"],
+      examples: [
+        {
+          prompt: "Show monthly team net rating over the past year",
+          note: "Buckets team efficiency into calendar months."
+        },
+        {
+          prompt: "Show weekly average assists by team over the past year",
+          note: "Creates a passing trend across teams."
+        },
+        {
+          prompt: "Show season-by-season win percentage for teams",
+          note: "Uses NBA seasons instead of calendar years."
+        }
+      ]
+    },
+    {
+      kicker: "Find",
+      title: "Find games and game logs",
+      description:
+        "Use find-style questions when you want matching rows: games, team game logs, player game logs, dates, opponents, scores, and selected columns.",
+      signals: ["game logs", "player logs", "team logs", "display columns"],
+      examples: [
+        {
+          prompt: "Find Celtics games with more than 15 threes and show date, opponent, three-pointers made",
+          note: "Returns matching games with the columns you asked for."
+        },
+        {
+          prompt: "Show Jalen Brunson game-by-game assists over his last 10 games",
+          note: "Returns a player game log instead of a season summary."
+        },
+        {
+          prompt: "Find Lakers games where the opponent scored under 100 and show date, opponent, score",
+          note: "Combines opponent context, scoring filters, and game details."
+        }
+      ]
+    },
+    {
+      kicker: "Tables",
+      title: "Build custom stat tables",
+      description:
+        "Ask for the rows and stats you care about. NBA Insights can return multi-stat player or team tables and chartable artifacts when the shape fits.",
+      signals: ["multi-stat output", "player rows", "team rows", "tables and charts"],
+      examples: [
+        {
+          prompt: "Show teams and their steals, blocks, and rebounds in the 2025-26 regular season",
+          note: "Combines defensive and rebounding stats in one table."
+        },
+        {
+          prompt: "Show players and their assist-to-turnover ratio over the last 10 games",
+          note: "Uses an efficiency stat instead of only box-score volume."
+        },
+        {
+          prompt: "Show Knicks players by total offensive rebounds over the last 10 games",
+          note: "Builds a team-filtered player table."
         }
       ]
     }
   ];
 
-  const statAreas: CapabilityList[] = [
+  const languageGroups: ReferenceGroup[] = [
     {
-      title: "Scoring And Shooting",
-      items: ["points", "field goal percentage", "3PM", "3PA", "3P%", "true shooting", "eFG%"]
+      title: "Ordering words",
+      items: ["top", "bottom", "best", "worst", "highest", "lowest", "most", "fewest"]
     },
     {
-      title: "Creation And Ball Control",
-      items: ["assists", "turnovers", "usage", "minutes", "free throws", "personal fouls"]
+      title: "Context words",
+      items: ["home", "road", "bench", "starter", "opponent", "East", "West", "playoffs"]
     },
     {
-      title: "Defense And Rebounding",
-      items: ["steals", "blocks", "rebounds", "opponent points", "defensive rating"]
+      title: "Time words",
+      items: ["last 10 games", "past year", "monthly", "weekly", "season by season", "2024-25"]
     },
     {
-      title: "Team Efficiency",
+      title: "Threshold words",
+      items: ["above 5", "under 100", "at least 8", "more than 15", "between dates"]
+    }
+  ];
+
+  const statGroups: ReferenceGroup[] = [
+    {
+      title: "Scoring and shooting",
+      items: ["points", "FG%", "3PM", "3P%", "FT%", "true shooting", "eFG%", "paint points"]
+    },
+    {
+      title: "Creation and control",
+      items: ["assists", "turnovers", "AST:TO", "usage", "minutes", "fouls drawn"]
+    },
+    {
+      title: "Defense and glass",
+      items: ["steals", "blocks", "rebounds", "offensive rebounds", "opponent points", "defensive rating"]
+    },
+    {
+      title: "Team quality",
       items: ["wins", "losses", "win percentage", "pace", "offensive rating", "net rating", "plus/minus"]
     }
   ];
 
-  const contextAreas: CapabilityList[] = [
+  const showcaseExamples: Example[] = [
     {
-      title: "Who",
-      items: ["players", "teams", "named player comparisons", "named team comparisons"]
+      prompt: "Which teams had net rating above 5 this season, ordered from best to worst?",
+      note: "Calculated threshold plus direction-aware ordering."
     },
     {
-      title: "Where",
-      items: ["home", "road", "team context", "opponent context", "conference"]
+      prompt: "Compare Lakers and Warriors rebounding by month over the past year",
+      note: "Named teams, time buckets, comparison, and chartable output."
     },
     {
-      title: "When",
-      items: ["this season", "last 10 games", "past year", "date ranges", "playoffs"]
-    },
-    {
-      title: "Ordering And Limits",
-      items: ["top 5", "top 10", "best to worst", "fewest to most", "highest and lowest"]
-    },
-    {
-      title: "Result Filters",
-      items: [
-        "more than 200 points",
-        "averaging more than 120 points",
-        "net rating above 5",
-        "under 10 turnovers"
-      ]
+      prompt: "Find Celtics games with more than 15 threes and fewer than 12 turnovers",
+      note: "A row search with multiple basketball conditions."
     }
   ];
 </script>
 
 <svelte:head>
   <title>Capabilities | NBA Analyst</title>
-  <meta name="description" content="Examples of questions NBA Insight can answer." />
+  <meta name="description" content="Examples of questions NBA Insights can answer." />
 </svelte:head>
 
 <section class="capabilities-page" aria-labelledby="capabilities-title">
-  <div class="capabilities-header">
+  <header class="capabilities-header">
     <p class="eyebrow">Guide</p>
     <h1 id="capabilities-title">Capabilities</h1>
     <p>
-      A deeper map of what NBA Insight can answer today: rankings, trends, comparisons, stat
-      tables, game logs, and basketball context across players and teams.
+      A practical map of what NBA Insights can answer today across rankings, context filters,
+      calculated thresholds, comparisons, trends, custom tables, and game logs.
     </p>
-  </div>
+  </header>
 
-  <section class="capabilities-grid" aria-label="Supported question examples">
-    {#each capabilityGroups as group}
+  <section class="capabilities-snapshot" aria-label="Capability summary">
+    <div>
+      <strong>Players, teams, games, seasons</strong>
+      <span>Ask across core NBA entities without naming the data shape.</span>
+    </div>
+    <div>
+      <strong>2020-21 through 2025-26</strong>
+      <span>Use seasons, recent windows, date ranges, and time trends.</span>
+    </div>
+    <div>
+      <strong>Tables, charts, summaries</strong>
+      <span>Answers can return text, tables, and chartable results.</span>
+    </div>
+  </section>
+
+  <section class="capability-showcase" aria-labelledby="showcase-title">
+    <div>
+      <p class="section-kicker">Try These</p>
+      <h2 id="showcase-title">Showcase Questions</h2>
+    </div>
+
+    <div class="showcase-list">
+      {#each showcaseExamples as example}
+        <figure class="capability-prompt spotlight">
+          <blockquote>{example.prompt}</blockquote>
+          <figcaption>{example.note}</figcaption>
+        </figure>
+      {/each}
+    </div>
+  </section>
+
+  <section class="capabilities-grid" aria-label="Supported question types">
+    {#each capabilities as capability}
       <article class="capability-section">
         <div class="capability-copy">
-          <p class="section-kicker">{group.kicker}</p>
-          <h2>{group.title}</h2>
-          <p>{group.description}</p>
-          <ul class="capability-strengths" aria-label={`${group.title} supported details`}>
-            {#each group.strengths as strength}
-              <li>{strength}</li>
-            {/each}
-          </ul>
+          <p class="section-kicker">{capability.kicker}</p>
+          <h2>{capability.title}</h2>
+          <p>{capability.description}</p>
+          <p class="capability-signals">{capability.signals.join(" / ")}</p>
         </div>
 
         <div class="capability-prompts">
-          {#each group.examples as example}
+          {#each capability.examples as example}
             <figure class="capability-prompt">
               <blockquote>{example.prompt}</blockquote>
               <figcaption>{example.note}</figcaption>
@@ -256,22 +289,18 @@
     {/each}
   </section>
 
-  <section class="capabilities-reference" aria-label="Supported stats and contexts">
+  <section class="capabilities-reference" aria-label="Supported language and stats">
     <article class="capability-reference-card">
       <div>
-        <p class="section-kicker">Stats</p>
-        <h2>Stats You Can Mix In</h2>
+        <p class="section-kicker">Language</p>
+        <h2>Ways You Can Phrase A Question</h2>
       </div>
 
       <div class="capability-list-grid">
-        {#each statAreas as area}
+        {#each languageGroups as group}
           <section class="capability-list">
-            <h3>{area.title}</h3>
-            <ul>
-              {#each area.items as item}
-                <li>{item}</li>
-              {/each}
-            </ul>
+            <h3>{group.title}</h3>
+            <p>{group.items.join(", ")}</p>
           </section>
         {/each}
       </div>
@@ -279,19 +308,15 @@
 
     <article class="capability-reference-card">
       <div>
-        <p class="section-kicker">Context</p>
-        <h2>Ways To Narrow, Filter, Or Order Results</h2>
+        <p class="section-kicker">Stats</p>
+        <h2>Stats You Can Mix In</h2>
       </div>
 
       <div class="capability-list-grid">
-        {#each contextAreas as area}
+        {#each statGroups as group}
           <section class="capability-list">
-            <h3>{area.title}</h3>
-            <ul>
-              {#each area.items as item}
-                <li>{item}</li>
-              {/each}
-            </ul>
+            <h3>{group.title}</h3>
+            <p>{group.items.join(", ")}</p>
           </section>
         {/each}
       </div>

@@ -279,19 +279,72 @@ button:disabled {
   line-height: 1.55;
 }
 
+.capabilities-snapshot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-hairline);
+}
+
+.capabilities-snapshot div {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  align-content: start;
+  padding: 18px;
+  background: var(--color-surface-card);
+}
+
+.capabilities-snapshot strong {
+  color: var(--color-body-strong);
+  font-size: var(--text-body-md);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.capabilities-snapshot span {
+  color: var(--color-body);
+  font-size: var(--text-body-sm);
+  line-height: 1.55;
+}
+
+.capability-showcase {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+  border-block: 1px solid var(--color-hairline);
+  padding: 28px 0;
+}
+
+.capability-showcase h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--text-title-md);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.showcase-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .capabilities-grid {
   display: grid;
-  gap: 16px;
+  gap: 0;
+  margin-top: 8px;
 }
 
 .capability-section {
   display: grid;
   grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
   gap: 24px;
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-hairline);
+  padding: 28px 0;
 }
 
 .capability-copy {
@@ -315,28 +368,12 @@ button:disabled {
   line-height: 1.55;
 }
 
-.capability-strengths {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 2px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.capability-strengths li,
-.capability-list li {
-  border: 1px solid rgba(91, 155, 213, 0.2);
-  border-radius: var(--radius-pill);
+.capability-signals {
   color: var(--color-primary-active);
-  background: rgba(91, 155, 213, 0.08);
   font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1.35;
-}
-
-.capability-strengths li {
-  padding: 5px 9px;
+  text-transform: uppercase;
 }
 
 .capability-prompts {
@@ -352,6 +389,11 @@ button:disabled {
   border-radius: var(--radius-md);
   padding: 16px;
   background: var(--color-canvas);
+}
+
+.capability-prompt.spotlight {
+  border-color: rgba(91, 155, 213, 0.3);
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
 }
 
 .capability-prompt blockquote {
@@ -423,7 +465,21 @@ button:disabled {
 }
 
 .capability-list li {
+  border: 1px solid rgba(91, 155, 213, 0.2);
+  border-radius: var(--radius-pill);
   padding: 6px 10px;
+  color: var(--color-primary-active);
+  background: rgba(91, 155, 213, 0.08);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.capability-list p {
+  margin: 0;
+  color: var(--color-body);
+  font-size: var(--text-body-sm);
+  line-height: 1.65;
 }
 
 .glossary-card {
@@ -945,6 +1001,11 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .capabilities-snapshot,
+  .showcase-list {
+    grid-template-columns: 1fr;
+  }
+
   .capabilities-reference {
     grid-template-columns: 1fr;
   }
@@ -976,9 +1037,12 @@ textarea:focus {
   .loading-card,
   .empty,
   .glossary-card,
-  .capability-section,
   .capability-reference-card {
     padding: 16px;
+  }
+
+  .capability-section {
+    padding: 22px 0;
   }
 
   .glossary-term-list {
