@@ -77,7 +77,7 @@ class WebApiTests(unittest.TestCase):
 
         with patch.dict(
             "os.environ",
-            {"NBA_ALLOWED_ORIGINS": "https://nba-analyst-ui.onrender.com"},
+            {"NBA_ALLOWED_ORIGINS": "https://nba-insight-mdpl.onrender.com"},
             clear=True,
         ):
             web_server._configure_cors(cors_app)
@@ -85,7 +85,7 @@ class WebApiTests(unittest.TestCase):
         response = TestClient(cors_app).options(
             "/api/chat",
             headers={
-                "Origin": "https://nba-analyst-ui.onrender.com",
+                "Origin": "https://nba-insight-mdpl.onrender.com",
                 "Access-Control-Request-Method": "POST",
                 "Access-Control-Request-Headers": "content-type",
             },
@@ -94,7 +94,7 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.headers["access-control-allow-origin"],
-            "https://nba-analyst-ui.onrender.com",
+            "https://nba-insight-mdpl.onrender.com",
         )
 
     def test_cors_preflight_rejects_unconfigured_frontend_origin(self) -> None:
@@ -106,7 +106,7 @@ class WebApiTests(unittest.TestCase):
 
         with patch.dict(
             "os.environ",
-            {"NBA_ALLOWED_ORIGINS": "https://nba-analyst-ui.onrender.com"},
+            {"NBA_ALLOWED_ORIGINS": "https://nba-insight-mdpl.onrender.com"},
             clear=True,
         ):
             web_server._configure_cors(cors_app)

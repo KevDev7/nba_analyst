@@ -52,7 +52,7 @@ The deployed service sets:
 ```text
 NBA_ONTOLOGY_PLANNER_BIN=/app/bin/ontology-hs
 NBA_DISABLE_SNAPSHOT_REBUILD=1
-NBA_ALLOWED_ORIGINS=https://nba-analyst-ui.onrender.com
+NBA_ALLOWED_ORIGINS=https://nba-insight-mdpl.onrender.com
 NBA_ENABLE_PUBLIC_DEBUG=0
 NBA_MAX_QUESTION_CHARS=250
 ```
