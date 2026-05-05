@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -47,6 +48,7 @@ from scripts.load_gold_snapshot import load_database
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
+PLANNER_BINARY_ENV = "NBA_ONTOLOGY_PLANNER_BIN"
 
 
 @dataclass(frozen=True)
@@ -59,25 +61,28 @@ class AssistantResult:
     debug: dict[str, Any] | None = None
 
 
-def call_haskell_planner_for_semantic_draft(draft_payload: dict[str, Any]) -> dict[str, Any]:
-    # Send the LLM's loose semantic draft to Haskell.
-    # Haskell is responsible for turning that draft into a grounded query,
-    # validating it against the ontology, and compiling an execution plan.
-    command = [
-        "cabal",
-        "run",
-        "-v0",
-        "ontology-hs",
-        "--",
+def _planner_command_for_semantic_draft(draft_json: str) -> tuple[list[str], Path]:
+    planner_bin = os.getenv(PLANNER_BINARY_ENV, "").strip()
+    planner_args = [
         "plan-semantic-draft-json",
         "--ontology",
         str(ONTOLOGY_PATH),
         "--draft-json",
-        json.dumps(draft_payload),
+        draft_json,
     ]
+    if planner_bin:
+        return [planner_bin, *planner_args], ROOT
+    return ["cabal", "run", "-v0", "ontology-hs", "--", *planner_args], HASKELL_SERVICE_DIR
+
+
+def call_haskell_planner_for_semantic_draft(draft_payload: dict[str, Any]) -> dict[str, Any]:
+    # Send the LLM's loose semantic draft to Haskell.
+    # Haskell is responsible for turning that draft into a grounded query,
+    # validating it against the ontology, and compiling an execution plan.
+    command, cwd = _planner_command_for_semantic_draft(json.dumps(draft_payload))
     result = subprocess.run(
         command,
-        cwd=HASKELL_SERVICE_DIR,
+        cwd=cwd,
         capture_output=True,
         text=True,
         check=False,

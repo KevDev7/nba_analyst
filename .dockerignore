@@ -1,0 +1,25 @@
+# Local Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Git and OS metadata
+.git/
+.gitignore
+.DS_Store
+
+# Haskell build outputs
+dist/
+dist-newstyle/
+services/ontology-hs/dist/
+services/ontology-hs/dist-newstyle/
+services/ontology-hs/.pytest_cache/
+
+# Frontend files are not needed in the backend image.
+apps/web-ui/

@@ -110,6 +110,20 @@ uvicorn apps.web.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 The FastAPI service is API-only. It does not serve a browser UI at `/`.
+It exposes `GET /healthz` for deployment health checks.
+
+Deploy the backend API and frontend UI to Render with the root `render.yaml`
+blueprint. The backend Docker image builds the Haskell planner once, installs it
+at `/app/bin/ontology-hs`, disables runtime Athena snapshot rebuilds, and starts:
+
+```bash
+uvicorn apps.web.server:app --host 0.0.0.0 --port ${PORT:-10000}
+```
+
+The frontend deploys as a Render static site from `apps/web-ui/build` and uses
+`PUBLIC_API_BASE_URL` to call the backend API service. Public web questions are
+limited by `NBA_MAX_QUESTION_CHARS` on the API and `PUBLIC_MAX_QUESTION_CHARS`
+in the composer; the beta default is `250`.
 
 Or use the optional Portless helper for a stable local API URL:
 
