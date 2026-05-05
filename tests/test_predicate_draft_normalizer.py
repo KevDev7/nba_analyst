@@ -135,7 +135,7 @@ class PredicateDraftNormalizerTests(unittest.TestCase):
         semantic_draft, planner_output = plan_question(
             "Rank players on the Lakers or Warriors by average points with minutes between 20 and 30 over the last 10 games"
         )
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(semantic_draft["filters"], [])
         self.assertEqual(semantic_draft["predicate"]["kind"], "and")
@@ -158,7 +158,7 @@ class PredicateDraftNormalizerTests(unittest.TestCase):
         semantic_draft, planner_output = plan_question(
             "Rank players by average points over the last 10 games where average points are between 20 and 30"
         )
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(semantic_draft["result_filters"], [])
         self.assertEqual(semantic_draft["result_predicate"]["op"], "between")

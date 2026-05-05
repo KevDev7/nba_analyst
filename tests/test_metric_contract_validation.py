@@ -112,8 +112,8 @@ class MetricContractValidationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
-        self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["key"], "average_points")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["aggregation"], "avg")
 
 if __name__ == "__main__":
     unittest.main()

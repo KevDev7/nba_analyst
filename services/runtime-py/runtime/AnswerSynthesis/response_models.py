@@ -18,91 +18,39 @@ from pydantic import BaseModel, Field
 
 from runtime.AnalysisRuntime.models import (
     AggregateRow,
+    AnswerContextProperties,
     ComparisonResult,
     ObjectRow,
-    PlanDisplayMetadata,
-    PlanDisplayMetric,
-    PlanFindFilter,
-    PlanFindOrder,
-    PlanGroupingColumn,
+    PlanAnswerContext,
     RankingRow,
     RuntimeResult,
+    StrictContractModel,
     TimeSeriesRow,
 )
 
 
-class SynthesisPayload(BaseModel):
+class SynthesisPayload(AnswerContextProperties, StrictContractModel):
     # Typed handoff from result packaging into answer synthesis.
     # Plain English: preserve the runtime result shape without turning it into
     # a loose dict and then rebuilding the same typed rows one file later.
-    query_kind: str
-    result_shape: str
-    entity_label_singular: str
-    entity_label_plural: str
-    context_label: str
-    metric: str
-    metric_order_direction: str = "DESC"
-    rank_intent_label: Optional[str] = None
-    window_games: int
-    time_grain: Optional[str] = None
-    time_filter: Optional[str] = None
-    time_window_days: Optional[int] = None
-    time_start_date: Optional[str] = None
-    time_end_date: Optional[str] = None
-    season_label: Optional[str] = None
-    season_type: Optional[str] = None
-    limit: int
-    assumptions: List[str] = Field(default_factory=list)
+    answer_context: PlanAnswerContext
     rows: List[RankingRow] = Field(default_factory=list)
     aggregate_rows: List[AggregateRow] = Field(default_factory=list)
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
-    find_predicate_tree: Optional[Dict[str, Any]] = None
-    find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    find_orders: List[PlanFindOrder] = Field(default_factory=list)
-    row_predicate: Optional[Dict[str, Any]] = None
-    result_predicate: Optional[Dict[str, Any]] = None
-    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
-    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
-    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
 
 
-class FinalAnswer(BaseModel):
+class FinalAnswer(AnswerContextProperties, StrictContractModel):
     summary: str
     interpretation: str
-    query_kind: str
-    result_shape: str
-    entity_label_singular: str
-    entity_label_plural: str
-    context_label: str
-    metric: str
-    metric_order_direction: str = "DESC"
-    rank_intent_label: Optional[str] = None
-    window_games: int
-    time_grain: Optional[str] = None
-    time_filter: Optional[str] = None
-    time_window_days: Optional[int] = None
-    time_start_date: Optional[str] = None
-    time_end_date: Optional[str] = None
-    season_label: Optional[str] = None
-    season_type: Optional[str] = None
-    limit: int
-    assumptions: List[str] = Field(default_factory=list)
+    answer_context: PlanAnswerContext
     rows: List[RankingRow]
     aggregate_rows: List[AggregateRow] = Field(default_factory=list)
     object_rows: List[ObjectRow] = Field(default_factory=list)
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, Any]] = Field(default_factory=list)
-    find_predicate_tree: Optional[Dict[str, Any]] = None
-    find_filters: List[PlanFindFilter] = Field(default_factory=list)
-    find_orders: List[PlanFindOrder] = Field(default_factory=list)
-    row_predicate: Optional[Dict[str, Any]] = None
-    result_predicate: Optional[Dict[str, Any]] = None
-    grouping_columns: List[PlanGroupingColumn] = Field(default_factory=list)
-    display_metadata: List[PlanDisplayMetadata] = Field(default_factory=list)
-    display_metrics: List[PlanDisplayMetric] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
 
 

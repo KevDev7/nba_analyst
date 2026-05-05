@@ -104,13 +104,13 @@ class FindQueryTests(unittest.TestCase):
         self.assertEqual(spec["findDisplayDimensions"], ["game_date", "season_year", "season_type"])
         assert_has_predicate_leaf(self, predicate_tree, target="Team", attribute="team_name", operator="equals", value="Lakers")
         assert_has_predicate_leaf(self, predicate_tree, target="TeamGame", attribute="score", operator="greater_than", value=120)
-        self.assertEqual(execution_plan["query_kind"], "find_query")
-        self.assertEqual(execution_plan["result_shape"], "find_rows")
-        assert_has_predicate_leaf(self, execution_plan["find_predicate_tree"], target="Team", attribute="team_name", operator="equals", value="Lakers")
-        assert_has_predicate_leaf(self, execution_plan["find_predicate_tree"], target="TeamGame", attribute="score", operator="greater_than", value=120)
-        self.assertEqual(execution_plan["find_filters"], [])
-        self.assertIn("JOIN team", execution_plan["steps"][0]["sql"])
-        self.assertIn("f.score > 120", execution_plan["steps"][0]["sql"])
+        self.assertEqual(execution_plan["answer_context"]["query_kind"], "find_query")
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "find_rows")
+        assert_has_predicate_leaf(self, execution_plan["answer_context"]["find"]["predicate_tree"], target="Team", attribute="team_name", operator="equals", value="Lakers")
+        assert_has_predicate_leaf(self, execution_plan["answer_context"]["find"]["predicate_tree"], target="TeamGame", attribute="score", operator="greater_than", value=120)
+        self.assertEqual(execution_plan["answer_context"]["find"]["filters"], [])
+        self.assertIn("JOIN team", execution_plan["execution"]["steps"][0]["sql"])
+        self.assertIn("f.score > 120", execution_plan["execution"]["steps"][0]["sql"])
 
     def test_haskell_uses_requested_find_display_dimensions(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -118,7 +118,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findDisplayDimensions"], ["game_date", "score", "point_differential"])
         self.assertIn("r.game_date AS game_date", sql)
@@ -147,7 +147,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             spec["findDisplayDimensions"],
@@ -174,7 +174,7 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         resolved_displays = payload["resolved_query"]["resolved"]["resolvedFindDisplays"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             spec["findDisplayDimensions"],
@@ -219,7 +219,7 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         assert_has_predicate_leaf(
             self,
@@ -243,7 +243,7 @@ class FindQueryTests(unittest.TestCase):
         self.assertIn("ON f.opponent_team_id = pt2.team_id", sql)
         self.assertIn("pt1.team_name = 'Lakers'", sql)
         self.assertIn("pt2.team_name = 'Warriors'", sql)
-        self.assertIn("opponent", json.dumps(execution_plan["find_predicate_tree"]))
+        self.assertIn("opponent", json.dumps(execution_plan["answer_context"]["find"]["predicate_tree"]))
 
     def test_haskell_uses_requested_find_order_by_score_descending(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -255,7 +255,7 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         resolved_orders = payload["resolved_query"]["resolved"]["resolvedFindOrders"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             spec["findOrders"],
@@ -284,7 +284,7 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         resolved_orders = payload["resolved_query"]["resolved"]["resolvedFindOrders"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             spec["findOrders"],
@@ -316,7 +316,7 @@ class FindQueryTests(unittest.TestCase):
             )
         )
 
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertIn("ROW_NUMBER() OVER (ORDER BY f.game_date DESC)", sql)
         self.assertIn("WHERE __find_row_rank <= 10", sql)
@@ -353,7 +353,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "PlayerGame")
         self.assertEqual(spec["findTargetObject"], "Player")
@@ -386,7 +386,7 @@ class FindQueryTests(unittest.TestCase):
         spec = payload["query"]["spec"]
         resolved_displays = payload["resolved_query"]["resolved"]["resolvedFindDisplays"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "PlayerGame")
         self.assertEqual(spec["findTargetObject"], "Player")
@@ -415,7 +415,19 @@ class FindQueryTests(unittest.TestCase):
             value="Jalen Brunson",
         )
         self.assertEqual(spec["findFilters"], [{"kind": "last_n_games", "value": 10}])
-        self.assertEqual(execution_plan["result_shape"], "find_rows")
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "find_rows")
+        self.assertEqual(
+            execution_plan["answer_context"]["find"]["filters"],
+            execution_plan["answer_context"]["find"]["filters"],
+        )
+        self.assertEqual(
+            execution_plan["answer_context"]["find"]["orders"],
+            execution_plan["answer_context"]["find"]["orders"],
+        )
+        self.assertEqual(
+            execution_plan["answer_context"]["display"]["metadata"],
+            execution_plan["answer_context"]["display"]["metadata"],
+        )
         self.assertIn("d3.team_name AS opponent", sql)
         self.assertIn("ON f.opponent_team_id = d3.team_id", sql)
         self.assertIn("pt1.full_name = 'Jalen Brunson'", sql)
@@ -427,6 +439,9 @@ class FindQueryTests(unittest.TestCase):
             plan = ExecutionPlan.model_validate(execution_plan)
         else:
             plan = ExecutionPlan.parse_obj(execution_plan)
+        self.assertIsNotNone(plan.answer_context)
+        self.assertEqual(plan.answer_context.find.filters[0].filter_kind, "last_n_games")
+        self.assertEqual(plan.answer_context.find.orders[0].order_field, "game_date")
         runtime_result = execute_plan(plan)
 
         self.assertTrue(runtime_result.find_rows)
@@ -444,11 +459,15 @@ class FindQueryTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         execution_plan = payload["execution_plan"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findFilters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(
-            execution_plan["find_filters"],
+            execution_plan["answer_context"]["find"]["filters"],
+            [{"filter_kind": "last_n_games", "filter_value": 10}],
+        )
+        self.assertEqual(
+            execution_plan["answer_context"]["find"]["filters"],
             [{"filter_kind": "last_n_games", "filter_value": 10}],
         )
         self.assertIn("ROW_NUMBER() OVER (ORDER BY f.game_date DESC)", sql)
@@ -471,7 +490,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
         self.assertEqual(
@@ -505,7 +524,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
         self.assertEqual(
@@ -530,7 +549,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
         self.assertEqual(spec["findTargetObject"], "Team")
@@ -550,7 +569,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "Game")
         self.assertIsNone(spec["findPredicateTree"])
@@ -622,7 +641,7 @@ class FindQueryTests(unittest.TestCase):
             operator="greater_than",
             value=130,
         )
-        self.assertIn("f.score > 130", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("f.score > 130", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_uses_player_game_for_player_actor_points(self) -> None:
         draft = lakers_games_draft(
@@ -645,7 +664,7 @@ class FindQueryTests(unittest.TestCase):
             operator="greater_than",
             value=40,
         )
-        self.assertIn("f.points > 40", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("f.points > 40", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_runtime_packages_find_predicate_metadata_for_synthesis(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -797,16 +816,16 @@ class FindQueryTests(unittest.TestCase):
         spec = payload["query"]["spec"]
         self.assertEqual(spec["findCoreFactObject"], "Team")
         self.assertEqual(spec["findTargetObject"], "Team")
-        self.assertEqual(payload["execution_plan"]["result_shape"], "find_rows")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "find_rows")
         assert_has_predicate_leaf(
             self,
-            payload["execution_plan"]["find_predicate_tree"],
+            payload["execution_plan"]["answer_context"]["find"]["predicate_tree"],
             target="Team",
             attribute="conference",
             operator="equals",
             value="west",
         )
-        self.assertIn("f.conference = 'west'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("f.conference = 'west'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_mixed_case_conference_find_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -828,8 +847,8 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "east")
-        self.assertIn("f.conference = 'east'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["answer_context"]["find"]["predicate_tree"])[0]["value"]["value"], "east")
+        self.assertIn("f.conference = 'east'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_home_away_find_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -853,13 +872,13 @@ class FindQueryTests(unittest.TestCase):
 
         assert_has_predicate_leaf(
             self,
-            payload["execution_plan"]["find_predicate_tree"],
+            payload["execution_plan"]["answer_context"]["find"]["predicate_tree"],
             target="PlayerGame",
             attribute="team_home_or_away",
             operator="equals",
             value="away",
         )
-        self.assertIn("f.team_home_or_away = 'away'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("f.team_home_or_away = 'away'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_starter_find_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -883,13 +902,13 @@ class FindQueryTests(unittest.TestCase):
 
         assert_has_predicate_leaf(
             self,
-            payload["execution_plan"]["find_predicate_tree"],
+            payload["execution_plan"]["answer_context"]["find"]["predicate_tree"],
             target="PlayerGame",
             attribute="is_starter",
             operator="equals",
             value="false",
         )
-        self.assertIn("f.is_starter = 'false'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("f.is_starter = 'false'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_team_name_find_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -911,8 +930,8 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "Lakers")
-        self.assertIn("f.team_name = 'Lakers'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["answer_context"]["find"]["predicate_tree"])[0]["value"]["value"], "Lakers")
+        self.assertIn("f.team_name = 'Lakers'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_canonicalizes_data_backed_team_city_name_value(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -934,8 +953,8 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(predicate_leaves(payload["execution_plan"]["find_predicate_tree"])[0]["value"]["value"], "Jazz")
-        self.assertIn("f.team_name = 'Jazz'", payload["execution_plan"]["steps"][0]["sql"])
+        self.assertEqual(predicate_leaves(payload["execution_plan"]["answer_context"]["find"]["predicate_tree"])[0]["value"]["value"], "Jazz")
+        self.assertIn("f.team_name = 'Jazz'", payload["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_haskell_grounds_find_predicate_tree_in_and_between(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -953,7 +972,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         spec = payload["query"]["spec"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(spec["findCoreFactObject"], "TeamGame")
         self.assertEqual(spec["findPredicateTree"]["kind"], "and")
@@ -982,7 +1001,7 @@ class FindQueryTests(unittest.TestCase):
                 "assumptions": [],
             }
         )
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertIn("f.full_name ILIKE '%Smith%'", sql)
         database_path = load_database()
@@ -1013,7 +1032,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         predicate_tree = payload["query"]["spec"]["findPredicateTree"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         assert_has_predicate_leaf(
             self,
@@ -1048,7 +1067,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         predicate_tree = payload["query"]["spec"]["findPredicateTree"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         assert_has_predicate_leaf(
             self,
@@ -1083,7 +1102,7 @@ class FindQueryTests(unittest.TestCase):
         )
 
         predicate_tree = payload["query"]["spec"]["findPredicateTree"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         assert_has_predicate_leaf(
             self,
@@ -1120,8 +1139,8 @@ class FindQueryTests(unittest.TestCase):
             }
         )
 
-        predicate_tree = payload["execution_plan"]["find_predicate_tree"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        predicate_tree = payload["execution_plan"]["answer_context"]["find"]["predicate_tree"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(predicate_tree["predicate"]["value"]["value"], "west")
         self.assertIn("NOT (f.conference = 'west')", sql)

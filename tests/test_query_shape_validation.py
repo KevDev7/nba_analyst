@@ -81,7 +81,7 @@ class QueryShapeValidationTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
 
         self.assertEqual(
-            planner_output["execution_plan"]["grouping_columns"],
+            planner_output["execution_plan"]["answer_context"]["display"]["grouping_columns"],
             [
                 {"column_key": "group_1", "label": "team_name"},
                 {"column_key": "group_2", "label": "season_type"},
@@ -110,7 +110,7 @@ class QueryShapeValidationTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
 
         self.assertEqual(
-            planner_output["execution_plan"]["display_metrics"],
+            planner_output["execution_plan"]["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "average_points", "metric": "average_points", "aggregation": "avg"},
@@ -138,10 +138,10 @@ class QueryShapeValidationTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
-            execution_plan["display_metrics"],
+            execution_plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},

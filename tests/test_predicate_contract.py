@@ -35,7 +35,7 @@ class PredicateContractTests(unittest.TestCase):
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["rowPredicate"], None)
         self.assertEqual(shared["resultPredicate"], None)
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "ranking")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "ranking")
 
     def test_row_predicate_tree_executes_for_metric_queries(self) -> None:
         payload = metric_query_payload(
@@ -68,9 +68,9 @@ class PredicateContractTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(execution_plan["row_predicate"]["kind"], "or")
+        self.assertEqual(execution_plan["answer_context"]["predicates"]["row"]["kind"], "or")
         self.assertIn("lf1.team_name IN ('Lakers', 'Warriors')", sql)
         self.assertIn("f.minutes_played BETWEEN 20 AND 30", sql)
 
@@ -105,9 +105,9 @@ class PredicateContractTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(execution_plan["result_predicate"]["kind"], "or")
+        self.assertEqual(execution_plan["answer_context"]["predicates"]["result"]["kind"], "or")
         self.assertIn("ROUND(AVG(__result_predicate_1_source), 1) AS result_predicate_1", sql)
         self.assertIn("(metric_value BETWEEN 20 AND 30 OR result_predicate_1 > 32)", sql)
 
@@ -158,11 +158,11 @@ class PredicateContractTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(execution_plan["result_shape"], "find_rows")
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "find_rows")
         self.assertEqual(
-            execution_plan["find_predicate_tree"]["predicate"]["operator"],
+            execution_plan["answer_context"]["find"]["predicate_tree"]["predicate"]["operator"],
             "contains",
         )
         self.assertIn("NOT (f.team_name ILIKE '%Lakers%'", sql)

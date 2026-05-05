@@ -26,6 +26,7 @@ from runtime.AnalysisRuntime.models import (
 )
 from runtime.AnswerSynthesis.artifacts import build_artifacts
 from runtime.AnswerSynthesis.response_models import FinalAnswer
+from tests.answer_context_helpers import build_final_answer
 
 
 def base_answer(**overrides: object) -> FinalAnswer:
@@ -62,7 +63,7 @@ def base_answer(**overrides: object) -> FinalAnswer:
         ],
     }
     values.update(overrides)
-    return FinalAnswer(**values)
+    return build_final_answer(**values)
 
 
 class ChartArtifactBridgeTests(unittest.TestCase):
@@ -585,18 +586,30 @@ class ChartArtifactBridgeTests(unittest.TestCase):
             {"task": "trend"},
             {
                 "execution_plan": {
-                    "plan_type": "single_sql",
-                    "query_kind": "metric_query",
-                    "result_shape": "time_series",
-                    "entity_label_singular": "Team",
-                    "entity_label_plural": "Teams",
-                    "context_label": "",
-                    "metric": "average_points",
-                    "metric_aggregation": "avg",
-                    "window_games": 0,
-                    "time_grain": "month",
-                    "limit": 0,
-                    "steps": [{"kind": "run_sql", "sql": "SELECT 1"}],
+                    "execution": {
+                        "plan_type": "single_sql",
+                        "steps": [{"kind": "run_sql", "sql": "SELECT 1"}],
+                    },
+                    "answer_context": {
+                        "query_kind": "metric_query",
+                        "result_shape": "time_series",
+                        "subject": {
+                            "singular": "Team",
+                            "plural": "Teams",
+                            "context_label": "",
+                        },
+                        "metric": {
+                            "key": "average_points",
+                            "aggregation": "avg",
+                            "order_direction": "DESC",
+                        },
+                        "time": {"window_games": 0, "grain": "month"},
+                        "ranking": {"intent_label": None, "limit": 0},
+                        "find": {"predicate_tree": None, "filters": [], "orders": []},
+                        "predicates": {"row": None, "result": None},
+                        "display": {"grouping_columns": [], "metadata": [], "metrics": []},
+                        "assumptions": [],
+                    },
                 }
             },
         ),

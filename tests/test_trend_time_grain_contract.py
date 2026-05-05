@@ -84,13 +84,13 @@ class TrendTimeGrainContractTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
         plan = planner_output["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(resolved["timeGrain"], "month")
         self.assertEqual(resolved["trendSeasonLabel"], "2025-26")
         self.assertEqual(resolved["trendSeasonType"], "regular_season")
-        self.assertEqual(plan["season_label"], "2025-26")
-        self.assertEqual(plan["season_type"], "regular_season")
+        self.assertEqual(plan["answer_context"]["time"]["season_label"], "2025-26")
+        self.assertEqual(plan["answer_context"]["time"]["season_type"], "regular_season")
         self.assertIn("f.season_year = '2025-26'", sql)
         self.assertIn("f.season_type = 'regular_season'", sql)
 
@@ -203,9 +203,9 @@ class TrendTimeGrainContractTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
 
-        self.assertEqual(execution_plan["result_shape"], "comparison")
-        self.assertEqual(execution_plan["time_grain"], "month")
-        self.assertIn("AS time_bucket", execution_plan["steps"][0]["sql"])
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "comparison")
+        self.assertEqual(execution_plan["answer_context"]["time"]["grain"], "month")
+        self.assertIn("AS time_bucket", execution_plan["execution"]["steps"][0]["sql"])
 
 if __name__ == "__main__":
     unittest.main()

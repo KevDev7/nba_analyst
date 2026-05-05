@@ -83,10 +83,10 @@ class DimensionContractValidationTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
 
         self.assertEqual(
-            planner_output["execution_plan"]["grouping_columns"],
+            planner_output["execution_plan"]["answer_context"]["display"]["grouping_columns"],
             [{"column_key": "group_1", "label": "person_id"}],
         )
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertIn("f.person_id AS group_1", sql)
         self.assertIn("PARTITION BY f.person_id", sql)
 

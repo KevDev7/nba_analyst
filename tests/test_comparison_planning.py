@@ -86,15 +86,15 @@ class ComparisonPlanningTests(unittest.TestCase):
         shared = planner_output["query"]["spec"]["sharedQuery"]
         resolved = planner_output["resolved_query"]["resolved"]
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["filters"], [
             {"kind": "exact_season", "value": "2025-26"},
             {"kind": "season_type", "value": "regular_season"},
         ])
         self.assertEqual(resolved["factTableName"], "player_season")
-        self.assertEqual(execution_plan["metric_aggregation"], "identity")
-        self.assertEqual(execution_plan["season_label"], "2025-26")
+        self.assertEqual(execution_plan["answer_context"]["metric"]["aggregation"], "identity")
+        self.assertEqual(execution_plan["answer_context"]["time"]["season_label"], "2025-26")
         self.assertIn("WITH season_rows AS", sql)
         self.assertIn("f.points_total AS metric_value", sql)
         self.assertNotIn("game_rank <=", sql)
@@ -130,8 +130,8 @@ class ComparisonPlanningTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         self.assertEqual(planner_output["resolved_query"]["resolved"]["factTableName"], "team_season")
-        self.assertEqual(planner_output["execution_plan"]["metric"], "wins")
-        self.assertIn("f.wins AS metric_value", planner_output["execution_plan"]["steps"][0]["sql"])
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["key"], "wins")
+        self.assertIn("f.wins AS metric_value", planner_output["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_time_bucketed_comparison_validates(self) -> None:
         payload = {
@@ -161,10 +161,10 @@ class ComparisonPlanningTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(execution_plan["result_shape"], "comparison")
-        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "comparison")
+        self.assertEqual(execution_plan["answer_context"]["time"]["grain"], "month")
         self.assertIn("AS time_bucket", sql)
 
     def test_average_points_comparison_is_now_supported(self) -> None:
@@ -194,8 +194,8 @@ class ComparisonPlanningTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
-        self.assertEqual(planner_output["execution_plan"]["metric_aggregation"], "avg")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["key"], "average_points")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["aggregation"], "avg")
 
     def test_multi_metric_recent_player_comparison_is_supported(self) -> None:
         payload = {
@@ -225,11 +225,11 @@ class ComparisonPlanningTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(execution_plan["metric"], "total_points")
+        self.assertEqual(execution_plan["answer_context"]["metric"]["key"], "total_points")
         self.assertEqual(
-            execution_plan["display_metrics"],
+            execution_plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
@@ -268,16 +268,16 @@ class ComparisonPlanningTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
-            execution_plan["display_metrics"],
+            execution_plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
             ],
         )
-        self.assertEqual(execution_plan["grouping_columns"], [{"column_key": "group_1", "label": "season_type"}])
+        self.assertEqual(execution_plan["answer_context"]["display"]["grouping_columns"], [{"column_key": "group_1", "label": "season_type"}])
         self.assertIn("f.season_type AS group_1", sql)
         self.assertIn("f.assists AS metric_2", sql)
         self.assertIn("  metric_value,\n  metric_2", sql)
@@ -364,7 +364,7 @@ class ComparisonPlanningTests(unittest.TestCase):
             ],
         )
         self.assertEqual(planner_output["query"]["spec"]["sharedQuery"]["coreFactObject"], "PlayerSeason")
-        self.assertEqual(planner_output["execution_plan"]["season_label"], "2025-26")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["time"]["season_label"], "2025-26")
 
 
 if __name__ == "__main__":

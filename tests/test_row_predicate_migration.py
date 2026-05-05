@@ -50,7 +50,7 @@ class RowPredicateMigrationTests(unittest.TestCase):
         )
 
         row_predicate = payload["query"]["spec"]["sharedQuery"]["rowPredicate"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(row_predicate["kind"], "and")
         self.assertEqual(row_predicate["predicates"][0]["field"]["attribute"], "team_name")
@@ -87,9 +87,9 @@ class RowPredicateMigrationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(planner_output["execution_plan"]["row_predicate"]["kind"], "or")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["predicates"]["row"]["kind"], "or")
         self.assertIn("lf1.team_name IN ('Lakers', 'Warriors')", sql)
         self.assertIn("f.minutes_played BETWEEN 20 AND 30", sql)
 
@@ -115,9 +115,9 @@ class RowPredicateMigrationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(planner_output["execution_plan"]["row_predicate"]["predicate"]["value"]["value"], "west")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["predicates"]["row"]["predicate"]["value"]["value"], "west")
         self.assertIn("NOT (lf1.conference = 'west')", sql)
 
     def test_aggregate_uses_shared_row_predicate_tree(self) -> None:
@@ -142,9 +142,9 @@ class RowPredicateMigrationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "aggregate")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "aggregate")
         self.assertIn("lf1.team_name ILIKE '%War%'", sql)
 
     def test_trend_uses_shared_row_predicate_tree(self) -> None:
@@ -172,9 +172,9 @@ class RowPredicateMigrationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "time_series")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "time_series")
         self.assertIn("lf1.conference <> 'west'", sql)
 
     def test_compare_uses_shared_row_predicate_tree(self) -> None:
@@ -205,9 +205,9 @@ class RowPredicateMigrationTests(unittest.TestCase):
         }
 
         planner_output = call_plan_query_json(payload)
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "comparison")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "comparison")
         self.assertIn("lf1.conference = 'east'", sql)
 
 

@@ -19,22 +19,36 @@ SAMPLE_DRAFT = {
 }
 
 SAMPLE_EXECUTION_PLAN = {
-    "plan_type": "single_sql",
-    "query_kind": "metric_query",
-    "result_shape": "ranking",
-    "entity_label_singular": "Player",
-    "entity_label_plural": "Players",
-    "context_label": "Team",
-    "metric": "total_points",
-    "metric_aggregation": "sum",
-    "window_games": 10,
-    "time_grain": None,
-    "time_filter": None,
-    "season_label": None,
-    "season_type": None,
-    "limit": 10,
-    "assumptions": [],
-    "steps": [{"kind": "run_sql", "sql": "SELECT 1", "analysis_spec": None}],
+    "execution": {
+        "plan_type": "single_sql",
+        "steps": [{"kind": "run_sql", "sql": "SELECT 1", "analysis_spec": None}],
+    },
+    "answer_context": {
+        "query_kind": "metric_query",
+        "result_shape": "ranking",
+        "subject": {
+            "singular": "Player",
+            "plural": "Players",
+            "context_label": "Team",
+        },
+        "metric": {
+            "key": "total_points",
+            "aggregation": "sum",
+            "order_direction": "DESC",
+        },
+        "time": {
+            "window_games": 10,
+            "grain": None,
+            "filter": None,
+            "season_label": None,
+            "season_type": None,
+        },
+        "ranking": {"intent_label": None, "limit": 10},
+        "find": {"predicate_tree": None, "filters": [], "orders": []},
+        "predicates": {"row": None, "result": None},
+        "display": {"grouping_columns": [], "metadata": [], "metrics": []},
+        "assumptions": [],
+    },
 }
 
 

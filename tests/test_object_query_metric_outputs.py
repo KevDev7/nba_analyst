@@ -95,8 +95,8 @@ class ObjectQueryMetricOutputTests(unittest.TestCase):
                 "value": {"kind": "scalar", "value": "Lakers"},
             },
         )
-        self.assertEqual(execution_plan["metric"], "average_minutes")
-        self.assertIn("AVG(metric_source)", execution_plan["steps"][0]["sql"])
+        self.assertEqual(execution_plan["answer_context"]["metric"]["key"], "average_minutes")
+        self.assertIn("AVG(metric_source)", execution_plan["execution"]["steps"][0]["sql"])
 
     def test_object_query_mismatched_order_is_rejected(self) -> None:
         payload = {

@@ -49,8 +49,8 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["team_name"])
         self.assertEqual(shared["orders"], [])
         self.assertEqual(resolved["metricResultShape"], "aggregate")
-        self.assertEqual(execution_plan["result_shape"], "aggregate")
-        self.assertEqual(execution_plan["plan_type"], "single_sql")
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "aggregate")
+        self.assertEqual(execution_plan["execution"]["plan_type"], "single_sql")
 
     def test_haskell_grounds_multi_metric_player_aggregate(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -64,11 +64,11 @@ class AggregateQueryTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points", "average_assists", "average_rebounds"])
         self.assertEqual(
-            execution_plan["display_metrics"],
+            execution_plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "average_points", "metric": "average_points", "aggregation": "avg"},
                 {"column_key": "metric_2", "label": "average_assists", "metric": "average_assists", "aggregation": "avg"},
@@ -87,7 +87,7 @@ class AggregateQueryTests(unittest.TestCase):
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["average_points"])
         self.assertEqual(shared["dimensions"], ["conference"])
-        self.assertEqual(payload["execution_plan"]["result_shape"], "aggregate")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "aggregate")
 
     def test_haskell_grounds_multi_dimensional_aggregate_grouping(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(
@@ -97,12 +97,12 @@ class AggregateQueryTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["dimensions"], ["team_name", "season_type"])
         self.assertEqual(
-            execution_plan["grouping_columns"],
+            execution_plan["answer_context"]["display"]["grouping_columns"],
             [
                 {"column_key": "group_1", "label": "team_name"},
                 {"column_key": "group_2", "label": "season_type"},
@@ -132,7 +132,7 @@ class AggregateQueryTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "TeamSeason")
         self.assertEqual(shared["metrics"], ["wins"])
         self.assertEqual(
@@ -173,8 +173,8 @@ class AggregateQueryTests(unittest.TestCase):
                 "value": {"kind": "scalar", "value": "Knicks"},
             },
         )
-        self.assertEqual(execution_plan["metric"], "average_minutes")
-        self.assertIn("AVG(metric_source)", execution_plan["steps"][0]["sql"])
+        self.assertEqual(execution_plan["answer_context"]["metric"]["key"], "average_minutes")
+        self.assertIn("AVG(metric_source)", execution_plan["execution"]["steps"][0]["sql"])
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_aggregate_end_to_end(self, mock_call_gemini) -> None:

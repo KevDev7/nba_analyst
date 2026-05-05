@@ -68,7 +68,7 @@ class CliSemanticDraftPipelineTests(unittest.TestCase):
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
         self.assertEqual(shared["limit"], 10)
         self.assertEqual(payload["resolved_query"]["resolved"]["displayName"]["columnName"], "full_name")
-        self.assertEqual(payload["execution_plan"]["result_shape"], "ranking")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "ranking")
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_interpreter_returns_semantic_draft(

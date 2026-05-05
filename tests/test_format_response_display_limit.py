@@ -17,6 +17,7 @@ from runtime.AnalysisRuntime.models import (
 )
 from runtime.AnswerSynthesis.format_response import DISPLAY_ROW_LIMIT, format_response
 from runtime.AnswerSynthesis.response_models import FinalAnswer
+from tests.answer_context_helpers import build_final_answer
 
 
 def base_answer(**overrides: object) -> FinalAnswer:
@@ -34,7 +35,7 @@ def base_answer(**overrides: object) -> FinalAnswer:
         "rows": [],
     }
     values.update(overrides)
-    return FinalAnswer(**values)
+    return build_final_answer(**values)
 
 
 class FormatResponseDisplayLimitTests(unittest.TestCase):

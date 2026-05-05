@@ -91,7 +91,7 @@ class FilterContractValidationTests(unittest.TestCase):
 
         planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(resolved["windowGames"], 8)
         self.assertEqual(resolved["seasonLabel"], "2024-25")
@@ -240,9 +240,9 @@ class FilterContractValidationTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
         resolved = planner_output["resolved_query"]["resolved"]
         plan = planner_output["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
         self.assertEqual(resolved["timeFilterKind"], "past_year")
-        self.assertEqual(plan["time_filter"], "past_year")
+        self.assertEqual(plan["answer_context"]["time"]["filter"], "past_year")
         self.assertIn("INTERVAL '1 year'", sql)
 
 if __name__ == "__main__":

@@ -51,6 +51,49 @@ def result_predicate_leaf(attribute: str, operator: str, value: object) -> dict:
     return predicate_leaf("", attribute, operator, value, "result")
 
 
+def assert_answer_context_matches_plan(test: unittest.TestCase, plan: dict[str, object]) -> None:
+    context = plan["answer_context"]
+    test.assertIsInstance(context, dict)
+    if not isinstance(context, dict):
+        return
+
+    test.assertEqual(set(plan), {"execution", "answer_context"})
+    test.assertIn("plan_type", plan["execution"])
+    test.assertIn("steps", plan["execution"])
+    for retired_key in (
+        "query_kind",
+        "result_shape",
+        "entity_label_singular",
+        "entity_label_plural",
+        "context_label",
+        "metric",
+        "metric_aggregation",
+        "metric_order_direction",
+        "rank_intent_label",
+        "window_games",
+        "time_grain",
+        "time_filter",
+        "time_window_days",
+        "time_start_date",
+        "time_end_date",
+        "season_label",
+        "season_type",
+        "limit",
+        "assumptions",
+        "find_predicate_tree",
+        "find_filters",
+        "find_orders",
+        "row_predicate",
+        "result_predicate",
+        "grouping_columns",
+        "display_metadata",
+        "display_metrics",
+        "steps",
+        "plan_type",
+    ):
+        test.assertNotIn(retired_key, plan)
+
+
 class SemanticDraftGroundingTests(unittest.TestCase):
     def test_haskell_grounds_player_average_points_ranking_from_ontology(self) -> None:
         payload = call_plan_semantic_draft(
@@ -66,13 +109,15 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
+        plan = payload["execution_plan"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["average_points"])
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "average_points"}])
+        assert_answer_context_matches_plan(self, plan)
         self.assertEqual(
-            payload["execution_plan"]["display_metadata"],
+            plan["answer_context"]["display"]["metadata"],
             [
                 {
                     "column_key": "games_played",
@@ -114,12 +159,12 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["metrics"], ["total_points", "total_rebounds", "total_assists"])
         self.assertEqual(
-            plan["display_metrics"],
+            plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_rebounds", "metric": "total_rebounds", "aggregation": "sum"},
@@ -157,7 +202,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
@@ -167,7 +212,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             predicate_leaf("Team", "team_name", "equals", "Lakers"),
         )
         self.assertEqual(
-            plan["display_metrics"],
+            plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "points_total", "metric": "points_total", "aggregation": "identity"},
                 {"column_key": "metric_2", "label": "assists_total", "metric": "assists_total", "aggregation": "identity"},
@@ -201,13 +246,13 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["total_point_differential"])
-        self.assertEqual(plan["metric"], "total_point_differential")
-        self.assertEqual(plan["metric_aggregation"], "ratio")
-        self.assertEqual(plan["display_metrics"], [])
+        self.assertEqual(plan["answer_context"]["metric"]["key"], "total_point_differential")
+        self.assertEqual(plan["answer_context"]["metric"]["aggregation"], "ratio")
+        self.assertEqual(plan["answer_context"]["display"]["metrics"], [])
         self.assertIn("FROM team_game f", sql)
         self.assertIn("f.score AS score", sql)
         self.assertIn("f.opponent_score AS opponent_score", sql)
@@ -235,11 +280,11 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["total_point_differential"])
-        self.assertEqual(plan["metric"], "total_point_differential")
+        self.assertEqual(plan["answer_context"]["metric"]["key"], "total_point_differential")
         self.assertIn("f.score AS score", sql)
         self.assertIn("f.opponent_score AS opponent_score", sql)
         self.assertIn("SUM(CASE WHEN score IS NOT NULL", sql)
@@ -267,14 +312,15 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["wins"])
         self.assertEqual(shared["timeGrain"], "month")
         self.assertEqual(resolved["metricFormula"]["aggregationKind"], "count_win")
-        self.assertEqual(execution_plan["metric"], "wins")
-        self.assertEqual(execution_plan["metric_aggregation"], "count_win")
+        self.assertEqual(execution_plan["answer_context"]["metric"]["key"], "wins")
+        self.assertEqual(execution_plan["answer_context"]["metric"]["aggregation"], "count_win")
+        assert_answer_context_matches_plan(self, execution_plan)
         self.assertIn("f.win_loss_result AS metric_source", sql)
         self.assertIn("SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END) AS metric_value", sql)
         self.assertIn("f.game_date >= DATE '2026-01-01'", sql)
@@ -302,12 +348,12 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["games_won"])
-        self.assertEqual(plan["metric"], "games_won")
-        self.assertEqual(plan["metric_aggregation"], "count_win")
+        self.assertEqual(plan["answer_context"]["metric"]["key"], "games_won")
+        self.assertEqual(plan["answer_context"]["metric"]["aggregation"], "count_win")
         self.assertIn("f.win_loss_result AS metric_source", sql)
         self.assertIn("SUM(CASE WHEN metric_source = 'win' THEN 1 ELSE 0 END) AS metric_value", sql)
 
@@ -333,12 +379,12 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["games_started"])
-        self.assertEqual(plan["metric"], "games_started")
-        self.assertEqual(plan["metric_aggregation"], "count_true")
+        self.assertEqual(plan["answer_context"]["metric"]["key"], "games_started")
+        self.assertEqual(plan["answer_context"]["metric"]["aggregation"], "count_true")
         self.assertIn("f.is_starter AS metric_source", sql)
         self.assertIn("SUM(CASE WHEN metric_source THEN 1 ELSE 0 END) AS metric_value", sql)
 
@@ -365,7 +411,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["metrics"], ["total_points", "total_assists", "total_rebounds"])
@@ -376,7 +422,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             ["total_points", "total_assists", "total_rebounds"],
         )
         self.assertEqual(
-            [metric["metric"] for metric in plan["display_metrics"]],
+            [metric["metric"] for metric in plan["answer_context"]["display"]["metrics"]],
             ["total_points", "total_assists", "total_rebounds"],
         )
         self.assertIn("f.assists AS __metric_2_source", sql)
@@ -411,7 +457,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerSeasonTeam")
         self.assertEqual(
@@ -419,7 +465,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             ["points_total", "assists_total", "rebounds_total", "steals_total", "blocks_total"],
         )
         self.assertEqual(
-            [metric["metric"] for metric in plan["display_metrics"]],
+            [metric["metric"] for metric in plan["answer_context"]["display"]["metrics"]],
             ["points_total", "assists_total", "rebounds_total", "steals_total", "blocks_total"],
         )
         self.assertIn("f.steals_total AS metric_4", sql)
@@ -497,12 +543,12 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["metrics"], ["total_points", "total_assists", "total_rebounds"])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
         self.assertEqual(
-            plan["display_metrics"],
+            plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
@@ -531,7 +577,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             predicate_leaf("Team", "team_name", "equals", "Lakers"),
         )
         self.assertEqual(payload["resolved_query"]["resolved"]["rowPredicateResolved"]["contents"]["rowPredicateValue"]["value"], "Lakers")
-        self.assertEqual(payload["execution_plan"]["row_predicate"], predicate_leaf("Team", "team_name", "equals", "Lakers"))
+        self.assertEqual(payload["execution_plan"]["answer_context"]["predicates"]["row"], predicate_leaf("Team", "team_name", "equals", "Lakers"))
 
     def test_haskell_grounds_season_rank_team_filter_to_team_stint_surface(self) -> None:
         payload = call_plan_semantic_draft(
@@ -555,7 +601,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             shared["rowPredicate"],
             predicate_leaf("Team", "team_name", "equals", "Lakers"),
         )
-        self.assertEqual(payload["execution_plan"]["row_predicate"], predicate_leaf("Team", "team_name", "equals", "Lakers"))
+        self.assertEqual(payload["execution_plan"]["answer_context"]["predicates"]["row"], predicate_leaf("Team", "team_name", "equals", "Lakers"))
 
     def test_haskell_grounds_aggregate_draft_conference_filter_to_linked_filter(self) -> None:
         payload = call_plan_semantic_draft(
@@ -575,7 +621,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             shared["rowPredicate"],
             predicate_leaf("Team", "conference", "equals", "West"),
         )
-        self.assertEqual(payload["execution_plan"]["row_predicate"]["value"]["value"], "west")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["predicates"]["row"]["value"]["value"], "west")
 
     def test_haskell_grounds_trend_draft_conference_filter_to_linked_filter(self) -> None:
         payload = call_plan_semantic_draft(
@@ -596,7 +642,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             shared["rowPredicate"],
             predicate_leaf("Team", "conference", "equals", "West"),
         )
-        self.assertEqual(payload["execution_plan"]["row_predicate"]["value"]["value"], "west")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["predicates"]["row"]["value"]["value"], "west")
 
     def test_haskell_canonicalizes_player_home_away_value_aliases(self) -> None:
         payload = call_plan_semantic_draft(
@@ -615,10 +661,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["rowPredicate"], predicate_leaf("PlayerGame", "team_home_or_away", "equals", "road"))
-        self.assertEqual(plan["row_predicate"], predicate_leaf("PlayerGame", "team_home_or_away", "equals", "away"))
+        self.assertEqual(plan["answer_context"]["predicates"]["row"], predicate_leaf("PlayerGame", "team_home_or_away", "equals", "away"))
         self.assertIn("f.team_home_or_away = 'away'", sql)
         self.assertNotIn("f.team_home_or_away = 'road'", sql)
 
@@ -639,11 +685,11 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["rowPredicate"], predicate_leaf("TeamGame", "team_home_or_away", "equals", "on the road"))
-        self.assertEqual(plan["row_predicate"], predicate_leaf("TeamGame", "team_home_or_away", "equals", "away"))
+        self.assertEqual(plan["answer_context"]["predicates"]["row"], predicate_leaf("TeamGame", "team_home_or_away", "equals", "away"))
         self.assertIn("f.team_home_or_away = 'away'", sql)
         self.assertNotIn("f.team_home_or_away = 'on the road'", sql)
 
@@ -673,10 +719,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
                 shared = payload["query"]["spec"]["sharedQuery"]
                 plan = payload["execution_plan"]
-                sql = plan["steps"][0]["sql"]
+                sql = plan["execution"]["steps"][0]["sql"]
 
                 self.assertEqual(shared["rowPredicate"], predicate_leaf("PlayerGame", "is_starter", "equals", raw_value))
-                self.assertEqual(plan["row_predicate"], predicate_leaf("PlayerGame", "is_starter", "equals", expected_value))
+                self.assertEqual(plan["answer_context"]["predicates"]["row"], predicate_leaf("PlayerGame", "is_starter", "equals", expected_value))
                 self.assertIn(f"f.is_starter = '{expected_value}'", sql)
 
     def test_haskell_grounds_row_level_numeric_measure_filter_to_linked_filter(self) -> None:
@@ -694,7 +740,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(
@@ -723,7 +769,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamSeason")
         self.assertEqual(
@@ -752,7 +798,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamSeason")
         self.assertEqual(
@@ -777,7 +823,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(
@@ -801,7 +847,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(
@@ -825,7 +871,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
@@ -853,7 +899,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(payload["query"]["kind"], "metric_query")
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
@@ -895,17 +941,17 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             shared["resultPredicate"],
             result_predicate_leaf("total_points", "greater_than", 200),
         )
         self.assertEqual(resolved["resultPredicateResolved"]["contents"]["resultPredicateKey"], "metric_value")
-        self.assertEqual(plan["result_predicate"], result_predicate_leaf("total_points", "greater_than", 200))
+        self.assertEqual(plan["answer_context"]["predicates"]["result"], result_predicate_leaf("total_points", "greater_than", 200))
         self.assertNotIn(
             {"column_key": "metric_value", "label": "total points", "column_type": "filter_metadata"},
-            plan["display_metadata"],
+            plan["answer_context"]["display"]["metadata"],
         )
         self.assertIn("WHERE metric_value > 200", sql)
 
@@ -925,7 +971,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(
             shared["resultPredicate"],
@@ -933,10 +979,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
         self.assertEqual(resolved["resultPredicateResolved"]["contents"]["resultPredicateColumn"], "minutes_played")
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "average_minutes")
-        self.assertEqual(plan["result_predicate"]["field"]["attribute"], "average_minutes")
+        self.assertEqual(plan["answer_context"]["predicates"]["result"]["field"]["attribute"], "average_minutes")
         self.assertIn(
             {"column_key": "result_predicate_1", "label": "average_minutes", "column_type": "filter_metadata"},
-            plan["display_metadata"],
+            plan["answer_context"]["display"]["metadata"],
         )
         self.assertIn("f.minutes_played AS __result_predicate_1_source", sql)
         self.assertIn("ROUND(AVG(__result_predicate_1_source), 1) AS result_predicate_1", sql)
@@ -964,13 +1010,13 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["resultPredicate"]["kind"], "or")
-        self.assertEqual(plan["result_predicate"]["kind"], "or")
+        self.assertEqual(plan["answer_context"]["predicates"]["result"]["kind"], "or")
         self.assertIn(
             {"column_key": "result_predicate_1", "label": "average_minutes", "column_type": "filter_metadata"},
-            plan["display_metadata"],
+            plan["answer_context"]["display"]["metadata"],
         )
         self.assertIn("ROUND(AVG(__result_predicate_1_source), 1) AS result_predicate_1", sql)
         self.assertIn("(metric_value BETWEEN 20 AND 30 OR result_predicate_1 > 32)", sql)
@@ -995,7 +1041,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamSeason")
         self.assertEqual(shared["metrics"], ["wins"])
@@ -1005,10 +1051,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
         self.assertIsNone(resolved["resultPredicateResolved"]["contents"]["resultPredicateColumn"])
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "win_percentage")
-        self.assertEqual(plan["result_predicate"]["field"]["attribute"], "win_percentage")
+        self.assertEqual(plan["answer_context"]["predicates"]["result"]["field"]["attribute"], "win_percentage")
         self.assertIn(
             {"column_key": "result_predicate_1", "label": "win_percentage", "column_type": "filter_metadata"},
-            plan["display_metadata"],
+            plan["answer_context"]["display"]["metadata"],
         )
         self.assertIn("f.wins", sql)
         self.assertIn("AS result_predicate_1", sql)
@@ -1235,7 +1281,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "average_minutes")
         self.assertIn("ROUND(AVG(__result_predicate_1_source), 1) AS result_predicate_1", sql)
@@ -1257,10 +1303,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "average_points")
-        self.assertEqual(plan["result_predicate"]["field"]["attribute"], "average_points")
+        self.assertEqual(plan["answer_context"]["predicates"]["result"]["field"]["attribute"], "average_points")
         self.assertIn("FROM aggregated_series\nWHERE metric_value > 115\nORDER BY", sql)
 
     def test_haskell_grounds_auxiliary_result_filter_for_object_query(self) -> None:
@@ -1278,7 +1324,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
 
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["resultPredicate"]["field"]["attribute"], "average_minutes")
@@ -1303,9 +1349,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["metrics"], ["total_points"])
         self.assertEqual(shared["dimensions"], ["team_name"])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
-        self.assertEqual(payload["execution_plan"]["entity_label_plural"], "Teams")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["subject"]["plural"], "Teams")
         self.assertEqual(
-            payload["execution_plan"]["display_metadata"],
+            payload["execution_plan"]["answer_context"]["display"]["metadata"],
             [
                 {
                     "column_key": "games_played",
@@ -1336,8 +1382,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
         self.assertEqual(shared["filters"], [{"kind": "last_n_days", "value": 30}])
-        self.assertEqual(plan["time_filter"], "last_n_days")
-        self.assertEqual(plan["time_window_days"], 30)
+        self.assertEqual(plan["answer_context"]["time"]["filter"], "last_n_days")
+        self.assertEqual(plan["answer_context"]["time"]["window_days"], 30)
 
     def test_haskell_grounds_since_date_time_scope_for_ranking(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1354,10 +1400,10 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["filters"], [{"kind": "date_from", "value": "2025-01-01"}])
-        self.assertEqual(plan["time_filter"], "since_date")
-        self.assertEqual(plan["time_start_date"], "2025-01-01")
+        self.assertEqual(plan["answer_context"]["time"]["filter"], "since_date")
+        self.assertEqual(plan["answer_context"]["time"]["start_date"], "2025-01-01")
         self.assertIn("f.game_date >= DATE '2025-01-01'", sql)
 
     def test_haskell_grounds_between_dates_time_scope_for_find(self) -> None:
@@ -1374,7 +1420,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         spec = payload["query"]["spec"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
         self.assertEqual(
             spec["findFilters"],
             [
@@ -1382,9 +1428,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
                 {"kind": "date_to", "value": "2025-02-01"},
             ],
         )
-        self.assertEqual(plan["time_filter"], "date_range")
-        self.assertEqual(plan["time_start_date"], "2025-01-01")
-        self.assertEqual(plan["time_end_date"], "2025-02-01")
+        self.assertEqual(plan["answer_context"]["time"]["filter"], "date_range")
+        self.assertEqual(plan["answer_context"]["time"]["start_date"], "2025-01-01")
+        self.assertEqual(plan["answer_context"]["time"]["end_date"], "2025-02-01")
         self.assertIn("f.game_date >= DATE '2025-01-01'", sql)
         self.assertIn("f.game_date <= DATE '2025-02-01'", sql)
 
@@ -1406,7 +1452,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["metrics"], ["total_points"])
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["limit"], 7)
-        self.assertEqual(payload["execution_plan"]["limit"], 7)
+        self.assertEqual(payload["execution_plan"]["answer_context"]["ranking"]["limit"], 7)
 
     def test_haskell_grounds_bottom_rank_sort_without_desc_only_gate(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1422,9 +1468,9 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "total_points"}])
-        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["metric"]["order_direction"], "ASC")
         self.assertIn("ORDER BY metric_value ASC, entity_name ASC", sql)
 
     def test_haskell_uses_rank_intent_and_metric_polarity_for_defensive_rating(self) -> None:
@@ -1461,9 +1507,13 @@ class SemanticDraftGroundingTests(unittest.TestCase):
                 self.assertEqual(shared["orders"], [{"kind": expected_direction, "metric": "defensive_rating"}])
                 self.assertEqual(payload["query"]["spec"]["rankIntentLabel"], expected_label)
                 self.assertEqual(payload["resolved_query"]["resolved"]["metricRankIntentLabel"], expected_label)
-                self.assertEqual(payload["execution_plan"]["rank_intent_label"], expected_label)
+                self.assertEqual(payload["execution_plan"]["answer_context"]["ranking"]["intent_label"], expected_label)
                 self.assertEqual(
-                    payload["execution_plan"]["metric_order_direction"],
+                    payload["execution_plan"]["answer_context"]["ranking"]["intent_label"],
+                    expected_label,
+                )
+                self.assertEqual(
+                    payload["execution_plan"]["answer_context"]["metric"]["order_direction"],
                     expected_direction.upper(),
                 )
 
@@ -1488,8 +1538,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "defensive_rating"}])
-        self.assertEqual(payload["execution_plan"]["rank_intent_label"], "best")
-        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["ranking"]["intent_label"], "best")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["metric"]["order_direction"], "ASC")
 
     def test_haskell_falls_back_to_metric_aware_legacy_sort_words(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1511,8 +1561,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         self.assertEqual(shared["orders"], [{"kind": "asc", "metric": "defensive_rating"}])
-        self.assertEqual(payload["execution_plan"]["rank_intent_label"], "best")
-        self.assertEqual(payload["execution_plan"]["metric_order_direction"], "ASC")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["ranking"]["intent_label"], "best")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["metric"]["order_direction"], "ASC")
 
     def test_haskell_uses_quantity_intent_independent_of_metric_polarity(self) -> None:
         cases = [
@@ -1539,7 +1589,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
                 shared = payload["query"]["spec"]["sharedQuery"]
                 self.assertEqual(shared["metrics"], ["total_turnovers"])
                 self.assertEqual(shared["orders"], [{"kind": expected_direction, "metric": "total_turnovers"}])
-                self.assertEqual(payload["execution_plan"]["rank_intent_label"], expected_label)
+                self.assertEqual(payload["execution_plan"]["answer_context"]["ranking"]["intent_label"], expected_label)
 
     def test_haskell_grounds_season_rank_draft_through_ontology_surface(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1585,7 +1635,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
         self.assertEqual(
             shared["filters"],
@@ -1616,7 +1666,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(
             shared["filters"],
@@ -1652,7 +1702,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(shared["orders"], [{"kind": "desc", "metric": "total_points"}])
-        self.assertEqual(payload["execution_plan"]["result_shape"], "object_rows")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "object_rows")
 
     def test_haskell_grounds_scoring_totals_object_draft_to_total_points(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1669,7 +1719,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["metrics"], ["total_points"])
-        self.assertEqual(payload["execution_plan"]["result_shape"], "object_rows")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "object_rows")
 
     def test_haskell_grounds_season_object_draft_to_object_query(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1695,7 +1745,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
                 {"kind": "season_type", "value": "regular_season"},
             ],
         )
-        self.assertEqual(payload["execution_plan"]["result_shape"], "object_rows")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "object_rows")
 
     def test_haskell_grounds_season_object_when_year_is_in_filters(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1714,7 +1764,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         shared = payload["query"]["spec"]["sharedQuery"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
         self.assertEqual(
@@ -1745,7 +1795,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(resolved["windowGames"], 8)
@@ -1772,7 +1822,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["team_name"])
         self.assertEqual(shared["timeGrain"], "month")
         self.assertEqual(shared["filters"], [{"kind": "past_year"}])
-        self.assertEqual(payload["execution_plan"]["result_shape"], "time_series")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "time_series")
 
     def test_haskell_grounds_weekly_team_trend_from_same_date_surface(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1792,7 +1842,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["timeGrain"], "week")
         self.assertIn("DATE_TRUNC('week'", resolved["timeBucketExpression"])
-        self.assertEqual(payload["execution_plan"]["time_grain"], "week")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["time"]["grain"], "week")
 
     def test_haskell_normalizes_user_facing_trend_grain_phrases(self) -> None:
         cases = [
@@ -1823,7 +1873,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
                 shared = payload["query"]["spec"]["sharedQuery"]
                 self.assertEqual(shared["timeGrain"], expected_grain)
-                self.assertEqual(payload["execution_plan"]["time_grain"], expected_grain)
+                self.assertEqual(payload["execution_plan"]["answer_context"]["time"]["grain"], expected_grain)
 
     def test_haskell_grounds_season_team_trend_through_season_surface(self) -> None:
         payload = call_plan_semantic_draft(
@@ -1867,7 +1917,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         plan = payload["execution_plan"]
-        sql = plan["steps"][0]["sql"]
+        sql = plan["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["timeGrain"], "month")
         self.assertEqual(
@@ -1880,8 +1930,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertIsNone(shared["rowPredicate"])
         self.assertEqual(resolved["trendSeasonLabel"], "2025-26")
         self.assertEqual(resolved["trendSeasonType"], "regular_season")
-        self.assertEqual(plan["season_label"], "2025-26")
-        self.assertEqual(plan["season_type"], "regular_season")
+        self.assertEqual(plan["answer_context"]["time"]["season_label"], "2025-26")
+        self.assertEqual(plan["answer_context"]["time"]["season_type"], "regular_season")
         self.assertIn("f.season_year = '2025-26'", sql)
         self.assertIn("f.season_type = 'regular_season'", sql)
 
@@ -1935,8 +1985,8 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["filters"], [{"kind": "last_n_games", "value": 10}])
         self.assertEqual(comparison["targetObject"], "Player")
-        self.assertEqual(payload["execution_plan"]["result_shape"], "comparison")
-        self.assertEqual(payload["execution_plan"]["plan_type"], "multi_step")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "comparison")
+        self.assertEqual(payload["execution_plan"]["execution"]["plan_type"], "multi_step")
 
     def test_haskell_rejects_result_filters_for_comparison_drafts(self) -> None:
         with self.assertRaises(AssertionError) as context:
@@ -1980,7 +2030,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(resolved["windowGames"], 8)
         self.assertEqual(resolved["seasonLabel"], "2024-25")
@@ -2008,7 +2058,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerSeason")
         self.assertEqual(shared["metrics"], ["points_total"])
@@ -2020,7 +2070,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
             ],
         )
         self.assertEqual(resolved["windowGames"], 0)
-        self.assertEqual(execution_plan["season_label"], "2025-26")
+        self.assertEqual(execution_plan["answer_context"]["time"]["season_label"], "2025-26")
         self.assertIn("WITH season_rows AS", sql)
         self.assertIn("f.points_total AS metric_value", sql)
         self.assertNotIn("game_rank <=", sql)
@@ -2046,14 +2096,14 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["metrics"], ["total_points"])
         self.assertEqual(shared["timeGrain"], "month")
         self.assertEqual(resolved["factTableName"], "player_game")
         self.assertEqual(resolved["metricTimeGrain"], "month")
-        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertEqual(execution_plan["answer_context"]["time"]["grain"], "month")
         self.assertIn("WITH recent_rows AS", sql)
         self.assertIn("STRFTIME(f.game_date, '%Y-%m') AS time_bucket", sql)
         self.assertIn("f.season_year = '2025-26'", sql)
@@ -2078,7 +2128,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
         )
 
         comparison = payload["query"]["spec"]["comparison"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(len(comparison["entities"]), 3)
         self.assertIn("1628973", sql)
         self.assertIn("1630169", sql)
@@ -2105,7 +2155,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         self.assertEqual(payload["query"]["kind"], "find_query")
         self.assertEqual(payload["query"]["spec"]["findCoreFactObject"], "Team")
-        self.assertEqual(payload["execution_plan"]["result_shape"], "find_rows")
+        self.assertEqual(payload["execution_plan"]["answer_context"]["result_shape"], "find_rows")
 
     def test_haskell_grounds_find_players_with_fact_measure_predicate(self) -> None:
         payload = call_plan_semantic_draft(
@@ -2129,7 +2179,7 @@ class SemanticDraftGroundingTests(unittest.TestCase):
 
         query = payload["query"]["spec"]
         resolved = payload["resolved_query"]["resolved"]
-        sql = payload["execution_plan"]["steps"][0]["sql"]
+        sql = payload["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertEqual(payload["query"]["kind"], "find_query")
         self.assertEqual(query["findCoreFactObject"], "PlayerGame")
         self.assertEqual(query["findTargetObject"], "Player")

@@ -61,29 +61,36 @@ class PredicateObservabilityTests(unittest.TestCase):
                 },
             },
             "execution_plan": {
-                "row_predicate": {
-                    "kind": "leaf",
-                    "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
-                    "operator": "equals",
-                    "value": {"kind": "scalar", "value": "Lakers"},
+                "execution": {
+                    "plan_type": "metric_query",
+                    "steps": [
+                        {
+                            "kind": "run_sql",
+                            "sql": "SELECT *\nFROM ranked_entities\nWHERE result_predicate_1 > 30\nORDER BY metric_value DESC",
+                            "analysis_spec": None,
+                        }
+                    ],
                 },
-                "result_predicate": {
-                    "kind": "leaf",
-                    "field": {
-                        "targetObject": "",
-                        "attribute": "average_minutes",
-                        "location": "result",
-                    },
-                    "operator": "greater_than",
-                    "value": {"kind": "scalar", "value": 30},
-                },
-                "steps": [
-                    {
-                        "kind": "run_sql",
-                        "sql": "SELECT *\nFROM ranked_entities\nWHERE result_predicate_1 > 30\nORDER BY metric_value DESC",
-                        "analysis_spec": None,
+                "answer_context": {
+                    "predicates": {
+                        "row": {
+                            "kind": "leaf",
+                            "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                            "operator": "equals",
+                            "value": {"kind": "scalar", "value": "Lakers"},
+                        },
+                        "result": {
+                            "kind": "leaf",
+                            "field": {
+                                "targetObject": "",
+                                "attribute": "average_minutes",
+                                "location": "result",
+                            },
+                            "operator": "greater_than",
+                            "value": {"kind": "scalar", "value": 30},
+                        },
                     }
-                ],
+                },
             },
         }
 
@@ -127,13 +134,27 @@ class PredicateObservabilityTests(unittest.TestCase):
                     },
                 },
                 "execution_plan": {
-                    "find_predicate_tree": {
-                        "kind": "leaf",
-                        "field": {"targetObject": "Player", "attribute": "full_name", "location": "row"},
-                        "operator": "contains",
-                        "value": {"kind": "scalar", "value": "Smith"},
+                    "execution": {
+                        "plan_type": "find_query",
+                        "steps": [
+                            {
+                                "kind": "run_sql",
+                                "sql": "SELECT *\nWHERE f.full_name ILIKE '%Smith%'",
+                                "analysis_spec": None,
+                            }
+                        ],
                     },
-                    "steps": [{"kind": "run_sql", "sql": "SELECT *\nWHERE f.full_name ILIKE '%Smith%'", "analysis_spec": None}],
+                    "answer_context": {
+                        "find": {
+                            "predicate_tree": {
+                                "kind": "leaf",
+                                "field": {"targetObject": "Player", "attribute": "full_name", "location": "row"},
+                                "operator": "contains",
+                                "value": {"kind": "scalar", "value": "Smith"},
+                            },
+                            "filters": [],
+                        }
+                    },
                 },
             },
         )

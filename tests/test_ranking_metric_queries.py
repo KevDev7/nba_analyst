@@ -407,7 +407,7 @@ class RankingMetricQueryTests(unittest.TestCase):
         self.assertEqual(resolved["metricFormula"]["aggregationKind"], "avg")
         self.assertEqual(resolved["metricFormula"]["expressionText"], "AVG(points)")
         self.assertEqual(resolved["filterLocation"], "fact_table")
-        self.assertEqual(planner_output["execution_plan"]["metric"], "average_points")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["metric"]["key"], "average_points")
 
     def test_derived_ratio_metrics_use_raw_dependencies(self) -> None:
         for metric_case in DERIVED_RATIO_METRIC_CASES:
@@ -417,7 +417,7 @@ class RankingMetricQueryTests(unittest.TestCase):
                 planner_output = call_plan_query_json(player_metric_query_payload(metric, 5))
 
                 metric_formula = planner_output["resolved_query"]["resolved"]["metricFormula"]
-                sql = planner_output["execution_plan"]["steps"][0]["sql"]
+                sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
                 self.assertEqual(metric_formula["aggregationKind"], "ratio")
                 self.assertEqual(metric_formula["sourceAttributes"], source_attributes)
@@ -438,7 +438,7 @@ class RankingMetricQueryTests(unittest.TestCase):
                 planner_output = call_plan_query_json(player_metric_query_payload(metric, None))
                 metric_formula = planner_output["resolved_query"]["resolved"]["metricFormula"]
 
-                actual_rows = run_sql(planner_output["execution_plan"]["steps"][0]["sql"])
+                actual_rows = run_sql(planner_output["execution_plan"]["execution"]["steps"][0]["sql"])
                 expected_rows = run_sql(
                     f"""
                     WITH recent_rows AS (
@@ -481,7 +481,7 @@ class RankingMetricQueryTests(unittest.TestCase):
                 planner_output = call_plan_query_json(team_metric_query_payload(metric, 5))
 
                 metric_formula = planner_output["resolved_query"]["resolved"]["metricFormula"]
-                sql = planner_output["execution_plan"]["steps"][0]["sql"]
+                sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
                 self.assertEqual(metric_formula["aggregationKind"], "ratio")
                 self.assertEqual(metric_formula["sourceAttributes"], source_attributes)
@@ -500,7 +500,7 @@ class RankingMetricQueryTests(unittest.TestCase):
                 planner_output = call_plan_query_json(team_metric_query_payload(metric, None))
                 metric_formula = planner_output["resolved_query"]["resolved"]["metricFormula"]
 
-                actual_rows = run_sql(planner_output["execution_plan"]["steps"][0]["sql"])
+                actual_rows = run_sql(planner_output["execution_plan"]["execution"]["steps"][0]["sql"])
                 expected_rows = run_sql(
                     f"""
                     WITH recent_rows AS (
@@ -541,7 +541,7 @@ class RankingMetricQueryTests(unittest.TestCase):
             with self.subTest(metric=metric):
                 planner_output = call_plan_query_json(player_comparison_query_payload(metric))
                 metric_formula = planner_output["resolved_query"]["resolved"]["metricFormula"]
-                sql = planner_output["execution_plan"]["steps"][0]["sql"]
+                sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
 
                 self.assertFalse(
                     references_retired_column(sql, retired_column),

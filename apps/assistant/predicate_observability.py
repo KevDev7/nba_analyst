@@ -81,19 +81,23 @@ def _resolved_predicates(resolved_query: dict[str, Any]) -> dict[str, Any]:
 
 
 def _plan_predicates(execution_plan: dict[str, Any]) -> dict[str, Any]:
+    answer_context = _as_dict(execution_plan.get("answer_context"))
+    find_context = _as_dict(answer_context.get("find"))
+    predicate_context = _as_dict(answer_context.get("predicates"))
     return _compact(
         {
-            "find_predicate_tree": execution_plan.get("find_predicate_tree"),
-            "find_filters": execution_plan.get("find_filters"),
-            "row_predicate": execution_plan.get("row_predicate"),
-            "result_predicate": execution_plan.get("result_predicate"),
+            "find_predicate_tree": find_context.get("predicate_tree"),
+            "find_filters": find_context.get("filters"),
+            "row_predicate": predicate_context.get("row"),
+            "result_predicate": predicate_context.get("result"),
         }
     )
 
 
 def _sql_predicates(execution_plan: dict[str, Any]) -> list[dict[str, Any]]:
     traces: list[dict[str, Any]] = []
-    for index, step in enumerate(execution_plan.get("steps", []), start=1):
+    execution = _as_dict(execution_plan.get("execution"))
+    for index, step in enumerate(execution.get("steps", []), start=1):
         if not isinstance(step, dict) or step.get("kind") != "run_sql":
             continue
         clauses = _sql_predicate_clauses(str(step.get("sql") or ""))

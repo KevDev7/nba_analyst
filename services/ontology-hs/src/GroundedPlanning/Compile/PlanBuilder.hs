@@ -41,44 +41,72 @@ compileMetricExecutionPlan resolved@ResolvedMetricQuery {windowGames = metricWin
         case resolved of
           ResolvedMetricQuery {metricFormula = currentFormula} -> currentFormula
       (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject metricRowObjectName
-   in
-  ExecutionPlan
-    { plan_type =
-        if comparisonRequestedValue resolved
-          then "multi_step"
-          else "single_sql"
-    , query_kind = "metric_query"
-    , result_shape =
-        if comparisonRequestedValue resolved
-          then "comparison"
-          else resolvedResultShape
-    , entity_label_singular = singularLabel
-    , entity_label_plural = pluralLabel
-    , context_label = contextValueLabel
-    , metric = metricKey formula
-    , metric_aggregation = aggregationKind formula
-    , metric_order_direction = metricOrderDirectionValue
-    , rank_intent_label = maybeRankIntentLabel
-    , window_games = metricWindowGames
-    , time_grain = maybeMetricTimeGrain
-    , time_filter = Just metricTimeFilterKindValue
-    , time_window_days = timeWindowDaysFromFilters metricTimeFilters
-    , time_start_date = timeStartDateFromFilters metricTimeFilters
-    , time_end_date = timeEndDateFromFilters metricTimeFilters
-    , season_label = metricSeasonLabel
-    , season_type = metricSeasonType
-    , limit = maybe 0 id metricQueryLimit
-    , assumptions = metricAssumptions
-    , find_predicate_tree = Nothing
-    , find_filters = []
-    , find_orders = []
-    , row_predicate = planRowPredicateTree <$> metricRowPredicate
-    , result_predicate = planResultPredicateTree <$> metricResultPredicate
-    , grouping_columns = map planGroupingColumn metricGroupingDimensions
-    , display_metadata = map planDisplayMetadata metricDisplayMetadata <> map planResultPredicateDisplayMetadata (resultPredicateAuxiliaryLeaves metricResultPredicate)
-    , display_metrics = planDisplayMetrics metricDisplayMetricFormulas
-    , steps = compileMetricSteps resolved
-    }
+      resultShape =
+          if comparisonRequestedValue resolved
+            then "comparison"
+            else resolvedResultShape
+     in
+    ExecutionPlan
+      { execution =
+          PlanExecutionContext
+            { plan_type =
+                if comparisonRequestedValue resolved
+                  then "multi_step"
+                  else "single_sql"
+            , steps = compileMetricSteps resolved
+            }
+      , answer_context =
+          AnswerContext
+            { answerContextQueryKind = "metric_query"
+            , answerContextResultShape = resultShape
+            , answerContextSubject =
+                AnswerSubjectContext
+                  { answerSubjectSingular = singularLabel
+                  , answerSubjectPlural = pluralLabel
+                  , answerSubjectContextLabel = contextValueLabel
+                  }
+            , answerContextMetric =
+                AnswerMetricContext
+                  { answerMetricKey = metricKey formula
+                  , answerMetricAggregation = aggregationKind formula
+                  , answerMetricOrderDirection = metricOrderDirectionValue
+                  }
+            , answerContextTime =
+                AnswerTimeContext
+                  { answerTimeWindowGames = metricWindowGames
+                  , answerTimeGrain = maybeMetricTimeGrain
+                  , answerTimeFilter = Just metricTimeFilterKindValue
+                  , answerTimeWindowDays = timeWindowDaysFromFilters metricTimeFilters
+                  , answerTimeStartDate = timeStartDateFromFilters metricTimeFilters
+                  , answerTimeEndDate = timeEndDateFromFilters metricTimeFilters
+                  , answerTimeSeasonLabel = metricSeasonLabel
+                  , answerTimeSeasonType = metricSeasonType
+                  }
+            , answerContextRanking =
+                AnswerRankingContext
+                  { answerRankingIntentLabel = maybeRankIntentLabel
+                  , answerRankingLimit = maybe 0 id metricQueryLimit
+                  }
+            , answerContextFind =
+                AnswerFindContext
+                  { answerFindPredicateTree = Nothing
+                  , answerFindFilters = []
+                  , answerFindOrders = []
+                  }
+            , answerContextPredicates =
+                AnswerPredicateContext
+                  { answerRowPredicate = planRowPredicateTree <$> metricRowPredicate
+                  , answerResultPredicate = planResultPredicateTree <$> metricResultPredicate
+                  }
+            , answerContextDisplay =
+                AnswerDisplayContext
+                  { answerGroupingColumns = map planGroupingColumn metricGroupingDimensions
+                  , answerDisplayMetadata = map planDisplayMetadata metricDisplayMetadata <> map planResultPredicateDisplayMetadata (resultPredicateAuxiliaryLeaves metricResultPredicate)
+                  , answerDisplayMetrics = planDisplayMetrics metricDisplayMetricFormulas
+                  }
+            , answerContextAssumptions = metricAssumptions
+            }
+      }
 
 -- Build the top-level execution plan for trend/time-series questions.
 -- Trend plans are a single SQL step in the current runtime shape.
@@ -89,44 +117,71 @@ compileTrendExecutionPlan resolved@ResolvedTrendQuery {resolvedAssumptions = tre
           Just seriesObjectName ->
             labelsForRowObject seriesObjectName
           Nothing -> ("Series", "Series", "")
-   in
-  ExecutionPlan
-    { plan_type = "single_sql"
-    , query_kind = "metric_query"
-    , result_shape = "time_series"
-    , entity_label_singular = singularLabel
-    , entity_label_plural = pluralLabel
-    , context_label = contextValueLabel
-    , metric = metricKey formula
-    , metric_aggregation = aggregationKind formula
-    , metric_order_direction = ""
-    , rank_intent_label = Nothing
-    , window_games = 0
-    , time_grain = Just trendTimeGrain
-    , time_filter = Just trendTimeFilter
-    , time_window_days = timeWindowDaysFromFilters trendFilterValues
-    , time_start_date = timeStartDateFromFilters trendFilterValues
-    , time_end_date = timeEndDateFromFilters trendFilterValues
-    , season_label = maybeTrendSeasonLabel <|> trendSeasonLabelFromFilters trendFilterValues
-    , season_type = maybeTrendSeasonType <|> trendSeasonTypeFromFilters trendFilterValues
-    , limit = 0
-    , assumptions = trendAssumptions
-    , find_predicate_tree = Nothing
-    , find_filters = []
-    , find_orders = []
-    , row_predicate = planRowPredicateTree <$> trendRowPredicate
-    , result_predicate = planResultPredicateTree <$> trendResultPredicate
-    , grouping_columns = map planGroupingColumn groupingDimensions
-    , display_metadata = []
-    , display_metrics = planDisplayMetrics trendMetricFormulas
-    , steps =
-        [ PlanStep
-            { kind = "run_sql"
-            , sql = Just (compileTrendSql resolved)
-            , analysis_spec = Nothing
+     in
+    ExecutionPlan
+      { execution =
+          PlanExecutionContext
+            { plan_type = "single_sql"
+            , steps =
+                [ PlanStep
+                    { kind = "run_sql"
+                    , sql = Just (compileTrendSql resolved)
+                    , analysis_spec = Nothing
+                    }
+                ]
             }
-        ]
-    }
+      , answer_context =
+          AnswerContext
+            { answerContextQueryKind = "metric_query"
+            , answerContextResultShape = "time_series"
+            , answerContextSubject =
+                AnswerSubjectContext
+                  { answerSubjectSingular = singularLabel
+                  , answerSubjectPlural = pluralLabel
+                  , answerSubjectContextLabel = contextValueLabel
+                  }
+            , answerContextMetric =
+                AnswerMetricContext
+                  { answerMetricKey = metricKey formula
+                  , answerMetricAggregation = aggregationKind formula
+                  , answerMetricOrderDirection = ""
+                  }
+            , answerContextTime =
+                AnswerTimeContext
+                  { answerTimeWindowGames = 0
+                  , answerTimeGrain = Just trendTimeGrain
+                  , answerTimeFilter = Just trendTimeFilter
+                  , answerTimeWindowDays = timeWindowDaysFromFilters trendFilterValues
+                  , answerTimeStartDate = timeStartDateFromFilters trendFilterValues
+                  , answerTimeEndDate = timeEndDateFromFilters trendFilterValues
+                  , answerTimeSeasonLabel = maybeTrendSeasonLabel <|> trendSeasonLabelFromFilters trendFilterValues
+                  , answerTimeSeasonType = maybeTrendSeasonType <|> trendSeasonTypeFromFilters trendFilterValues
+                  }
+            , answerContextRanking =
+                AnswerRankingContext
+                  { answerRankingIntentLabel = Nothing
+                  , answerRankingLimit = 0
+                  }
+            , answerContextFind =
+                AnswerFindContext
+                  { answerFindPredicateTree = Nothing
+                  , answerFindFilters = []
+                  , answerFindOrders = []
+                  }
+            , answerContextPredicates =
+                AnswerPredicateContext
+                  { answerRowPredicate = planRowPredicateTree <$> trendRowPredicate
+                  , answerResultPredicate = planResultPredicateTree <$> trendResultPredicate
+                  }
+            , answerContextDisplay =
+                AnswerDisplayContext
+                  { answerGroupingColumns = map planGroupingColumn groupingDimensions
+                  , answerDisplayMetadata = []
+                  , answerDisplayMetrics = planDisplayMetrics trendMetricFormulas
+                  }
+            , answerContextAssumptions = trendAssumptions
+            }
+      }
 
 -- Build the top-level execution plan for object-row questions.
 -- Example shape: one row per player or one row per team.
@@ -136,85 +191,139 @@ compileObjectExecutionPlan resolved@ResolvedObjectQuery {windowGames = objectWin
         case resolved of
           ResolvedObjectQuery {metricFormula = currentFormula} -> currentFormula
       (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject objectRowObjectName
-   in
-  ExecutionPlan
-    { plan_type = "single_sql"
-    , query_kind = "object_query"
-    , result_shape = "object_rows"
-    , entity_label_singular = singularLabel
-    , entity_label_plural = pluralLabel
-    , context_label = contextValueLabel
-    , metric = metricKey formula
-    , metric_aggregation = aggregationKind formula
-    , metric_order_direction = objectOrderDirectionValue
-    , rank_intent_label = Nothing
-    , window_games = objectWindowGames
-    , time_grain = Nothing
-    , time_filter = Just objectTimeFilterKind
-    , time_window_days = timeWindowDaysFromFilters objectTimeFilters
-    , time_start_date = timeStartDateFromFilters objectTimeFilters
-    , time_end_date = timeEndDateFromFilters objectTimeFilters
-    , season_label = objectSeasonLabel
-    , season_type = objectSeasonType
-    , limit = maybe 0 id objectQueryLimit
-    , assumptions = objectAssumptions
-    , find_predicate_tree = Nothing
-    , find_filters = []
-    , find_orders = []
-    , row_predicate = planRowPredicateTree <$> objectRowPredicate
-    , result_predicate = planResultPredicateTree <$> objectResultPredicate
-    , grouping_columns = []
-    , display_metadata = map planDisplayMetadata objectDisplayMetadata <> map planResultPredicateDisplayMetadata (resultPredicateAuxiliaryLeaves objectResultPredicate)
-    , display_metrics = planDisplayMetrics objectDisplayMetricFormulas
-    , steps =
-        [ PlanStep
-            { kind = "run_sql"
-            , sql = Just (compileObjectSql resolved)
-            , analysis_spec = Nothing
+     in
+    ExecutionPlan
+      { execution =
+          PlanExecutionContext
+            { plan_type = "single_sql"
+            , steps =
+                [ PlanStep
+                    { kind = "run_sql"
+                    , sql = Just (compileObjectSql resolved)
+                    , analysis_spec = Nothing
+                    }
+                ]
             }
-        ]
-    }
+      , answer_context =
+          AnswerContext
+            { answerContextQueryKind = "object_query"
+            , answerContextResultShape = "object_rows"
+            , answerContextSubject =
+                AnswerSubjectContext
+                  { answerSubjectSingular = singularLabel
+                  , answerSubjectPlural = pluralLabel
+                  , answerSubjectContextLabel = contextValueLabel
+                  }
+            , answerContextMetric =
+                AnswerMetricContext
+                  { answerMetricKey = metricKey formula
+                  , answerMetricAggregation = aggregationKind formula
+                  , answerMetricOrderDirection = objectOrderDirectionValue
+                  }
+            , answerContextTime =
+                AnswerTimeContext
+                  { answerTimeWindowGames = objectWindowGames
+                  , answerTimeGrain = Nothing
+                  , answerTimeFilter = Just objectTimeFilterKind
+                  , answerTimeWindowDays = timeWindowDaysFromFilters objectTimeFilters
+                  , answerTimeStartDate = timeStartDateFromFilters objectTimeFilters
+                  , answerTimeEndDate = timeEndDateFromFilters objectTimeFilters
+                  , answerTimeSeasonLabel = objectSeasonLabel
+                  , answerTimeSeasonType = objectSeasonType
+                  }
+            , answerContextRanking =
+                AnswerRankingContext
+                  { answerRankingIntentLabel = Nothing
+                  , answerRankingLimit = maybe 0 id objectQueryLimit
+                  }
+            , answerContextFind =
+                AnswerFindContext
+                  { answerFindPredicateTree = Nothing
+                  , answerFindFilters = []
+                  , answerFindOrders = []
+                  }
+            , answerContextPredicates =
+                AnswerPredicateContext
+                  { answerRowPredicate = planRowPredicateTree <$> objectRowPredicate
+                  , answerResultPredicate = planResultPredicateTree <$> objectResultPredicate
+                  }
+            , answerContextDisplay =
+                AnswerDisplayContext
+                  { answerGroupingColumns = []
+                  , answerDisplayMetadata = map planDisplayMetadata objectDisplayMetadata <> map planResultPredicateDisplayMetadata (resultPredicateAuxiliaryLeaves objectResultPredicate)
+                  , answerDisplayMetrics = planDisplayMetrics objectDisplayMetricFormulas
+                  }
+            , answerContextAssumptions = objectAssumptions
+            }
+      }
 
 compileFindExecutionPlan :: ResolvedFindQuery -> ExecutionPlan
 compileFindExecutionPlan resolved@ResolvedFindQuery {resolvedFindTargetObjectName = targetObjectNameValue, resolvedFindLimit = maybeFindLimit, resolvedFindAssumptions = findAssumptions, resolvedFindPredicateTree = maybePredicateTree, resolvedFindFilters = filterValues, resolvedFindOrders = orderValues} =
   let (singularLabel, pluralLabel, contextValueLabel) = labelsForRowObject targetObjectNameValue
-   in ExecutionPlan
-        { plan_type = "single_sql"
-        , query_kind = "find_query"
-        , result_shape = "find_rows"
-        , entity_label_singular = singularLabel
-        , entity_label_plural = pluralLabel
-        , context_label = contextValueLabel
-        , metric = ""
-        , metric_aggregation = ""
-        , metric_order_direction = ""
-        , rank_intent_label = Nothing
-        , window_games = 0
-        , time_grain = Nothing
-        , time_filter = Just (metricTimeFilterKind filterValues)
-        , time_window_days = timeWindowDaysFromFilters filterValues
-        , time_start_date = timeStartDateFromFilters filterValues
-        , time_end_date = timeEndDateFromFilters filterValues
-        , season_label = Nothing
-        , season_type = Nothing
-        , limit = maybe 0 id maybeFindLimit
-        , assumptions = findAssumptions
-        , find_predicate_tree = planFindPredicateTree <$> maybePredicateTree
-        , find_filters = map planFindFilter filterValues
-        , find_orders = map planFindOrder orderValues
-        , row_predicate = Nothing
-        , result_predicate = Nothing
-        , grouping_columns = []
-        , display_metadata = []
-        , display_metrics = []
-        , steps =
-            [ PlanStep
-                { kind = "run_sql"
-                , sql = Just (compileFindSql resolved)
-                , analysis_spec = Nothing
+     in ExecutionPlan
+          { execution =
+              PlanExecutionContext
+                { plan_type = "single_sql"
+                , steps =
+                    [ PlanStep
+                        { kind = "run_sql"
+                        , sql = Just (compileFindSql resolved)
+                        , analysis_spec = Nothing
+                        }
+                    ]
                 }
-            ]
-        }
+          , answer_context =
+              AnswerContext
+                { answerContextQueryKind = "find_query"
+                , answerContextResultShape = "find_rows"
+                , answerContextSubject =
+                    AnswerSubjectContext
+                      { answerSubjectSingular = singularLabel
+                      , answerSubjectPlural = pluralLabel
+                      , answerSubjectContextLabel = contextValueLabel
+                      }
+                , answerContextMetric =
+                    AnswerMetricContext
+                      { answerMetricKey = ""
+                      , answerMetricAggregation = ""
+                      , answerMetricOrderDirection = ""
+                      }
+                , answerContextTime =
+                    AnswerTimeContext
+                      { answerTimeWindowGames = 0
+                      , answerTimeGrain = Nothing
+                      , answerTimeFilter = Just (metricTimeFilterKind filterValues)
+                      , answerTimeWindowDays = timeWindowDaysFromFilters filterValues
+                      , answerTimeStartDate = timeStartDateFromFilters filterValues
+                      , answerTimeEndDate = timeEndDateFromFilters filterValues
+                      , answerTimeSeasonLabel = Nothing
+                      , answerTimeSeasonType = Nothing
+                      }
+                , answerContextRanking =
+                    AnswerRankingContext
+                      { answerRankingIntentLabel = Nothing
+                      , answerRankingLimit = maybe 0 id maybeFindLimit
+                      }
+                , answerContextFind =
+                    AnswerFindContext
+                      { answerFindPredicateTree = planFindPredicateTree <$> maybePredicateTree
+                      , answerFindFilters = map planFindFilter filterValues
+                      , answerFindOrders = map planFindOrder orderValues
+                      }
+                , answerContextPredicates =
+                    AnswerPredicateContext
+                      { answerRowPredicate = Nothing
+                      , answerResultPredicate = Nothing
+                      }
+                , answerContextDisplay =
+                    AnswerDisplayContext
+                      { answerGroupingColumns = []
+                      , answerDisplayMetadata = []
+                      , answerDisplayMetrics = []
+                      }
+                , answerContextAssumptions = findAssumptions
+                }
+          }
 
 planFindPredicateTree :: ResolvedFindPredicateTree -> QI.Predicate
 planFindPredicateTree predicateTree =

@@ -452,7 +452,7 @@ class SemanticAssumptionTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            planner_output["execution_plan"]["assumptions"],
+            planner_output["execution_plan"]["answer_context"]["assumptions"],
             [
                 "Assumed season year is 2025-26.",
                 "Assumed season type is regular season.",

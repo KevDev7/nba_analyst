@@ -148,7 +148,7 @@ class TrendPlanningTests(unittest.TestCase):
         resolved = planner_output["resolved_query"]["resolved"]
 
         self.assertEqual(resolved["trendRowPredicateResolved"]["contents"]["rowPredicateColumn"], "team_name")
-        self.assertIn("JOIN team", planner_output["execution_plan"]["steps"][0]["sql"])
+        self.assertIn("JOIN team", planner_output["execution_plan"]["execution"]["steps"][0]["sql"])
 
     def test_explicit_order_trend_is_rejected(self) -> None:
         payload = {

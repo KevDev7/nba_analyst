@@ -107,13 +107,13 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["dimensions"], ["team_name", "season_type"])
         self.assertEqual(resolved["metricResultShape"], "ranking")
         self.assertEqual(
-            execution_plan["grouping_columns"],
+            execution_plan["answer_context"]["display"]["grouping_columns"],
             [
                 {"column_key": "group_1", "label": "team_name"},
                 {"column_key": "group_2", "label": "season_type"},
@@ -146,8 +146,8 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
 
         self.assertEqual(payload["query"]["kind"], "object_query")
         self.assertEqual(shared["dimensions"], ["full_name"])
-        self.assertEqual(execution_plan["result_shape"], "object_rows")
-        self.assertEqual(execution_plan["grouping_columns"], [])
+        self.assertEqual(execution_plan["answer_context"]["result_shape"], "object_rows")
+        self.assertEqual(execution_plan["answer_context"]["display"]["grouping_columns"], [])
 
     def test_haskell_grounds_multi_dimensional_trend(self) -> None:
         payload = call_haskell_planner_for_semantic_draft(trend_draft())
@@ -155,7 +155,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "TeamGame")
         self.assertEqual(shared["dimensions"], ["team_name", "season_type"])
@@ -163,7 +163,7 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         self.assertEqual(resolved["trendGroupingDimensions"][0]["groupingLabel"], "team_name")
         self.assertEqual(resolved["trendGroupingDimensions"][1]["groupingLabel"], "season_type")
         self.assertEqual(
-            execution_plan["grouping_columns"],
+            execution_plan["answer_context"]["display"]["grouping_columns"],
             [
                 {"column_key": "group_1", "label": "team_name"},
                 {"column_key": "group_2", "label": "season_type"},
@@ -195,13 +195,13 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         shared = payload["query"]["spec"]["sharedQuery"]
         resolved = payload["resolved_query"]["resolved"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["coreFactObject"], "PlayerGame")
         self.assertEqual(shared["dimensions"], ["full_name", "season_type"])
         self.assertEqual(resolved["metricResultShape"], "comparison")
         self.assertEqual(
-            execution_plan["grouping_columns"],
+            execution_plan["answer_context"]["display"]["grouping_columns"],
             [{"column_key": "group_1", "label": "season_type"}],
         )
         self.assertIn("f.season_type AS group_1", sql)
@@ -218,11 +218,11 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
 
         shared = payload["query"]["spec"]["sharedQuery"]
         execution_plan = payload["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["dimensions"], ["full_name"])
         self.assertEqual(shared["timeGrain"], "month")
-        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertEqual(execution_plan["answer_context"]["time"]["grain"], "month")
         self.assertIn("AS time_bucket", sql)
         self.assertIn("ORDER BY entity_id ASC, time_bucket ASC, game_date DESC", sql)
 
@@ -239,8 +239,8 @@ class MultiDimensionalGroupingTests(unittest.TestCase):
         execution_plan = payload["execution_plan"]
 
         self.assertEqual(shared["dimensions"], ["full_name"])
-        self.assertEqual(execution_plan["grouping_columns"], [])
-        self.assertEqual(execution_plan["time_grain"], "month")
+        self.assertEqual(execution_plan["answer_context"]["display"]["grouping_columns"], [])
+        self.assertEqual(execution_plan["answer_context"]["time"]["grain"], "month")
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_cli_runs_multi_dimensional_comparison_end_to_end(self, mock_call_gemini) -> None:

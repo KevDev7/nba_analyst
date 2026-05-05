@@ -37,8 +37,8 @@ class SeasonQueryTests(unittest.TestCase):
         self.assertEqual(resolved["seasonType"], "regular_season")
 
         execution_plan = planner_output["execution_plan"]
-        self.assertEqual(execution_plan["season_label"], "2025-26")
-        self.assertEqual(execution_plan["season_type"], "regular_season")
+        self.assertEqual(execution_plan["answer_context"]["time"]["season_label"], "2025-26")
+        self.assertEqual(execution_plan["answer_context"]["time"]["season_type"], "regular_season")
 
     def test_player_season_average_points_output(self) -> None:
         output = run_cli("Show me players by average points in the 2025-26 regular season")

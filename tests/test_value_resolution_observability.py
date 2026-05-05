@@ -36,11 +36,16 @@ class ValueResolutionObservabilityTests(unittest.TestCase):
                 },
             },
             "execution_plan": {
-                "row_predicate": {
-                    "kind": "leaf",
-                    "field": {"targetObject": "Team", "attribute": "conference", "location": "row"},
-                    "operator": "equals",
-                    "value": {"kind": "scalar", "value": "west"},
+                "execution": {"plan_type": "metric_query", "steps": []},
+                "answer_context": {
+                    "predicates": {
+                        "row": {
+                            "kind": "leaf",
+                            "field": {"targetObject": "Team", "attribute": "conference", "location": "row"},
+                            "operator": "equals",
+                            "value": {"kind": "scalar", "value": "west"},
+                        }
+                    }
                 }
             },
         }
@@ -77,11 +82,17 @@ class ValueResolutionObservabilityTests(unittest.TestCase):
                     },
                 },
                 "execution_plan": {
-                    "find_predicate_tree": {
-                        "kind": "leaf",
-                        "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
-                        "operator": "in",
-                        "value": {"kind": "list", "values": ["Lakers", "Jazz"]},
+                    "execution": {"plan_type": "find_query", "steps": []},
+                    "answer_context": {
+                        "find": {
+                            "predicate_tree": {
+                                "kind": "leaf",
+                                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                                "operator": "in",
+                                "value": {"kind": "list", "values": ["Lakers", "Jazz"]},
+                            },
+                            "filters": [],
+                        }
                     }
                 },
             },
@@ -144,31 +155,36 @@ class ValueResolutionObservabilityTests(unittest.TestCase):
                     },
                 },
                 "execution_plan": {
-                    "row_predicate": {
-                        "kind": "and",
-                        "predicates": [
-                            {
-                                "kind": "leaf",
-                                "field": {
-                                    "targetObject": "PlayerGame",
-                                    "attribute": "team_home_or_away",
-                                    "location": "row",
-                                },
-                                "operator": "equals",
-                                "value": {"kind": "scalar", "value": "away"},
-                            },
-                            {
-                                "kind": "leaf",
-                                "field": {
-                                    "targetObject": "PlayerGame",
-                                    "attribute": "is_starter",
-                                    "location": "row",
-                                },
-                                "operator": "equals",
-                                "value": {"kind": "scalar", "value": "false"},
-                            },
-                        ],
-                    }
+                    "execution": {"plan_type": "metric_query", "steps": []},
+                    "answer_context": {
+                        "predicates": {
+                            "row": {
+                                "kind": "and",
+                                "predicates": [
+                                    {
+                                        "kind": "leaf",
+                                        "field": {
+                                            "targetObject": "PlayerGame",
+                                            "attribute": "team_home_or_away",
+                                            "location": "row",
+                                        },
+                                        "operator": "equals",
+                                        "value": {"kind": "scalar", "value": "away"},
+                                    },
+                                    {
+                                        "kind": "leaf",
+                                        "field": {
+                                            "targetObject": "PlayerGame",
+                                            "attribute": "is_starter",
+                                            "location": "row",
+                                        },
+                                        "operator": "equals",
+                                        "value": {"kind": "scalar", "value": "false"},
+                                    },
+                                ],
+                            }
+                        }
+                    },
                 },
             },
         )
@@ -211,12 +227,17 @@ class ValueResolutionObservabilityTests(unittest.TestCase):
                     },
                 },
                 "execution_plan": {
-                    "row_predicate": {
-                        "kind": "leaf",
-                        "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
-                        "operator": "equals",
-                        "value": {"kind": "scalar", "value": "Lakers"},
-                    }
+                    "execution": {"plan_type": "metric_query", "steps": []},
+                    "answer_context": {
+                        "predicates": {
+                            "row": {
+                                "kind": "leaf",
+                                "field": {"targetObject": "Team", "attribute": "team_name", "location": "row"},
+                                "operator": "equals",
+                                "value": {"kind": "scalar", "value": "Lakers"},
+                            }
+                        }
+                    },
                 },
             },
         )

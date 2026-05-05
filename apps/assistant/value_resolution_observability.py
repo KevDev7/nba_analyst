@@ -53,12 +53,15 @@ def _query_predicate_roots(query: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _plan_predicate_roots(execution_plan: dict[str, Any]) -> list[dict[str, Any]]:
+    answer_context = _as_dict(execution_plan.get("answer_context"))
+    find_context = _as_dict(answer_context.get("find"))
+    predicate_context = _as_dict(answer_context.get("predicates"))
     return [
         predicate
         for predicate in [
-            execution_plan.get("row_predicate"),
-            execution_plan.get("result_predicate"),
-            execution_plan.get("find_predicate_tree"),
+            predicate_context.get("row"),
+            predicate_context.get("result"),
+            find_context.get("predicate_tree"),
         ]
         if isinstance(predicate, dict)
     ]

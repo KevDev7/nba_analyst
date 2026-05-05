@@ -36,7 +36,7 @@ class ObjectQueryLimitTests(unittest.TestCase):
         self.assertEqual(resolved["objectRowPredicateResolved"]["contents"]["rowPredicatePath"]["steps"][0]["linkName"], "player_game_team")
         self.assertEqual(resolved["objectRowPredicateResolved"]["contents"]["rowPredicateValue"]["value"], "Knicks")
 
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertIn("JOIN team lf1", sql)
         self.assertIn("lf1.team_name = 'Knicks'", sql)
         self.assertIn("LIMIT 5", sql)

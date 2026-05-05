@@ -106,7 +106,7 @@ class TrendFactSurfaceTests(unittest.TestCase):
         planner_output = call_plan_query_json(payload)
 
         self.assertEqual(
-            planner_output["execution_plan"]["grouping_columns"],
+            planner_output["execution_plan"]["answer_context"]["display"]["grouping_columns"],
             [{"column_key": "group_1", "label": "person_id"}],
         )
         self.assertEqual(

@@ -24,13 +24,13 @@ from runtime.AnalysisRuntime.models import (
 )
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.interpretation_summary import build_interpretation
-from runtime.AnswerSynthesis.response_models import FinalAnswer, SynthesisPayload
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
+from tests.answer_context_helpers import build_final_answer, build_synthesis_payload
 
 
 class InterpretationSummaryTests(unittest.TestCase):
     def test_ranking_interpretation_includes_limit_metric_and_season(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -50,7 +50,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_ranking_interpretation_composes_recent_window_and_season(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -70,7 +70,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_bottom_ranking_interpretation_uses_ascending_direction(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -95,7 +95,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_best_lower_is_better_ranking_does_not_present_as_bottom(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Team",
@@ -124,7 +124,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertNotIn("Bottom", answer.summary)
 
     def test_bottom_intent_keeps_bottom_wording_for_ascending_rankings(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Team",
@@ -152,7 +152,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_fewest_quantity_ranking_uses_fewest_wording(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -178,7 +178,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_player_by_team_grouping_uses_distinct_grouping_labels(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -223,7 +223,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertIn("1 | Luka Dončić | Lakers | LAL | 2025-26 | Regular Season | 62 | 33.7", formatted)
 
     def test_aggregate_interpretation_includes_grouping_and_season(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="aggregate",
             entity_label_singular="Team",
@@ -243,7 +243,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_ranking_interpretation_includes_row_predicate_team_filter(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -267,7 +267,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_aggregate_interpretation_includes_generic_row_predicate_filter(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="aggregate",
             entity_label_singular="Player",
@@ -291,7 +291,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_ranking_interpretation_preserves_result_predicate_tree_logic(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="ranking",
             entity_label_singular="Player",
@@ -326,7 +326,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_time_series_interpretation_includes_grain_and_season_type(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="time_series",
             entity_label_singular="Team",
@@ -349,7 +349,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_time_series_interpretation_includes_exact_season_scope(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="time_series",
             entity_label_singular="Team",
@@ -395,7 +395,7 @@ class InterpretationSummaryTests(unittest.TestCase):
                 games_count=10,
             ),
         )
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="comparison",
             entity_label_singular="Player",
@@ -429,7 +429,7 @@ class InterpretationSummaryTests(unittest.TestCase):
                 games_count=8,
             ),
         )
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="metric_query",
             result_shape="comparison",
             entity_label_singular="Player",
@@ -449,7 +449,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_object_rows_interpretation_includes_metric_and_season(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="object_query",
             result_shape="object_rows",
             entity_label_singular="Player",
@@ -469,7 +469,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_object_rows_interpretation_includes_row_predicate_team_filter(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="object_query",
             result_shape="object_rows",
             entity_label_singular="Player",
@@ -493,7 +493,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_find_rows_interpretation_includes_grounded_predicates(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -532,7 +532,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_find_rows_interpretation_discloses_all_available_data(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -567,7 +567,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_find_rows_interpretation_includes_order_intent(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -592,7 +592,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_find_rows_interpretation_includes_multiple_order_fields(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -614,7 +614,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_find_rows_interpretation_includes_predicate_tree_logic(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -663,7 +663,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_empty_find_rows_keep_find_summary_shape(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="find_query",
             result_shape="find_rows",
             entity_label_singular="Game",
@@ -680,7 +680,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertEqual(answer.result_shape, "find_rows")
 
     def test_synthesis_summary_composes_recent_window_and_season(self) -> None:
-        payload = SynthesisPayload(
+        payload = build_synthesis_payload(
             query_kind="object_query",
             result_shape="object_rows",
             entity_label_singular="Player",
@@ -709,7 +709,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_formatted_response_prints_interpretation_before_summary(self) -> None:
-        answer = FinalAnswer(
+        answer = build_final_answer(
             summary="Top 10 players by average points are shown below.",
             interpretation="Top 10 players by average points in the 2024-25 regular season.",
             query_kind="metric_query",
@@ -735,7 +735,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         )
 
     def test_formatted_response_displays_filter_metadata_before_metric(self) -> None:
-        answer = FinalAnswer(
+        answer = build_final_answer(
             summary="Teams ordered by wins are shown below.",
             interpretation="Ranked teams by wins where win percentage is greater than 0.6 in the 2025-26 regular season.",
             query_kind="metric_query",
@@ -781,7 +781,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertIn("1 | Oklahoma City Thunder | OKC | 2025-26 | Regular Season | 40 | 0.850 | 34", formatted)
 
     def test_formatted_response_displays_multiple_metric_columns_in_plan_order(self) -> None:
-        answer = FinalAnswer(
+        answer = build_final_answer(
             summary="Players ordered by total points are shown below.",
             interpretation="Players and their total points over the last 10 games.",
             query_kind="object_query",
@@ -815,7 +815,7 @@ class InterpretationSummaryTests(unittest.TestCase):
         self.assertIn("Stephen Curry | GSW | 291 | 54 | 63", formatted)
 
     def test_formatted_response_suppresses_metadata_that_duplicates_display_metric(self) -> None:
-        answer = FinalAnswer(
+        answer = build_final_answer(
             summary="Average points by player are shown below.",
             interpretation="Average points and average minutes by player over the last 10 games.",
             query_kind="metric_query",

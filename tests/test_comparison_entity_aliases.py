@@ -59,7 +59,7 @@ class ComparisonEntityAliasTests(unittest.TestCase):
             ["Jalen Brunson", "Jayson Tatum"],
         )
 
-        sql = planner_output["execution_plan"]["steps"][0]["sql"]
+        sql = planner_output["execution_plan"]["execution"]["steps"][0]["sql"]
         self.assertIn("entity_id", sql)
         self.assertIn("IN (1628973, 1628369)", sql)
 

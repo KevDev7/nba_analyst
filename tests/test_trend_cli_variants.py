@@ -137,7 +137,7 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertEqual(resolved["timeGrain"], "month")
         self.assertEqual(resolved["timeFilterKind"], "past_year")
         self.assertIn("STRFTIME({fact_alias}.game_date, '%Y-%m')", resolved["timeBucketExpression"])
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "time_series")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "time_series")
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_trend_output(self, mock_call_gemini) -> None:
@@ -164,7 +164,7 @@ class TrendCliVariantTests(unittest.TestCase):
         self.assertEqual(resolved["seriesPath"]["targetObjectName"], "Team")
         self.assertEqual(resolved["seriesPath"]["steps"][0]["linkName"], "team_game_team")
         self.assertEqual(resolved["seriesName"]["columnName"], "team_name")
-        self.assertEqual(planner_output["execution_plan"]["result_shape"], "time_series")
+        self.assertEqual(planner_output["execution_plan"]["answer_context"]["result_shape"], "time_series")
 
     @patch("apps.assistant.semantic.interpreter._call_gemini")
     def test_monthly_average_points_by_team_trend_output(self, mock_call_gemini) -> None:
@@ -188,11 +188,11 @@ class TrendCliVariantTests(unittest.TestCase):
 
         shared = planner_output["query"]["spec"]["sharedQuery"]
         execution_plan = planner_output["execution_plan"]
-        sql = execution_plan["steps"][0]["sql"]
+        sql = execution_plan["execution"]["steps"][0]["sql"]
 
         self.assertEqual(shared["metrics"], ["total_points", "total_assists", "total_rebounds"])
         self.assertEqual(
-            execution_plan["display_metrics"],
+            execution_plan["answer_context"]["display"]["metrics"],
             [
                 {"column_key": "metric_value", "label": "total_points", "metric": "total_points", "aggregation": "sum"},
                 {"column_key": "metric_2", "label": "total_assists", "metric": "total_assists", "aggregation": "sum"},
