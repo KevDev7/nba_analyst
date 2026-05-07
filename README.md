@@ -1,161 +1,245 @@
-# NBA Analyst
+# NBA Insights
 
-`nba_analyst` is a fresh repo for a new NBA analytics agent built around the same core service shape we inferred from TextQL's public writing, while explicitly ignoring the out-of-scope enterprise extras.
+NBA Insights is a beta NBA analytics assistant that turns natural-language basketball questions into grounded answers, tables, and charts.
 
-## Goal
+The system uses an ontology-backed semantic layer to map flexible user questions onto supported NBA entities, metrics, dimensions, filters, and time windows, then executes the resulting analysis against a local DuckDB snapshot.
 
-The product goal is narrow and clear:
+## What It Can Answer
 
-- a user asks an open-ended analytics question
-- the system maps that question into a semantic model
-- the system plans and executes a real investigation
-- the system runs SQL and Python analysis iteratively
-- the system returns an analytical answer, not just a query
+NBA Insights is built for grounded basketball analysis, not general sports chat. The current product supports:
 
-## Repo Layout
+- **Rankings:** top, bottom, best, worst, most, fewest, highest, and lowest players or teams.
+- **Aggregates:** grouped summaries across players, teams, games, seasons, and basketball context.
+- **Trends:** daily, weekly, monthly, yearly, and season-by-season movement.
+- **Comparisons:** two or more named players or teams across one metric, many metrics, or time buckets.
+- **Custom stat tables:** player or team rows with selected stats and natural limits.
+- **Find queries:** game logs, player game logs, team game logs, display columns, sorting, and matching rows.
+- **Context filters:** home, road, starter, bench, opponent, conference, regular season, playoffs, teams, and players.
+- **Calculated-result filters:** questions like "teams with net rating above 5" or "players averaging at least 8 assists."
 
-This repo is shaped around five main parts:
+## Example Questions
 
-1. `services/ontology-hs`
-Haskell semantic core for:
-- ontology definitions
-- typed query IR / DSL
-- reference resolution
-- validation
-- compilation from semantic intent to executable query plan
-
-2. `services/runtime-py`
-Python analysis runtime for:
-- query execution
-- intermediate artifacts
-- dataframe/statistical analysis
-- iteration over results
-
-3. `services/orchestrator`
-Thin orchestration layer for:
-- receiving user questions
-- calling the semantic core
-- invoking the analysis runtime
-- returning final answers
-
-The current local product path uses `apps/assistant/pipeline.py` as the shared
-orchestration boundary for CLI and web. `services/orchestrator` remains a
-placeholder for a future service split.
-
-4. `apps`
-
-Product adapters:
-- `apps/cli`
-  - terminal surface over the shared assistant pipeline
-- `apps/web`
-- API-only FastAPI surface over the same pipeline
-- `apps/web-ui`
-  - SvelteKit structured artifact frontend over the FastAPI API
-
-5. `contracts`
-Shared contract surface for:
-- semantic/query IR
-- plan/result payload shapes
-- answer/report payloads
-
-Additional repo structure:
-
-- `fixtures`
-  - local data snapshots, example ontology configs, sample inputs
-- `evals`
-  - question sets, expected behaviors, and benchmark scaffolding
-- `scripts`
-  - local developer helpers
-
-## Intentionally Out Of Scope
-
-Not part of the first build:
-
-- extreme table-count scale
-- broad connector ecosystem
-- Slack / Playbooks / Dashboards
-- healthcare-specific vertical logic
-- large infra/platform sophistication
-- multimodal dashboard recreation
-
-## Current Local Product Path
-
-The current one-step assistant supports six query families:
-
-- ranking / top-N
-- aggregation
-- filtering / joining
-- trend
-- comparison
-- object rows
-
-It uses:
-
-- a generated NBA semantic ontology fixture
-- Gemini for a loose semantic draft
-- a Haskell semantic core for query modeling, grounding, validation, and plan compilation
-- a Python runtime over DuckDB
-- grounded answer synthesis and formatting
-
-Run it with:
-
-```bash
-python3 apps/cli/main.py "Show me the top 10 players by points over the last 10 games" --debug
+```text
+Who are the best defensive teams this season?
+Which players have the fewest turnovers over the last 10 games?
+Show players averaging at least 8 assists over the last 10 games.
+Compare Brunson and Tatum by points, assists, and rebounds over the last 10 games.
+Compare Lakers and Warriors rebounding by month over the past year.
+Find Celtics games with more than 15 threes and fewer than 12 turnovers.
+Rank teams by net rating on the road over the last 10 games.
+Show teams and their steals, blocks, and rebounds in the 2025-26 regular season.
 ```
 
-Run the assistant API with:
+## Data Coverage
+
+The committed local snapshot currently covers NBA data from the 2020-21 season through the 2025-26 season.
+
+Supported data surfaces include:
+
+- players, teams, arenas, and games
+- player game logs and team game logs
+- player season, player-season-team, and team season summaries
+- box score, shooting, scoring-detail, rebounding, fouling, possession, and advanced efficiency stats where present in the ontology
+
+Game-level stats are the lowest supported detail today. Possession-by-possession, lineup, on/off, clutch, shot-location, and play-by-play analysis are not first-class product capabilities yet.
+
+## Architecture
+
+The working product path is:
+
+```text
+User question
+  -> apps/assistant semantic interpreter
+  -> services/ontology-hs semantic planner
+  -> services/runtime-py DuckDB runtime
+  -> answer synthesis
+  -> CLI, FastAPI, or SvelteKit UI
+```
+
+Core pieces:
+
+- `apps/assistant`: shared Python assistant pipeline used by CLI and web.
+- `apps/cli`: terminal adapter for one-question assistant runs.
+- `apps/web`: FastAPI API surface over the shared assistant pipeline.
+- `apps/web-ui`: SvelteKit structured artifact frontend.
+- `services/ontology-hs`: Haskell ontology loader, semantic draft grounding, typed query IR, validation, and SQL plan compilation.
+- `services/runtime-py`: Python execution runtime, answer packaging, synthesis models, and artifact support.
+- `fixtures`: committed ontology and DuckDB snapshot fixtures.
+- `evals`: question bank and evaluation scaffolding.
+- `contracts`: human-readable contract notes for query, execution, and answer payloads.
+- `scripts`: local development and snapshot helpers.
+
+`services/orchestrator` is currently a placeholder for a future service split. The active orchestration boundary is `apps/assistant/pipeline.py`.
+
+## Requirements
+
+Local development expects:
+
+- Python 3.12 or compatible Python 3
+- Haskell Cabal/GHC for local ontology planner runs
+- Node.js and npm for the SvelteKit UI
+- a Gemini API key for semantic interpretation
+
+Install Python dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Install frontend dependencies:
+
+```bash
+npm ci --prefix apps/web-ui
+```
+
+Create local environment config from the example:
+
+```bash
+cp .env.example .env
+```
+
+Then set at least:
+
+```text
+GEMINI_API_KEY=...
+```
+
+Keep real secrets out of git.
+
+## Run Locally
+
+Run a CLI question:
+
+```bash
+python3 apps/cli/main.py "Show me the top 10 players by points over the last 10 games"
+```
+
+Run the FastAPI assistant API:
 
 ```bash
 uvicorn apps.web.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The FastAPI service is API-only. It does not serve a browser UI at `/`.
-It exposes `GET /healthz` for deployment health checks.
-
-Deploy the backend API and frontend UI to Render with the root `render.yaml`
-blueprint. The backend Docker image builds the Haskell planner once, installs it
-at `/app/bin/ontology-hs`, disables runtime Athena snapshot rebuilds, and starts:
+Check API health:
 
 ```bash
-uvicorn apps.web.server:app --host 0.0.0.0 --port ${PORT:-10000}
+curl http://127.0.0.1:8000/healthz
 ```
 
-The frontend deploys as a Render static site from `apps/web-ui/build` and uses
-`PUBLIC_API_BASE_URL` to call the backend API service. Public web questions are
-limited by `NBA_MAX_QUESTION_CHARS` on the API and `PUBLIC_MAX_QUESTION_CHARS`
-in the composer; the beta default is `250`.
-
-Or use the optional Portless helper for a stable local API URL:
-
-```bash
-scripts/run_api_portless.sh
-```
-
-The structured browser UI lives in `apps/web-ui` and should be run separately:
+Run the SvelteKit frontend separately:
 
 ```bash
 npm --prefix apps/web-ui run dev
 ```
 
-For Portless local URLs, use:
+During local frontend development, `/api/*` requests are proxied to `http://127.0.0.1:8000`.
+
+Optional Portless helpers:
 
 ```bash
 scripts/run_api_portless.sh      # https://nba-insight-api.localhost
 scripts/run_web_ui_portless.sh   # https://nba-insight-ui.localhost
 ```
 
-Run the assistant test suite with:
+## Deploy To Render
+
+The root `render.yaml` defines two Render services:
+
+- `nba-analyst-api`: Docker web service for the FastAPI backend.
+- `nba-insight-mdpl`: static site for the SvelteKit frontend.
+
+The backend Docker image builds the Haskell planner once, installs it at `/app/bin/ontology-hs`, disables runtime Athena snapshot rebuilds, and starts:
+
+```bash
+uvicorn apps.web.server:app --host 0.0.0.0 --port ${PORT:-10000}
+```
+
+The frontend builds with:
+
+```bash
+npm ci --prefix apps/web-ui && npm --prefix apps/web-ui run build
+```
+
+and publishes:
+
+```text
+apps/web-ui/build
+```
+
+Render prompts for `GEMINI_API_KEY` because the blueprint marks it with `sync: false`.
+
+## Environment Variables
+
+Backend:
+
+```text
+GEMINI_API_KEY                  # required secret for semantic interpretation
+LLM_INTERPRETER_PROVIDER        # usually google
+GEMINI_MODEL                    # primary Gemini model
+GEMINI_FALLBACK_MODELS          # comma-separated fallback models
+NBA_ONTOLOGY_PLANNER_BIN        # use /app/bin/ontology-hs in Render
+NBA_DISABLE_SNAPSHOT_REBUILD    # set 1 in deployed environments
+NBA_ALLOWED_ORIGINS             # comma-separated browser origins for CORS
+NBA_ENABLE_PUBLIC_DEBUG         # keep 0 publicly
+NBA_MAX_QUESTION_CHARS          # beta default: 250
+```
+
+Frontend:
+
+```text
+PUBLIC_API_BASE_URL             # deployed backend API URL
+PUBLIC_MAX_QUESTION_CHARS       # composer maxlength; backend still enforces the real limit
+```
+
+## Safety Defaults
+
+The public beta deployment is intentionally conservative:
+
+- `GEMINI_API_KEY` is backend-only and should never be bundled into the frontend.
+- `NBA_ENABLE_PUBLIC_DEBUG=0` prevents users from requesting semantic drafts, SQL, execution plans, and grounding traces.
+- `NBA_MAX_QUESTION_CHARS=250` rejects oversized prompts before LLM, planner, or runtime work.
+- `NBA_ALLOWED_ORIGINS` restricts browser CORS access to the deployed UI origin.
+- `NBA_DISABLE_SNAPSHOT_REBUILD=1` makes Render use the committed DuckDB snapshot instead of trying to rebuild from Athena.
+
+## Tests
+
+Run the assistant suite:
 
 ```bash
 python3 -m pytest tests -q
 ```
 
-Run a smaller focused smoke test with:
+Run a focused smoke set:
 
 ```bash
 python3 -m unittest tests.test_web_api tests.test_cli_pipeline tests.test_semantic_interpreter tests.test_semantic_draft_grounding
 ```
 
-Note: full repository-wide `pytest` discovery also collects optional ingestion
-and Athena pipeline tests. Those may require extra packages such as `nba_api`
-or `pbpstats`; use `python3 -m pytest tests -q` for the current assistant suite.
+Run frontend checks:
+
+```bash
+npm --prefix apps/web-ui run check
+npm --prefix apps/web-ui run build
+```
+
+Note: repository-wide `pytest` discovery may collect optional ingestion and Athena pipeline tests that need extra packages such as `nba_api` or `pbpstats`. Use `python3 -m pytest tests -q` for the current assistant suite.
+
+## Known Limits
+
+The product is intentionally grounded in the ontology and committed data snapshot. A question should fail when the ontology, data, or supported query shape cannot represent it.
+
+Current known gaps include:
+
+- possession-by-possession, lineup, on/off, clutch, and shot-location analysis
+- first-class composite metrics like PRA, PR, RA, and stocks
+- free-form "all information about this entity" object expansion
+- comparison result filters
+- trends over "last N games" instead of calendar-style time buckets
+- live data refresh during deployed requests
+
+## More Detail
+
+- Backend API details: `apps/web/README.md`
+- Frontend UI details: `apps/web-ui/README.md`
+- Semantic graph notes: `docs/supported-ontology-graph.md`
+- Question bank: `evals/question_bank.json`
