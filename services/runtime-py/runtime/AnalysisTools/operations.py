@@ -21,7 +21,16 @@ import warnings
 import altair as alt
 import pandas as pd
 
-from .models import AnalysisTable, AnalysisTableColumn, ChartArtifact, ChartOperation
+from .models import (
+    AnalysisFinding,
+    AnalysisOperation,
+    AnalysisTable,
+    AnalysisTableColumn,
+    ChartArtifact,
+    ChartOperation,
+    JoinAndDeltaOperation,
+    RankExtremesOperation,
+)
 
 
 @dataclass(frozen=True)
@@ -31,7 +40,32 @@ class AnalysisOperationError(Exception):
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-def run_controlled_operation(table: AnalysisTable, operation: ChartOperation) -> ChartArtifact:
+@dataclass(frozen=True)
+class ControlledOperationResult:
+    tables: list[AnalysisTable] = field(default_factory=list)
+    artifacts: list[ChartArtifact] = field(default_factory=list)
+    findings: list[AnalysisFinding] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def run_controlled_operation(tables: list[AnalysisTable], operation: AnalysisOperation) -> ControlledOperationResult:
+    if isinstance(operation, ChartOperation):
+        return ControlledOperationResult(
+            artifacts=[_run_chart_operation(_table_by_id(tables, operation.input_table_id), operation)],
+            metadata={"operation_kind": operation.kind},
+        )
+    if isinstance(operation, JoinAndDeltaOperation):
+        return _run_join_and_delta_operation(tables, operation)
+    if isinstance(operation, RankExtremesOperation):
+        return _run_rank_extremes_operation(tables, operation)
+    raise AnalysisOperationError(
+        code="unsupported_operation",
+        message=f"Operation '{operation.kind}' is not supported by the local trusted worker.",
+        metadata={"operation_kind": operation.kind},
+    )
+
+
+def _run_chart_operation(table: AnalysisTable, operation: ChartOperation) -> ChartArtifact:
     if operation.renderer != "vega_lite":
         raise AnalysisOperationError(
             code="unsupported_renderer",
@@ -49,6 +83,188 @@ def run_controlled_operation(table: AnalysisTable, operation: ChartOperation) ->
         message=f"Operation '{operation.kind}' is not supported by the local trusted worker.",
         metadata={"operation_kind": operation.kind},
     )
+
+
+def _run_join_and_delta_operation(
+    tables: list[AnalysisTable],
+    operation: JoinAndDeltaOperation,
+) -> ControlledOperationResult:
+    left = _table_by_id(tables, operation.left_table_id)
+    right = _table_by_id(tables, operation.right_table_id)
+    left_output = operation.left_output_column or f"left_{operation.left_metric}"
+    right_output = operation.right_output_column or f"right_{operation.right_metric}"
+
+    left_frame = _selected_frame(left, [*operation.join_keys, operation.left_metric])
+    right_frame = _selected_frame(right, [*operation.join_keys, operation.right_metric])
+    left_frame = left_frame.rename(columns={operation.left_metric: left_output})
+    right_frame = right_frame.rename(columns={operation.right_metric: right_output})
+    _coerce_numeric_series(left_frame, left_output)
+    _coerce_numeric_series(right_frame, right_output)
+
+    merged = left_frame.merge(
+        right_frame,
+        how=operation.join_type,
+        on=operation.join_keys,
+    )
+    merged[operation.output_metric] = merged[right_output] - merged[left_output]
+
+    sort_by = operation.sort.by if operation.sort else operation.output_metric
+    ascending = bool(operation.sort and operation.sort.direction == "asc")
+    merged = merged.sort_values(by=sort_by, ascending=ascending, kind="mergesort", na_position="last")
+    if operation.limit is not None:
+        merged = merged.head(operation.limit)
+
+    columns = [
+        *_join_key_columns(left, operation.join_keys),
+        AnalysisTableColumn(id=left_output, label=_column_label(left, operation.left_metric, left_output), type="number"),
+        AnalysisTableColumn(id=right_output, label=_column_label(right, operation.right_metric, right_output), type="number"),
+        AnalysisTableColumn(id=operation.output_metric, label=_label(operation.output_metric), type="number"),
+    ]
+    output_table = AnalysisTable(
+        id=f"{operation.left_table_id}_{operation.right_table_id}_{operation.output_metric}",
+        title=operation.title or _label(operation.output_metric),
+        columns=columns,
+        rows=_rows_from_frame(merged, [column.id for column in columns]),
+        row_count=int(len(merged)),
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [operation.left_table_id, operation.right_table_id],
+            "calculation": "right_metric_minus_left_metric",
+            "left_metric": operation.left_metric,
+            "right_metric": operation.right_metric,
+            "output_metric": operation.output_metric,
+        },
+    )
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=_ranked_extreme_findings(output_table, operation.output_metric, "largest" if not ascending else "smallest"),
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _run_rank_extremes_operation(
+    tables: list[AnalysisTable],
+    operation: RankExtremesOperation,
+) -> ControlledOperationResult:
+    table = _table_by_id(tables, operation.input_table_id)
+    frame = _selected_frame(table, [column.id for column in table.columns])
+    _coerce_numeric_series(frame, operation.metric)
+    ascending = operation.direction == "asc"
+    frame = frame.sort_values(by=operation.metric, ascending=ascending, kind="mergesort", na_position="last").head(operation.limit)
+    frame.insert(0, "rank", range(1, len(frame) + 1))
+
+    columns = [
+        AnalysisTableColumn(id="rank", label="Rank", type="integer"),
+        *table.columns,
+    ]
+    output_table = AnalysisTable(
+        id=f"{table.id}_{operation.metric}_ranked",
+        title=operation.title or table.title or f"Ranked by {_label(operation.metric)}",
+        columns=columns,
+        rows=_rows_from_frame(frame, [column.id for column in columns]),
+        row_count=int(len(frame)),
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [table.id],
+            "metric": operation.metric,
+            "direction": operation.direction,
+        },
+    )
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=_ranked_extreme_findings(output_table, operation.metric, "largest" if not ascending else "smallest"),
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _table_by_id(tables: list[AnalysisTable], table_id: str) -> AnalysisTable:
+    for table in tables:
+        if table.id == table_id:
+            return table
+    raise AnalysisOperationError(
+        code="unknown_table",
+        message=f"Operation references unknown table: {table_id}",
+        metadata={"table_id": table_id},
+    )
+
+
+def _selected_frame(table: AnalysisTable, column_ids: list[str]) -> pd.DataFrame:
+    return pd.DataFrame(table.rows, columns=column_ids)
+
+
+def _coerce_numeric_series(frame: pd.DataFrame, column_id: str) -> None:
+    try:
+        frame[column_id] = pd.to_numeric(frame[column_id])
+    except Exception as exc:
+        raise AnalysisOperationError(
+            code="invalid_numeric_column",
+            message=f"Column '{column_id}' could not be converted to numeric values.",
+            metadata={"column": column_id},
+        ) from exc
+
+
+def _join_key_columns(table: AnalysisTable, join_keys: list[str]) -> list[AnalysisTableColumn]:
+    columns_by_id = {column.id: column for column in table.columns}
+    return [
+        AnalysisTableColumn(
+            id=key,
+            label=columns_by_id[key].label if key in columns_by_id else _label(key),
+            type=columns_by_id[key].type if key in columns_by_id else "text",
+        )
+        for key in join_keys
+    ]
+
+
+def _column_label(table: AnalysisTable, source_column: str, output_column: str) -> str:
+    columns_by_id = {column.id: column for column in table.columns}
+    if source_column in columns_by_id:
+        return columns_by_id[source_column].label
+    return _label(output_column)
+
+
+def _rows_from_frame(frame: pd.DataFrame, column_ids: list[str]) -> list[dict[str, Any]]:
+    rows = []
+    for record in frame[column_ids].to_dict(orient="records"):
+        rows.append({key: _json_value(value) for key, value in record.items()})
+    return rows
+
+
+def _json_value(value: object) -> object:
+    if pd.isna(value):
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
+def _ranked_extreme_findings(table: AnalysisTable, metric: str, direction_label: str) -> list[AnalysisFinding]:
+    if not table.rows:
+        return []
+    row = table.rows[0]
+    entity = _row_identity(row, metric)
+    value = row.get(metric)
+    return [
+        AnalysisFinding(
+            kind="ranked_extreme",
+            text=f"{entity} had the {direction_label} {metric} at {value}.",
+            evidence_table_id=table.id,
+            row_refs=[0],
+            metadata={"metric": metric, "value": value},
+        )
+    ]
+
+
+def _row_identity(row: dict[str, Any], metric: str) -> str:
+    for key, value in row.items():
+        if key != metric and value is not None:
+            return str(value)
+    return "The first row"
+
+
+def _label(value: str) -> str:
+    return value.replace("_", " ").strip().title()
 
 
 def _build_chart_artifact(table: AnalysisTable, operation: ChartOperation, mark: str) -> ChartArtifact:

@@ -576,10 +576,10 @@ class ChartArtifactBridgeTests(unittest.TestCase):
         self.assertEqual(chart["metadata"]["row_count"], len(answer.time_series_rows))
         self.assertEqual(chart["metadata"]["y"], "metric_1")
 
-    @patch("apps.assistant.pipeline.format_response", return_value="Formatted answer")
-    @patch("apps.assistant.pipeline.synthesize_answer")
-    @patch("apps.assistant.pipeline.package_results", return_value=object())
-    @patch("apps.assistant.pipeline.execute_plan", return_value=object())
+    @patch("apps.assistant.tools.semantic_query.format_response", return_value="Formatted answer")
+    @patch("apps.assistant.tools.semantic_query.synthesize_answer")
+    @patch("apps.assistant.tools.semantic_query.package_results", return_value=object())
+    @patch("apps.assistant.tools.semantic_query.execute_plan")
     @patch(
         "apps.assistant.pipeline.plan_question",
         return_value=(
@@ -614,7 +614,7 @@ class ChartArtifactBridgeTests(unittest.TestCase):
             },
         ),
     )
-    @patch("apps.assistant.pipeline.load_database")
+    @patch("apps.assistant.tools.semantic_query.load_database")
     def test_run_assistant_appends_chart_artifact_after_grounded_answer(
         self,
         _mock_load_database,
@@ -624,6 +624,7 @@ class ChartArtifactBridgeTests(unittest.TestCase):
         mock_synthesize_answer,
         _mock_format_response,
     ) -> None:
+        _mock_execute_plan.return_value.raw_rows = []
         mock_synthesize_answer.return_value = base_answer()
 
         result = run_assistant("Show monthly average points by team as a chart")

@@ -24,6 +24,8 @@ ChartRenderer = Literal["vega_lite", "plotly"]
 ChartOrientation = Literal["vertical", "horizontal"]
 ChartSortChannel = Literal["x", "y"]
 ChartSortOrder = Literal["ascending", "descending"]
+DerivedSortDirection = Literal["asc", "desc"]
+JoinType = Literal["inner", "left", "outer"]
 
 
 class AnalysisTableColumn(BaseModel):
@@ -78,7 +80,49 @@ class ChartOperation(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-AnalysisOperation = Union[ChartOperation]
+class DerivedSort(BaseModel):
+    by: str
+    direction: DerivedSortDirection = "desc"
+
+
+class JoinAndDeltaOperation(BaseModel):
+    # Controlled derived-analysis operation. Computes right_metric - left_metric
+    # after joining approved input tables.
+    kind: Literal["join_and_delta"]
+    left_table_id: str
+    right_table_id: str
+    join_keys: List[str]
+    left_metric: str
+    right_metric: str
+    output_metric: str
+    left_output_column: Optional[str] = None
+    right_output_column: Optional[str] = None
+    join_type: JoinType = "inner"
+    sort: Optional[DerivedSort] = None
+    limit: Optional[int] = Field(default=None, ge=1, le=5000)
+    title: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_join_keys(self) -> "JoinAndDeltaOperation":
+        if not self.join_keys:
+            raise ValueError("join_and_delta requires at least one join key.")
+        return self
+
+
+class RankExtremesOperation(BaseModel):
+    # Controlled derived-analysis operation. Sorts one approved table by a
+    # numeric metric and adds a deterministic rank column.
+    kind: Literal["rank_extremes"]
+    input_table_id: str
+    metric: str
+    direction: DerivedSortDirection = "desc"
+    limit: int = Field(default=10, ge=1, le=5000)
+    title: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+AnalysisOperation = Union[ChartOperation, JoinAndDeltaOperation, RankExtremesOperation]
 
 
 class AnalysisRequest(BaseModel):
@@ -92,6 +136,15 @@ class AnalysisRequest(BaseModel):
     @model_validator(mode="after")
     def validate_operation_references_existing_table_and_columns(self) -> "AnalysisRequest":
         tables_by_id = {table.id: table for table in self.tables}
+        if isinstance(self.operation, ChartOperation):
+            self._validate_chart_operation(tables_by_id)
+        elif isinstance(self.operation, JoinAndDeltaOperation):
+            self._validate_join_and_delta_operation(tables_by_id)
+        elif isinstance(self.operation, RankExtremesOperation):
+            self._validate_rank_extremes_operation(tables_by_id)
+        return self
+
+    def _validate_chart_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
         table = tables_by_id.get(self.operation.input_table_id)
         if table is None:
             raise ValueError(f"Operation references unknown table: {self.operation.input_table_id}")
@@ -104,7 +157,39 @@ class AnalysisRequest(BaseModel):
         missing_columns = [column for column in referenced_columns if column not in column_ids]
         if missing_columns:
             raise ValueError(f"Operation references unknown columns: {', '.join(missing_columns)}")
-        return self
+
+    def _validate_join_and_delta_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
+        left = tables_by_id.get(self.operation.left_table_id)
+        right = tables_by_id.get(self.operation.right_table_id)
+        if left is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.left_table_id}")
+        if right is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.right_table_id}")
+        left_columns = {column.id for column in left.columns}
+        right_columns = {column.id for column in right.columns}
+        left_required = [*self.operation.join_keys, self.operation.left_metric]
+        right_required = [*self.operation.join_keys, self.operation.right_metric]
+        missing_left = [column for column in left_required if column not in left_columns]
+        missing_right = [column for column in right_required if column not in right_columns]
+        if missing_left:
+            raise ValueError(f"Operation references unknown left columns: {', '.join(missing_left)}")
+        if missing_right:
+            raise ValueError(f"Operation references unknown right columns: {', '.join(missing_right)}")
+        if self.operation.sort and self.operation.sort.by not in {
+            *self.operation.join_keys,
+            self.operation.left_output_column or f"left_{self.operation.left_metric}",
+            self.operation.right_output_column or f"right_{self.operation.right_metric}",
+            self.operation.output_metric,
+        }:
+            raise ValueError(f"Operation references unknown sort column: {self.operation.sort.by}")
+
+    def _validate_rank_extremes_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
+        table = tables_by_id.get(self.operation.input_table_id)
+        if table is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.input_table_id}")
+        column_ids = {column.id for column in table.columns}
+        if self.operation.metric not in column_ids:
+            raise ValueError(f"Operation references unknown columns: {self.operation.metric}")
 
 
 class ChartArtifact(BaseModel):
@@ -118,6 +203,14 @@ class ChartArtifact(BaseModel):
 
 
 AnalysisArtifact = ChartArtifact
+
+
+class AnalysisFinding(BaseModel):
+    kind: str
+    text: str
+    evidence_table_id: Optional[str] = None
+    row_refs: List[int] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AnalysisLog(BaseModel):
@@ -134,7 +227,9 @@ class AnalysisToolError(BaseModel):
 
 class AnalysisResult(BaseModel):
     ok: bool
+    tables: List[AnalysisTable] = Field(default_factory=list)
     artifacts: List[AnalysisArtifact] = Field(default_factory=list)
+    findings: List[AnalysisFinding] = Field(default_factory=list)
     logs: List[AnalysisLog] = Field(default_factory=list)
     error: Optional[AnalysisToolError] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)

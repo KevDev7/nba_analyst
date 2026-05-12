@@ -69,7 +69,16 @@ Core pieces:
 - `contracts`: human-readable contract notes for query, execution, and answer payloads.
 - `scripts`: local development and snapshot helpers.
 
-`services/orchestrator` is currently a placeholder for a future service split. The active orchestration boundary is `apps/assistant/pipeline.py`.
+`services/orchestrator` is currently a placeholder for a future service split. The active Python orchestration seam lives in `apps/assistant/orchestrator.py`, with `apps/assistant/pipeline.py` kept as the stable CLI/web compatibility entrypoint.
+
+The first governed assistant tools live under `apps/assistant/tools`:
+
+- `semantic_query.plan_execute` wraps the current ontology-grounded query path.
+- `ontology_catalog.inspect` exposes ontology and snapshot coverage for future orchestration.
+- `artifact_renderer.render` wraps text/table/chart artifact generation without changing the artifact JSON contract.
+- `python_analysis.run` runs controlled derived analysis over approved result tables.
+
+The first governed multi-call route supports season-over-season team average-points increases by calling the semantic query tool twice and then computing the delta with controlled Python analysis.
 
 ## Requirements
 

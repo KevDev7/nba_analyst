@@ -15,7 +15,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import os
 import subprocess
@@ -31,34 +30,15 @@ if str(ROOT) not in sys.path:
 if str(RUNTIME_ROOT) not in sys.path:
     sys.path.insert(0, str(RUNTIME_ROOT))
 
-from runtime.AnalysisRuntime.models import ExecutionPlan
-from runtime.AnalysisRuntime.runner import execute_plan
-from runtime.AnswerSynthesis.format_response import format_response
-from runtime.AnswerSynthesis.artifacts import build_artifacts
-from runtime.AnswerSynthesis.package_results import package_results
-from runtime.AnswerSynthesis.synthesize import synthesize_answer
-from apps.assistant.chart_artifacts import append_chart_artifacts
-from apps.assistant.predicate_observability import build_predicate_trace
-from apps.assistant.value_resolution_observability import build_value_resolution_trace
+from apps.assistant.models import AssistantResult
 from apps.assistant.semantic.entity_resolver import EntityResolutionError, enrich_semantic_draft_with_resolved_entities
 from apps.assistant.semantic.assumptions import apply_semantic_assumptions
 from apps.assistant.semantic.interpreter import SemanticInterpreterError, interpret_question_to_semantic_draft
-from scripts.load_gold_snapshot import load_database
 
 
 ONTOLOGY_PATH = ROOT / "fixtures" / "ontology" / "semantic-gold.yaml"
 HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 PLANNER_BINARY_ENV = "NBA_ONTOLOGY_PLANNER_BIN"
-
-
-@dataclass(frozen=True)
-class AssistantResult:
-    # The product-facing result of one assistant run.
-    # Plain English: the answer is what the user sees; debug is optional context
-    # for developers who want to inspect each pipeline handoff.
-    answer: str
-    artifacts: list[dict[str, Any]] | None = None
-    debug: dict[str, Any] | None = None
 
 
 def _planner_command_for_semantic_draft(draft_json: str) -> tuple[list[str], Path]:
@@ -117,37 +97,8 @@ def plan_question(question: str) -> tuple[dict[str, Any], dict[str, Any]]:
 
 
 def run_assistant(question: str, debug: bool = False) -> AssistantResult:
-    # Make sure the local DuckDB snapshot exists before anything tries to query it.
-    load_database()
-    # Turn the user question into a semantic draft, then into a Haskell plan.
-    semantic_draft, planner_output = plan_question(question)
-    # Validate the Haskell execution plan on the Python side before running it.
-    if hasattr(ExecutionPlan, "model_validate"):
-        execution_plan = ExecutionPlan.model_validate(planner_output["execution_plan"])
-    else:
-        execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
-    # Execute the plan, package the result, synthesize an answer, and format it.
-    runtime_result = execute_plan(execution_plan)
-    packaged = package_results(runtime_result)
-    answer = synthesize_answer(packaged)
-    formatted = format_response(answer)
-    artifacts = append_chart_artifacts(question, answer, build_artifacts(answer))
+    # Keep pipeline.py as the stable public entrypoint while the deterministic
+    # orchestrator owns the request lifecycle above governed tools.
+    from apps.assistant.orchestrator import run_assistant as run_orchestrated_assistant
 
-    if not debug:
-        return AssistantResult(answer=formatted, artifacts=artifacts)
-
-    # In debug mode, preserve each major transformation stage for adapters to render.
-    return AssistantResult(
-        answer=formatted,
-        artifacts=artifacts,
-        debug={
-            "query_type": planner_output.get("query_type"),
-            "semantic_draft": semantic_draft,
-            "query": planner_output.get("query"),
-            "resolved_query": planner_output.get("resolved_query"),
-            "execution_plan": planner_output.get("execution_plan"),
-            "predicate_trace": build_predicate_trace(semantic_draft, planner_output),
-            "value_resolution_trace": build_value_resolution_trace(semantic_draft, planner_output),
-            "answer": formatted,
-        },
-    )
+    return run_orchestrated_assistant(question, debug=debug)

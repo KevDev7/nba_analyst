@@ -18,9 +18,8 @@ from .operations import AnalysisOperationError, run_controlled_operation
 
 
 def run_analysis_request(request: AnalysisRequest) -> AnalysisResult:
-    table = _input_table_for_request(request)
     try:
-        artifact = run_controlled_operation(table, request.operation)
+        operation_result = run_controlled_operation(request.tables, request.operation)
     except AnalysisOperationError as exc:
         return AnalysisResult(
             ok=False,
@@ -41,22 +40,17 @@ def run_analysis_request(request: AnalysisRequest) -> AnalysisResult:
 
     return AnalysisResult(
         ok=True,
-        artifacts=[artifact],
+        tables=operation_result.tables,
+        artifacts=operation_result.artifacts,
+        findings=operation_result.findings,
         logs=[
             AnalysisLog(
-                message="Built chart artifact with local trusted Python worker.",
+                message="Ran controlled analysis operation with local trusted Python worker.",
                 metadata={
                     "operation_kind": request.operation.kind,
-                    "source_table_id": table.id,
+                    **operation_result.metadata,
                 },
             )
         ],
-        metadata={"runtime": request.runtime},
+        metadata={"runtime": request.runtime, **operation_result.metadata},
     )
-
-
-def _input_table_for_request(request: AnalysisRequest):
-    for table in request.tables:
-        if table.id == request.operation.input_table_id:
-            return table
-    raise ValueError(f"Operation references unknown table: {request.operation.input_table_id}")
