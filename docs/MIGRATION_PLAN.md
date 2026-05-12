@@ -170,9 +170,23 @@ Next improvements before model tool-calling:
 - continue adding trace-based evals for each governed route;
 - consider runtime-owned SQL execution metrics/caps before allowing any non-Haskell SQL author.
 
-## Later: Arbitrary-Code Sandbox
+## Slice 6: Gated Arbitrary-Code Sandbox Prototype
 
-Only after model orchestration remains stable behind gates:
+Status: implemented as a gated prototype.
 
-- Add sandboxed Python over approved retrieved tables.
-- Keep sandboxed Python away from raw DuckDB access.
+- Added `python_code` as a `python_analysis.run` operation kind, not a new raw Python tool.
+- Gated code mode behind `NBA_ENABLE_PYTHON_CODE_SANDBOX`.
+- Required `runtime="local_sandbox"` and declared input/output table schemas.
+- Kept controlled operations available and preferred for common derived analyses.
+- Added a subprocess runner using macOS `sandbox-exec` plus restricted builtins/imports.
+- Sandbox input is serialized table data only; it receives no DuckDB connection, SQL, ontology internals, credentials, or arbitrary filesystem paths.
+- Structured outputs are limited to tables, metrics, and findings.
+- Output tables are validated against declared schemas and max row caps.
+- Provenance records `code_hash`, parent table ids, output table ids, runtime id, timeout/execution metadata, stdout, and stderr.
+
+Still out of scope:
+
+- making arbitrary code the default analysis path;
+- adding a separate model-visible raw Python tool;
+- giving sandbox code database access;
+- using sandbox output as final answer prose.

@@ -8,6 +8,7 @@ The ontology/schema contract is the primary grounding boundary for basketball an
 
 - Do not bypass the ontology/Haskell planner for product data retrieval.
 - Do not expose raw SQL to model-visible orchestration or public response payloads.
+- Do not add a raw Python/code execution tool; sandboxed code, when enabled, must stay inside `python_analysis.run`.
 - Do not invent metrics, dimensions, filters, joins, entities, or data coverage.
 - Do not claim lineup, on/off, play-by-play, shot-location, clutch, or possession-level support unless the ontology exposes it.
 - Do not preserve restrictions above the schema contract unless they prevent a concrete correctness, security, or factuality failure.
@@ -19,6 +20,12 @@ The ontology/schema contract is the primary grounding boundary for basketball an
 3. Run Python analysis only over approved retrieved tables.
 4. Generate artifacts from validated tables.
 5. Compose answers from evidence and provenance.
+
+## Python Code Sandbox
+
+Arbitrary code analysis is disabled by default and must remain gated by `NBA_ENABLE_PYTHON_CODE_SANDBOX`.
+
+Code mode may analyze only approved input tables. It must not receive raw SQL, DuckDB/database handles, credentials, environment variables, network access, or arbitrary filesystem access.
 
 ## Slice 1 Boundary
 

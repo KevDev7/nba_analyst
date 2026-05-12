@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 ColumnType = Literal["text", "number", "integer", "date", "boolean"]
-AnalysisRuntimeName = Literal["local_trusted"]
+AnalysisRuntimeName = Literal["local_trusted", "local_sandbox"]
 ChartRenderer = Literal["vega_lite", "plotly"]
 ChartOrientation = Literal["vertical", "horizontal"]
 ChartSortChannel = Literal["x", "y"]
@@ -122,7 +122,65 @@ class RankExtremesOperation(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-AnalysisOperation = Union[ChartOperation, JoinAndDeltaOperation, RankExtremesOperation]
+class PythonCodeSandboxPolicy(BaseModel):
+    max_input_rows: int = Field(default=5000, ge=1, le=50000)
+    max_output_rows: int = Field(default=500, ge=1, le=5000)
+    timeout_ms: int = Field(default=5000, ge=100, le=30000)
+    memory_mb: Optional[int] = Field(default=256, ge=64, le=2048)
+    import_allowlist: List[str] = Field(default_factory=lambda: ["math", "statistics", "json"])
+    no_network: Literal[True] = True
+    no_filesystem_except_scratch: Literal[True] = True
+    no_environment_access: Literal[True] = True
+
+    @model_validator(mode="after")
+    def validate_import_allowlist(self) -> "PythonCodeSandboxPolicy":
+        allowed = {"math", "statistics", "json"}
+        unknown = sorted(set(self.import_allowlist) - allowed)
+        if unknown:
+            raise ValueError(f"Unsupported sandbox imports: {', '.join(unknown)}")
+        return self
+
+
+class PythonCodeOutputTableSchema(BaseModel):
+    id: str
+    title: str = ""
+    columns: List[AnalysisTableColumn]
+
+    @model_validator(mode="after")
+    def validate_columns(self) -> "PythonCodeOutputTableSchema":
+        if not self.columns:
+            raise ValueError("python_code output table schemas require at least one column.")
+        column_ids = [column.id for column in self.columns]
+        if len(set(column_ids)) != len(column_ids):
+            raise ValueError("python_code output table schemas cannot contain duplicate columns.")
+        return self
+
+
+class PythonCodeOperation(BaseModel):
+    # Gated arbitrary-code operation. Code may analyze only declared input
+    # tables and must return structured outputs matching declared schemas.
+    kind: Literal["python_code"]
+    code: str = Field(min_length=1, max_length=20000)
+    input_table_ids: List[str]
+    output_tables: List[PythonCodeOutputTableSchema]
+    policy: PythonCodeSandboxPolicy = Field(default_factory=PythonCodeSandboxPolicy)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> "PythonCodeOperation":
+        if not self.input_table_ids:
+            raise ValueError("python_code requires at least one input table.")
+        if not self.output_tables:
+            raise ValueError("python_code requires at least one declared output table.")
+        if len(set(self.input_table_ids)) != len(self.input_table_ids):
+            raise ValueError("python_code input table ids must be unique.")
+        output_ids = [table.id for table in self.output_tables]
+        if len(set(output_ids)) != len(output_ids):
+            raise ValueError("python_code output table ids must be unique.")
+        return self
+
+
+AnalysisOperation = Union[ChartOperation, JoinAndDeltaOperation, RankExtremesOperation, PythonCodeOperation]
 
 
 class AnalysisRequest(BaseModel):
@@ -142,6 +200,8 @@ class AnalysisRequest(BaseModel):
             self._validate_join_and_delta_operation(tables_by_id)
         elif isinstance(self.operation, RankExtremesOperation):
             self._validate_rank_extremes_operation(tables_by_id)
+        elif isinstance(self.operation, PythonCodeOperation):
+            self._validate_python_code_operation(tables_by_id)
         return self
 
     def _validate_chart_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
@@ -190,6 +250,21 @@ class AnalysisRequest(BaseModel):
         column_ids = {column.id for column in table.columns}
         if self.operation.metric not in column_ids:
             raise ValueError(f"Operation references unknown columns: {self.operation.metric}")
+
+    def _validate_python_code_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
+        if self.runtime != "local_sandbox":
+            raise ValueError("python_code operations require runtime='local_sandbox'.")
+        missing_tables = [table_id for table_id in self.operation.input_table_ids if table_id not in tables_by_id]
+        if missing_tables:
+            raise ValueError(f"Operation references unknown table: {', '.join(missing_tables)}")
+        oversized = [
+            table.id
+            for table in self.tables
+            if table.id in self.operation.input_table_ids
+            and len(table.rows) > self.operation.policy.max_input_rows
+        ]
+        if oversized:
+            raise ValueError(f"python_code input tables exceed max_input_rows: {', '.join(oversized)}")
 
 
 class ChartArtifact(BaseModel):

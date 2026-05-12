@@ -126,6 +126,18 @@ Private execution-plan debug is only available when all of these are true:
 
 It does not receive raw SQL, a DuckDB connection, network access, or arbitrary code in the current contract.
 
+For gated `python_code` operations, `python_analysis.run` records:
+
+- `operation_kind: "python_code"`;
+- `code_hash`;
+- parent/derived-from table ids;
+- output table ids;
+- sandbox runtime id;
+- timeout and execution duration;
+- stdout/stderr captured from the subprocess.
+
+Normal traces should prefer `code_hash` over raw code. Raw code is an execution input, not an answer artifact, and should not be used as evidence for basketball claims.
+
 ## Multi-Call Routes
 
 The first governed multi-call route records two `semantic_query.plan_execute` trace entries, one `python_analysis.run` entry, and one `artifact_renderer.render` entry when debug output is requested. The route is currently deterministic and acceptance-test scoped; later model tool-calling should reuse the same trace shape instead of creating a separate observability format.
@@ -152,3 +164,5 @@ artifact_renderer.render
 ```
 
 There is intentionally no `raw_sql`, `duckdb.execute`, arbitrary Python, or code-execution tool in the model-visible orchestration contract.
+
+The sandbox prototype does not add a new model-visible tool. Code mode is reachable only as a gated operation inside `python_analysis.run`, and only over approved input tables.

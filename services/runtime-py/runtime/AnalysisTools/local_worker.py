@@ -13,13 +13,17 @@
 
 from __future__ import annotations
 
-from .models import AnalysisLog, AnalysisRequest, AnalysisResult, AnalysisToolError
+from .code_sandbox import run_python_code_operation
+from .models import AnalysisLog, AnalysisRequest, AnalysisResult, AnalysisToolError, PythonCodeOperation
 from .operations import AnalysisOperationError, run_controlled_operation
 
 
 def run_analysis_request(request: AnalysisRequest) -> AnalysisResult:
     try:
-        operation_result = run_controlled_operation(request.tables, request.operation)
+        if isinstance(request.operation, PythonCodeOperation):
+            operation_result = run_python_code_operation(request.tables, request.operation)
+        else:
+            operation_result = run_controlled_operation(request.tables, request.operation)
     except AnalysisOperationError as exc:
         return AnalysisResult(
             ok=False,

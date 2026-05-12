@@ -209,6 +209,7 @@ Current controlled operations:
 - `join_and_delta`: joins two tables on declared keys and computes `right_metric - left_metric`.
 - `rank_extremes`: sorts one table by a numeric metric and adds a deterministic rank column.
 - chart operations remain available through the same runtime contract for artifact generation.
+- `python_code`: gated sandbox prototype for custom derived analysis over approved tables only.
 
 Input shape:
 
@@ -254,6 +255,7 @@ Output shape:
   "outputs": {
     "tables": [],
     "artifacts": [],
+    "metrics": [],
     "findings": [
       {
         "kind": "ranked_extreme",
@@ -276,6 +278,63 @@ Output shape:
 ```
 
 The wrapper is designed for future orchestrator use: retrieval tables come from `semantic_query.plan_execute`, derived tables come from `python_analysis.run`, and charts/tables are rendered afterward by `artifact_renderer.render`.
+
+#### Gated `python_code` Operation
+
+`python_code` is disabled by default and requires:
+
+```text
+NBA_ENABLE_PYTHON_CODE_SANDBOX=1
+```
+
+It is not a retrieval boundary. It receives only approved input tables that were already produced by governed retrieval or prior governed analysis.
+
+Input shape:
+
+```json
+{
+  "tool": "python_analysis",
+  "runtime": "local_sandbox",
+  "tables": [
+    {
+      "id": "approved.players",
+      "columns": [
+        {"id": "player", "label": "Player", "type": "text"},
+        {"id": "points", "label": "Points", "type": "number"}
+      ],
+      "rows": []
+    }
+  ],
+  "operation": {
+    "kind": "python_code",
+    "code": "rows = tables['approved.players']['rows']\noutputs['tables'] = [...]",
+    "input_table_ids": ["approved.players"],
+    "output_tables": [
+      {
+        "id": "analysis.out",
+        "columns": [
+          {"id": "player", "label": "Player", "type": "text"},
+          {"id": "points", "label": "Points", "type": "number"}
+        ]
+      }
+    ],
+    "policy": {
+      "max_input_rows": 5000,
+      "max_output_rows": 500,
+      "timeout_ms": 5000,
+      "memory_mb": 256,
+      "import_allowlist": ["math", "statistics", "json"],
+      "no_network": true,
+      "no_filesystem_except_scratch": true,
+      "no_environment_access": true
+    }
+  }
+}
+```
+
+Normal provenance exposes `code_hash`, parent table ids, output table ids, runtime id, timeout state, stdout, and stderr. Raw SQL is never supplied to the sandbox.
+
+The local prototype uses a subprocess plus macOS `sandbox-exec` when available. The Python layer also rejects forbidden imports and calls such as `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, `compile`, and environment access.
 
 ## Current Multi-Call Route
 
@@ -327,10 +386,10 @@ Forbidden tool names and references include:
 - `raw_sql`
 - `raw_python`
 - `sql.execute`
-- `python_code`
 - `duckdb.execute`
+- direct `python_code` plan references outside the gated `python_analysis.run` operation contract
 
-The model orchestrator may produce a structured plan, choose governed tools, and request artifacts. It must not author SQL, author Python code, request a database handle, or claim support for unsupported surfaces such as play-by-play, lineups, on-off, clutch, or shot location.
+The model orchestrator may produce a structured plan, choose governed tools, and request artifacts. It must not author SQL, request a database handle, or claim support for unsupported surfaces such as play-by-play, lineups, on-off, clutch, or shot location. It does not get a separate raw Python/code tool; any future code-mode analysis must be routed through `python_analysis.run` and the sandbox gate.
 
 ## Grounded Answer Composer
 
@@ -381,6 +440,6 @@ Validation:
 
 These are planned contracts, not current behavior:
 
-- arbitrary-code Python sandbox over approved retrieved tables only.
+- a richer set of controlled analysis operations before relying on arbitrary code.
 
 The implementation should keep tool schemas plain JSON-compatible so they can later be wrapped by Responses API tool calling, Agents SDK, or another orchestration framework.

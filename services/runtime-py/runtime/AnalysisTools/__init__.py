@@ -21,6 +21,9 @@ from .models import (
     AnalysisToolError,
     ChartArtifact,
     ChartOperation,
+    PythonCodeOperation,
+    PythonCodeOutputTableSchema,
+    PythonCodeSandboxPolicy,
 )
 from .local_worker import run_analysis_request
 
@@ -35,5 +38,8 @@ __all__ = [
     "AnalysisToolError",
     "ChartArtifact",
     "ChartOperation",
+    "PythonCodeOperation",
+    "PythonCodeOutputTableSchema",
+    "PythonCodeSandboxPolicy",
     "run_analysis_request",
 ]
