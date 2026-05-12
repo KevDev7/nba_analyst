@@ -28,7 +28,6 @@ app = FastAPI(title="NBA Analyst API")
 ALLOWED_ORIGINS_ENV = "NBA_ALLOWED_ORIGINS"
 PUBLIC_DEBUG_ENV = "NBA_ENABLE_PUBLIC_DEBUG"
 MAX_QUESTION_CHARS_ENV = "NBA_MAX_QUESTION_CHARS"
-DEFAULT_MAX_QUESTION_CHARS = 250
 
 
 def _env_flag_enabled(name: str) -> bool:
@@ -43,16 +42,16 @@ def _effective_debug_requested(request_debug: bool) -> bool:
     return request_debug and _public_debug_enabled()
 
 
-def _max_question_chars() -> int:
+def _max_question_chars() -> int | None:
     raw_limit = os.getenv(MAX_QUESTION_CHARS_ENV, "").strip()
     if not raw_limit:
-        return DEFAULT_MAX_QUESTION_CHARS
+        return None
     try:
         limit = int(raw_limit)
     except ValueError:
-        return DEFAULT_MAX_QUESTION_CHARS
+        return None
     if limit < 1:
-        return DEFAULT_MAX_QUESTION_CHARS
+        return None
     return limit
 
 
@@ -110,7 +109,7 @@ def chat(request: ChatRequest) -> ChatResponse:
     if not question:
         return ChatResponse(ok=False, error="Question is required.")
     max_question_chars = _max_question_chars()
-    if len(question) > max_question_chars:
+    if max_question_chars is not None and len(question) > max_question_chars:
         return ChatResponse(ok=False, error=_question_too_long_message(max_question_chars))
 
     try:

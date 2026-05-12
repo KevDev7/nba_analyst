@@ -1,0 +1,1732 @@
+{
+  "version": 1,
+  "status": "initial_curated_registry",
+  "notes": [
+    "Slice 1 registry for pipeline navigation and future quality checks.",
+    "This registry is intentionally curated rather than auto-generated because current scripts use mixed naming conventions.",
+    "It should be updated when table entrypoints, destinations, or supported fallbacks change."
+  ],
+  "artifacts": [
+    {
+      "id": "raw.cdn_schedule",
+      "layer": "raw",
+      "name": "cdn_schedule",
+      "artifact_type": "source",
+      "grain": "one JSON schedule payload",
+      "source_keys": [],
+      "destination_key": "raw/cdn/scheduleLeagueV2_1.json",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_schedule_league_v2.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.historical_scheduleleaguev2",
+      "layer": "raw",
+      "name": "historical_scheduleleaguev2",
+      "artifact_type": "source",
+      "grain": "one parquet schedule manifest per season",
+      "source_keys": [],
+      "destination_key": "raw/scheduleleaguev2/seasongames/season=*/season_games.parquet",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_schedule_league_v2_season_games.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.cdn_boxscore",
+      "layer": "raw",
+      "name": "cdn_boxscore",
+      "artifact_type": "source",
+      "grain": "one JSON payload per game",
+      "source_keys": [
+        "raw/cdn/scheduleLeagueV2_1.json",
+        "raw/scheduleleaguev2/seasongames/season=*/season_games.parquet"
+      ],
+      "destination_key": "raw/cdn/boxscore/game_id=<GAME_ID>.json",
+      "entrypoint": "pipelines/ingestion/cdn/backfill_cdn_boxscore.py",
+      "dependencies": [
+        "raw.cdn_schedule",
+        "raw.historical_scheduleleaguev2"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.cdn_playbyplay",
+      "layer": "raw",
+      "name": "cdn_playbyplay",
+      "artifact_type": "source",
+      "grain": "one JSON payload per game",
+      "source_keys": [
+        "raw/cdn/scheduleLeagueV2_1.json",
+        "raw/scheduleleaguev2/seasongames/season=*/season_games.parquet"
+      ],
+      "destination_key": "raw/cdn/playbyplay/game_id=<GAME_ID>.json",
+      "entrypoint": "pipelines/ingestion/cdn/backfill_cdn_playbyplay.py",
+      "dependencies": [
+        "raw.cdn_schedule",
+        "raw.historical_scheduleleaguev2"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.cdn_player_movement",
+      "layer": "raw",
+      "name": "cdn_player_movement",
+      "artifact_type": "source",
+      "grain": "one JSON snapshot per snapshot date",
+      "source_keys": [],
+      "destination_key": "raw/cdn/player_movement/snapshot_date=<YYYY-MM-DD>/player_movement.json",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_nba_player_movement.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.boxscorematchupsv3",
+      "layer": "raw",
+      "name": "boxscorematchupsv3",
+      "artifact_type": "source",
+      "grain": "one JSON payload per game",
+      "source_keys": [
+        "raw/cdn/scheduleLeagueV2_1.json"
+      ],
+      "destination_key": "raw/boxscorematchupsv3/game_id=<GAME_ID>.json",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_boxscore_matchups_v3.py",
+      "dependencies": [
+        "raw.cdn_schedule"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.nba_data_matchups_archive",
+      "layer": "raw",
+      "name": "nba_data_matchups_archive",
+      "artifact_type": "source",
+      "grain": "one source archive per season and season type",
+      "source_keys": [],
+      "destination_key": "raw/nba_data/matchups/season=<YYYY>/season_type=<TYPE>/*.tar.xz",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_nba_data_matchups_archives.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": "Fallback raw source for silver.boxscore_matchups when NBA Stats is unavailable."
+    },
+    {
+      "id": "raw.boxscoretraditionalv3_period_player_stats",
+      "layer": "raw",
+      "name": "boxscoretraditionalv3_period_player_stats",
+      "artifact_type": "source",
+      "grain": "one JSON payload per game and period",
+      "source_keys": [
+        "raw/cdn/scheduleLeagueV2_1.json"
+      ],
+      "destination_key": "raw/boxscoretraditionalv3/period_player_stats/game_id=<GAME_ID>/period=<PERIOD>.json",
+      "entrypoint": "pipelines/ingestion/nba_stats/backfill_boxscoretraditionalv3_period_ranges.py",
+      "dependencies": [
+        "raw.cdn_schedule"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.bbr_players_index",
+      "layer": "raw",
+      "name": "bbr_players_index",
+      "artifact_type": "source",
+      "grain": "HTML snapshots by index letter and run date",
+      "source_keys": [],
+      "destination_key": "raw/bball-reference/players_index/letter=<LETTER>/run_date=<YYYY-MM-DD>/*.html",
+      "entrypoint": "pipelines/ingestion/bbr/backfill_bbr_players_index.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.bbr_player_profile",
+      "layer": "raw",
+      "name": "bbr_player_profile",
+      "artifact_type": "source",
+      "grain": "HTML snapshot per Basketball Reference player id and run date",
+      "source_keys": [
+        "silver/bbr_player_index.parquet"
+      ],
+      "destination_key": "raw/bball-reference/player_profile/player_id=<BBR_ID>/run_date=<YYYY-MM-DD>/*.html",
+      "entrypoint": "pipelines/ingestion/bbr/backfill_bbr_player_profiles.py",
+      "dependencies": [
+        "silver.bbr_player_index"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": null
+    },
+    {
+      "id": "raw.hoopr_nba_pbp",
+      "layer": "raw",
+      "name": "hoopr_nba_pbp",
+      "artifact_type": "source",
+      "grain": "one hoopR RDS/parquet payload per game",
+      "source_keys": [
+        "raw/scheduleleaguev2/seasongames/season=*/season_games.parquet",
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "raw/hoopR/nba_pbp/game_id=<GAME_ID>.*",
+      "entrypoint": "pipelines/ingestion/hoopr/backfill_hoopr_nba_pbp.py",
+      "dependencies": [
+        "raw.historical_scheduleleaguev2",
+        "raw.cdn_playbyplay"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": "Third-party/reference raw source, not currently canonical silver input."
+    },
+    {
+      "id": "raw.hoopr_espn_nba_pbp",
+      "layer": "raw",
+      "name": "hoopr_espn_nba_pbp",
+      "artifact_type": "source",
+      "grain": "one ESPN hoopR RDS/parquet payload per game",
+      "source_keys": [],
+      "destination_key": "raw/hoopR/espn_nba_pbp/game_id=<GAME_ID>.*",
+      "entrypoint": "pipelines/ingestion/hoopr/backfill_hoopr_espn_nba_pbp.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": null,
+      "gold_or_serving_exposure": "source",
+      "notes": "Third-party/reference raw source, not currently canonical silver input."
+    },
+    {
+      "id": "silver.players",
+      "layer": "silver",
+      "name": "players",
+      "artifact_type": "table",
+      "grain": "one row per Kaggle player row",
+      "source_keys": [
+        "fixtures or legacy Kaggle player input"
+      ],
+      "destination_key": "silver/players.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_players.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_players.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.team_histories",
+      "layer": "silver",
+      "name": "team_histories",
+      "artifact_type": "table",
+      "grain": "one row per Kaggle team-history row",
+      "source_keys": [
+        "fixtures or legacy Kaggle team history input"
+      ],
+      "destination_key": "silver/team_histories.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_team_histories.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_team_histories.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_movement",
+      "layer": "silver",
+      "name": "player_movement",
+      "artifact_type": "table",
+      "grain": "one row per player movement transaction",
+      "source_keys": [
+        "raw/cdn/player_movement/snapshot_date=<YYYY-MM-DD>/player_movement.json"
+      ],
+      "destination_key": "silver/player_movement.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_movement.py",
+      "dependencies": [
+        "raw.cdn_player_movement"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_movement.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.scheduleLeagueV2_1",
+      "layer": "silver",
+      "name": "scheduleLeagueV2_1",
+      "artifact_type": "table",
+      "grain": "one row per scheduled game",
+      "source_keys": [
+        "raw/cdn/scheduleLeagueV2_1.json"
+      ],
+      "destination_key": "silver/scheduleLeagueV2_1.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_schedule.py",
+      "dependencies": [
+        "raw.cdn_schedule"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_schedule.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_game",
+      "layer": "silver",
+      "name": "boxscore_game",
+      "artifact_type": "table",
+      "grain": "one row per gameId",
+      "source_keys": [
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/boxscore_game.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_game.py",
+      "dependencies": [
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_game.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_player_game",
+      "layer": "silver",
+      "name": "boxscore_player_game",
+      "artifact_type": "table",
+      "grain": "one row per (gameId, personId)",
+      "source_keys": [
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/boxscore_player_game.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_player_game.py",
+      "dependencies": [
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_player_game.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_team_game",
+      "layer": "silver",
+      "name": "boxscore_team_game",
+      "artifact_type": "table",
+      "grain": "one row per (gameId, team_side)",
+      "source_keys": [
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/boxscore_team_game.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_team_game.py",
+      "dependencies": [
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_team_game.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_game_official",
+      "layer": "silver",
+      "name": "boxscore_game_official",
+      "artifact_type": "table",
+      "grain": "one row per (gameId, personId official assignment)",
+      "source_keys": [
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/boxscore_game_official.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_game_official.py",
+      "dependencies": [
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_game_official.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_team_period",
+      "layer": "silver",
+      "name": "boxscore_team_period",
+      "artifact_type": "table",
+      "grain": "one row per (gameId, team_side, period_number)",
+      "source_keys": [
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/boxscore_team_period.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_team_period.py",
+      "dependencies": [
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_team_period.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.boxscore_matchups",
+      "layer": "silver",
+      "name": "boxscore_matchups",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, team_id, person_id, matchups_person_id)",
+      "source_keys": [
+        "raw/boxscorematchupsv3/game_id=<GAME_ID>.json",
+        "raw/nba_data/matchups/season=<YYYY>/season_type=<TYPE>/*.tar.xz"
+      ],
+      "destination_key": "silver/boxscore_matchups.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_boxscore_matchups.py",
+      "dependencies": [
+        "raw.boxscorematchupsv3",
+        "raw.nba_data_matchups_archive"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_boxscore_matchups.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.playbyplay",
+      "layer": "silver",
+      "name": "playbyplay",
+      "artifact_type": "table",
+      "grain": "one row per source action",
+      "source_keys": [
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json",
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/playbyplay/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_playbyplay_events.py",
+      "dependencies": [
+        "raw.cdn_playbyplay",
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/playbyplay_events_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_playbyplay_events.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.shot_location_events",
+      "layer": "silver",
+      "name": "shot_location_events",
+      "artifact_type": "table",
+      "grain": "one row per field-goal event",
+      "source_keys": [
+        "silver/playbyplay/game_id=<GAME_ID>.parquet"
+      ],
+      "destination_key": "silver/shot_location_events/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_shot_location_events.py",
+      "dependencies": [
+        "silver.playbyplay"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/shot_location_events_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_shot_location_events.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.pbpstats_event_projection_v1",
+      "layer": "silver",
+      "name": "pbpstats_event_projection_v1",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, event_num)",
+      "source_keys": [
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/pbpstats_event_projection_v1/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_pbpstats_event_projection_v1.py",
+      "dependencies": [
+        "raw.cdn_playbyplay"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/pbpstats_event_projection_v1_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_pbpstats_event_projection_v1.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.event_projection_v2",
+      "layer": "silver",
+      "name": "event_projection_v2",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, event_num)",
+      "source_keys": [
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json",
+        "raw/cdn/boxscore/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/event_projection_v2/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_event_projection_v2.py",
+      "dependencies": [
+        "raw.cdn_playbyplay",
+        "raw.cdn_boxscore"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/event_projection_v2_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_event_projection_v2.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.pbpstats_event_context_v1",
+      "layer": "silver",
+      "name": "pbpstats_event_context_v1",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, event_num)",
+      "source_keys": [
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json"
+      ],
+      "destination_key": "silver/pbpstats_event_context_v1/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_pbpstats_event_context_v1.py",
+      "dependencies": [
+        "raw.cdn_playbyplay"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/pbpstats_event_context_v1_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_pbpstats_event_context_v1.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.on_court_state",
+      "layer": "silver",
+      "name": "on_court_state",
+      "artifact_type": "table",
+      "grain": "one row per lineup stint",
+      "source_keys": [
+        "silver/event_projection_v2/game_id=<GAME_ID>.parquet",
+        "silver/boxscore_player_game.parquet"
+      ],
+      "destination_key": "silver/on_court_state/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_on_court_state.py",
+      "dependencies": [
+        "silver.event_projection_v2",
+        "silver.boxscore_player_game"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/on_court_state_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_on_court_state.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.on_court_period_starter_qa",
+      "layer": "silver",
+      "name": "on_court_period_starter_qa",
+      "artifact_type": "table",
+      "grain": "one row per (gameId, period, team_side)",
+      "source_keys": [
+        "silver/on_court_state/game_id=<GAME_ID>.parquet",
+        "raw/boxscoretraditionalv3/period_player_stats/game_id=<GAME_ID>/period=<PERIOD>.json"
+      ],
+      "destination_key": "silver/on_court_period_starter_qa.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_on_court_period_starter_qa.py",
+      "dependencies": [
+        "silver.on_court_state",
+        "raw.boxscoretraditionalv3_period_player_stats"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_on_court_period_starter_qa.py",
+      "gold_or_serving_exposure": "qa",
+      "notes": null
+    },
+    {
+      "id": "silver.possessions",
+      "layer": "silver",
+      "name": "possessions",
+      "artifact_type": "table",
+      "grain": "one row per possession",
+      "source_keys": [
+        "silver/playbyplay/game_id=<GAME_ID>.parquet",
+        "raw/cdn/playbyplay/game_id=<GAME_ID>.json",
+        "silver/on_court_state/game_id=<GAME_ID>.parquet"
+      ],
+      "destination_key": "silver/possessions/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_possessions.py",
+      "dependencies": [
+        "silver.playbyplay",
+        "raw.cdn_playbyplay",
+        "silver.on_court_state"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/possessions_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_possessions.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.possessions_ot_fallback",
+      "layer": "silver",
+      "name": "possessions_ot_fallback",
+      "artifact_type": "table",
+      "grain": "one row per recovered fallback possession",
+      "source_keys": [
+        "silver/playbyplay/game_id=<GAME_ID>.parquet"
+      ],
+      "destination_key": "silver/possessions_ot_fallback/game_id=<GAME_ID>.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_possessions_ot_fallback.py",
+      "dependencies": [
+        "silver.playbyplay"
+      ],
+      "is_heavy": true,
+      "checkpoint_key": "silver/_state/possessions_ot_fallback_checkpoint.parquet",
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_possessions_ot_fallback.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_game_possession_context",
+      "layer": "silver",
+      "name": "player_game_possession_context",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, person_id)",
+      "source_keys": [
+        "silver/boxscore_player_game.parquet",
+        "silver/boxscore_team_game.parquet",
+        "silver/scheduleLeagueV2_1.parquet",
+        "silver/possessions/",
+        "silver/possessions_ot_fallback/",
+        "silver/on_court_state/",
+        "silver/playbyplay/"
+      ],
+      "destination_key": "silver/player_game_possession_context.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_game_possession_context.py",
+      "dependencies": [
+        "silver.boxscore_player_game",
+        "silver.boxscore_team_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.possessions",
+        "silver.possessions_ot_fallback",
+        "silver.on_court_state",
+        "silver.playbyplay"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_game_possession_context.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_game_defensive_shot_context",
+      "layer": "silver",
+      "name": "player_game_defensive_shot_context",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, person_id)",
+      "source_keys": [
+        "silver/boxscore_player_game.parquet",
+        "silver/scheduleLeagueV2_1.parquet",
+        "silver/playbyplay/",
+        "silver/pbpstats_event_context_v1/"
+      ],
+      "destination_key": "silver/player_game_defensive_shot_context.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_game_defensive_shot_context.py",
+      "dependencies": [
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.playbyplay",
+        "silver.pbpstats_event_context_v1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_game_defensive_shot_context.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_game_opportunity_context",
+      "layer": "silver",
+      "name": "player_game_opportunity_context",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, person_id)",
+      "source_keys": [
+        "silver/boxscore_player_game.parquet",
+        "silver/scheduleLeagueV2_1.parquet",
+        "silver/playbyplay/",
+        "silver/pbpstats_event_context_v1/"
+      ],
+      "destination_key": "silver/player_game_opportunity_context.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_game_opportunity_context.py",
+      "dependencies": [
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.playbyplay",
+        "silver.pbpstats_event_context_v1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_game_opportunity_context.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.team_game_possession_context",
+      "layer": "silver",
+      "name": "team_game_possession_context",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, team_id)",
+      "source_keys": [
+        "silver/boxscore_team_game.parquet",
+        "silver/scheduleLeagueV2_1.parquet",
+        "silver/possessions/",
+        "silver/possessions_ot_fallback/",
+        "silver/playbyplay/"
+      ],
+      "destination_key": "silver/team_game_possession_context.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_team_game_possession_context.py",
+      "dependencies": [
+        "silver.boxscore_team_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.possessions",
+        "silver.possessions_ot_fallback",
+        "silver.playbyplay"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_team_game_possession_context.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.team_game_defensive_shot_context",
+      "layer": "silver",
+      "name": "team_game_defensive_shot_context",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, team_id)",
+      "source_keys": [
+        "silver/boxscore_team_game.parquet",
+        "silver/scheduleLeagueV2_1.parquet",
+        "silver/playbyplay/",
+        "silver/pbpstats_event_context_v1/"
+      ],
+      "destination_key": "silver/team_game_defensive_shot_context.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_team_game_defensive_shot_context.py",
+      "dependencies": [
+        "silver.boxscore_team_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.playbyplay",
+        "silver.pbpstats_event_context_v1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_team_game_defensive_shot_context.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.bbr_player_index",
+      "layer": "silver",
+      "name": "bbr_player_index",
+      "artifact_type": "table",
+      "grain": "one row per Basketball Reference player id",
+      "source_keys": [
+        "raw/bball-reference/players_index/letter=<LETTER>/run_date=<YYYY-MM-DD>/*.html"
+      ],
+      "destination_key": "silver/bbr_player_index.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_bbr_player_index.py",
+      "dependencies": [
+        "raw.bbr_players_index"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_bbr_player_index.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.bbr_player_profile_label_inventory",
+      "layer": "silver",
+      "name": "bbr_player_profile_label_inventory",
+      "artifact_type": "table",
+      "grain": "one row per detected label occurrence or unlabeled profile paragraph",
+      "source_keys": [
+        "raw/bball-reference/player_profile/player_id=<BBR_ID>/run_date=<YYYY-MM-DD>/*.html"
+      ],
+      "destination_key": "silver/bbr_player_profile_label_inventory.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_bbr_player_profile_label_inventory.py",
+      "dependencies": [
+        "raw.bbr_player_profile"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_bbr_player_profile_label_inventory.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.bbr_player_profile",
+      "layer": "silver",
+      "name": "bbr_player_profile",
+      "artifact_type": "table",
+      "grain": "one row per Basketball Reference player id",
+      "source_keys": [
+        "raw/bball-reference/player_profile/player_id=<BBR_ID>/run_date=<YYYY-MM-DD>/*.html"
+      ],
+      "destination_key": "silver/bbr_player_profile.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_bbr_player_profile.py",
+      "dependencies": [
+        "raw.bbr_player_profile"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_bbr_player_profile.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.bbr_player_awards",
+      "layer": "silver",
+      "name": "bbr_player_awards",
+      "artifact_type": "table",
+      "grain": "one row per Basketball Reference player award occurrence",
+      "source_keys": [
+        "raw/bball-reference/player_profile/player_id=<BBR_ID>/run_date=<YYYY-MM-DD>/*.html"
+      ],
+      "destination_key": "silver/bbr_player_awards.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_bbr_player_awards.py",
+      "dependencies": [
+        "raw.bbr_player_profile"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_bbr_player_awards.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_identity_bridge_bbr_nba",
+      "layer": "silver",
+      "name": "player_identity_bridge_bbr_nba",
+      "artifact_type": "table",
+      "grain": "one row per accepted Basketball Reference to NBA player match",
+      "source_keys": [
+        "silver/players.parquet",
+        "silver/bbr_player_index.parquet",
+        "silver/bbr_player_profile.parquet"
+      ],
+      "destination_key": "silver/player_identity_bridge_bbr_nba.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "dependencies": [
+        "silver.players",
+        "silver.bbr_player_index",
+        "silver.bbr_player_profile"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "gold_or_serving_exposure": "internal",
+      "notes": null
+    },
+    {
+      "id": "silver.player_identity_bridge_bbr_nba_ambiguous",
+      "layer": "silver",
+      "name": "player_identity_bridge_bbr_nba_ambiguous",
+      "artifact_type": "table",
+      "grain": "one row per unresolved NBA player candidate set",
+      "source_keys": [
+        "silver/players.parquet",
+        "silver/bbr_player_index.parquet",
+        "silver/bbr_player_profile.parquet"
+      ],
+      "destination_key": "silver/player_identity_bridge_bbr_nba_ambiguous.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "dependencies": [
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "gold_or_serving_exposure": "review",
+      "notes": null
+    },
+    {
+      "id": "silver.player_identity_bridge_bbr_nba_duplicate_nba",
+      "layer": "silver",
+      "name": "player_identity_bridge_bbr_nba_duplicate_nba",
+      "artifact_type": "table",
+      "grain": "one row per duplicate NBA-side row that lost ownership",
+      "source_keys": [
+        "silver/players.parquet",
+        "silver/bbr_player_index.parquet",
+        "silver/bbr_player_profile.parquet"
+      ],
+      "destination_key": "silver/player_identity_bridge_bbr_nba_duplicate_nba.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "dependencies": [
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "gold_or_serving_exposure": "review",
+      "notes": null
+    },
+    {
+      "id": "silver.player_identity_bridge_bbr_nba_unmatched_nba",
+      "layer": "silver",
+      "name": "player_identity_bridge_bbr_nba_unmatched_nba",
+      "artifact_type": "table",
+      "grain": "one row per unmatched NBA player",
+      "source_keys": [
+        "silver/players.parquet",
+        "silver/bbr_player_index.parquet",
+        "silver/bbr_player_profile.parquet"
+      ],
+      "destination_key": "silver/player_identity_bridge_bbr_nba_unmatched_nba.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "dependencies": [
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "gold_or_serving_exposure": "review",
+      "notes": null
+    },
+    {
+      "id": "silver.player_identity_bridge_bbr_nba_unmatched_bbr",
+      "layer": "silver",
+      "name": "player_identity_bridge_bbr_nba_unmatched_bbr",
+      "artifact_type": "table",
+      "grain": "one row per unmatched Basketball Reference player",
+      "source_keys": [
+        "silver/players.parquet",
+        "silver/bbr_player_index.parquet",
+        "silver/bbr_player_profile.parquet"
+      ],
+      "destination_key": "silver/player_identity_bridge_bbr_nba_unmatched_bbr.parquet",
+      "entrypoint": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "dependencies": [
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/silver/build_silver_player_identity_bridge_bbr_nba.py",
+      "gold_or_serving_exposure": "review",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.dim_date",
+      "layer": "legacy_gold",
+      "name": "dim_date",
+      "artifact_type": "table",
+      "grain": "one row per calendar_date",
+      "source_keys": [],
+      "destination_key": "legacy_gold/dim_date/dim_date.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_dim_date_parquet.py",
+      "dependencies": [],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_dim_date_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.dim_game",
+      "layer": "legacy_gold",
+      "name": "dim_game",
+      "artifact_type": "table",
+      "grain": "one row per game_id",
+      "source_keys": [
+        "silver/boxscore_game",
+        "silver/boxscore_team_game",
+        "silver/scheduleLeagueV2_1"
+      ],
+      "destination_key": "legacy_gold/dim_game/dim_game.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_dim_game_parquet.py",
+      "dependencies": [
+        "silver.boxscore_game",
+        "silver.boxscore_team_game",
+        "silver.scheduleLeagueV2_1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_dim_game_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.dim_team",
+      "layer": "legacy_gold",
+      "name": "dim_team",
+      "artifact_type": "table",
+      "grain": "one row per (team_id, team_sk) SCD2 version",
+      "source_keys": [
+        "silver/boxscore_team_game",
+        "silver/boxscore_player_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_game"
+      ],
+      "destination_key": "legacy_gold/dim_team/dim_team.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_dim_team_parquet.py",
+      "dependencies": [
+        "silver.boxscore_team_game",
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_dim_team_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.dim_player",
+      "layer": "legacy_gold",
+      "name": "dim_player",
+      "artifact_type": "table",
+      "grain": "one row per (person_id, player_sk) SCD2 version",
+      "source_keys": [
+        "silver/players",
+        "silver/boxscore_player_game",
+        "silver/boxscore_game",
+        "silver/bbr_player_profile",
+        "silver/player_identity_bridge_bbr_nba"
+      ],
+      "destination_key": "legacy_gold/dim_player/dim_player.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_dim_player_parquet.py",
+      "dependencies": [
+        "silver.players",
+        "silver.boxscore_player_game",
+        "silver.boxscore_game",
+        "silver.bbr_player_profile",
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_dim_player_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.extended_player_dim",
+      "layer": "legacy_gold",
+      "name": "extended_player_dim",
+      "artifact_type": "table",
+      "grain": "one row per person_id",
+      "source_keys": [
+        "legacy_gold/dim_player",
+        "legacy_gold/dim_team",
+        "silver/players",
+        "silver/boxscore_player_game",
+        "silver/boxscore_game",
+        "silver/bbr_player_profile",
+        "silver/player_identity_bridge_bbr_nba"
+      ],
+      "destination_key": "legacy_gold/extended_player_dim/extended_player_dim.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_extended_player_dim_parquet.py",
+      "dependencies": [
+        "legacy_gold.dim_player",
+        "legacy_gold.dim_team",
+        "silver.players",
+        "silver.boxscore_player_game",
+        "silver.boxscore_game",
+        "silver.bbr_player_profile",
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_extended_player_dim_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.fct_team_game",
+      "layer": "legacy_gold",
+      "name": "fct_team_game",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, team_id)",
+      "source_keys": [
+        "legacy_gold/dim_game",
+        "legacy_gold/dim_date",
+        "legacy_gold/dim_team",
+        "silver/boxscore_team_game"
+      ],
+      "destination_key": "legacy_gold/fct_team_game/fct_team_game.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_fct_team_game_parquet.py",
+      "dependencies": [
+        "legacy_gold.dim_game",
+        "legacy_gold.dim_date",
+        "legacy_gold.dim_team",
+        "silver.boxscore_team_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_fct_team_game_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.fct_player_game",
+      "layer": "legacy_gold",
+      "name": "fct_player_game",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, person_id)",
+      "source_keys": [
+        "legacy_gold/dim_game",
+        "legacy_gold/dim_date",
+        "legacy_gold/dim_player",
+        "legacy_gold/dim_team",
+        "silver/boxscore_player_game"
+      ],
+      "destination_key": "legacy_gold/fct_player_game/fct_player_game.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_fct_player_game_parquet.py",
+      "dependencies": [
+        "legacy_gold.dim_game",
+        "legacy_gold.dim_date",
+        "legacy_gold.dim_player",
+        "legacy_gold.dim_team",
+        "silver.boxscore_player_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_fct_player_game_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.fct_player_game_shot_profile_standard",
+      "layer": "legacy_gold",
+      "name": "fct_player_game_shot_profile_standard",
+      "artifact_type": "table",
+      "grain": "one row per played (game_id, person_id)",
+      "source_keys": [
+        "legacy_gold/fct_player_game",
+        "legacy_gold/fct_team_game",
+        "silver/playbyplay",
+        "silver/pbpstats_event_projection_v1"
+      ],
+      "destination_key": "legacy_gold/fct_player_game_shot_profile_standard/fct_player_game_shot_profile_standard.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_player_game_shot_profiles_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_player_game",
+        "legacy_gold.fct_team_game",
+        "silver.playbyplay",
+        "silver.pbpstats_event_projection_v1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_player_game_shot_profiles_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.fct_player_game_shot_profile_source",
+      "layer": "legacy_gold",
+      "name": "fct_player_game_shot_profile_source",
+      "artifact_type": "table",
+      "grain": "one row per played (game_id, person_id)",
+      "source_keys": [
+        "legacy_gold/fct_player_game",
+        "legacy_gold/fct_team_game",
+        "silver/playbyplay",
+        "silver/pbpstats_event_projection_v1"
+      ],
+      "destination_key": "legacy_gold/fct_player_game_shot_profile_source/fct_player_game_shot_profile_source.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_player_game_shot_profiles_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_player_game",
+        "legacy_gold.fct_team_game",
+        "silver.playbyplay",
+        "silver.pbpstats_event_projection_v1"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_player_game_shot_profiles_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.fct_player_game_shot_type_source",
+      "layer": "legacy_gold",
+      "name": "fct_player_game_shot_type_source",
+      "artifact_type": "table",
+      "grain": "one row per played (game_id, person_id, source_shot_type_key)",
+      "source_keys": [
+        "legacy_gold/fct_player_game",
+        "legacy_gold/fct_team_game",
+        "silver/playbyplay"
+      ],
+      "destination_key": "legacy_gold/fct_player_game_shot_type_source/fct_player_game_shot_type_source.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_player_game_shot_type_source_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_player_game",
+        "legacy_gold.fct_team_game",
+        "silver.playbyplay"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_player_game_shot_type_source_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.agg_player_season",
+      "layer": "legacy_gold",
+      "name": "agg_player_season",
+      "artifact_type": "table",
+      "grain": "one row per (person_id, season_year, raw_season_type_code)",
+      "source_keys": [
+        "legacy_gold/fct_player_game",
+        "legacy_gold/dim_player",
+        "legacy_gold/fct_team_game",
+        "silver/player_game_possession_context",
+        "silver/player_game_defensive_shot_context",
+        "silver/player_game_opportunity_context"
+      ],
+      "destination_key": "legacy_gold/agg_player_season/agg_player_season.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_agg_player_season_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_player_game",
+        "legacy_gold.dim_player",
+        "legacy_gold.fct_team_game",
+        "silver.player_game_possession_context",
+        "silver.player_game_defensive_shot_context",
+        "silver.player_game_opportunity_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_agg_player_season_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.agg_team_season",
+      "layer": "legacy_gold",
+      "name": "agg_team_season",
+      "artifact_type": "table",
+      "grain": "one row per (team_id, season_year, raw_season_type_code)",
+      "source_keys": [
+        "legacy_gold/fct_team_game",
+        "legacy_gold/dim_team",
+        "silver/team_game_possession_context",
+        "silver/team_game_defensive_shot_context"
+      ],
+      "destination_key": "legacy_gold/agg_team_season/agg_team_season.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_agg_team_season_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_team_game",
+        "legacy_gold.dim_team",
+        "silver.team_game_possession_context",
+        "silver.team_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_agg_team_season_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.team_season_provenance_sidecar",
+      "layer": "legacy_gold",
+      "name": "team_season_provenance_sidecar",
+      "artifact_type": "table",
+      "grain": "one row per (team_id, season_year, raw_season_type_code)",
+      "source_keys": [
+        "legacy_gold/fct_team_game",
+        "legacy_gold/dim_team",
+        "silver/team_game_possession_context",
+        "silver/team_game_defensive_shot_context"
+      ],
+      "destination_key": "legacy_gold/team_season_provenance_sidecar/team_season_provenance_sidecar.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_agg_team_season_parquet.py",
+      "dependencies": [
+        "legacy_gold.fct_team_game",
+        "legacy_gold.dim_team",
+        "silver.team_game_possession_context",
+        "silver.team_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_agg_team_season_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.player_season_percentiles",
+      "layer": "legacy_gold",
+      "name": "player_season_percentiles",
+      "artifact_type": "table",
+      "grain": "one row per (person_id, season_year, raw_season_type_code)",
+      "source_keys": [
+        "legacy_gold/agg_player_season",
+        "legacy_gold/dim_player",
+        "legacy_gold/fct_player_game",
+        "legacy_gold/fct_team_game",
+        "silver/player_game_possession_context",
+        "silver/player_game_defensive_shot_context"
+      ],
+      "destination_key": "legacy_gold/player_season_percentiles/player_season_percentiles.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_player_season_percentiles_parquet.py",
+      "dependencies": [
+        "legacy_gold.agg_player_season",
+        "legacy_gold.dim_player",
+        "legacy_gold.fct_player_game",
+        "legacy_gold.fct_team_game",
+        "silver.player_game_possession_context",
+        "silver.player_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_player_season_percentiles_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.team_season_percentiles",
+      "layer": "legacy_gold",
+      "name": "team_season_percentiles",
+      "artifact_type": "table",
+      "grain": "one row per (team_id, season_year, raw_season_type_code)",
+      "source_keys": [
+        "legacy_gold/agg_team_season",
+        "legacy_gold/dim_team",
+        "legacy_gold/fct_team_game"
+      ],
+      "destination_key": "legacy_gold/team_season_percentiles/team_season_percentiles.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_team_season_percentiles_parquet.py",
+      "dependencies": [
+        "legacy_gold.agg_team_season",
+        "legacy_gold.dim_team",
+        "legacy_gold.fct_team_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_team_season_percentiles_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.player_award_history",
+      "layer": "legacy_gold",
+      "name": "player_award_history",
+      "artifact_type": "table",
+      "grain": "one row per matched player-award occurrence",
+      "source_keys": [
+        "silver/bbr_player_awards",
+        "silver/player_identity_bridge_bbr_nba"
+      ],
+      "destination_key": "legacy_gold/player_award_history/player_award_history.parquet",
+      "entrypoint": "pipelines/athena/transform/gold/transform_to_player_award_history_parquet.py",
+      "dependencies": [
+        "silver.bbr_player_awards",
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/transform_to_player_award_history_parquet.py",
+      "gold_or_serving_exposure": "gold",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.vw_player_season_boxscore_advanced",
+      "layer": "legacy_gold",
+      "name": "vw_player_season_boxscore_advanced",
+      "artifact_type": "view",
+      "grain": "Athena view",
+      "source_keys": [],
+      "destination_key": null,
+      "entrypoint": "pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py",
+      "dependencies": [
+        "legacy_gold.agg_player_season",
+        "legacy_gold.dim_player",
+        "legacy_gold.player_season_percentiles"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py",
+      "gold_or_serving_exposure": "serving",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.vw_player_game_shot_type_source",
+      "layer": "legacy_gold",
+      "name": "vw_player_game_shot_type_source",
+      "artifact_type": "view",
+      "grain": "Athena view",
+      "source_keys": [],
+      "destination_key": null,
+      "entrypoint": "pipelines/athena/transform/gold/deploy_player_game_shot_type_source_view.py",
+      "dependencies": [
+        "legacy_gold.fct_player_game_shot_type_source",
+        "legacy_gold.dim_player",
+        "legacy_gold.dim_game",
+        "legacy_gold.dim_team"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/deploy_player_game_shot_type_source_view.py",
+      "gold_or_serving_exposure": "serving",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.vw_team_season_boxscore_advanced",
+      "layer": "legacy_gold",
+      "name": "vw_team_season_boxscore_advanced",
+      "artifact_type": "view",
+      "grain": "Athena view",
+      "source_keys": [],
+      "destination_key": null,
+      "entrypoint": "pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py",
+      "dependencies": [
+        "legacy_gold.agg_team_season",
+        "legacy_gold.dim_team",
+        "legacy_gold.team_season_percentiles"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py",
+      "gold_or_serving_exposure": "serving",
+      "notes": null
+    },
+    {
+      "id": "legacy_gold.vw_player_season_provenance_debug",
+      "layer": "legacy_gold",
+      "name": "vw_player_season_provenance_debug",
+      "artifact_type": "view",
+      "grain": "Athena view",
+      "source_keys": [],
+      "destination_key": null,
+      "entrypoint": "pipelines/athena/transform/gold/deploy_player_season_provenance_debug_view.py",
+      "dependencies": [
+        "legacy_gold.agg_player_season",
+        "silver.player_game_possession_context",
+        "silver.player_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/gold/deploy_player_season_provenance_debug_view.py",
+      "gold_or_serving_exposure": "internal_debug",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.player",
+      "layer": "semantic_gold",
+      "name": "player",
+      "artifact_type": "table",
+      "grain": "one row per person_id",
+      "source_keys": [
+        "silver/players",
+        "silver/boxscore_game",
+        "silver/bbr_player_profile",
+        "silver/player_identity_bridge_bbr_nba"
+      ],
+      "destination_key": "semantic_gold/player/player.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_player_parquet.py",
+      "dependencies": [
+        "silver.players",
+        "silver.boxscore_game",
+        "silver.bbr_player_profile",
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.team",
+      "layer": "semantic_gold",
+      "name": "team",
+      "artifact_type": "table",
+      "grain": "one row per team_id",
+      "source_keys": [
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game",
+        "silver/team_histories",
+        "silver/boxscore_game"
+      ],
+      "destination_key": "semantic_gold/team/team.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_team_parquet.py",
+      "dependencies": [
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game",
+        "silver.team_histories",
+        "silver.boxscore_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.arena",
+      "layer": "semantic_gold",
+      "name": "arena",
+      "artifact_type": "table",
+      "grain": "one row per arena_id",
+      "source_keys": [
+        "silver/boxscore_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game"
+      ],
+      "destination_key": "semantic_gold/arena/arena.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_arena_parquet.py",
+      "dependencies": [
+        "silver.boxscore_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.game",
+      "layer": "semantic_gold",
+      "name": "game",
+      "artifact_type": "table",
+      "grain": "one row per game_id",
+      "source_keys": [
+        "silver/boxscore_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game"
+      ],
+      "destination_key": "semantic_gold/game/game.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_game_parquet.py",
+      "dependencies": [
+        "silver.boxscore_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.player_game",
+      "layer": "semantic_gold",
+      "name": "player_game",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, person_id)",
+      "source_keys": [
+        "silver/players",
+        "silver/boxscore_player_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game",
+        "silver/player_game_possession_context",
+        "silver/player_game_opportunity_context",
+        "silver/player_game_defensive_shot_context"
+      ],
+      "destination_key": "semantic_gold/player_game/player_game.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_player_game_parquet.py",
+      "dependencies": [
+        "silver.players",
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game",
+        "silver.player_game_possession_context",
+        "silver.player_game_opportunity_context",
+        "silver.player_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.team_game",
+      "layer": "semantic_gold",
+      "name": "team_game",
+      "artifact_type": "table",
+      "grain": "one row per (game_id, team_id)",
+      "source_keys": [
+        "silver/boxscore_team_game",
+        "silver/boxscore_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/team_game_possession_context",
+        "silver/team_game_defensive_shot_context"
+      ],
+      "destination_key": "semantic_gold/team_game/team_game.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_team_game_parquet.py",
+      "dependencies": [
+        "silver.boxscore_team_game",
+        "silver.boxscore_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.team_game_possession_context",
+        "silver.team_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.player_season",
+      "layer": "semantic_gold",
+      "name": "player_season",
+      "artifact_type": "table",
+      "grain": "one row per (person_id, season_year, season_type)",
+      "source_keys": [
+        "silver/players",
+        "silver/boxscore_player_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game",
+        "silver/player_game_possession_context",
+        "silver/player_game_defensive_shot_context",
+        "silver/player_game_opportunity_context",
+        "silver/bbr_player_profile",
+        "silver/player_identity_bridge_bbr_nba"
+      ],
+      "destination_key": "semantic_gold/player_season/player_season.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_player_season_parquet.py",
+      "dependencies": [
+        "silver.players",
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game",
+        "silver.player_game_possession_context",
+        "silver.player_game_defensive_shot_context",
+        "silver.player_game_opportunity_context",
+        "silver.bbr_player_profile",
+        "silver.player_identity_bridge_bbr_nba"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.player_season_team",
+      "layer": "semantic_gold",
+      "name": "player_season_team",
+      "artifact_type": "table",
+      "grain": "one row per (person_id, team_id, season_year, season_type)",
+      "source_keys": [
+        "silver/players",
+        "silver/boxscore_player_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/boxscore_team_game",
+        "silver/player_game_possession_context",
+        "silver/player_game_defensive_shot_context",
+        "silver/player_game_opportunity_context"
+      ],
+      "destination_key": "semantic_gold/player_season_team/player_season_team.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_player_season_team_parquet.py",
+      "dependencies": [
+        "silver.players",
+        "silver.boxscore_player_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.boxscore_team_game",
+        "silver.player_game_possession_context",
+        "silver.player_game_defensive_shot_context",
+        "silver.player_game_opportunity_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "semantic_gold.team_season",
+      "layer": "semantic_gold",
+      "name": "team_season",
+      "artifact_type": "table",
+      "grain": "one row per (team_id, season_year, season_type)",
+      "source_keys": [
+        "silver/boxscore_team_game",
+        "silver/boxscore_game",
+        "silver/scheduleLeagueV2_1",
+        "silver/team_game_possession_context",
+        "silver/team_game_defensive_shot_context"
+      ],
+      "destination_key": "semantic_gold/team_season/team_season.parquet",
+      "entrypoint": "pipelines/athena/transform/semantic_gold/transform_to_team_season_parquet.py",
+      "dependencies": [
+        "silver.boxscore_team_game",
+        "silver.boxscore_game",
+        "silver.scheduleLeagueV2_1",
+        "silver.team_game_possession_context",
+        "silver.team_game_defensive_shot_context"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/transform/semantic_gold/contracts.py",
+      "gold_or_serving_exposure": "semantic_gold",
+      "notes": null
+    },
+    {
+      "id": "serving.duckdb_snapshot",
+      "layer": "serving",
+      "name": "duckdb_snapshot",
+      "artifact_type": "artifact",
+      "grain": "one local DuckDB snapshot per build",
+      "source_keys": [
+        "semantic_gold/* Athena tables and configured serving sources"
+      ],
+      "destination_key": null,
+      "entrypoint": "pipelines/athena/serving/duckdb/build_serving_snapshot.py",
+      "dependencies": [
+        "semantic_gold.player",
+        "semantic_gold.team",
+        "semantic_gold.arena",
+        "semantic_gold.game",
+        "semantic_gold.player_game",
+        "semantic_gold.team_game",
+        "semantic_gold.player_season",
+        "semantic_gold.player_season_team",
+        "semantic_gold.team_season"
+      ],
+      "is_heavy": false,
+      "checkpoint_key": null,
+      "schema_owner": "pipelines/athena/serving/duckdb/serving_config.py",
+      "gold_or_serving_exposure": "serving",
+      "notes": null
+    }
+  ]
+}

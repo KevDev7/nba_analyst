@@ -9,6 +9,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from silver_pipeline_plan import known_silver_script_names, select_silver_scripts
+
 
 @dataclass
 class ScriptResult:
@@ -134,41 +136,16 @@ def main() -> None:
         raise SystemExit("--retry-backoff-seconds must be >= 0")
 
     base_dir = Path(__file__).resolve().parent
-    scripts = [
-        base_dir / "build_silver_players.py",
-        base_dir / "build_silver_team_histories.py",
-        base_dir / "build_silver_player_movement.py",
-        base_dir / "build_silver_schedule.py",
-        base_dir / "build_silver_boxscore_game.py",
-        base_dir / "build_silver_boxscore_player_game.py",
-        base_dir / "build_silver_boxscore_team_game.py",
-        base_dir / "build_silver_boxscore_game_official.py",
-        base_dir / "build_silver_boxscore_team_period.py",
-    ]
-    if args.include_heavy:
-        scripts.extend(
-            [
-                base_dir / "build_silver_playbyplay_events.py",
-                base_dir / "build_silver_pbpstats_event_projection_v1.py",
-                base_dir / "build_silver_event_projection_v2.py",
-                base_dir / "build_silver_pbpstats_event_context_v1.py",
-                base_dir / "build_silver_on_court_state.py",
-                base_dir / "build_silver_possessions.py",
-                base_dir / "build_silver_possessions_ot_fallback.py",
-                base_dir / "build_silver_player_game_possession_context.py",
-                base_dir / "build_silver_player_game_defensive_shot_context.py",
-                base_dir / "build_silver_player_game_opportunity_context.py",
-                base_dir / "build_silver_team_game_possession_context.py",
-                base_dir / "build_silver_team_game_defensive_shot_context.py",
-            ]
-        )
-    if not args.skip_reconciliation:
-        scripts.append(base_dir / "validate_silver_reconciliation.py")
-
     only = parse_only_list(args.only)
+    scripts = select_silver_scripts(
+        base_dir=base_dir,
+        include_heavy=args.include_heavy,
+        skip_reconciliation=args.skip_reconciliation,
+        only=only,
+    )
     if only:
-        scripts = [path for path in scripts if path.name in only]
-        missing_from_only = sorted(name for name in only if not (base_dir / name).exists())
+        known_script_names = known_silver_script_names()
+        missing_from_only = sorted(name for name in only if name not in known_script_names)
         if missing_from_only:
             print("Unknown scripts in --only:")
             for name in missing_from_only:

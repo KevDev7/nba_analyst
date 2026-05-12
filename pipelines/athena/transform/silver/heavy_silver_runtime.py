@@ -290,3 +290,23 @@ def select_game_ids_for_processing(
         "checkpoint_enabled": checkpoint_exists,
         "legacy_state_fallback_used": False,
     }
+
+
+def selection_audit_fields(
+    selection_meta: dict[str, Any],
+    *,
+    checkpoint_key_written: str | None,
+) -> dict[str, Any]:
+    """Return the shared audit fields for heavy silver selection metadata."""
+    return {
+        "selection_mode": selection_meta.get("selection_mode"),
+        "target_game_ids": json.dumps(selection_meta.get("target_game_ids") or []),
+        "missing_target_game_ids": json.dumps(
+            selection_meta.get("missing_target_game_ids") or []
+        ),
+        "checkpoint_enabled": int(bool(selection_meta.get("checkpoint_enabled"))),
+        "legacy_state_fallback_used": int(
+            bool(selection_meta.get("legacy_state_fallback_used"))
+        ),
+        "checkpoint_key": checkpoint_key_written,
+    }

@@ -27,7 +27,7 @@ services:
       - key: NBA_ENABLE_PUBLIC_DEBUG
         value: "0"
       - key: NBA_MAX_QUESTION_CHARS
-        value: "250"
+        value: "4000"
   - type: web
     name: nba-insight-mdpl
     runtime: static
@@ -37,7 +37,7 @@ services:
       - key: PUBLIC_API_BASE_URL
         value: https://nba-analyst-api.onrender.com
       - key: PUBLIC_MAX_QUESTION_CHARS
-        value: "250"
+        value: "4000"
     routes:
       - type: rewrite
         source: /*

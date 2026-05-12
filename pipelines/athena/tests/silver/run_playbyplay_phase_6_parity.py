@@ -17,12 +17,18 @@ import boto3
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SILVER_TRANSFORM_DIR = REPO_ROOT / "pipelines" / "athena" / "transform" / "silver"
-PBPSTATS_DIR = REPO_ROOT / "reference" / "pbpstats"
+PBPSTATS_DIR_CANDIDATES = (
+    REPO_ROOT / "references" / "pbpstats",
+    REPO_ROOT / "reference" / "pbpstats",
+)
+PBPSTATS_DIR = next((path for path in PBPSTATS_DIR_CANDIDATES if path.exists()), PBPSTATS_DIR_CANDIDATES[0])
 TESTS_DIR = REPO_ROOT / "pipelines" / "athena" / "tests" / "silver"
 
 import sys
 
 for path in (SILVER_TRANSFORM_DIR, PBPSTATS_DIR, TESTS_DIR):
+    if path == PBPSTATS_DIR and not path.exists():
+        continue
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.insert(0, path_str)

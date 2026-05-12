@@ -159,7 +159,7 @@
       <textarea
         id="question"
         bind:value={question}
-        maxlength={questionCharLimit}
+        maxlength={questionCharLimit ?? undefined}
         rows="1"
         placeholder="Ask NBA Analyst..."
         onkeydown={submitOnEnter}

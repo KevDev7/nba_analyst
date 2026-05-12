@@ -8,6 +8,11 @@ python3 -m pipelines.athena.serving.duckdb.build_serving_snapshot
 
 The builder keeps Athena as the source of truth, materializes the serving contract into a temporary local `.duckdb` file, validates it, and atomically swaps it into the configured active path.
 
+This is the pipeline serving snapshot path. The older app-facing semantic-gold
+development snapshot scripts under `scripts/` remain supported separately for
+the assistant runtime until that runtime explicitly moves to this broader
+serving contract.
+
 ## Local Env Ownership
 
 The preferred local env file for the snapshot job is:

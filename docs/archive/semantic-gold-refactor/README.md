@@ -1,6 +1,16 @@
 # Semantic Gold Refactor
 
-This folder tracks `semantic_gold` object-model refactor work.
+This folder preserves historical `semantic_gold` object-model refactor batch
+logs. It is not the current operating contract.
+
+Current semantic-gold truth should be read from:
+
+- `pipelines/athena/transform/semantic_gold/contracts.py`
+- `pipelines/athena/metadata/semantic_gold_attribute_inventory.json`
+- `pipelines/athena/metadata/pipeline_registry.json`
+- `docs/semantic-gold-refactor.md`
+
+The notes below describe the rules used during the archived refactor phase.
 
 Purpose:
 - reshape `semantic_gold` objects first

@@ -118,3 +118,33 @@ def test_builder_settings_emit_root_fallback_warning_only_once(monkeypatch, tmp_
         )
 
     assert len(caught) == 1
+
+
+def test_builder_settings_normalize_stale_repo_output_path(monkeypatch, tmp_path: Path):
+    _clear_env(monkeypatch)
+    serving_config_module._EMITTED_DEPRECATION_WARNINGS.clear()  # pyright: ignore[reportPrivateUsage]
+    repo_root = tmp_path / "nba_analyst"
+    stale_root = tmp_path / "nba-analytics-lakehouse"
+    builder_dir = repo_root / "pipelines" / "athena" / "serving" / "duckdb"
+    stale_output_path = stale_root / "data" / "serving" / "nba_serving.duckdb"
+    _write_env(
+        builder_dir / ".env",
+        f"""
+        ATHENA_DATABASE=builder_db
+        ATHENA_OUTPUT_LOCATION=s3://builder-results/
+        AWS_DEFAULT_REGION=us-east-1
+        DUCKDB_SERVING_DB_PATH={stale_output_path}
+        DUCKDB_ATHENA_UNLOAD_PREFIX=s3://builder-results/duckdb-serving-unload
+        """,
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        settings = serving_config_module.DuckDBServingSnapshotSettings.from_env(
+            builder_dir=builder_dir,
+            repo_root=repo_root,
+        )
+
+    assert settings.output_path == repo_root / "data" / "serving" / "nba_serving.duckdb"
+    assert len(caught) == 1
+    assert "ignored stale output path" in str(caught[0].message)

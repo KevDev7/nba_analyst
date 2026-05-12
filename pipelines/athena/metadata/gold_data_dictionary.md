@@ -9,9 +9,9 @@ Advanced metric formulas are documented separately in [advanced_metric_formulas.
 Registration notes:
 
 - gold Parquet files are written to `s3://nba-analytics-lakehouse-dev/legacy_gold/...` by the table transform scripts
-- Athena external table registration is now owned by [deploy_gold_tables.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_gold_tables.py)
-- Athena view registration is owned by [deploy_all_views.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_all_views.py)
-- the gold player table family is now implemented as one shared package under [player_surface](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/player_surface), with [transform_to_dim_player_parquet.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/transform_to_dim_player_parquet.py) and [transform_to_extended_player_dim_parquet.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/transform_to_extended_player_dim_parquet.py) acting as thin operational entrypoints
+- Athena external table registration is now owned by [deploy_gold_tables.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_gold_tables.py)
+- Athena view registration is owned by [deploy_all_views.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_all_views.py)
+- the gold player table family is now implemented as one shared package under [player_surface](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/player_surface), with [transform_to_dim_player_parquet.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/transform_to_dim_player_parquet.py) and [transform_to_extended_player_dim_parquet.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/transform_to_extended_player_dim_parquet.py) acting as thin operational entrypoints
 - the Athena catalog currently also contains helper/internal tables such as `_internal`, `_state`, and `boxscore_team_game`; those are intentionally not treated as part of the supported gold serving surface documented here
 
 ## Gold Table Inventory
@@ -39,7 +39,7 @@ Percentiles are materialized as season-grain sidecars rather than added directly
 
 ## Derived Athena Views
 
-The supported Athena gold view surface is intentionally curated around reusable business-facing views, while per-X player rate math is now handled dynamically at query time. The active deploy entrypoint is [deploy_all_views.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_all_views.py).
+The supported Athena gold view surface is intentionally curated around reusable business-facing views, while per-X player rate math is now handled dynamically at query time. The active deploy entrypoint is [deploy_all_views.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_all_views.py).
 
 Supported views:
 

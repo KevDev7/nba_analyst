@@ -18,6 +18,7 @@ Related reference:
 | `silver/bbr_player_awards` | One row per Basketball Reference player award occurrence | Structured player honors table parsed from Basketball Reference profile leaderboard sections for official NBA awards, All-Star appearances, and league-team selections. |
 | `silver/boxscore_game` | One row per `gameId` | Game-level box score context from the raw CDN box score payload, including timing, status, arena, and attendance fields. |
 | `silver/boxscore_game_official` | One row per `(gameId, personId)` | Official assignments extracted from the raw CDN box score payload. |
+| `silver/boxscore_matchups` | One row per `(game_id, team_id, person_id, matchups_person_id)` | Player-vs-player matchup table from NBA Stats `boxscorematchupsv3`, including matchup minutes, partial possessions, switches, scoring, shooting, help-defense, and foul fields. |
 | `silver/boxscore_player_game` | One row per `(gameId, personId)` | Player box score fact at game grain from the raw CDN box score payload. |
 | `silver/boxscore_team_game` | One row per `(gameId, team_side)` | Team box score fact at game grain from the raw CDN box score payload. |
 | `silver/boxscore_team_period` | One row per `(gameId, team_side, period_number)` | Team-period scoring breakdown from the raw CDN box score payload. |
@@ -32,7 +33,9 @@ Related reference:
 | `silver/player_movement` | One row per player movement transaction in the chosen snapshot | Flat player movement snapshot from the raw CDN player movement export. |
 | `silver/players` | One row per Kaggle player row | Legacy Kaggle player master table retained as a silver reference artifact. |
 | `silver/playbyplay` | One row per source action | Canonical event-grain play-by-play table. Preserves source columns and adds semantic basketball context. |
+| `silver/shot_location_events` | One row per field-goal event | Shot-location projection from `silver/playbyplay`, preserving source coordinates/zones and deriving source-like zones from legacy coordinates when source area labels are absent. |
 | `silver/on_court_state` | One row per lineup stint | Tracks the active home and away 5-man units across substitution boundaries. |
+| `silver/on_court_period_starter_qa` | One row per `(gameId, period, team_side)` when period-range raw is available | QA sidecar comparing reconstructed period-opening lineups to an independently derived starter set from period-range boxscore player presence and first substitution direction. |
 | `silver/possessions` | One row per possession | Materializes possession spans, possession context, and lineup context at possession grain. |
 | `silver/possessions_ot_fallback` | One row per recovered fallback possession | Separate possession artifact for recoverable overtime games where the pbpstats-exact loader failed. |
 | `silver/player_game_possession_context` | One row per `(game_id, person_id)` | Canonical player-game on-court possession attribution table that blends exact possessions, OT fallback possessions, event-estimated recovery, and boxscore minute-share fallback with explicit provenance flags. |
@@ -45,6 +48,7 @@ Related reference:
 ## General Notes
 
 - `silver/playbyplay` is additive over the live NBA JSON. It intentionally keeps many source-shaped columns while also adding derived semantic fields.
+- `silver/shot_location_events` is derived from `silver/playbyplay`; it does not introduce a new raw source. For older CDN seasons where `area`/`areaDetail` are absent, it fills a silver-only zone projection from `xLegacy`/`yLegacy` and flags the derivation method.
 - `silver/pbpstats_event_projection_v1` and `silver/pbpstats_event_context_v1` are the current Athena pbpstats sidecars built directly from the live/CDN source family.
 - `silver/event_projection_v2` is the raw-first projection table that targets the same 120-column stable contract as `silver/pbpstats_event_projection_v1` while avoiding pbpstats enhanced-loader starter inference.
 - `silver/on_court_state` and `silver/possessions` are separate because they are different grains from the source action stream.
@@ -88,6 +92,36 @@ Core columns:
 - `gameId`, `personId`
 - `name`, `nameI`, `firstName`, `familyName`
 - `jerseyNum`, `assignment`
+
+### `silver/boxscore_matchups`
+
+Grain: one row per `(game_id, team_id, person_id, matchups_person_id)`.
+
+Source:
+- `raw/boxscorematchupsv3/`
+- `raw/nba_data/matchups/`
+
+Core columns:
+- game / team context:
+  - `game_id`, `away_team_id`, `home_team_id`, `team_side`, `team_id`
+  - `team_name`, `team_city`, `team_tricode`, `team_slug`
+- player / matchup identity:
+  - `person_id`, `first_name`, `family_name`, `name_i`, `player_slug`, `position`, `comment`, `jersey_num`
+  - `matchups_person_id`, `matchups_first_name`, `matchups_family_name`, `matchups_name_i`, `matchups_player_slug`, `matchups_jersey_num`
+- matchup time / possession fields:
+  - `matchup_minutes`, `matchup_minutes_sort`, `partial_possessions`
+  - `percentage_defender_total_time`, `percentage_offensive_total_time`, `percentage_total_time_both_on`
+  - `switches_on`
+- matchup production:
+  - `player_points`, `team_points`, `matchup_assists`, `matchup_potential_assists`, `matchup_turnovers`, `matchup_blocks`
+  - `matchup_field_goals_made`, `matchup_field_goals_attempted`, `matchup_field_goals_percentage`
+  - `matchup_three_pointers_made`, `matchup_three_pointers_attempted`, `matchup_three_pointers_percentage`
+  - `help_blocks`, `help_field_goals_made`, `help_field_goals_attempted`, `help_field_goals_percentage`
+  - `matchup_free_throws_made`, `matchup_free_throws_attempted`, `shooting_fouls`
+
+Implementation note:
+- The table is intentionally silver-only for now. It is not exposed to gold or semantic gold until matchup orientation and downstream metric use cases are validated.
+- `raw/boxscorematchupsv3/` contains source JSON from the live NBA Stats endpoint when available; `raw/nba_data/matchups/` contains source `.tar.xz` archives from the reference repo fallback.
 
 ### `silver/boxscore_player_game`
 
@@ -202,6 +236,29 @@ Columns:
 - `home_lineup_id`, `away_lineup_id`
 - `home_fouls_to_give`, `away_fouls_to_give`
 - `home_period_starter_ids`, `away_period_starter_ids`
+
+### `silver/shot_location_events`
+
+Grain: one row per field-goal event, keyed by `(game_id, action_number)`.
+
+Source:
+- `silver/playbyplay/`
+
+Destination:
+- `silver/shot_location_events/game_id=<GAME_ID>.parquet`
+
+Core columns:
+- event identity: `game_id`, `action_number`, `order_number`, `period`, `clock`, `seconds_remaining_in_period`
+- player/team identity: `person_id`, `team_id`, `team_tricode`
+- shot semantics: `action_type`, `sub_type`, `descriptor`, `shot_result`, `shot_value`, `is_made_shot`, `shot_distance`
+- source location fields: `x`, `y`, `x_legacy`, `y_legacy`, `source_area`, `source_area_detail`
+- derived/final zone fields: `derived_area`, `derived_area_detail`, `shot_zone_area`, `shot_zone_area_detail`, `zone_source`
+- QA/provenance flags: `source_area_available_flag`, `coordinate_available_flag`, `source_derived_area_mismatch_flag`, `derivation_warning`
+
+Implementation notes:
+- `shot_zone_area` and `shot_zone_area_detail` prefer source `area`/`areaDetail` when present.
+- When source area labels are absent, zones are derived from legacy coordinates in feet using source-like labels such as `Restricted Area`, `In The Paint (Non-RA)`, `Mid-Range`, `Left Corner 3`, `Right Corner 3`, and `Above the Break 3`.
+- `source_derived_area_mismatch_flag` is a QA flag for rows where both source and derived labels exist; downstream consumers should not treat it as an error without reviewing boundary cases.
 
 ### `silver/player_movement`
 
@@ -722,6 +779,8 @@ Grain: one row per source action from the live play-by-play feed.
 | `isPenaltyEvent` | `bool` | Derived flag for events occurring in penalty context. |
 | `isOreb` | `bool` | Derived flag for offensive rebounds. |
 | `isDreb` | `bool` | Derived flag for defensive rebounds. |
+| `inferredReboundType` | `string` | QA inference for rebound rows using linked shot team vs rebound team: `offensive` when the teams match, `defensive` when they differ. |
+| `reboundTypeSourceMismatchFlag` | `bool` | QA flag set when source rebound subtype disagrees with `inferredReboundType`. Existing rebound flags still preserve source subtype behavior. |
 | `isPlaceholderRebound` | `bool` | Derived flag for non-real rebound placeholders. |
 | `isShootingFoul` | `bool` | Derived flag for shooting fouls. |
 | `isTechnicalFt` | `bool` | Derived flag for technical free throws. |
@@ -768,6 +827,35 @@ Grain: one row per continuous lineup stint within a game and period.
 | `away_personIds` | `list<int64>` | Sorted away lineup player ids active for the stint. |
 | `lineup_valid_flag` | `int64` | `1` when the stint lineup is internally valid, `0` when reconstruction issues were detected. |
 | `lineup_issue` | `string` | Pipe-delimited issue text explaining why the stint was marked invalid. |
+
+## `silver/on_court_period_starter_qa`
+
+Grain: one row per `(gameId, period, team_side)` for game periods with raw `boxscoretraditionalv3` period-range player stats.
+
+### Design Notes
+
+- This is a QA sidecar, not a gold exposure surface.
+- The reference method follows the old public tutorial pattern: period-range boxscore player presence minus players whose first substitution in that period is an `IN`.
+- `match_flag = 1` means the first `silver/on_court_state` stint for that period/team matches the independently derived starter set.
+- `qa_status` separates true mismatches from missing or incomplete reference evidence.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `gameId` | `string` | NBA natural game identifier. |
+| `period` | `int64` | Period number being validated. |
+| `team_side` | `string` | `home` or `away`. |
+| `teamId` | `int64` | NBA team id for the side. |
+| `current_starter_personIds` | `list<int64>` | Players from the first `silver/on_court_state` stint for the period/team. |
+| `reference_starter_personIds` | `list<int64>` | Independently derived starter set from period-range presence and first substitution direction. |
+| `reference_period_personIds` | `list<int64>` | All players detected as appearing in the period-range boxscore for the team. |
+| `missing_from_current_personIds` | `list<int64>` | Reference starters absent from the current reconstructed lineup. |
+| `extra_in_current_personIds` | `list<int64>` | Current reconstructed starters absent from the reference starter set. |
+| `match_flag` | `int64` | `1` when the current and reference starter sets match cleanly, else `0`. |
+| `qa_status` | `string` | `match`, `mismatch`, `missing_current`, `invalid_current`, or `incomplete_reference`. |
+| `qa_issue` | `string` | Human-readable issue detail for non-match rows. |
+| `current_lineup_valid_flag` | `int64` | Validity flag copied from the first on-court stint. |
+| `current_lineup_issue` | `string` | Lineup issue copied from the first on-court stint when present. |
+| `reference_source_method` | `string` | Reference derivation method label. |
 
 ## `silver/possessions`
 

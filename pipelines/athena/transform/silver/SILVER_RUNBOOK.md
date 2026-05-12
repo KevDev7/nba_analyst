@@ -17,6 +17,34 @@ If this file conflicts with the scripts under `pipelines/athena/transform/silver
 Primary orchestrator:
 - `pipelines/athena/transform/silver/run_silver_pipeline.py`
 
+Domain contract notes:
+- `pipelines/athena/transform/silver/EVENT_STACK_ARCHITECTURE.md` documents
+  the current play-by-play, event projection, on-court, possession, and context
+  stack boundaries for future refactor work.
+- `pipelines/athena/transform/silver/boxscore/` owns the boxscore-family
+  implementation modules; the `build_silver_boxscore_*.py` files remain stable
+  direct-run wrappers.
+- `pipelines/athena/transform/silver/schedule/` and
+  `pipelines/athena/transform/silver/shot_location/` own the schedule and
+  shot-location implementations; their top-level build scripts remain stable
+  direct-run wrappers.
+- `pipelines/athena/transform/silver/playbyplay/` owns the play-by-play
+  implementation; `build_silver_playbyplay_events.py` remains the stable
+  direct-run and import-compatibility wrapper.
+- `pipelines/athena/transform/silver/event_projection/` owns the raw-first event
+  projection v2 implementation; `build_silver_event_projection_v2.py` remains
+  the stable direct-run and import-compatibility wrapper.
+- `pipelines/athena/transform/silver/pbpstats_events/` owns the pbpstats event
+  projection/context implementations and shared helpers; the old build scripts
+  and `pbpstats_projection_common.py` remain stable compatibility imports.
+- `pipelines/athena/transform/silver/on_court/` owns the on-court state
+  implementation; `build_silver_on_court_state.py` remains the stable direct-run
+  and import-compatibility wrapper.
+- `pipelines/athena/transform/silver/game_context/` owns the player/team
+  possession, opportunity, and defensive-shot context implementations; their
+  top-level build scripts remain stable direct-run and import-compatibility
+  wrappers.
+
 Current default runner behavior:
 - runs the standard silver reference/build tables first
 - optionally includes heavy per-game tables with `--include-heavy`
@@ -25,6 +53,7 @@ Current default runner behavior:
 
 Heavy tables currently in the active runner:
 - `build_silver_playbyplay_events.py`
+- `build_silver_shot_location_events.py`
 - `build_silver_pbpstats_event_projection_v1.py`
 - `build_silver_pbpstats_event_context_v1.py`
 - `build_silver_on_court_state.py`
@@ -41,6 +70,20 @@ Recommended upstream raw refresh before targeted catch-up:
 python3 pipelines/ingestion/nba_stats/backfill_schedule_league_v2.py
 python3 pipelines/ingestion/cdn/backfill_cdn_boxscore.py --season 2025-26 --date-from 2026-02-20 --date-to 2026-03-31 --dry-run
 python3 pipelines/ingestion/cdn/backfill_cdn_playbyplay.py --season 2025-26 --date-from 2026-02-20 --date-to 2026-03-31 --dry-run
+```
+
+BoxScoreMatchupsV3 first-slice raw backfill:
+
+```bash
+python3 pipelines/ingestion/nba_stats/backfill_boxscore_matchups_v3.py --dry-run
+python3 pipelines/ingestion/nba_stats/backfill_boxscore_matchups_v3.py --max-games-per-run 50
+```
+
+Fallback archive backfill when `stats.nba.com` is unavailable from the runtime:
+
+```bash
+python3 pipelines/ingestion/nba_stats/backfill_nba_data_matchups_archives.py --dry-run
+python3 pipelines/ingestion/nba_stats/backfill_nba_data_matchups_archives.py
 ```
 
 Non-heavy run:
@@ -61,10 +104,22 @@ Targeted script subset:
 python3 pipelines/athena/transform/silver/run_silver_pipeline.py --only build_silver_boxscore_game.py,build_silver_boxscore_player_game.py
 ```
 
+Targeted matchup silver build:
+
+```bash
+python3 pipelines/athena/transform/silver/run_silver_pipeline.py --only build_silver_boxscore_matchups.py --skip-reconciliation
+```
+
 Targeted heavy rerun:
 
 ```bash
 python3 pipelines/athena/transform/silver/run_silver_pipeline.py --include-heavy --only build_silver_playbyplay_events.py,build_silver_on_court_state.py --skip-reconciliation
+```
+
+Targeted shot-location silver build:
+
+```bash
+python3 pipelines/athena/transform/silver/run_silver_pipeline.py --include-heavy --only build_silver_shot_location_events.py --skip-reconciliation
 ```
 
 Retry / timeout guarded run:
@@ -94,6 +149,7 @@ Checkpoint keys follow:
 
 Examples:
 - `silver/_state/playbyplay_events_checkpoint.parquet`
+- `silver/_state/shot_location_events_checkpoint.parquet`
 - `silver/_state/pbpstats_event_projection_v1_checkpoint.parquet`
 - `silver/_state/pbpstats_event_context_v1_checkpoint.parquet`
 - `silver/_state/on_court_state_checkpoint.parquet`
@@ -106,6 +162,10 @@ Legacy JSON state files may still exist for rollback compatibility, but they are
 Play-by-play:
 - `PLAYBYPLAY_TARGET_GAME_IDS`
 - `PLAYBYPLAY_FORCE_FULL_REFRESH`
+
+Shot-location events:
+- `SHOT_LOCATION_EVENTS_TARGET_GAME_IDS`
+- `SHOT_LOCATION_EVENTS_FORCE_FULL_REFRESH`
 
 PBPStats projection:
 - `PBPSTATS_EVENT_PROJECTION_TARGET_GAME_IDS`

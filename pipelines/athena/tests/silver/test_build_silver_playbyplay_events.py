@@ -650,6 +650,8 @@ def test_build_rows_from_payload_adds_phase3_foul_state_and_second_chance_flags(
     oreb_row = rows[6]
     assert oreb_row["isOreb"] is True
     assert oreb_row["isDreb"] is False
+    assert oreb_row["inferredReboundType"] == "offensive"
+    assert oreb_row["reboundTypeSourceMismatchFlag"] is False
     assert oreb_row["isPlaceholderRebound"] is False
     assert oreb_row["isSecondChanceEvent"] is False
     assert oreb_row["isPenaltyEvent"] is True
@@ -1185,6 +1187,8 @@ def test_build_rows_from_payload_adds_phase6_period_start_override_and_linkage_f
     rebound_row = rows[3]
     assert rebound_row["linkedShotActionNumber"] == 3
     assert rebound_row["reboundOfMissedShotFlag"] is True
+    assert rebound_row["inferredReboundType"] == "defensive"
+    assert rebound_row["reboundTypeSourceMismatchFlag"] is False
 
     period_end_row = rows[4]
     assert period_end_row["isPeriodEndEvent"] is True
@@ -1200,3 +1204,58 @@ def test_build_rows_from_payload_adds_phase6_period_start_override_and_linkage_f
     assert first_free_throw["freeThrowTripSize"] == 2
     assert second_free_throw["freeThrowTripSequenceNum"] == 2
     assert second_free_throw["freeThrowTripSize"] == 2
+
+
+def test_build_rows_from_payload_flags_rebound_type_source_mismatch():
+    payload = {
+        "game": {
+            "gameId": "0022400008",
+            "actions": [
+                {
+                    "actionNumber": 1,
+                    "orderNumber": 100,
+                    "period": 1,
+                    "clock": "PT11M40.00S",
+                    "actionType": "2pt",
+                    "teamId": 1610612737,
+                    "possession": 1610612737,
+                    "isFieldGoal": 1,
+                    "shotResult": "Missed",
+                    "scoreHome": 0,
+                    "scoreAway": 0,
+                },
+                {
+                    "actionNumber": 2,
+                    "orderNumber": 110,
+                    "period": 1,
+                    "clock": "PT11M38.00S",
+                    "actionType": "rebound",
+                    "teamId": 1610612738,
+                    "personId": 22,
+                    "possession": 1610612737,
+                    "subType": "offensive",
+                    "shotActionNumber": 1,
+                    "scoreHome": 0,
+                    "scoreAway": 0,
+                },
+            ],
+        }
+    }
+    boxscore_context = {
+        "teams": {
+            1610612737: {"location": "h"},
+            1610612738: {"location": "v"},
+        }
+    }
+
+    rows, _ = pbp_silver.build_rows_from_payload(
+        payload,
+        fallback_game_id=None,
+        boxscore_context=boxscore_context,
+    )
+
+    rebound_row = rows[1]
+    assert rebound_row["isOreb"] is True
+    assert rebound_row["isDreb"] is False
+    assert rebound_row["inferredReboundType"] == "defensive"
+    assert rebound_row["reboundTypeSourceMismatchFlag"] is True

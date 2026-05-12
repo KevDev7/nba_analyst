@@ -58,15 +58,18 @@ In deployed builds, set:
 
 ```text
 PUBLIC_API_BASE_URL=https://nba-analyst-api.onrender.com
-PUBLIC_MAX_QUESTION_CHARS=250
+PUBLIC_MAX_QUESTION_CHARS=4000
 ```
 
 Without `PUBLIC_API_BASE_URL`, the browser keeps using `/api/chat`, which is
 what local Vite proxy development expects.
 
-`PUBLIC_MAX_QUESTION_CHARS` only controls the browser composer `maxlength`.
-The FastAPI backend still enforces the authoritative `NBA_MAX_QUESTION_CHARS`
-limit.
+`PUBLIC_MAX_QUESTION_CHARS` only controls the browser composer `maxlength` when
+it is set to a positive integer. The FastAPI backend still owns the
+authoritative `NBA_MAX_QUESTION_CHARS` limit when that backend env var is set.
+Keep this value aligned with the backend public cap. It is an abuse/cost guard
+for hosted anonymous deployments, not a semantic product boundary, so it should
+stay comfortably above normal analytical questions.
 
 ## Current Artifact Behavior
 

@@ -15,14 +15,20 @@ if str(SILVER_TRANSFORM_DIR) not in sys.path:
 import build_silver_pbpstats_event_projection_v1 as pbpstats_proj
 
 
-REAL_LIVE_FIXTURE = (
-    Path(__file__).resolve().parents[4]
-    / "reference"
-    / "pbpstats"
-    / "tests"
-    / "data"
-    / "pbp"
-    / "live_0022000001.json"
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
+def first_existing_path(*paths: Path) -> Path:
+    for path in paths:
+        if path.exists():
+            return path
+    return paths[0]
+
+
+REAL_LIVE_FIXTURE = first_existing_path(
+    REPO_ROOT / "pipelines" / "athena" / "tests" / "fixtures" / "event_projection_v2_inputs" / "playbyplay" / "game_id=0022000001.json",
+    REPO_ROOT / "references" / "pbpstats" / "tests" / "data" / "pbp" / "live_0022000001.json",
+    REPO_ROOT / "reference" / "pbpstats" / "tests" / "data" / "pbp" / "live_0022000001.json",
 )
 
 META_COLUMNS = [

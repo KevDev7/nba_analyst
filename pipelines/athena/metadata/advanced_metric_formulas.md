@@ -34,7 +34,7 @@ Dynamic rate note:
 ## `vw_player_season_boxscore_advanced`
 
 SQL source:
-- [deploy_player_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py)
+- [deploy_player_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py)
 
 Base tables:
 - `agg_player_season`
@@ -137,7 +137,7 @@ Internal provenance surface:
 ## `vw_team_season_boxscore_advanced`
 
 SQL source:
-- [deploy_team_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py)
+- [deploy_team_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py)
 
 Base tables:
 - `agg_team_season`
@@ -212,5 +212,5 @@ Formulas:
 
 ## Current SQL Sources
 
-- player rebound percentages and PIE are now served from [deploy_player_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py)
-- [deploy_team_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba-analytics-lakehouse/pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py)
+- player rebound percentages and PIE are now served from [deploy_player_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_player_season_boxscore_advanced_view.py)
+- [deploy_team_season_boxscore_advanced_view.py](/Users/HungNguyen/Desktop/Projects/nba_analyst/pipelines/athena/transform/gold/deploy_team_season_boxscore_advanced_view.py)

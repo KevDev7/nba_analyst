@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_MAX_QUESTION_CHARS, maxQuestionChars } from "./questionLimits";
+import { maxQuestionChars } from "./questionLimits";
 
 describe("maxQuestionChars", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("defaults to the public beta question limit", () => {
-    expect(maxQuestionChars()).toBe(DEFAULT_MAX_QUESTION_CHARS);
+  it("does not cap questions by default", () => {
+    expect(maxQuestionChars()).toBeUndefined();
   });
 
   it("uses a positive integer public build-time override", () => {
@@ -21,7 +21,7 @@ describe("maxQuestionChars", () => {
     for (const value of ["", "0", "-1", "abc", "12abc", "1.5"]) {
       vi.stubEnv("PUBLIC_MAX_QUESTION_CHARS", value);
 
-      expect(maxQuestionChars()).toBe(DEFAULT_MAX_QUESTION_CHARS);
+      expect(maxQuestionChars()).toBeUndefined();
     }
   });
 });

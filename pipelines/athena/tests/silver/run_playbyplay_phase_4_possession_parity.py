@@ -17,13 +17,17 @@ import boto3
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SILVER_TRANSFORM_DIR = REPO_ROOT / "pipelines" / "athena" / "transform" / "silver"
-PBPSTATS_DIR = REPO_ROOT / "reference" / "pbpstats"
+PBPSTATS_DIR_CANDIDATES = (
+    REPO_ROOT / "references" / "pbpstats",
+    REPO_ROOT / "reference" / "pbpstats",
+)
+PBPSTATS_DIR = next((path for path in PBPSTATS_DIR_CANDIDATES if path.exists()), PBPSTATS_DIR_CANDIDATES[0])
 
 import sys
 
 if str(SILVER_TRANSFORM_DIR) not in sys.path:
     sys.path.insert(0, str(SILVER_TRANSFORM_DIR))
-if str(PBPSTATS_DIR) not in sys.path:
+if PBPSTATS_DIR.exists() and str(PBPSTATS_DIR) not in sys.path:
     sys.path.insert(0, str(PBPSTATS_DIR))
 
 import build_silver_possessions as ours

@@ -28,7 +28,9 @@ _NBA_ANALYTICS_DUCKDB_BUILDER_ENV_NAMES: tuple[str, ...] = (
     "ATHENA_TIMEOUT_SECONDS",
     "ATHENA_POLL_INTERVAL_SECONDS",
 )
+_DUCKDB_BUILDER_ENV_NAMES = _NBA_ANALYTICS_DUCKDB_BUILDER_ENV_NAMES
 _EMITTED_DEPRECATION_WARNINGS: set[str] = set()
+_STALE_REPO_DIR_NAMES = {"nba-analytics-lakehouse"}
 
 
 def _first_env(*names: str, default: str = "") -> str:
@@ -75,6 +77,23 @@ def _load_primary_then_root_fallback(
         )
 
 
+def _normalize_output_path(path: Path, *, default_output_path: Path) -> Path:
+    if not path.is_absolute():
+        return path
+    if path.name != default_output_path.name:
+        return path
+    if not _STALE_REPO_DIR_NAMES.intersection(path.parts):
+        return path
+    _warn_once(
+        "duckdb_builder_stale_output_path",
+        (
+            f"duckdb snapshot builder ignored stale output path {path}; "
+            f"using current repo path {default_output_path}."
+        ),
+    )
+    return default_output_path
+
+
 @dataclass(frozen=True)
 class DuckDBServingSnapshotSettings:
     athena_database: str
@@ -110,19 +129,23 @@ class DuckDBServingSnapshotSettings:
         athena_output_location = os.getenv("ATHENA_OUTPUT_LOCATION", "").strip()
         default_output_path = resolved_repo_root / "data" / "serving" / "nba_serving.duckdb"
         default_unload_prefix = f"{athena_output_location.rstrip('/')}/duckdb-serving-unload" if athena_output_location else ""
+        configured_output_path = Path(
+            _first_env(
+                "NBA_ANALYTICS_API_DUCKDB_SERVING_DB_PATH",
+                "OPENUI_API_DUCKDB_SERVING_DB_PATH",
+                "DUCKDB_SERVING_DB_PATH",
+                default=str(default_output_path),
+            )
+        )
         return cls(
             athena_database=os.getenv("ATHENA_DATABASE", "legacy_gold").strip() or "legacy_gold",
             athena_output_location=athena_output_location,
             athena_workgroup=os.getenv("ATHENA_WORKGROUP", "primary").strip() or "primary",
             athena_catalog=os.getenv("ATHENA_CATALOG", "AwsDataCatalog").strip() or "AwsDataCatalog",
             aws_region=_first_env("AWS_DEFAULT_REGION", "AWS_REGION", default=""),
-            output_path=Path(
-                _first_env(
-                    "NBA_ANALYTICS_API_DUCKDB_SERVING_DB_PATH",
-                    "OPENUI_API_DUCKDB_SERVING_DB_PATH",
-                    "DUCKDB_SERVING_DB_PATH",
-                    default=str(default_output_path),
-                )
+            output_path=_normalize_output_path(
+                configured_output_path,
+                default_output_path=default_output_path,
             ),
             athena_unload_prefix=_first_env(
                 "NBA_ANALYTICS_API_DUCKDB_ATHENA_UNLOAD_PREFIX",

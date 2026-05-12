@@ -161,3 +161,25 @@ def test_checkpoint_round_trip_persists_rows():
     assert exists is True
     assert loaded_index["0022400001"]["source_fingerprint"] == "abc"
     assert loaded_index["0022400001"]["pipeline_run_id"] == "run_1"
+
+
+def test_selection_audit_fields_normalize_shared_contract():
+    fields = runtime.selection_audit_fields(
+        {
+            "selection_mode": "target_game_ids",
+            "target_game_ids": ["0022400001"],
+            "missing_target_game_ids": ["0099999999"],
+            "checkpoint_enabled": True,
+            "legacy_state_fallback_used": False,
+        },
+        checkpoint_key_written="silver/_state/example_checkpoint.parquet",
+    )
+
+    assert fields == {
+        "selection_mode": "target_game_ids",
+        "target_game_ids": '["0022400001"]',
+        "missing_target_game_ids": '["0099999999"]',
+        "checkpoint_enabled": 1,
+        "legacy_state_fallback_used": 0,
+        "checkpoint_key": "silver/_state/example_checkpoint.parquet",
+    }

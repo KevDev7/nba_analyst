@@ -54,9 +54,9 @@ class WebApiTests(unittest.TestCase):
                     self.assertFalse(web_server._public_debug_enabled())
                     self.assertFalse(web_server._effective_debug_requested(True))
 
-    def test_max_question_chars_defaults_to_public_beta_limit(self) -> None:
+    def test_max_question_chars_is_unbounded_by_default(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
-            self.assertEqual(web_server._max_question_chars(), 250)
+            self.assertIsNone(web_server._max_question_chars())
 
     def test_max_question_chars_uses_positive_integer_override(self) -> None:
         with patch.dict("os.environ", {"NBA_MAX_QUESTION_CHARS": "10"}, clear=True):
@@ -66,7 +66,7 @@ class WebApiTests(unittest.TestCase):
         for value in ["", "0", "-1", "abc", "12abc", "1.5"]:
             with self.subTest(value=value):
                 with patch.dict("os.environ", {"NBA_MAX_QUESTION_CHARS": value}, clear=True):
-                    self.assertEqual(web_server._max_question_chars(), 250)
+                    self.assertIsNone(web_server._max_question_chars())
 
     def test_cors_preflight_allows_configured_frontend_origin(self) -> None:
         cors_app = FastAPI()
@@ -208,22 +208,22 @@ class WebApiTests(unittest.TestCase):
         )
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
-    def test_chat_allows_question_at_character_limit(self, mock_run_assistant) -> None:
-        question = "x" * 250
-        mock_run_assistant.return_value = AssistantResult(answer="At limit")
+    def test_chat_does_not_apply_default_character_limit(self, mock_run_assistant) -> None:
+        question = "x" * 1000
+        mock_run_assistant.return_value = AssistantResult(answer="No default limit")
 
         with patch.dict("os.environ", {}, clear=True):
             response = self.client.post("/api/chat", json={"question": question, "debug": False})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["answer"], "At limit")
+        self.assertEqual(response.json()["answer"], "No default limit")
         mock_run_assistant.assert_called_once_with(question, debug=False)
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
-    def test_chat_rejects_question_over_character_limit(self, mock_run_assistant) -> None:
-        question = "x" * 251
+    def test_chat_rejects_question_over_configured_character_limit(self, mock_run_assistant) -> None:
+        question = "x" * 11
 
-        with patch.dict("os.environ", {}, clear=True):
+        with patch.dict("os.environ", {"NBA_MAX_QUESTION_CHARS": "10"}, clear=True):
             response = self.client.post("/api/chat", json={"question": question, "debug": False})
 
         self.assertEqual(response.status_code, 200)
@@ -232,7 +232,7 @@ class WebApiTests(unittest.TestCase):
             {
                 "ok": False,
                 "answer": None,
-                "error": "Question is too long. Please keep it under 250 characters.",
+                "error": "Question is too long. Please keep it under 10 characters.",
                 "artifacts": [],
                 "debug": None,
             },
@@ -240,16 +240,16 @@ class WebApiTests(unittest.TestCase):
         mock_run_assistant.assert_not_called()
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
-    def test_chat_counts_trimmed_question_toward_character_limit(self, mock_run_assistant) -> None:
-        question = f"  {'x' * 250}  "
+    def test_chat_counts_trimmed_question_toward_configured_character_limit(self, mock_run_assistant) -> None:
+        question = f"  {'x' * 10}  "
         mock_run_assistant.return_value = AssistantResult(answer="Trimmed limit")
 
-        with patch.dict("os.environ", {}, clear=True):
+        with patch.dict("os.environ", {"NBA_MAX_QUESTION_CHARS": "10"}, clear=True):
             response = self.client.post("/api/chat", json={"question": question, "debug": False})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["answer"], "Trimmed limit")
-        mock_run_assistant.assert_called_once_with("x" * 250, debug=False)
+        mock_run_assistant.assert_called_once_with("x" * 10, debug=False)
 
     @patch("apps.web.server.assistant_pipeline.run_assistant")
     def test_chat_uses_configured_character_limit(self, mock_run_assistant) -> None:

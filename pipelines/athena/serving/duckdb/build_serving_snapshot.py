@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import tempfile
 import time
@@ -69,6 +70,8 @@ class SnapshotInspectionResult:
 class AthenaSourceParquetExporter:
     def __init__(self, settings: DuckDBServingSnapshotSettings):
         self._settings = settings
+        if os.getenv("AWS_PROFILE") == "":
+            os.environ.pop("AWS_PROFILE", None)
         self._athena = boto3.client("athena", region_name=settings.aws_region) if settings.aws_region else None
         self._s3 = boto3.client("s3", region_name=settings.aws_region) if settings.aws_region else None
 

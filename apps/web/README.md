@@ -54,7 +54,7 @@ NBA_ONTOLOGY_PLANNER_BIN=/app/bin/ontology-hs
 NBA_DISABLE_SNAPSHOT_REBUILD=1
 NBA_ALLOWED_ORIGINS=https://nba-insight-mdpl.onrender.com
 NBA_ENABLE_PUBLIC_DEBUG=0
-NBA_MAX_QUESTION_CHARS=250
+NBA_MAX_QUESTION_CHARS=4000
 ```
 
 That means the deployed app uses the committed
@@ -70,6 +70,25 @@ proxies `/api/*` to the API server.
 debug payloads include internal semantic drafts, execution plans, SQL, and
 grounding traces.
 
-`POST /api/chat` also rejects public web questions above
-`NBA_MAX_QUESTION_CHARS` after trimming whitespace and before calling the LLM,
-planner, or runtime. The beta default is `250`.
+Debug restriction justification:
+
+- Concrete failure prevented: anonymous users cannot retrieve internal planning
+  traces, SQL, value-resolution details, or provider handoff payloads.
+- Why the schema contract is not sufficient: debug output is metadata around
+  the schema-grounded answer, not part of the answer schema itself.
+- Product flexibility lost: public users cannot self-inspect grounding traces
+  unless the deployment explicitly enables debug mode.
+
+`POST /api/chat` rejects public web questions above `NBA_MAX_QUESTION_CHARS`
+only when that env var is set to a positive integer. Local/dev defaults do not
+cap question length.
+
+Question-length restriction justification:
+
+- Concrete failure prevented: unbounded anonymous public requests can create
+  avoidable provider cost and request-size abuse.
+- Why the schema contract is not sufficient: schema validation happens after
+  the public HTTP request has already consumed API/runtime resources.
+- Product flexibility lost: questions above the configured deployment cap are
+  blocked before semantic interpretation, so public caps should stay high and
+  deployment-specific rather than becoming a semantic product rule.
