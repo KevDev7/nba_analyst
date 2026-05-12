@@ -1,0 +1,103 @@
+[
+  {
+    "name": "simple semantic query plan",
+    "question": "Show top teams by net rating",
+    "plan": {
+      "plan": {
+        "kind": "simple_semantic_query",
+        "question": "Show top teams by net rating"
+      },
+      "tool_sequence": [
+        {
+          "tool_name": "semantic_query.plan_execute",
+          "purpose": "retrieve grounded answer"
+        }
+      ]
+    },
+    "expected_tools": [
+      "semantic_query.plan_execute"
+    ],
+    "forbidden_tools": [
+      "raw_sql",
+      "raw_python",
+      "arbitrary_python",
+      "python_code"
+    ],
+    "max_tool_calls": 6
+  },
+  {
+    "name": "period delta plan",
+    "question": "Which teams had the biggest increase in net rating from the 2023-24 regular season to the 2024-25 regular season?",
+    "plan": {
+      "plan": {
+        "kind": "period_delta",
+        "subject": "teams",
+        "measure": "net rating",
+        "periods": [
+          {
+            "season": "2023-24",
+            "season_type": "regular_season"
+          },
+          {
+            "season": "2024-25",
+            "season_type": "regular_season"
+          }
+        ],
+        "join_key": "entity",
+        "delta": "right_minus_left"
+      },
+      "tool_sequence": [
+        {
+          "tool_name": "semantic_query.plan_execute",
+          "purpose": "left period retrieval"
+        },
+        {
+          "tool_name": "semantic_query.plan_execute",
+          "purpose": "right period retrieval"
+        },
+        {
+          "tool_name": "python_analysis.run",
+          "purpose": "compute delta"
+        },
+        {
+          "tool_name": "artifact_renderer.render",
+          "purpose": "render artifacts"
+        }
+      ]
+    },
+    "expected_tools": [
+      "semantic_query.plan_execute",
+      "semantic_query.plan_execute",
+      "python_analysis.run",
+      "artifact_renderer.render"
+    ],
+    "forbidden_tools": [
+      "raw_sql",
+      "raw_python",
+      "arbitrary_python",
+      "python_code"
+    ],
+    "max_tool_calls": 6
+  },
+  {
+    "name": "unsupported lineup surface",
+    "question": "Which Lakers lineups had the best on-off numbers?",
+    "plan": {
+      "plan": {
+        "kind": "unsupported",
+        "reason": "Lineup and on-off data are not exposed by the ontology.",
+        "unsupported_surface": "lineups"
+      },
+      "tool_sequence": []
+    },
+    "expected_tools": [],
+    "forbidden_tools": [
+      "raw_sql",
+      "raw_python",
+      "arbitrary_python",
+      "python_code"
+    ],
+    "max_tool_calls": 6,
+    "expected_plan_kind": "unsupported"
+  }
+]

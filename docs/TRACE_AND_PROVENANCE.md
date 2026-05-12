@@ -129,3 +129,26 @@ It does not receive raw SQL, a DuckDB connection, network access, or arbitrary c
 ## Multi-Call Routes
 
 The first governed multi-call route records two `semantic_query.plan_execute` trace entries, one `python_analysis.run` entry, and one `artifact_renderer.render` entry when debug output is requested. The route is currently deterministic and acceptance-test scoped; later model tool-calling should reuse the same trace shape instead of creating a separate observability format.
+
+## Model-Orchestration Trace Policy
+
+Model orchestration is feature-gated. When enabled, model-produced plans are recorded in debug metadata as structured JSON, not as free-form hidden instructions.
+
+Trace policy:
+
+- executed tool calls must be one of the governed assistant tools;
+- raw SQL and execution plans remain absent from normal trace records;
+- dry-run mode records the validated plan and planned tool sequence but does not execute tools;
+- unsupported capability plans return a refusal reason and record no retrieval/analysis tool calls;
+- grounded composed answers record claim/evidence references in debug metadata when composition is enabled.
+
+Current model-plan allowlist:
+
+```text
+ontology_catalog.inspect
+semantic_query.plan_execute
+python_analysis.run
+artifact_renderer.render
+```
+
+There is intentionally no `raw_sql`, `duckdb.execute`, arbitrary Python, or code-execution tool in the model-visible orchestration contract.

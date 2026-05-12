@@ -114,6 +114,7 @@ def _artifacts_from_analysis_tables(request: ArtifactRenderRequest) -> list[dict
 def _table_artifact_from_analysis_table(table: AnalysisTable) -> dict[str, Any]:
     return {
         "kind": "table",
+        "id": table.id,
         "title": table.title,
         "columns": [
             {

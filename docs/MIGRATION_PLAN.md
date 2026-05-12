@@ -98,6 +98,44 @@ Status: implemented.
 - Semantic-query execution provenance now includes execution duration where available.
 - Added `evals/orchestrator_question_bank.json` plus a trace-based test asserting expected tool sequence and forbidden raw paths.
 
+## Slice 5A: Model-Orchestrator Dry Run
+
+Status: implemented.
+
+- Added `apps/assistant/model_orchestration/plans.py` for validated model-produced plans.
+- Supported plan kinds start narrow: `simple_semantic_query`, `period_delta`, `artifact_request`, and `unsupported`.
+- Model plans may name only governed tools: `ontology_catalog.inspect`, `semantic_query.plan_execute`, `python_analysis.run`, and `artifact_renderer.render`.
+- Plans that reference raw SQL, arbitrary Python/code tools, or unsupported data surfaces are rejected unless represented as an `unsupported` refusal.
+- Dry-run mode is gated by `NBA_ENABLE_MODEL_ORCHESTRATOR` plus `NBA_MODEL_ORCHESTRATOR_DRY_RUN`; it returns the validated plan and planned tool sequence without executing tools.
+
+## Slice 5B: Gated Model Tool Execution
+
+Status: implemented as a structured-plan executor.
+
+- Model orchestration execution is disabled by default and requires `NBA_ENABLE_MODEL_ORCHESTRATOR`.
+- Execution reuses existing governed tools rather than adding a raw SQL or arbitrary Python tool.
+- Tool-call count is capped by the plan schema and executor.
+- Planner failures or execution failures fall back to the deterministic orchestrator path.
+- The deterministic fast path and deterministic `PeriodDeltaPlan` route remain available when model orchestration is disabled.
+
+## Slice 5C: Grounded Answer Composer
+
+Status: implemented behind a feature gate.
+
+- Added a model-assisted answer composer that receives structured evidence tables, findings, and artifact summaries only.
+- The composer does not receive raw SQL or database internals.
+- Numeric/factual claims must include evidence references with `table_id`, `row_index`, and `columns`.
+- Invalid or unsupported claims fall back to the deterministic table-first answer.
+- The composer is disabled by default and requires `NBA_ENABLE_MODEL_ANSWER_COMPOSER`.
+
+## Slice 5D: Model-Orchestration Evals
+
+Status: implemented.
+
+- Added `evals/model_orchestration_question_bank.json`.
+- Added tests that assert expected model-plan tool sequences, forbidden raw paths, max tool-call count, and unsupported-surface refusals.
+- Added tests proving model orchestration does not regress deterministic fallback behavior when the model planner fails.
+
 ## Slice 4: Governed Multi-Call Orchestrator
 
 Status: stabilized deterministic route implemented.
@@ -132,11 +170,9 @@ Next improvements before model tool-calling:
 - continue adding trace-based evals for each governed route;
 - consider runtime-owned SQL execution metrics/caps before allowing any non-Haskell SQL author.
 
-## Later: Model Tool Loop And Sandbox
+## Later: Arbitrary-Code Sandbox
 
-Only after tool contracts, trace records, and evals are stable:
+Only after model orchestration remains stable behind gates:
 
-- Add LLM orchestrator tool calls.
-- Avoid double LLM calls by allowing orchestrator-emitted semantic drafts.
 - Add sandboxed Python over approved retrieved tables.
 - Keep sandboxed Python away from raw DuckDB access.

@@ -292,10 +292,95 @@ artifact_renderer.render(derived AnalysisTable)
 
 The route lives under `apps/assistant/routes/period_delta.py` and uses a structured `PeriodDeltaPlan`. It proves that the assistant can make multiple ontology-grounded retrieval calls, compute a derived table, and render artifacts without raw SQL, arbitrary Python, or a model tool loop.
 
+## Gated Model Orchestration
+
+Model orchestration is disabled by default. It can be enabled for controlled testing with:
+
+```text
+NBA_ENABLE_MODEL_ORCHESTRATOR=1
+```
+
+Dry-run mode can be enabled with:
+
+```text
+NBA_MODEL_ORCHESTRATOR_DRY_RUN=1
+```
+
+Dry-run mode validates a model-produced plan and returns the planned tool sequence, but it does not execute tools.
+
+Allowed plan kinds:
+
+- `simple_semantic_query`
+- `period_delta`
+- `artifact_request`
+- `unsupported`
+
+Allowed model-plan tool names:
+
+- `ontology_catalog.inspect`
+- `semantic_query.plan_execute`
+- `python_analysis.run`
+- `artifact_renderer.render`
+
+Forbidden tool names and references include:
+
+- `raw_sql`
+- `raw_python`
+- `sql.execute`
+- `python_code`
+- `duckdb.execute`
+
+The model orchestrator may produce a structured plan, choose governed tools, and request artifacts. It must not author SQL, author Python code, request a database handle, or claim support for unsupported surfaces such as play-by-play, lineups, on-off, clutch, or shot location.
+
+## Grounded Answer Composer
+
+The model-assisted answer composer is disabled by default and can be enabled only alongside model orchestration:
+
+```text
+NBA_ENABLE_MODEL_ANSWER_COMPOSER=1
+```
+
+Input is limited to:
+
+- structured evidence tables;
+- derived findings;
+- artifact summaries.
+
+The composer does not receive raw SQL, execution plans, database handles, hidden planner output, or arbitrary files.
+
+Output shape:
+
+```json
+{
+  "answer": "The Magic had the largest increase.",
+  "claims": [
+    {
+      "text": "The Magic increased by 5.6.",
+      "evidence_refs": [
+        {
+          "table_id": "analysis.delta",
+          "row_index": 0,
+          "columns": ["entity", "delta"]
+        }
+      ]
+    }
+  ],
+  "limitations": []
+}
+```
+
+Validation:
+
+- every claim must include evidence refs;
+- each evidence table id must exist;
+- each row index must be in range;
+- each referenced column must exist on the row;
+- invalid model output falls back to the deterministic answer.
+
 ## Future Tools
 
 These are planned contracts, not current behavior:
 
-- `answer_composer.compose`: compose open-ended answers from evidence-bearing tool outputs.
+- arbitrary-code Python sandbox over approved retrieved tables only.
 
 The implementation should keep tool schemas plain JSON-compatible so they can later be wrapped by Responses API tool calling, Agents SDK, or another orchestration framework.

@@ -95,6 +95,7 @@ class ArtifactRendererToolTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual([artifact["kind"] for artifact in result.artifacts], ["text", "text", "table"])
+        self.assertEqual(result.artifacts[2]["id"], "analysis.delta")
         self.assertEqual(result.artifacts[2]["metadata"]["source_table_id"], "analysis.delta")
         self.assertEqual(result.artifacts[2]["rows"][0]["entity"], "Magic")
 
