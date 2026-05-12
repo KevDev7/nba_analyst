@@ -82,18 +82,23 @@ def plan_question(question: str) -> tuple[dict[str, Any], dict[str, Any]]:
         semantic_draft = interpret_question_to_semantic_draft(question)
     except SemanticInterpreterError as exc:
         raise RuntimeError(str(exc)) from exc
-    # Apply explicit product defaults, like current season and regular season,
-    # before Haskell validates the draft against the ontology.
-    semantic_draft = apply_semantic_assumptions(question, semantic_draft)
-    try:
-        # Resolve raw comparison names like "Brunson" against the data snapshot.
-        # Haskell should receive grounded entity IDs, not trust the LLM to invent them.
-        semantic_draft = enrich_semantic_draft_with_resolved_entities(semantic_draft)
-    except EntityResolutionError as exc:
-        raise RuntimeError(str(exc)) from exc
+    semantic_draft = prepare_semantic_draft(question, semantic_draft)
     # Ask Haskell to turn the draft into a safe, ontology-grounded plan.
     planner_output = call_haskell_planner_for_semantic_draft(semantic_draft)
     return semantic_draft, planner_output
+
+
+def prepare_semantic_draft(question: str, semantic_draft: dict[str, Any]) -> dict[str, Any]:
+    # Apply explicit product defaults, like current season and regular season,
+    # before Haskell validates the draft against the ontology.
+    prepared = apply_semantic_assumptions(question, semantic_draft)
+    try:
+        # Resolve raw comparison names like "Brunson" against the data snapshot.
+        # Haskell should receive grounded entity IDs, not trust the LLM to invent them.
+        prepared = enrich_semantic_draft_with_resolved_entities(prepared)
+    except EntityResolutionError as exc:
+        raise RuntimeError(str(exc)) from exc
+    return prepared
 
 
 def run_assistant(question: str, debug: bool = False) -> AssistantResult:

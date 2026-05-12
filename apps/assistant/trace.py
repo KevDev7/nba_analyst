@@ -33,6 +33,7 @@ class ExecutionStepProvenance(BaseModel):
     sql_hash: Optional[str] = None
     sql_redacted: bool = True
     row_count: Optional[int] = None
+    execution_ms: Optional[int] = None
 
 
 class ToolProvenance(BaseModel):
@@ -41,6 +42,12 @@ class ToolProvenance(BaseModel):
     planner: Optional[str] = None
     planner_mode: Optional[str] = None
     execution_steps: list[ExecutionStepProvenance] = Field(default_factory=list)
+    row_limit_requested: Optional[int] = None
+    row_limit_enforced: Optional[bool] = None
+    operation_kind: Optional[str] = None
+    parent_table_ids: list[str] = Field(default_factory=list)
+    output_table_ids: list[str] = Field(default_factory=list)
+    derived_from_table_ids: list[str] = Field(default_factory=list)
 
 
 class ToolCallTrace(BaseModel):

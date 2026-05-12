@@ -11,6 +11,7 @@ if str(RUNTIME_ROOT) not in sys.path:
     sys.path.insert(0, str(RUNTIME_ROOT))
 
 from apps.assistant.tools.artifact_renderer import ArtifactRenderRequest, render
+from runtime.AnalysisTools.models import AnalysisTable, AnalysisTableColumn
 from runtime.AnalysisRuntime.models import RankingRow
 from tests.answer_context_helpers import build_final_answer
 
@@ -70,6 +71,32 @@ class ArtifactRendererToolTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual([artifact["kind"] for artifact in result.artifacts], ["table"])
         self.assertEqual(result.artifacts[0]["row_count"], 1)
+
+    def test_render_can_project_analysis_tables(self) -> None:
+        table = AnalysisTable(
+            id="analysis.delta",
+            title="Team deltas",
+            columns=[
+                AnalysisTableColumn(id="entity", label="Team", type="text"),
+                AnalysisTableColumn(id="delta", label="Delta", type="number"),
+            ],
+            rows=[{"entity": "Magic", "delta": 5.6}],
+            row_count=1,
+            metadata={"operation_kind": "join_and_delta"},
+        )
+
+        result = render(
+            ArtifactRenderRequest(
+                question="Which teams improved most?",
+                tables=[table],
+                summary="Biggest increases",
+            )
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual([artifact["kind"] for artifact in result.artifacts], ["text", "text", "table"])
+        self.assertEqual(result.artifacts[2]["metadata"]["source_table_id"], "analysis.delta")
+        self.assertEqual(result.artifacts[2]["rows"][0]["entity"], "Magic")
 
 
 if __name__ == "__main__":

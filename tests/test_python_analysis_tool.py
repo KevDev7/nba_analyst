@@ -140,6 +140,8 @@ class PythonAnalysisToolTests(unittest.TestCase):
         self.assertEqual(result.provenance["tool"], "python_analysis.run")
         self.assertEqual(result.provenance["operation_kind"], "join_and_delta")
         self.assertEqual(result.provenance["parent_table_ids"], ["q_2023_24.primary", "q_2024_25.primary"])
+        self.assertEqual(result.provenance["derived_from_table_ids"], ["q_2023_24.primary", "q_2024_25.primary"])
+        self.assertEqual(result.provenance["output_table_ids"], ["q_2023_24.primary_q_2024_25.primary_increase"])
         self.assertEqual(len(result.outputs["tables"]), 1)
         self.assertEqual(result.outputs["tables"][0]["metadata"]["parent_table_ids"], ["q_2023_24.primary", "q_2024_25.primary"])
 

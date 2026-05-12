@@ -66,9 +66,41 @@ artifact_renderer.render
 answer_composer.compose
 ```
 
+## Slice 4A: Tool Contract Stabilization
+
+Status: implemented.
+
+- Direct `semantic_draft` requests now default to raw and pass through deterministic preparation before Haskell planning.
+- Internally generated drafts can be marked `prepared` to avoid double-normalizing explicit plan fields.
+- Private execution-plan debug is gated by debug mode, trusted caller, and `NBA_ALLOW_PRIVATE_SQL_TRACE`.
+- Semantic-query provenance records requested row limit and whether it is currently enforced.
+- Python-analysis provenance records parent, derived-from, and output table ids.
+- Brittle test helper ordering was fixed.
+
+## Slice 4B: Generic Deterministic Multi-Call Plans
+
+Status: implemented.
+
+- Moved the hard-coded period-delta route out of `orchestrator.py`.
+- Added `apps/assistant/routes/period_delta.py`.
+- Added `PeriodDeltaPlan` and `PeriodSpec`.
+- Generalized the deterministic route across supported subjects (`teams`, `players`), explicit seasons/season types, and configurable measures.
+- Kept retrieval through `semantic_query.plan_execute`.
+- Kept derived analysis through `python_analysis.run`.
+
+## Slice 4C: Artifact, Catalog, And Governance Hardening
+
+Status: implemented.
+
+- `artifact_renderer.render` can now render derived `AnalysisTable` outputs.
+- The period-delta route renders derived tables through `artifact_renderer.render`.
+- `ontology_catalog.inspect` splits model-facing `subjects` from internal `fact_surfaces`.
+- Semantic-query execution provenance now includes execution duration where available.
+- Added `evals/orchestrator_question_bank.json` plus a trace-based test asserting expected tool sequence and forbidden raw paths.
+
 ## Slice 4: Governed Multi-Call Orchestrator
 
-Status: initial route implemented.
+Status: stabilized deterministic route implemented.
 
 Implemented first acceptance path:
 
@@ -82,6 +114,7 @@ Current governed tool sequence:
 semantic_query.plan_execute  # prior season team average points
 semantic_query.plan_execute  # current season team average points
 python_analysis.run          # join_and_delta
+artifact_renderer.render     # derived table artifacts
 assistant response           # deterministic table-first summary
 ```
 
@@ -93,11 +126,11 @@ This route is intentionally additive:
 - it does not let Python access DuckDB;
 - it uses semantic drafts validated by Haskell for both retrievals.
 
-Next improvements:
+Next improvements before model tool-calling:
 
-- route more period-over-period metric deltas through the same tool pattern;
-- render derived-analysis tables/charts through the artifact renderer;
-- promote the multi-call trace into the normal debug schema for CLI/web display.
+- add more deterministic plan types only if they share the same structured-plan executor pattern;
+- continue adding trace-based evals for each governed route;
+- consider runtime-owned SQL execution metrics/caps before allowing any non-Haskell SQL author.
 
 ## Later: Model Tool Loop And Sandbox
 

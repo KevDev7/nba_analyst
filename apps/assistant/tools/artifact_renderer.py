@@ -3,6 +3,7 @@
 #
 # Uses:
 # - grounded FinalAnswer objects
+# - derived AnalysisTable objects
 # - existing answer artifact builder
 # - existing chart bridge and trusted AnalysisTools worker
 #
@@ -26,6 +27,7 @@ if str(RUNTIME_ROOT) not in sys.path:
 
 from runtime.AnswerSynthesis.artifacts import build_artifacts
 from runtime.AnswerSynthesis.response_models import FinalAnswer
+from runtime.AnalysisTools.models import AnalysisTable
 
 from apps.assistant.chart_artifacts import append_chart_artifacts
 
@@ -35,8 +37,11 @@ ArtifactKind = Literal["text", "table", "chart"]
 
 class ArtifactRenderRequest(BaseModel):
     question: str = ""
-    answer: FinalAnswer
+    answer: Optional[FinalAnswer] = None
+    tables: list[AnalysisTable] = Field(default_factory=list)
     artifacts: Optional[list[dict[str, Any]]] = None
+    summary: Optional[str] = None
+    interpretation: Optional[str] = None
     allowed_artifact_kinds: list[ArtifactKind] = Field(default_factory=lambda: ["text", "table", "chart"])
 
 
@@ -51,8 +56,8 @@ class ArtifactRenderResult(BaseModel):
 def render(request: ArtifactRenderRequest) -> ArtifactRenderResult:
     try:
         allowed = set(request.allowed_artifact_kinds)
-        artifacts = list(request.artifacts) if request.artifacts is not None else build_artifacts(request.answer)
-        if "chart" in allowed:
+        artifacts = _base_artifacts(request)
+        if request.answer is not None and "chart" in allowed:
             artifacts = append_chart_artifacts(request.question, request.answer, artifacts)
         artifacts = [artifact for artifact in artifacts if artifact.get("kind") in allowed]
         return ArtifactRenderResult(
@@ -69,3 +74,61 @@ def render(request: ArtifactRenderRequest) -> ArtifactRenderResult:
             ok=False,
             error={"code": "artifact_render_failed", "message": str(exc)},
         )
+
+
+def _base_artifacts(request: ArtifactRenderRequest) -> list[dict[str, Any]]:
+    if request.artifacts is not None:
+        return list(request.artifacts)
+    if request.answer is not None:
+        return build_artifacts(request.answer)
+    if request.tables:
+        return _artifacts_from_analysis_tables(request)
+    raise ValueError("ArtifactRenderRequest requires answer, tables, or artifacts.")
+
+
+def _artifacts_from_analysis_tables(request: ArtifactRenderRequest) -> list[dict[str, Any]]:
+    artifacts: list[dict[str, Any]] = []
+    interpretation = request.interpretation or request.question
+    if interpretation:
+        artifacts.append(
+            {
+                "kind": "text",
+                "role": "interpretation",
+                "text": f"Interpreted as: {interpretation}",
+            }
+        )
+    summary = request.summary or (request.tables[0].title if request.tables else "")
+    if summary:
+        artifacts.append(
+            {
+                "kind": "text",
+                "role": "summary",
+                "text": summary,
+            }
+        )
+    for table in request.tables:
+        artifacts.append(_table_artifact_from_analysis_table(table))
+    return artifacts
+
+
+def _table_artifact_from_analysis_table(table: AnalysisTable) -> dict[str, Any]:
+    return {
+        "kind": "table",
+        "title": table.title,
+        "columns": [
+            {
+                "id": column.id,
+                "label": column.label,
+                "type": column.type,
+            }
+            for column in table.columns
+        ],
+        "rows": list(table.rows),
+        "row_count": int(table.row_count if table.row_count is not None else len(table.rows)),
+        "displayed_row_count": len(table.rows),
+        "display_limit": len(table.rows),
+        "metadata": {
+            **table.metadata,
+            "source_table_id": table.id,
+        },
+    }

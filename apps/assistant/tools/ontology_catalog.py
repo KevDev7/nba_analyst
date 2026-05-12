@@ -37,9 +37,9 @@ UNSUPPORTED_SURFACES = [
     "clutch",
     "shot_location",
 ]
-DEFAULT_FACETS = ["subjects", "metrics", "dimensions", "filters", "time_grains", "coverage"]
+DEFAULT_FACETS = ["subjects", "fact_surfaces", "metrics", "dimensions", "filters", "time_grains", "coverage"]
 
-CatalogFacet = Literal["subjects", "metrics", "dimensions", "filters", "time_grains", "coverage"]
+CatalogFacet = Literal["subjects", "fact_surfaces", "metrics", "dimensions", "filters", "time_grains", "coverage"]
 
 
 class OntologyCatalogRequest(BaseModel):
@@ -62,6 +62,7 @@ class OntologyCatalogResult(BaseModel):
     data_snapshot_id: Optional[str] = None
     coverage: dict[str, Any] = Field(default_factory=dict)
     subjects: list[dict[str, Any]] = Field(default_factory=list)
+    fact_surfaces: list[dict[str, Any]] = Field(default_factory=list)
     metrics: list[dict[str, Any]] = Field(default_factory=list)
     dimensions: list[dict[str, Any]] = Field(default_factory=list)
     filters: list[dict[str, Any]] = Field(default_factory=list)
@@ -84,6 +85,7 @@ def inspect(request: Optional[OntologyCatalogRequest] = None) -> OntologyCatalog
             data_snapshot_id=f"gold-snapshot:{_file_hash(DB_PATH)}" if DB_PATH.exists() else None,
             coverage=coverage,
             subjects=_subjects(selected_objects, request) if "subjects" in facets else [],
+            fact_surfaces=_fact_surfaces(selected_objects, request) if "fact_surfaces" in facets else [],
             metrics=_metrics(selected_objects, request) if "metrics" in facets else [],
             dimensions=_dimensions(selected_objects, request) if "dimensions" in facets else [],
             filters=_filters(selected_objects, request) if "filters" in facets else [],
@@ -121,6 +123,8 @@ def _filter_objects(objects: list[dict[str, Any]], subject_hint: Optional[str]) 
 def _subjects(objects: list[dict[str, Any]], request: OntologyCatalogRequest) -> list[dict[str, Any]]:
     items = []
     for obj in objects:
+        if _is_fact_surface(obj):
+            continue
         attributes = [attr for attr in obj.get("attributes", []) if isinstance(attr, dict)]
         metrics = [metric for metric in obj.get("metrics", []) if isinstance(metric, dict)]
         item = {
@@ -133,6 +137,24 @@ def _subjects(objects: list[dict[str, Any]], request: OntologyCatalogRequest) ->
         }
         items.append(item)
     return _limit(_search(items, request.search, ["key", "label", "backing_table", "description"]), request.max_items)
+
+
+def _fact_surfaces(objects: list[dict[str, Any]], request: OntologyCatalogRequest) -> list[dict[str, Any]]:
+    items = []
+    for obj in objects:
+        if not _is_fact_surface(obj):
+            continue
+        metrics = [metric for metric in obj.get("metrics", []) if isinstance(metric, dict)]
+        item = {
+            "key": obj.get("name"),
+            "label": _label(str(obj.get("name", ""))),
+            "subject": _subject_for_fact_surface(str(obj.get("name", ""))),
+            "backing_table": obj.get("backing_table"),
+            "grain": _grain_for_fact_surface(str(obj.get("name", ""))),
+            "metric_count": len(metrics),
+        }
+        items.append(item)
+    return _limit(_search(items, request.search, ["key", "label", "subject", "backing_table", "grain"]), request.max_items)
 
 
 def _metrics(objects: list[dict[str, Any]], request: OntologyCatalogRequest) -> list[dict[str, Any]]:
@@ -254,6 +276,26 @@ def _limitations() -> list[str]:
         "Catalog v1 is derived from semantic-gold.yaml plus DuckDB coverage metadata; Haskell remains the authoritative ontology validator.",
         "The current ontology does not expose possession, lineup, on-off, clutch, shot-location, or play-by-play surfaces as first-class concepts.",
     ]
+
+
+def _is_fact_surface(obj: dict[str, Any]) -> bool:
+    return bool(obj.get("metrics"))
+
+
+def _subject_for_fact_surface(name: str) -> str:
+    if name.startswith("Team"):
+        return "Team"
+    if name.startswith("Player"):
+        return "Player"
+    return name
+
+
+def _grain_for_fact_surface(name: str) -> str:
+    if "Game" in name:
+        return "game"
+    if "Season" in name:
+        return "season"
+    return "unknown"
 
 
 def _search(items: list[dict[str, Any]], search: Optional[str], keys: list[str]) -> list[dict[str, Any]]:

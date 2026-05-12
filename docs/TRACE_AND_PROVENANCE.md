@@ -44,11 +44,13 @@ Shape:
         "query_id": "sq_...",
         "result_shape": "ranking",
         "row_count": 10,
-        "artifact_count": 3
+        "artifact_count": 3,
+        "row_limit_requested": 500,
+        "row_limit_enforced": false
       },
       "provenance": {
-          "ontology_path": "fixtures/ontology/semantic-gold.yaml",
-          "snapshot_path": "fixtures/duckdb/gold_slice.duckdb",
+        "ontology_path": "fixtures/ontology/semantic-gold.yaml",
+        "snapshot_path": "fixtures/duckdb/gold_slice.duckdb",
         "planner": "ontology-hs",
         "planner_mode": "plan-semantic-draft-json",
         "execution_steps": [
@@ -57,9 +59,12 @@ Shape:
             "kind": "run_sql",
             "sql_hash": "sha256:...",
             "sql_redacted": true,
-            "row_count": 10
+            "row_count": 10,
+            "execution_ms": 83
           }
-        ]
+        ],
+        "row_limit_requested": 500,
+        "row_limit_enforced": false
       }
     }
   ],
@@ -93,6 +98,13 @@ Raw SQL must not be included in:
 
 Normal trace records use `sql_hash` and `sql_redacted: true`.
 
+Private execution-plan debug is only available when all of these are true:
+
+- `include_debug` is true;
+- `include_private_sql` is true;
+- `NBA_ALLOW_PRIVATE_SQL_TRACE` is enabled;
+- the caller is trusted, such as `developer_test` or `local_cli`.
+
 ## Catalog And Artifact Provenance
 
 `ontology_catalog.inspect` returns:
@@ -109,10 +121,11 @@ Normal trace records use `sql_hash` and `sql_redacted: true`.
 - the runtime name;
 - parent table ids;
 - output tables/artifacts/findings;
+- parent table ids and output table ids;
 - evidence references for generated findings where available.
 
 It does not receive raw SQL, a DuckDB connection, network access, or arbitrary code in the current contract.
 
 ## Multi-Call Routes
 
-The first governed multi-call route records the two semantic-query traces plus a `python_analysis.run` trace entry when debug output is requested. The route is currently deterministic and acceptance-test scoped; later model tool-calling should reuse the same trace shape instead of creating a separate observability format.
+The first governed multi-call route records two `semantic_query.plan_execute` trace entries, one `python_analysis.run` entry, and one `artifact_renderer.render` entry when debug output is requested. The route is currently deterministic and acceptance-test scoped; later model tool-calling should reuse the same trace shape instead of creating a separate observability format.

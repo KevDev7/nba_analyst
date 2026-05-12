@@ -47,6 +47,7 @@ def run(request: PythonAnalysisToolRequest) -> PythonAnalysisToolResult:
     analysis_id = request.request_id or new_id("analysis")
     result = run_analysis_request(request.analysis_request)
     parent_table_ids = [table.id for table in request.analysis_request.tables]
+    output_table_ids = [table.id for table in result.tables]
     operation = request.analysis_request.operation
     return PythonAnalysisToolResult(
         ok=result.ok,
@@ -61,6 +62,8 @@ def run(request: PythonAnalysisToolRequest) -> PythonAnalysisToolResult:
             "runtime": request.analysis_request.runtime,
             "operation_kind": operation.kind,
             "parent_table_ids": parent_table_ids,
+            "derived_from_table_ids": parent_table_ids,
+            "output_table_ids": output_table_ids,
             "tool": "python_analysis.run",
         },
         error=model_to_dict(result.error) if result.error is not None else None,

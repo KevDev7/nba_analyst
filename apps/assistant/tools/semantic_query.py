@@ -12,7 +12,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -47,10 +49,16 @@ from apps.assistant.value_resolution_observability import build_value_resolution
 from scripts.load_gold_snapshot import DB_PATH, load_database
 
 
+ALLOW_PRIVATE_SQL_ENV = "NBA_ALLOW_PRIVATE_SQL_TRACE"
+PRIVATE_SQL_CALLERS = {"developer_test", "local_cli"}
+
+
 class SemanticQueryRequest(BaseModel):
     request_id: Optional[str] = None
     question: Optional[str] = None
     semantic_draft: Optional[dict[str, Any]] = None
+    question_context: Optional[str] = None
+    semantic_draft_state: Literal["raw", "prepared"] = "raw"
     mode: Literal["plan_and_execute"] = "plan_and_execute"
     row_limit: int = Field(default=500, ge=1, le=5000)
     include_debug: bool = False
@@ -88,6 +96,8 @@ class SemanticQueryProvenance(BaseModel):
     planner: str = "ontology-hs"
     planner_mode: str = "plan-semantic-draft-json"
     execution_steps: list[ExecutionStepProvenance] = Field(default_factory=list)
+    row_limit_requested: int = 500
+    row_limit_enforced: bool = False
 
 
 class SemanticQueryResult(BaseModel):
@@ -172,6 +182,8 @@ def _plan_execute_success(
     load_database()
     if request.semantic_draft is not None:
         semantic_draft = dict(request.semantic_draft)
+        if request.semantic_draft_state == "raw":
+            semantic_draft = pipeline.prepare_semantic_draft(request.question_context or "", semantic_draft)
         planner_output = pipeline.call_haskell_planner_for_semantic_draft(semantic_draft)
     else:
         if question is None:
@@ -183,7 +195,9 @@ def _plan_execute_success(
     else:
         execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
 
+    execution_started = time.perf_counter()
     runtime_result = execute_plan(execution_plan)
+    execution_ms = int((time.perf_counter() - execution_started) * 1000)
     packaged = package_results(runtime_result)
     answer = synthesize_answer(packaged)
     formatted = format_response(answer)
@@ -199,7 +213,9 @@ def _plan_execute_success(
     provenance = SemanticQueryProvenance(
         ontology_path=str(pipeline.ONTOLOGY_PATH),
         snapshot_path=str(DB_PATH),
-        execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result.raw_rows),
+        row_limit_requested=request.row_limit,
+        row_limit_enforced=False,
+        execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result.raw_rows, execution_ms),
     )
     tables = _tables_from_artifacts(query_id, tool_call_id, artifacts)
     debug = _debug_payload(
@@ -224,6 +240,8 @@ def _plan_execute_success(
                     "result_shape": result_shape,
                     "row_count": len(runtime_result.raw_rows),
                     "artifact_count": len(artifacts),
+                    "row_limit_requested": request.row_limit,
+                    "row_limit_enforced": False,
                 },
                 provenance=ToolProvenance(**model_to_dict(provenance)),
             )
@@ -238,7 +256,7 @@ def _plan_execute_success(
             if isinstance(artifact, dict)
         ],
     )
-    if request.include_private_sql:
+    if _private_sql_allowed(request):
         trace.private_debug = {
             "execution_plan": planner_output.get("execution_plan"),
         }
@@ -268,32 +286,49 @@ def _debug_payload(
 ) -> dict[str, Any] | None:
     if not request.include_debug:
         return None
-    return {
+    payload = {
         "query_type": planner_output.get("query_type"),
         "semantic_draft": semantic_draft,
         "query": planner_output.get("query"),
         "resolved_query": planner_output.get("resolved_query"),
-        "execution_plan": planner_output.get("execution_plan"),
         "predicate_trace": build_predicate_trace(semantic_draft, planner_output),
         "value_resolution_trace": build_value_resolution_trace(semantic_draft, planner_output),
         "answer": formatted,
     }
+    if _private_sql_allowed(request):
+        payload["execution_plan"] = planner_output.get("execution_plan")
+    else:
+        payload["execution_plan"] = None
+        payload["execution_plan_redacted"] = True
+    return payload
 
 
 def _trace_input(request: SemanticQueryRequest) -> dict[str, Any]:
     return {
         "question": request.question,
         "semantic_draft_hash": _stable_hash(request.semantic_draft) if request.semantic_draft is not None else None,
+        "semantic_draft_state": request.semantic_draft_state if request.semantic_draft is not None else None,
         "mode": request.mode,
         "row_limit": request.row_limit,
         "caller": request.caller,
     }
 
 
+def _private_sql_allowed(request: SemanticQueryRequest) -> bool:
+    enabled = os.getenv(ALLOW_PRIVATE_SQL_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+    return (
+        request.include_private_sql
+        and request.include_debug
+        and enabled
+        and request.caller in PRIVATE_SQL_CALLERS
+    )
+
+
 def _execution_step_provenance(
     query_id: str,
     planner_output: dict[str, Any],
     raw_rows: list[dict[str, Any]],
+    execution_ms: int,
 ) -> list[ExecutionStepProvenance]:
     execution = planner_output.get("execution_plan", {}).get("execution", {})
     steps = execution.get("steps", []) if isinstance(execution, dict) else []
@@ -311,6 +346,7 @@ def _execution_step_provenance(
                 sql_hash=_stable_hash(sql) if isinstance(sql, str) else None,
                 sql_redacted=True,
                 row_count=len(raw_rows) if is_sql and sql_step_count == 1 else None,
+                execution_ms=execution_ms if is_sql and sql_step_count == 1 else None,
             )
         )
     return step_provenance

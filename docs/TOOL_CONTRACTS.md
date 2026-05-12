@@ -29,6 +29,8 @@ Input shape:
   "request_id": "optional string",
   "question": "string or null",
   "semantic_draft": "object or null",
+  "question_context": "string or null",
+  "semantic_draft_state": "raw",
   "mode": "plan_and_execute",
   "row_limit": 500,
   "include_debug": false,
@@ -40,9 +42,11 @@ Input shape:
 Validation:
 
 - Exactly one of `question` or `semantic_draft` is required.
+- Direct `semantic_draft` inputs default to `semantic_draft_state: "raw"` and are prepared through deterministic assumptions/entity resolution before Haskell planning.
+- Internally generated drafts that already include deterministic defaults can use `semantic_draft_state: "prepared"`.
 - `mode` is currently only `plan_and_execute`.
-- `row_limit` is a contract field for future governance; Slice 1 does not yet enforce SQL-level caps.
-- `include_private_sql` must remain false for model-visible or public contexts.
+- `row_limit` is recorded in provenance; current execution reports `row_limit_enforced: false`.
+- `include_private_sql` is honored only when `include_debug` is true, `NBA_ALLOW_PRIVATE_SQL_TRACE` is enabled, and the caller is trusted.
 
 Output shape:
 
@@ -68,9 +72,12 @@ Output shape:
         "kind": "run_sql",
         "sql_hash": "sha256:...",
         "sql_redacted": true,
-        "row_count": 10
+        "row_count": 10,
+        "execution_ms": 83
       }
-    ]
+    ],
+    "row_limit_requested": 500,
+    "row_limit_enforced": false
   },
   "trace": {},
   "debug": null,
@@ -108,7 +115,7 @@ Input shape:
 
 ```json
 {
-  "facets": ["subjects", "metrics", "dimensions", "filters", "time_grains", "coverage"],
+  "facets": ["subjects", "fact_surfaces", "metrics", "dimensions", "filters", "time_grains", "coverage"],
   "subject_hint": "teams",
   "search": "net rating",
   "include_aliases": true,
@@ -132,7 +139,12 @@ Output shape:
     "lowest_grain": "game",
     "unsupported_surfaces": ["play_by_play", "lineups", "on_off", "clutch", "shot_location"]
   },
-  "subjects": [],
+  "subjects": [
+    {"key": "Team", "label": "Team"}
+  ],
+  "fact_surfaces": [
+    {"key": "TeamGame", "subject": "Team", "grain": "game"}
+  ],
   "metrics": [],
   "dimensions": [],
   "filters": [],
@@ -161,7 +173,10 @@ Input shape:
 ```json
 {
   "question": "Show the ranking as a chart",
-  "answer": "<FinalAnswer object>",
+  "answer": "<FinalAnswer object or null>",
+  "tables": ["<AnalysisTable objects>"],
+  "summary": "optional summary for table-only rendering",
+  "interpretation": "optional interpretation for table-only rendering",
   "artifacts": null,
   "allowed_artifact_kinds": ["text", "table", "chart"]
 }
@@ -183,6 +198,7 @@ Output shape:
 ```
 
 This wrapper is intentionally thin in Slice 2. It creates the tool boundary while preserving the current UI artifact contract.
+It can now render either grounded `FinalAnswer` payloads or derived `AnalysisTable` outputs.
 
 ### `python_analysis.run`
 
@@ -251,6 +267,8 @@ Output shape:
     "runtime": "local_trusted",
     "operation_kind": "join_and_delta",
     "parent_table_ids": ["q_2023_24.primary", "q_2024_25.primary"],
+    "derived_from_table_ids": ["q_2023_24.primary", "q_2024_25.primary"],
+    "output_table_ids": ["q_2023_24.primary_q_2024_25.primary_increase"],
     "tool": "python_analysis.run"
   },
   "error": null
@@ -261,7 +279,7 @@ The wrapper is designed for future orchestrator use: retrieval tables come from 
 
 ## Current Multi-Call Route
 
-The orchestrator has one governed multi-call route for team average-points increases between two regular seasons.
+The orchestrator has a deterministic period-delta route for explicit season-over-season metric increases.
 
 Tool sequence:
 
@@ -269,9 +287,10 @@ Tool sequence:
 semantic_query.plan_execute(left season semantic draft)
 semantic_query.plan_execute(right season semantic draft)
 python_analysis.run(join_and_delta)
+artifact_renderer.render(derived AnalysisTable)
 ```
 
-The route is a narrow acceptance path for the future open-ended orchestrator. It proves that the assistant can make multiple ontology-grounded retrieval calls and compute a derived table without raw SQL, arbitrary Python, or a model tool loop.
+The route lives under `apps/assistant/routes/period_delta.py` and uses a structured `PeriodDeltaPlan`. It proves that the assistant can make multiple ontology-grounded retrieval calls, compute a derived table, and render artifacts without raw SQL, arbitrary Python, or a model tool loop.
 
 ## Future Tools
 

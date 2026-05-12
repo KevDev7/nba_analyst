@@ -1,0 +1,19 @@
+[
+  {
+    "question": "Which teams had the biggest increase in average points per game from the 2023-24 regular season to the 2024-25 regular season?",
+    "expected_route": "period_delta",
+    "expected_tools": [
+      "semantic_query.plan_execute",
+      "semantic_query.plan_execute",
+      "python_analysis.run",
+      "artifact_renderer.render"
+    ],
+    "forbidden_tools": [
+      "raw_sql",
+      "arbitrary_python"
+    ],
+    "expected_artifacts": [
+      "table"
+    ]
+  }
+]

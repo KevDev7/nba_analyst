@@ -7,7 +7,7 @@ from apps.assistant.tools.ontology_catalog import OntologyCatalogRequest, inspec
 
 class OntologyCatalogToolTests(unittest.TestCase):
     def test_inspect_returns_ontology_and_snapshot_coverage(self) -> None:
-        result = inspect(OntologyCatalogRequest(facets=["subjects", "coverage"], max_items=20))
+        result = inspect(OntologyCatalogRequest(facets=["subjects", "fact_surfaces", "coverage"], max_items=20))
 
         self.assertTrue(result.ok)
         self.assertIsNotNone(result.ontology_version)
@@ -18,7 +18,12 @@ class OntologyCatalogToolTests(unittest.TestCase):
         self.assertEqual(result.coverage["default_season_type"], "regular_season")
         self.assertEqual(result.coverage["lowest_grain"], "game")
         self.assertIn("play_by_play", result.coverage["unsupported_surfaces"])
-        self.assertTrue(any(subject["key"] == "TeamGame" for subject in result.subjects))
+        self.assertTrue(any(subject["key"] == "Team" for subject in result.subjects))
+        self.assertFalse(any(subject["key"] == "TeamGame" for subject in result.subjects))
+        self.assertTrue(any(surface["key"] == "TeamGame" for surface in result.fact_surfaces))
+        team_game = next(surface for surface in result.fact_surfaces if surface["key"] == "TeamGame")
+        self.assertEqual(team_game["subject"], "Team")
+        self.assertEqual(team_game["grain"], "game")
 
     def test_inspect_can_search_metrics_with_aliases(self) -> None:
         result = inspect(

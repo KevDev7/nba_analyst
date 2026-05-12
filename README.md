@@ -78,7 +78,7 @@ The first governed assistant tools live under `apps/assistant/tools`:
 - `artifact_renderer.render` wraps text/table/chart artifact generation without changing the artifact JSON contract.
 - `python_analysis.run` runs controlled derived analysis over approved result tables.
 
-The first governed multi-call route supports season-over-season team average-points increases by calling the semantic query tool twice and then computing the delta with controlled Python analysis.
+The first governed multi-call route supports explicit season-over-season period deltas by calling the semantic query tool twice, computing the delta with controlled Python analysis, and rendering the derived table through the artifact renderer.
 
 ## Requirements
 
