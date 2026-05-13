@@ -14,7 +14,10 @@ if str(RUNTIME_ROOT) not in sys.path:
 
 from apps.assistant.tools.python_analysis import PythonAnalysisToolRequest, run
 from runtime.AnalysisTools.code_sandbox import (
+    E2B_BACKEND_ID,
+    MOCK_E2B_BACKEND_ID,
     SANDBOX_BACKEND,
+    SANDBOX_BACKEND_ENV,
     SANDBOX_ENABLED_ENV,
     SANDBOX_PRODUCTION_READY,
     SANDBOX_STATUS,
@@ -87,6 +90,33 @@ class PythonCodeSandboxStatusTests(unittest.TestCase):
         self.assertEqual(SANDBOX_BACKEND, "macos_sandbox_exec")
         self.assertEqual(SANDBOX_STATUS, "local_beta_only")
         self.assertFalse(SANDBOX_PRODUCTION_READY)
+
+    @patch.dict(os.environ, {SANDBOX_ENABLED_ENV: "1", SANDBOX_BACKEND_ENV: "unknown_backend"})
+    def test_unknown_sandbox_backend_fails_closed(self) -> None:
+        result = run_analysis_request(code_request(SUCCESS_CODE))
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error.code if result.error else None, "sandbox_backend_unknown")
+
+    @patch.dict(os.environ, {SANDBOX_ENABLED_ENV: "1", SANDBOX_BACKEND_ENV: MOCK_E2B_BACKEND_ID})
+    def test_mock_e2b_backend_can_be_selected_without_credentials(self) -> None:
+        result = run_analysis_request(code_request(SUCCESS_CODE))
+
+        self.assertTrue(result.ok, result.error.message if result.error else "")
+        self.assertEqual(result.metadata["backend_id"], MOCK_E2B_BACKEND_ID)
+        self.assertEqual(result.metadata["sandbox_backend"], "e2b_mock")
+        self.assertEqual(result.metadata["sandbox_status"], "mock_only")
+        self.assertFalse(result.metadata["production_ready"])
+        self.assertEqual(result.metadata["output_table_ids"], ["analysis.out"])
+
+    @patch.dict(os.environ, {SANDBOX_ENABLED_ENV: "1", SANDBOX_BACKEND_ENV: E2B_BACKEND_ID, "E2B_API_KEY": ""})
+    def test_e2b_backend_fails_closed_without_credentials(self) -> None:
+        result = run_analysis_request(code_request(SUCCESS_CODE))
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error.code if result.error else None, "sandbox_credentials_missing")
+        self.assertEqual(result.error.metadata["backend_id"], E2B_BACKEND_ID)
+        self.assertEqual(result.error.metadata["sandbox_backend"], "e2b_cloud")
 
 
 class PythonCodeSandboxStaticPolicyTests(unittest.TestCase):

@@ -308,3 +308,38 @@ Status: implemented as a decision document.
   alternative if a TypeScript/Vercel sandbox broker is introduced.
 - Kept the current local sandbox as disabled-by-default beta infrastructure.
 - Did not add vendor SDKs, credentials, or external runtime behavior.
+
+## Slice 18: Sandbox Backend Interface
+
+Status: implemented.
+
+- Added a pluggable sandbox backend interface behind `python_analysis.run`.
+- Preserved the existing macOS `sandbox-exec` runner as the `local_beta`
+  backend.
+- Added backend selection through `NBA_PYTHON_CODE_SANDBOX_BACKEND`.
+- Added a deterministic `mock_e2b` backend for no-credential tests.
+- Kept `python_code` disabled unless `NBA_ENABLE_PYTHON_CODE_SANDBOX=1`.
+
+## Slice 19: E2B Cloud Sandbox Integration
+
+Status: implemented behind explicit gates.
+
+- Added the optional E2B SDK dependency.
+- Added `e2b_cloud` backend behind `NBA_PYTHON_CODE_SANDBOX_BACKEND=e2b_cloud`,
+  `NBA_ENABLE_PYTHON_CODE_SANDBOX=1`, and `E2B_API_KEY`.
+- E2B sandboxes are created with internet access disabled and receive only
+  serialized approved input tables.
+- Vendor errors are sanitized into structured tool errors.
+- Live E2B tests are skipped unless `NBA_RUN_LIVE_E2B_TESTS=1` and
+  `E2B_API_KEY` are set.
+
+## Slice 20: E2B Sandbox Security Tests
+
+Status: implemented.
+
+- Expanded sandbox tests for database imports, SQL strings, DB execution-style
+  attributes, unknown backend fail-closed behavior, missing E2B credentials, and
+  mocked E2B provenance.
+- Existing tests continue to cover env, network, file, timeout, row limit,
+  schema validation, stdout/stderr, and code-hash provenance.
+- Code mode remains reachable only through `python_analysis.run`.

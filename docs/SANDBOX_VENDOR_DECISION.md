@@ -139,6 +139,19 @@ Slice 18 should:
 - never expose raw SQL, DB handles, credentials, or raw filesystem paths to the
   sandbox.
 
+Slice 18-20 implementation status:
+
+- `SandboxBackend` / `SandboxExecutionResult` now exist behind
+  `python_analysis.run`.
+- `local_beta` preserves the existing macOS `sandbox-exec` behavior.
+- `mock_e2b` provides deterministic backend tests without credentials.
+- `e2b_cloud` is implemented behind `NBA_ENABLE_PYTHON_CODE_SANDBOX=1`,
+  `NBA_PYTHON_CODE_SANDBOX_BACKEND=e2b_cloud`, and `E2B_API_KEY`.
+- E2B sandboxes are created with internet access disabled and receive only the
+  serialized approved table payload.
+- Normal test discovery skips live E2B smoke tests unless
+  `NBA_RUN_LIVE_E2B_TESTS=1` and `E2B_API_KEY` are present.
+
 ## Out Of Scope
 
 - Adding E2B or Vercel SDK dependencies now.

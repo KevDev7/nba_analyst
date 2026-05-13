@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import hashlib
-import json
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
-import time
-from pathlib import Path
 from typing import Any
 
+from .sandbox_backends import (
+    E2B_BACKEND_ID,
+    E2B_LIVE_TEST_ENV,
+    LOCAL_BACKEND_ID,
+    LOCAL_RUNTIME_ID,
+    LOCAL_SANDBOX_BACKEND,
+    LOCAL_SANDBOX_STATUS,
+    MOCK_E2B_BACKEND_ID,
+    SANDBOX_BACKEND_ENV,
+    SANDBOX_ENABLED_ENV,
+    get_sandbox_backend,
+    sandbox_enabled,
+)
 from .models import (
     AnalysisFinding,
     AnalysisTable,
@@ -19,93 +24,66 @@ from .models import (
 from .operations import AnalysisOperationError, ControlledOperationResult
 
 
-SANDBOX_ENABLED_ENV = "NBA_ENABLE_PYTHON_CODE_SANDBOX"
-SANDBOX_RUNTIME_ID = "local_python_code_sandbox:v1"
-SANDBOX_BACKEND = "macos_sandbox_exec"
-SANDBOX_STATUS = "local_beta_only"
+SANDBOX_RUNTIME_ID = LOCAL_RUNTIME_ID
+SANDBOX_BACKEND = LOCAL_SANDBOX_BACKEND
+SANDBOX_STATUS = LOCAL_SANDBOX_STATUS
 SANDBOX_PRODUCTION_READY = False
 
 
 def run_python_code_operation(tables: list[AnalysisTable], operation: PythonCodeOperation) -> ControlledOperationResult:
     code_hash = _code_hash(operation.code)
-    if not _sandbox_enabled():
+    try:
+        backend = get_sandbox_backend()
+    except ValueError as exc:
+        raise AnalysisOperationError(
+            code="sandbox_backend_unknown",
+            message=str(exc),
+            metadata={
+                "operation_kind": operation.kind,
+                "code_hash": code_hash,
+                "parent_table_ids": operation.input_table_ids,
+                "backend_id": None,
+            },
+        ) from exc
+    if not sandbox_enabled():
         raise AnalysisOperationError(
             code="sandbox_disabled",
             message=f"python_code operations require {SANDBOX_ENABLED_ENV}=1.",
-            metadata=_base_metadata(operation, code_hash),
+            metadata=_base_metadata(operation, code_hash, backend),
         )
-    sandbox_exec = shutil.which("sandbox-exec")
-    if sandbox_exec is None:
-        raise AnalysisOperationError(
-            code="sandbox_unavailable",
-            message="python_code operations require /usr/bin/sandbox-exec on this local runtime.",
-            metadata=_base_metadata(operation, code_hash),
-        )
-
     input_tables = [_table_payload(table) for table in tables if table.id in set(operation.input_table_ids)]
     payload = {
         "code": operation.code,
         "tables": {table["id"]: table for table in input_tables},
         "import_allowlist": operation.policy.import_allowlist,
     }
-    started = time.monotonic()
-    with tempfile.TemporaryDirectory(prefix="nba-analysis-sandbox-") as scratch:
-        command = [
-            sandbox_exec,
-            "-p",
-            _sandbox_profile(scratch),
-            sys.executable,
-            "-I",
-            "-S",
-            str(Path(__file__).with_name("sandbox_child.py")),
-        ]
-        try:
-            completed = subprocess.run(
-                command,
-                input=json.dumps(payload),
-                text=True,
-                capture_output=True,
-                timeout=operation.policy.timeout_ms / 1000,
-                cwd=scratch,
-                env={"PYTHONNOUSERSITE": "1"},
-                check=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise AnalysisOperationError(
-                code="sandbox_timeout",
-                message="python_code operation exceeded its timeout.",
-                metadata=_metadata(operation, code_hash, int((time.monotonic() - started) * 1000), stdout=exc.stdout, stderr=exc.stderr, timed_out=True),
-            ) from exc
-
-    execution_ms = int((time.monotonic() - started) * 1000)
-    result = _decode_child_result(completed, operation, code_hash, execution_ms)
-    if not result.get("ok"):
-        error = result.get("error") if isinstance(result.get("error"), dict) else {}
+    execution = backend.run(payload, operation, code_hash)
+    if not execution.ok:
         raise AnalysisOperationError(
-            code=str(error.get("code") or "sandbox_execution_failed"),
-            message=str(error.get("message") or "python_code operation failed."),
-            metadata=_metadata(operation, code_hash, execution_ms, stdout=result.get("stdout"), stderr=result.get("stderr")),
+            code=execution.error_code or "sandbox_execution_failed",
+            message=execution.error_message or "python_code operation failed.",
+            metadata=execution.base_metadata(),
         )
 
-    outputs = result.get("outputs")
+    outputs = execution.outputs
     if not isinstance(outputs, dict):
         raise AnalysisOperationError(
             code="invalid_sandbox_output",
             message="python_code operation did not return structured outputs.",
-            metadata=_metadata(operation, code_hash, execution_ms, stdout=result.get("stdout"), stderr=result.get("stderr")),
+            metadata=execution.base_metadata(),
         )
 
-    output_tables = _validate_output_tables(outputs.get("tables", []), operation)
+    metadata = execution.base_metadata()
+    output_tables = _validate_output_tables(outputs.get("tables", []), operation, metadata)
     findings = _validate_findings(outputs.get("findings", []))
     metrics = outputs.get("metrics", [])
     if not isinstance(metrics, list):
         raise AnalysisOperationError(
             code="invalid_sandbox_output",
             message="python_code metrics output must be a list.",
-            metadata=_metadata(operation, code_hash, execution_ms, stdout=result.get("stdout"), stderr=result.get("stderr")),
+            metadata=execution.base_metadata(),
         )
 
-    metadata = _metadata(operation, code_hash, execution_ms, stdout=result.get("stdout"), stderr=result.get("stderr"))
     metadata["output_table_ids"] = [table.id for table in output_tables]
     metadata["metrics"] = metrics
     return ControlledOperationResult(
@@ -115,7 +93,7 @@ def run_python_code_operation(tables: list[AnalysisTable], operation: PythonCode
     )
 
 
-def _validate_output_tables(raw_tables: Any, operation: PythonCodeOperation) -> list[AnalysisTable]:
+def _validate_output_tables(raw_tables: Any, operation: PythonCodeOperation, provenance: dict[str, Any]) -> list[AnalysisTable]:
     if not isinstance(raw_tables, list):
         raise AnalysisOperationError(
             code="invalid_sandbox_output",
@@ -157,12 +135,10 @@ def _validate_output_tables(raw_tables: Any, operation: PythonCodeOperation) -> 
                 rows=rows,
                 row_count=len(rows),
                 metadata={
+                    **provenance,
                     "operation_kind": operation.kind,
                     "parent_table_ids": operation.input_table_ids,
                     "code_hash": _code_hash(operation.code),
-                    "sandbox_backend": SANDBOX_BACKEND,
-                    "sandbox_status": SANDBOX_STATUS,
-                    "production_ready": SANDBOX_PRODUCTION_READY,
                     **operation.metadata,
                 },
             )
@@ -178,56 +154,17 @@ def _validate_findings(raw_findings: Any) -> list[AnalysisFinding]:
     return [AnalysisFinding.model_validate(finding) for finding in raw_findings]
 
 
-def _decode_child_result(
-    completed: subprocess.CompletedProcess[str],
+def _base_metadata(
     operation: PythonCodeOperation,
     code_hash: str,
-    execution_ms: int,
-) -> dict[str, Any]:
-    if completed.returncode != 0 and not completed.stdout:
-        raise AnalysisOperationError(
-            code="sandbox_process_failed",
-            message="python_code sandbox process failed before returning structured output.",
-            metadata=_metadata(operation, code_hash, execution_ms, stdout=completed.stdout, stderr=completed.stderr),
-        )
-    try:
-        result = json.loads(completed.stdout)
-    except json.JSONDecodeError as exc:
-        raise AnalysisOperationError(
-            code="invalid_sandbox_output",
-            message="python_code sandbox did not return JSON.",
-            metadata=_metadata(operation, code_hash, execution_ms, stdout=completed.stdout, stderr=completed.stderr),
-        ) from exc
-    if completed.stderr:
-        result["stderr"] = f"{result.get('stderr', '')}{completed.stderr}"
-    return result
-
-
-def _metadata(
-    operation: PythonCodeOperation,
-    code_hash: str,
-    execution_ms: int,
-    *,
-    stdout: Any = "",
-    stderr: Any = "",
-    timed_out: bool = False,
+    backend: Any,
 ) -> dict[str, Any]:
     return {
-        **_base_metadata(operation, code_hash),
-        "timeout_ms": operation.policy.timeout_ms,
-        "execution_ms": execution_ms,
-        "timed_out": timed_out,
-        "stdout": stdout or "",
-        "stderr": stderr or "",
-    }
-
-
-def _base_metadata(operation: PythonCodeOperation, code_hash: str) -> dict[str, Any]:
-    return {
-        "runtime": SANDBOX_RUNTIME_ID,
-        "sandbox_backend": SANDBOX_BACKEND,
-        "sandbox_status": SANDBOX_STATUS,
-        "production_ready": SANDBOX_PRODUCTION_READY,
+        "backend_id": getattr(backend, "backend_id", None),
+        "runtime": getattr(backend, "runtime_id", SANDBOX_RUNTIME_ID),
+        "sandbox_backend": getattr(backend, "sandbox_backend", SANDBOX_BACKEND),
+        "sandbox_status": getattr(backend, "sandbox_status", SANDBOX_STATUS),
+        "production_ready": getattr(backend, "production_ready", SANDBOX_PRODUCTION_READY),
         "operation_kind": operation.kind,
         "code_hash": code_hash,
         "parent_table_ids": operation.input_table_ids,
@@ -244,21 +181,6 @@ def _table_payload(table: AnalysisTable) -> dict[str, Any]:
         "row_count": table.row_count if table.row_count is not None else len(table.rows),
         "metadata": table.metadata,
     }
-
-
-def _sandbox_profile(scratch: str) -> str:
-    escaped = scratch.replace("\\", "\\\\").replace('"', '\\"')
-    return f"""
-(version 1)
-(allow default)
-(deny network*)
-(deny file-write*)
-(allow file-write* (subpath "{escaped}"))
-""".strip()
-
-
-def _sandbox_enabled() -> bool:
-    return os.getenv(SANDBOX_ENABLED_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _code_hash(code: str) -> str:

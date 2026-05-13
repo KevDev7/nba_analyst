@@ -66,6 +66,7 @@ def run(request: PythonAnalysisToolRequest) -> PythonAnalysisToolResult:
             "derived_from_table_ids": parent_table_ids,
             "output_table_ids": output_table_ids,
             "code_hash": result.metadata.get("code_hash"),
+            "backend_id": result.metadata.get("backend_id"),
             "runtime_id": result.metadata.get("runtime"),
             "sandbox_backend": result.metadata.get("sandbox_backend"),
             "sandbox_status": result.metadata.get("sandbox_status"),

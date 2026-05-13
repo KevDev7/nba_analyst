@@ -66,3 +66,25 @@ Do not treat the local `python_code` runner as a production sandbox. A productio
 ## Production Backend Decision
 
 See [SANDBOX_VENDOR_DECISION.md](SANDBOX_VENDOR_DECISION.md) for the Slice 17 production sandbox recommendation and the requirements for a future `SandboxBackend` implementation.
+
+## Sandbox Backends
+
+Code mode now runs through a pluggable backend interface selected by:
+
+```text
+NBA_PYTHON_CODE_SANDBOX_BACKEND=local_beta|e2b_cloud
+```
+
+Supported backends:
+
+- `local_beta`: current macOS `sandbox-exec` backend. It remains disabled by
+  default and is not production-ready.
+- `e2b_cloud`: E2B cloud sandbox backend. It is disabled by default, requires
+  `NBA_ENABLE_PYTHON_CODE_SANDBOX=1` and `E2B_API_KEY`, creates sandboxes with
+  internet disabled, and fails closed if credentials or the SDK are absent.
+- `mock_e2b`: deterministic test backend only. It performs no real code
+  execution and exists to test backend plumbing without credentials.
+
+All backends return the same provenance shape: backend id, runtime id, sandbox
+status, production readiness, code hash, parent/output table ids, stdout/stderr,
+execution duration, and timeout state.
