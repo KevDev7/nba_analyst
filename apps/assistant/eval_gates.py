@@ -4,9 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from apps.assistant.trace import safe_trace_summary
-
-
-FORBIDDEN_TOOL_NAMES = {"raw_sql", "raw_python", "arbitrary_python", "python_code", "duckdb.execute", "sql.execute"}
+from apps.assistant.tools.registry import FORBIDDEN_TOOL_NAMES
 
 
 @dataclass

@@ -416,3 +416,126 @@ Status: implemented.
 
 - Added `docs/RELEASE_CANDIDATE_CHECKLIST.md`.
 - Documented verification commands and PR-ready branch summary.
+
+## Slice 29: Formal Six-Tool Surface And Run Workspace
+
+Status: implemented.
+
+- Codified the six governed tools: `ontology_catalog.inspect`,
+  `semantic_query.plan_execute`, `python_analysis.run`,
+  `chart_generation.run`, `artifact_renderer.render`, and
+  `answer_composer.compose`.
+- Added `apps.assistant.workspace.RunWorkspace` as the per-run resource
+  registry for approved tables, artifacts, findings, and provenance links.
+- Later tools can resolve approved prior table IDs from the workspace without
+  receiving DuckDB/database access.
+
+## Slice 30: `chart_generation.run` V1
+
+Status: implemented.
+
+- Added `apps/assistant/tools/chart_generation.py`.
+- The tool creates validated `renderer: "vega_lite"` chart artifacts from
+  approved `AnalysisTable` inputs.
+- Deterministic chart generation chooses safe line/bar/point chart operations
+  over declared columns and uses the existing AnalysisTools chart worker.
+- Chart validation rejects unknown columns, unsupported renderers, external
+  URLs, SQL/database language, and private/debug internals.
+
+## Slice 31: Model/Sandbox-Assisted Chart Specs
+
+Status: implemented behind explicit gates.
+
+- Added gated `generation_mode: "model"` for model-produced Vega-Lite specs.
+- Added gated `generation_mode: "sandbox"` for sandbox-assisted chart-spec
+  builders over approved tables only.
+- Both modes must pass the same Vega-Lite validator and fall back to
+  deterministic chart generation when possible.
+- Added `NBA_ENABLE_MODEL_CHART_GENERATION` and
+  `NBA_ENABLE_SANDBOX_CHART_GENERATION`; both are off by default.
+
+## Slice 32: Shared Tool Registry
+
+Status: implemented.
+
+- Added shared tool definitions in `apps.assistant.tools.registry`.
+- Registered all six governed tools in the model tool-loop registry.
+- The model loop now uses the shared registry rather than local ad hoc tool
+  classes.
+- Forbidden raw SQL/Python/database tools remain rejected.
+
+## Slice 33: Model Orchestration Evaluation Pass
+
+Status: implemented.
+
+- Expanded the deterministic model-orchestration eval bank with chart-request
+  and adversarial database-access cases.
+- Chart-request plans now include `chart_generation.run` in the expected tool
+  sequence.
+- Tests continue to run without live provider credentials.
+
+## Slice 34: Answer Faithfulness V2
+
+Status: implemented.
+
+- The answer composer already validates numeric values, entity/text evidence,
+  and unsupported causal language before accepting model output.
+- Existing tests cover mismatch fallback, retry, and deterministic fallback.
+
+## Slice 35: Product Coverage Pack
+
+Status: implemented.
+
+- Added one additional controlled analysis operation: `top_contributors`.
+- It ranks declared numeric columns in one approved row and returns a derived
+  table plus finding provenance.
+- This is intentionally small and generic; no new regex route or raw SQL/code
+  path was added.
+
+## Slice 36: Frontend/UX For Tool Artifacts
+
+Status: implemented through existing renderer contracts.
+
+- The web UI already renders `vega_lite` chart artifacts and displays stable
+  unsupported-renderer messages.
+- Backend chart generation validates specs before the frontend sees them, so
+  chart failures degrade to table/answer artifacts instead of broken UI where
+  possible.
+- Existing frontend chart model/layout tests remain the UI guardrail.
+
+## Slice 37: E2B Live Smoke And Deployment Wiring
+
+Status: implemented.
+
+- Live E2B smoke tests remain explicit and env-gated.
+- `.env.example`, `render.yaml`, and production config docs record safe defaults
+  and sandbox/chart gates.
+- Missing `E2B_API_KEY` continues to fail closed.
+
+## Slice 38: Production Observability
+
+Status: implemented.
+
+- `safe_trace_summary` now records chart-generation modes and chart validation
+  failures in addition to route/tool/sandbox/SQL metadata.
+- Production summaries remain redacted: no raw SQL, raw code, credentials,
+  private debug, or huge table rows.
+
+## Slice 39: Promotion Gates
+
+Status: implemented.
+
+- Eval acceptance docs now include chart-generation promotion requirements.
+- Risky features remain default-off until forbidden-path checks, validation
+  tests, fallback behavior, latency/tool caps, and observability requirements
+  pass.
+
+## Slice 40: Final RC Hardening
+
+Status: implemented.
+
+- Updated contract, config, observability, eval-gate, migration, and release
+  docs for the six-tool architecture and chart-generation path.
+- The branch is positioned as a reviewable production-ready architecture
+  migration candidate, with model/sandbox chart generation and code execution
+  still gated beta.

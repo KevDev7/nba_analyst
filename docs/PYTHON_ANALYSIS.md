@@ -11,9 +11,15 @@ Use controlled operations whenever they fit:
 - `correlation`
 - `percent_change`
 - `zscore_outliers`
+- `top_contributors`
 - chart operations
 
 Controlled operations remain preferred because their behavior is typed, deterministic, and easier to evaluate.
+
+For new visualization behavior, prefer `chart_generation.run` over chart
+operations embedded in broad analysis flows. `python_analysis.run` should shape
+data; `chart_generation.run` should produce validated Vega-Lite artifacts from
+approved tables.
 
 ## Gated Code Mode
 

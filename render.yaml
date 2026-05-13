@@ -36,6 +36,10 @@ services:
         value: "0"
       - key: NBA_ENABLE_MODEL_ANSWER_COMPOSER
         value: "0"
+      - key: NBA_ENABLE_MODEL_CHART_GENERATION
+        value: "0"
+      - key: NBA_ENABLE_SANDBOX_CHART_GENERATION
+        value: "0"
       - key: NBA_ENABLE_PYTHON_CODE_SANDBOX
         value: "0"
       - key: NBA_PYTHON_CODE_SANDBOX_BACKEND

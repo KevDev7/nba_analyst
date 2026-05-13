@@ -14,19 +14,22 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Callable, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from apps.assistant.model_orchestration.answer_composer import compose_grounded_answer
 from apps.assistant.model_orchestration.plans import ALLOWED_TOOL_NAMES, FORBIDDEN_TOOL_NAMES
 from apps.assistant.models import AssistantResult
 from apps.assistant.semantic.interpreter import _load_interpreter_json, _strip_json_fences
 from apps.assistant.semantic.llm_transport import call_gemini
 from apps.assistant.tools.artifact_renderer import ArtifactRenderRequest, render as render_artifacts
+from apps.assistant.tools.chart_generation import ChartGenerationRequest, run as run_chart_generation
 from apps.assistant.tools.ontology_catalog import OntologyCatalogRequest, inspect as inspect_catalog
 from apps.assistant.tools.python_analysis import PythonAnalysisToolRequest, run as run_python_analysis
+from apps.assistant.tools.registry import ToolContext, ToolRegistry, ToolResult, ToolSpec
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
-from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict, new_id
+from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict
 
 
 MODEL_TOOL_LOOP_ENABLED_ENV = "NBA_ENABLE_MODEL_TOOL_LOOP"
@@ -38,7 +41,7 @@ FORBIDDEN_SQL_AUTHORING_PATTERNS = [
     for pattern in [
         r"\bselect\b[\s\S]{0,120}\bfrom\b",
         r"\bwith\b[\s\S]{0,120}\bas\b",
-        r"\b(insert|update|delete|drop|alter|create|copy|attach|pragma|load|install)\b",
+        r"\b(insert\s+into|update\s+\w+\s+set|delete\s+from|drop\s+table|alter\s+table|create\s+table|copy\s+|attach\s+|pragma\s+|load\s+|install\s+)\b",
         r"\b(raw\s+sql|write\s+sql|generate\s+sql|author\s+sql|repair\s+sql|transform\s+sql)\b",
         r"\b(repair|fix|transform|rewrite)\b[\s\S]{0,40}\bsql\b",
         r"\b(inspect|list|show)\b[\s\S]{0,40}\b(warehouse|database)\b",
@@ -46,64 +49,6 @@ FORBIDDEN_SQL_AUTHORING_PATTERNS = [
         r"\b(duckdb|sqlite_master|sqlite|sqlalchemy)\b",
     ]
 ]
-
-
-class ToolSpec(BaseModel):
-    name: str
-    description: str
-    input_schema: dict[str, Any] = Field(default_factory=dict)
-    output_schema: dict[str, Any] = Field(default_factory=dict)
-    model_visible: bool = True
-
-
-class ToolContext(BaseModel):
-    question: str
-    debug: bool = False
-
-
-class ToolResult(BaseModel):
-    ok: bool
-    tool_name: str
-    tool_call_id: str = Field(default_factory=lambda: new_id("tc"))
-    output: dict[str, Any] = Field(default_factory=dict)
-    provenance: dict[str, Any] = Field(default_factory=dict)
-    error: Optional[dict[str, Any]] = None
-
-
-class ToolExecutor(Protocol):
-    def __call__(self, payload: dict[str, Any], context: ToolContext) -> ToolResult:
-        ...
-
-
-class ToolRegistry:
-    def __init__(self) -> None:
-        self._specs: dict[str, ToolSpec] = {}
-        self._executors: dict[str, ToolExecutor] = {}
-
-    def register(self, spec: ToolSpec, executor: ToolExecutor) -> None:
-        if spec.name not in ALLOWED_TOOL_NAMES:
-            raise ValueError(f"Tool '{spec.name}' is not allowed.")
-        self._specs[spec.name] = spec
-        self._executors[spec.name] = executor
-
-    def execute(self, name: str, payload: dict[str, Any], context: ToolContext) -> ToolResult:
-        if name in FORBIDDEN_TOOL_NAMES or name not in self._executors:
-            return ToolResult(
-                ok=False,
-                tool_name=name,
-                error={"code": "forbidden_tool", "message": f"Tool '{name}' is not allowed."},
-            )
-        if _payload_mentions_forbidden_capability(payload):
-            return ToolResult(
-                ok=False,
-                tool_name=name,
-                error={"code": "forbidden_tool_payload", "message": "Tool payload references a forbidden raw capability."},
-            )
-        return self._executors[name](payload, context)
-
-    @property
-    def specs(self) -> list[ToolSpec]:
-        return list(self._specs.values())
 
 
 class LoopDecision(BaseModel):
@@ -172,7 +117,11 @@ def run_model_tool_loop(
 
 
 def build_default_registry() -> ToolRegistry:
-    registry = ToolRegistry()
+    registry = ToolRegistry(
+        allowed_tools=ALLOWED_TOOL_NAMES,
+        forbidden_tools=FORBIDDEN_TOOL_NAMES,
+        forbidden_payload_checker=_payload_mentions_forbidden_capability,
+    )
     registry.register(
         ToolSpec(
             name="ontology_catalog.inspect",
@@ -196,10 +145,25 @@ def build_default_registry() -> ToolRegistry:
     )
     registry.register(
         ToolSpec(
+            name="chart_generation.run",
+            description="Create validated Vega-Lite chart artifacts from approved result tables.",
+        ),
+        _execute_chart_generation,
+    )
+    registry.register(
+        ToolSpec(
             name="artifact_renderer.render",
             description="Render validated text/table/chart artifacts from grounded answer or analysis tables.",
         ),
         _execute_artifact_renderer,
+    )
+    registry.register(
+        ToolSpec(
+            name="answer_composer.compose",
+            description="Compose final narrative from structured evidence and validated artifacts.",
+            model_visible=False,
+        ),
+        _execute_answer_composer,
     )
     return registry
 
@@ -250,6 +214,17 @@ def _execute_python_analysis(payload: dict[str, Any], _context: ToolContext) -> 
     )
 
 
+def _execute_chart_generation(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+    result = run_chart_generation(ChartGenerationRequest(**payload))
+    return ToolResult(
+        ok=result.ok,
+        tool_name="chart_generation.run",
+        output={"artifact_count": result.artifact_count, "artifacts": _artifact_summaries(result.artifacts)},
+        provenance=result.provenance,
+        error=result.error,
+    )
+
+
 def _execute_artifact_renderer(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
     result = render_artifacts(ArtifactRenderRequest(**payload))
     return ToolResult(
@@ -258,6 +233,22 @@ def _execute_artifact_renderer(payload: dict[str, Any], _context: ToolContext) -
         output={"artifact_count": result.artifact_count, "artifacts": _artifact_summaries(result.artifacts)},
         provenance=result.provenance,
         error=result.error,
+    )
+
+
+def _execute_answer_composer(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+    answer = compose_grounded_answer(
+        question=str(payload.get("question") or ""),
+        evidence_tables=list(payload.get("evidence_tables") or []),
+        findings=list(payload.get("findings") or []),
+        artifacts=list(payload.get("artifacts") or []),
+        fallback_answer=str(payload.get("fallback_answer") or ""),
+    )
+    return ToolResult(
+        ok=True,
+        tool_name="answer_composer.compose",
+        output=model_to_dict(answer),
+        provenance={"claim_count": len(answer.claims), "limitation_count": len(answer.limitations)},
     )
 
 

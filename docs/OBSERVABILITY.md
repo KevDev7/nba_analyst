@@ -21,6 +21,8 @@ record.
 - `tool_durations`
 - `sandbox_backends`
 - `sandbox_rejections`
+- `chart_generation_modes`
+- `chart_validation_failures`
 - `has_private_debug`
 
 ## Redaction Rules
@@ -40,6 +42,7 @@ Safe summaries must not include:
 - route distribution;
 - model-planner fallback rate;
 - model-composer validation/fallback rate;
+- chart generation mode and validation/fallback rates;
 - sandbox backend usage;
 - sandbox rejection reason counts;
 - SQL execution duration and truncation rates;

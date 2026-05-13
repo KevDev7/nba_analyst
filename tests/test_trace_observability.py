@@ -47,6 +47,30 @@ class TraceObservabilityTests(unittest.TestCase):
         self.assertNotIn("sql", summary["sql_steps"][0])
         assert_no_raw_sql_or_private_debug(self, summary)
 
+    def test_safe_trace_summary_records_chart_generation_metadata(self) -> None:
+        trace = {
+            "schema_version": "assistant_trace.v1",
+            "run_id": "run_chart",
+            "route": "chart_generation",
+            "status": "ok",
+            "tool_calls": [
+                {
+                    "tool_name": "chart_generation.run",
+                    "status": "failed",
+                    "output": {"error": {"code": "invalid_chart_spec"}},
+                    "provenance": {
+                        "generation_mode": "model",
+                        "validation_status": "failed",
+                    },
+                }
+            ],
+        }
+
+        summary = safe_trace_summary(trace)
+
+        self.assertEqual(summary["chart_generation_modes"], ["model"])
+        self.assertEqual(summary["chart_validation_failures"][0]["code"], "invalid_chart_spec")
+
     def test_eval_gate_passes_expected_trace(self) -> None:
         trace = sample_trace().model_dump()
 

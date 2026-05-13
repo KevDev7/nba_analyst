@@ -9,7 +9,9 @@
 
 __all__ = [
     "artifact_renderer",
+    "chart_generation",
     "ontology_catalog",
     "python_analysis",
+    "registry",
     "semantic_query",
 ]

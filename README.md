@@ -75,10 +75,14 @@ The first governed assistant tools live under `apps/assistant/tools`:
 
 - `semantic_query.plan_execute` wraps the current ontology-grounded query path.
 - `ontology_catalog.inspect` exposes ontology and snapshot coverage for future orchestration.
-- `artifact_renderer.render` wraps text/table/chart artifact generation without changing the artifact JSON contract.
 - `python_analysis.run` runs controlled derived analysis over approved result tables.
+- `chart_generation.run` creates validated Vega-Lite chart artifacts from approved tables.
+- `artifact_renderer.render` wraps text/table artifact finalization without changing the artifact JSON contract.
+- `answer_composer.compose` composes final narrative from structured evidence behind a feature gate.
 
-The first governed multi-call route supports explicit season-over-season period deltas by calling the semantic query tool twice, computing the delta with controlled Python analysis, and rendering the derived table through the artifact renderer.
+The governed multi-call routes support explicit period deltas and correlations
+by retrieving through `semantic_query.plan_execute`, deriving through
+`python_analysis.run`, and rendering tables/charts through the artifact tools.
 
 ## Requirements
 

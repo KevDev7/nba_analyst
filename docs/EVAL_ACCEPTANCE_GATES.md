@@ -26,6 +26,15 @@ move from disabled/default-off to internal beta or broader production exposure.
 - Model-composed answers either pass evidence validation or fall back to a
   deterministic table-first answer.
 
+## Chart Generation Gates
+
+- `chart_generation.run` receives only approved result tables.
+- Vega-Lite specs reference only declared columns.
+- Specs contain no external URLs, SQL, database access language, raw code, or
+  hidden execution internals.
+- Model/sandbox chart modes are disabled by default and fall back to
+  deterministic chart generation or table-only artifacts on validation failure.
+
 ## Sandbox Gates
 
 - Code mode is disabled by default.
@@ -45,6 +54,7 @@ Before enabling a gated feature beyond local/internal beta:
 - trace evals show zero forbidden-tool violations;
 - raw SQL/private debug leak tests pass;
 - sandbox adversarial tests pass;
+- chart spec validation/adversarial tests pass;
 - evidence coverage tests pass for model-composed claims;
 - live smoke tests pass for configured providers, or failures are documented as
   provider/platform incidents;

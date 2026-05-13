@@ -71,6 +71,29 @@ class ModelOrchestrationPlanTests(unittest.TestCase):
             ],
         )
 
+    def test_chart_artifact_request_uses_chart_generation_tool(self) -> None:
+        plan = ModelAnalysisPlan(
+            plan={
+                "kind": "artifact_request",
+                "question": "Show top teams by points as a chart",
+                "artifact_intent": "chart",
+            },
+            tool_sequence=[
+                {"tool_name": "semantic_query.plan_execute", "purpose": "retrieve grounded answer"},
+                {"tool_name": "chart_generation.run", "purpose": "create chart"},
+                {"tool_name": "artifact_renderer.render", "purpose": "finalize artifacts"},
+            ],
+        )
+
+        self.assertEqual(
+            planned_tool_names(plan),
+            [
+                "semantic_query.plan_execute",
+                "chart_generation.run",
+                "artifact_renderer.render",
+            ],
+        )
+
     def test_forbidden_raw_sql_tool_is_rejected(self) -> None:
         with self.assertRaises(ValidationError):
             ModelAnalysisPlan(

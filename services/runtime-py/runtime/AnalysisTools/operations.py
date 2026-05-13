@@ -32,6 +32,7 @@ from .models import (
     JoinAndDeltaOperation,
     PercentChangeOperation,
     RankExtremesOperation,
+    TopContributorsOperation,
     ZScoreOutliersOperation,
 )
 
@@ -67,6 +68,8 @@ def run_controlled_operation(tables: list[AnalysisTable], operation: AnalysisOpe
         return _run_percent_change_operation(tables, operation)
     if isinstance(operation, ZScoreOutliersOperation):
         return _run_zscore_outliers_operation(tables, operation)
+    if isinstance(operation, TopContributorsOperation):
+        return _run_top_contributors_operation(tables, operation)
     raise AnalysisOperationError(
         code="unsupported_operation",
         message=f"Operation '{operation.kind}' is not supported by the local trusted worker.",
@@ -184,6 +187,83 @@ def _run_rank_extremes_operation(
     return ControlledOperationResult(
         tables=[output_table],
         findings=_ranked_extreme_findings(output_table, operation.metric, "largest" if not ascending else "smallest"),
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _run_top_contributors_operation(
+    tables: list[AnalysisTable],
+    operation: TopContributorsOperation,
+) -> ControlledOperationResult:
+    table = _table_by_id(tables, operation.input_table_id)
+    row = table.rows[operation.row_index]
+    values: list[dict[str, Any]] = []
+    for column_id in operation.metric_columns:
+        value = _json_value(row.get(column_id))
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        contribution_value = value if operation.mode == "positive" else abs(value)
+        if operation.mode == "positive" and contribution_value <= 0:
+            continue
+        values.append(
+            {
+                "contributor": _column_label(table, column_id, column_id),
+                "column_id": column_id,
+                "value": value,
+                "contribution_basis": contribution_value,
+            }
+        )
+    values.sort(key=lambda item: item["contribution_basis"], reverse=True)
+    values = values[: operation.limit]
+    total = sum(float(item["contribution_basis"]) for item in values)
+    entity = row.get(operation.entity_column) if operation.entity_column else None
+    output_rows = [
+        {
+            "rank": index + 1,
+            "entity": entity,
+            "contributor": item["contributor"],
+            "column_id": item["column_id"],
+            "value": item["value"],
+            "share_pct": (float(item["contribution_basis"]) / total * 100.0) if total else None,
+        }
+        for index, item in enumerate(values)
+    ]
+    output_table = AnalysisTable(
+        id=f"{table.id}_top_contributors",
+        title=operation.title or f"Top contributors for {table.title or table.id}",
+        columns=[
+            AnalysisTableColumn(id="rank", label="Rank", type="integer"),
+            AnalysisTableColumn(id="entity", label="Entity", type="text"),
+            AnalysisTableColumn(id="contributor", label="Contributor", type="text"),
+            AnalysisTableColumn(id="column_id", label="Column", type="text"),
+            AnalysisTableColumn(id="value", label="Value", type="number"),
+            AnalysisTableColumn(id="share_pct", label="Share %", type="number"),
+        ],
+        rows=output_rows,
+        row_count=len(output_rows),
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [table.id],
+            "source_row_index": operation.row_index,
+            "mode": operation.mode,
+            "metric_columns": operation.metric_columns,
+        },
+    )
+    findings = []
+    if output_rows:
+        findings = [
+            AnalysisFinding(
+                kind="top_contributor",
+                text=f"{output_rows[0]['contributor']} was the largest contributor at {output_rows[0]['value']}.",
+                evidence_table_id=output_table.id,
+                row_refs=[0],
+                metadata={"source_table_id": table.id, "source_row_index": operation.row_index},
+            )
+        ]
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=findings,
         metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
     )
 

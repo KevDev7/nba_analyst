@@ -5,8 +5,12 @@
 - Haskell remains the only SQL author.
 - `pipeline.py` remains the public compatibility wrapper.
 - Governed tools are available for semantic query, catalog inspection, Python
-  analysis, and artifact rendering.
+  analysis, chart generation, artifact rendering, and answer composition.
+- Per-run workspace resources can track approved tables, artifacts, findings,
+  and provenance links between tool calls.
 - Data tables are separated from presentation artifacts.
+- Vega-Lite chart artifacts are generated through `chart_generation.run` or the
+  deterministic artifact renderer path, not arbitrary plotting code.
 - Runtime SQL execution records safe metadata.
 - Trace summaries and eval gates are available.
 - Production config and rollback docs are present.
@@ -17,6 +21,8 @@
 - `NBA_MODEL_ORCHESTRATOR_DRY_RUN`
 - `NBA_ENABLE_MODEL_TOOL_LOOP`
 - `NBA_ENABLE_MODEL_ANSWER_COMPOSER`
+- `NBA_ENABLE_MODEL_CHART_GENERATION`
+- `NBA_ENABLE_SANDBOX_CHART_GENERATION`
 - `NBA_ENABLE_PYTHON_CODE_SANDBOX`
 - `NBA_PYTHON_CODE_SANDBOX_BACKEND=e2b_cloud`
 
@@ -30,6 +36,9 @@ python3 -m unittest \
   tests.test_model_orchestration_evals \
   tests.test_model_orchestrator_gate \
   tests.test_model_tool_loop \
+  tests.test_tool_registry \
+  tests.test_run_workspace \
+  tests.test_chart_generation_tool \
   tests.test_trace_eval_harness \
   tests.test_trace_observability \
   tests.test_orchestrator_evals \

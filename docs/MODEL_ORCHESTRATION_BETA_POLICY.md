@@ -32,6 +32,7 @@ The iterative loop can request only:
 - `ontology_catalog.inspect`
 - `semantic_query.plan_execute`
 - `python_analysis.run`
+- `chart_generation.run`
 - `artifact_renderer.render`
 
 It remains beta and must not be the default route.
@@ -41,6 +42,15 @@ It remains beta and must not be the default route.
 `NBA_ENABLE_MODEL_ANSWER_COMPOSER=1` enables model-assisted answer composition
 from structured evidence only. Claims must pass evidence validation or the
 assistant falls back to deterministic table-first output.
+
+## Chart Generation
+
+`chart_generation.run` is the governed chart tool. Deterministic Vega-Lite
+generation can run without model gates. Model-generated chart specs require
+`NBA_ENABLE_MODEL_CHART_GENERATION=1`; sandbox-assisted chart specs require
+`NBA_ENABLE_SANDBOX_CHART_GENERATION=1` plus
+`NBA_ENABLE_PYTHON_CODE_SANDBOX=1`. Both modes must validate column references,
+renderer, URL absence, and SQL/database absence before returning artifacts.
 
 ## Permanent Limits
 

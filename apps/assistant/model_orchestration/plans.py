@@ -17,21 +17,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from apps.assistant.routes.correlation import CorrelationPlan
 from apps.assistant.routes.period_delta import PeriodDeltaPlan
+from apps.assistant.tools.registry import FORBIDDEN_TOOL_NAMES, GOVERNED_TOOL_NAMES
 
 
-ALLOWED_TOOL_NAMES = {
-    "ontology_catalog.inspect",
-    "semantic_query.plan_execute",
-    "python_analysis.run",
-    "artifact_renderer.render",
-}
-FORBIDDEN_TOOL_NAMES = {"raw_sql", "raw_python", "arbitrary_python", "sql.execute", "python_code", "duckdb.execute"}
+ALLOWED_TOOL_NAMES = GOVERNED_TOOL_NAMES
 FORBIDDEN_SQL_AUTHORING_PATTERNS = [
     re.compile(pattern, re.IGNORECASE)
     for pattern in [
         r"\bselect\b[\s\S]{0,120}\bfrom\b",
         r"\bwith\b[\s\S]{0,120}\bas\b",
-        r"\b(insert|update|delete|drop|alter|create|copy|attach|pragma|load|install)\b",
+        r"\b(insert\s+into|update\s+\w+\s+set|delete\s+from|drop\s+table|alter\s+table|create\s+table|copy\s+|attach\s+|pragma\s+|load\s+|install\s+)\b",
         r"\b(raw\s+sql|write\s+sql|generate\s+sql|author\s+sql|repair\s+sql|transform\s+sql)\b",
         r"\b(repair|fix|transform|rewrite)\b[\s\S]{0,40}\bsql\b",
         r"\b(inspect|list|show)\b[\s\S]{0,40}\b(warehouse|database)\b",
@@ -85,13 +80,13 @@ class ModelAnalysisPlan(StrictPlanModel):
 
     @model_validator(mode="after")
     def validate_plan_safety(self) -> "ModelAnalysisPlan":
+        if isinstance(self.plan, UnsupportedPlan):
+            return self
         payload = _string_payload(self)
         if any(token in payload for token in FORBIDDEN_TOOL_NAMES):
             raise ValueError("Model plan includes a forbidden raw SQL or Python tool reference.")
         if _mentions_sql_authoring(payload):
             raise ValueError("Model plan includes forbidden SQL authoring or database-access language.")
-        if isinstance(self.plan, UnsupportedPlan):
-            return self
         if any(surface in payload for surface in UNSUPPORTED_SURFACES):
             raise ValueError("Model plan references an unsupported data surface.")
         return self
@@ -117,6 +112,8 @@ def planned_tool_names(plan: ModelAnalysisPlan) -> list[str]:
             "artifact_renderer.render",
         ]
     if isinstance(plan.plan, ArtifactRequestPlan):
+        if plan.plan.artifact_intent in {"chart", "table_and_chart"}:
+            return ["semantic_query.plan_execute", "chart_generation.run", "artifact_renderer.render"]
         return ["semantic_query.plan_execute", "artifact_renderer.render"]
     return []
 

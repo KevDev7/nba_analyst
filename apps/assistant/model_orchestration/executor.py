@@ -11,7 +11,18 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[3]
+RUNTIME_ROOT = ROOT / "services" / "runtime-py"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+if str(RUNTIME_ROOT) not in sys.path:
+    sys.path.insert(0, str(RUNTIME_ROOT))
+
+from runtime.AnalysisTools.models import AnalysisTable, AnalysisTableColumn
 
 from apps.assistant.model_orchestration.answer_composer import compose_grounded_answer
 from apps.assistant.model_orchestration.planner import dry_run_payload
@@ -25,6 +36,7 @@ from apps.assistant.model_orchestration.plans import (
 from apps.assistant.models import AssistantResult
 from apps.assistant.routes.correlation import CorrelationPlan, execute_correlation_plan
 from apps.assistant.routes.period_delta import PeriodDeltaPlan, execute_period_delta_plan
+from apps.assistant.tools.chart_generation import ChartGenerationRequest, run as run_chart_generation
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
 from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict, new_id
 
@@ -108,6 +120,22 @@ def _execute_artifact_request(question: str, plan: ModelAnalysisPlan, *, debug: 
     if not result.ok and result.error is not None:
         raise RuntimeError(result.error.message)
     assistant_result = result.to_assistant_result()
+    chart_artifacts: list[dict[str, Any]] = []
+    if plan.plan.artifact_intent in {"chart", "table_and_chart"} and result.tables:
+        chart_result = run_chart_generation(
+            ChartGenerationRequest(
+                question=question,
+                tables=[_analysis_table_from_semantic_table(result.tables[0])],
+                chart_intent=plan.plan.artifact_intent,
+            )
+        )
+        if chart_result.ok:
+            chart_artifacts = chart_result.artifacts
+            assistant_result = AssistantResult(
+                answer=assistant_result.answer,
+                artifacts=[*chart_artifacts, *assistant_result.artifacts],
+                debug=assistant_result.debug,
+            )
     if debug:
         return AssistantResult(
             answer=assistant_result.answer,
@@ -115,7 +143,15 @@ def _execute_artifact_request(question: str, plan: ModelAnalysisPlan, *, debug: 
             debug={
                 **(assistant_result.debug or {}),
                 "model_plan": model_to_dict(plan),
-                "trace": model_to_dict(_trace_for_semantic_result(question, plan, result, include_artifact_step=True)),
+                "trace": model_to_dict(
+                    _trace_for_semantic_result(
+                        question,
+                        plan,
+                        result,
+                        include_chart_step=bool(chart_artifacts),
+                        include_artifact_step=True,
+                    )
+                ),
             },
         )
     return assistant_result
@@ -150,10 +186,46 @@ def _evidence_table(artifact: dict[str, Any]) -> dict[str, Any]:
     return {**artifact, "id": str(table_id)}
 
 
-def _trace_for_semantic_result(question: str, plan: ModelAnalysisPlan, result: Any, *, include_artifact_step: bool = False) -> AssistantTrace:
+def _analysis_table_from_semantic_table(table: Any) -> AnalysisTable:
+    return AnalysisTable(
+        id=str(table.id),
+        title=str(table.title or ""),
+        columns=[
+            AnalysisTableColumn(
+                id=str(column.get("id")),
+                label=str(column.get("label") or column.get("id")),
+                type=column.get("type") or "text",
+            )
+            for column in table.columns
+        ],
+        rows=[row for row in table.rows if isinstance(row, dict)],
+        row_count=int(table.row_count or len(table.rows)),
+        metadata={"source_table_id": str(table.id)},
+    )
+
+
+def _trace_for_semantic_result(
+    question: str,
+    plan: ModelAnalysisPlan,
+    result: Any,
+    *,
+    include_chart_step: bool = False,
+    include_artifact_step: bool = False,
+) -> AssistantTrace:
     tool_calls = [
         *result.trace.tool_calls,
     ]
+    if include_chart_step:
+        tool_calls.append(
+            ToolCallTrace(
+                tool_call_id=new_id("tc"),
+                tool_name="chart_generation.run",
+                status="ok",
+                input={"source_table_ids": [result.tables[0].id] if result.tables else []},
+                output={"artifact_kind": "chart"},
+                provenance=ToolProvenance(parent_table_ids=[result.tables[0].id] if result.tables else []),
+            )
+        )
     if include_artifact_step:
         tool_calls.append(
             ToolCallTrace(

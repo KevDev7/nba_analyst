@@ -302,6 +302,44 @@ class LocalAnalysisWorkerTests(unittest.TestCase):
         self.assertGreater(result.tables[0].rows[0]["z_score"], 1.5)
         self.assertEqual(result.tables[0].metadata["operation_kind"], "zscore_outliers")
 
+    def test_top_contributors_operation_ranks_metric_columns(self) -> None:
+        table = AnalysisTable(
+            id="driver_table",
+            title="Drivers",
+            columns=[
+                AnalysisTableColumn(id="team", label="Team", type="text"),
+                AnalysisTableColumn(id="shooting_delta", label="Shooting Delta", type="number"),
+                AnalysisTableColumn(id="turnover_delta", label="Turnover Delta", type="number"),
+                AnalysisTableColumn(id="pace_delta", label="Pace Delta", type="number"),
+            ],
+            rows=[
+                {
+                    "team": "Magic",
+                    "shooting_delta": 4.0,
+                    "turnover_delta": -1.0,
+                    "pace_delta": 2.0,
+                }
+            ],
+        )
+
+        result = run_analysis_request(
+            AnalysisRequest(
+                tables=[table],
+                operation={
+                    "kind": "top_contributors",
+                    "input_table_id": "driver_table",
+                    "entity_column": "team",
+                    "metric_columns": ["shooting_delta", "turnover_delta", "pace_delta"],
+                    "limit": 2,
+                },
+            )
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.tables[0].rows[0]["column_id"], "shooting_delta")
+        self.assertEqual(result.tables[0].rows[0]["entity"], "Magic")
+        self.assertEqual(result.metadata["operation_kind"], "top_contributors")
+
     def test_horizontal_bar_chart_sorts_category_axis_by_rank(self) -> None:
         result = run_analysis_request(
             AnalysisRequest(

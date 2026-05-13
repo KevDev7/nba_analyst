@@ -110,8 +110,15 @@ def safe_trace_summary(trace: AssistantTrace | dict[str, Any]) -> dict[str, Any]
     sandbox_rejections = []
     sql_steps = []
     tool_durations = []
+    chart_validation_failures = []
+    chart_generation_modes = []
     for call in tool_calls:
         provenance = call.get("provenance") if isinstance(call.get("provenance"), dict) else {}
+        if call.get("tool_name") == "chart_generation.run":
+            if provenance.get("generation_mode"):
+                chart_generation_modes.append(provenance.get("generation_mode"))
+            if call.get("status") == "failed" or provenance.get("validation_status") in {"failed", "fallback_failed"}:
+                chart_validation_failures.append(call.get("output", {}).get("error") if isinstance(call.get("output"), dict) else None)
         if provenance.get("sandbox_backend"):
             sandbox_backends.append(provenance.get("sandbox_backend"))
         if call.get("status") == "failed" and provenance.get("operation_kind") == "python_code":
@@ -150,5 +157,7 @@ def safe_trace_summary(trace: AssistantTrace | dict[str, Any]) -> dict[str, Any]
         "tool_durations": tool_durations,
         "sandbox_backends": sorted({str(value) for value in sandbox_backends if value}),
         "sandbox_rejections": [value for value in sandbox_rejections if value],
+        "chart_generation_modes": sorted({str(value) for value in chart_generation_modes if value}),
+        "chart_validation_failures": [value for value in chart_validation_failures if value],
         "has_private_debug": bool(payload.get("private_debug")),
     }

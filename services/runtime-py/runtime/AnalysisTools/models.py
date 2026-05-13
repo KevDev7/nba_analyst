@@ -183,6 +183,28 @@ class ZScoreOutliersOperation(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class TopContributorsOperation(BaseModel):
+    # Controlled derived-analysis operation. Explains one row by ranking a
+    # declared set of numeric columns by absolute or positive contribution.
+    kind: Literal["top_contributors"]
+    input_table_id: str
+    metric_columns: List[str]
+    entity_column: Optional[str] = None
+    row_index: int = Field(default=0, ge=0)
+    mode: Literal["absolute", "positive"] = "absolute"
+    limit: int = Field(default=5, ge=1, le=50)
+    title: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_metric_columns(self) -> "TopContributorsOperation":
+        if not self.metric_columns:
+            raise ValueError("top_contributors requires at least one metric column.")
+        if len(set(self.metric_columns)) != len(self.metric_columns):
+            raise ValueError("top_contributors metric columns must be unique.")
+        return self
+
+
 class PythonCodeSandboxPolicy(BaseModel):
     max_input_rows: int = Field(default=5000, ge=1, le=50000)
     max_output_rows: int = Field(default=500, ge=1, le=5000)
@@ -248,6 +270,7 @@ AnalysisOperation = Union[
     CorrelationOperation,
     PercentChangeOperation,
     ZScoreOutliersOperation,
+    TopContributorsOperation,
     PythonCodeOperation,
 ]
 
@@ -275,6 +298,8 @@ class AnalysisRequest(BaseModel):
             self._validate_percent_change_operation(tables_by_id)
         elif isinstance(self.operation, ZScoreOutliersOperation):
             self._validate_zscore_outliers_operation(tables_by_id)
+        elif isinstance(self.operation, TopContributorsOperation):
+            self._validate_top_contributors_operation(tables_by_id)
         elif isinstance(self.operation, PythonCodeOperation):
             self._validate_python_code_operation(tables_by_id)
         return self
@@ -381,6 +406,19 @@ class AnalysisRequest(BaseModel):
         column_ids = {column.id for column in table.columns}
         if self.operation.metric not in column_ids:
             raise ValueError(f"Operation references unknown columns: {self.operation.metric}")
+
+    def _validate_top_contributors_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
+        table = tables_by_id.get(self.operation.input_table_id)
+        if table is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.input_table_id}")
+        column_ids = {column.id for column in table.columns}
+        missing = [column for column in self.operation.metric_columns if column not in column_ids]
+        if self.operation.entity_column is not None and self.operation.entity_column not in column_ids:
+            missing.append(self.operation.entity_column)
+        if missing:
+            raise ValueError(f"Operation references unknown columns: {', '.join(missing)}")
+        if self.operation.row_index >= len(table.rows):
+            raise ValueError("top_contributors row_index is outside the input table.")
 
     def _validate_python_code_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
         if self.runtime != "local_sandbox":

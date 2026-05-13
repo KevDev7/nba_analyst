@@ -4,6 +4,26 @@ This document defines the assistant tool contracts used by the orchestrator laye
 
 ## Current Tools
 
+The bounded orchestrator exposes six governed tools:
+
+1. `ontology_catalog.inspect`
+2. `semantic_query.plan_execute`
+3. `python_analysis.run`
+4. `chart_generation.run`
+5. `artifact_renderer.render`
+6. `answer_composer.compose`
+
+`ontology_catalog.inspect`, `semantic_query.plan_execute`,
+`python_analysis.run`, `chart_generation.run`, and
+`artifact_renderer.render` are model-facing only through validated tool specs.
+`answer_composer.compose` is a finalizer/evidence tool and is not exposed as a
+free-form retrieval or computation boundary.
+
+Tool outputs become approved per-run resources: tables, artifacts, findings,
+claims, and trace/provenance records. Later tools may reference prior approved
+resource IDs, but all retrieval data must enter the workspace through
+`semantic_query.plan_execute`.
+
 ### `semantic_query.plan_execute`
 
 Purpose: wrap the current ontology-grounded assistant path as one governed tool call.
@@ -215,6 +235,81 @@ Output shape:
 This wrapper is intentionally thin in Slice 2. It creates the tool boundary while preserving the current UI artifact contract.
 It can now render either grounded `FinalAnswer` payloads or derived `AnalysisTable` outputs.
 
+### `chart_generation.run`
+
+Purpose: create validated Vega-Lite chart artifacts from approved result
+tables. This tool is separate from `python_analysis.run`: analysis creates or
+reshapes data; chart generation presents approved data.
+
+Current behavior:
+
+```text
+chart_generation.run
+  -> receive approved AnalysisTable data or table IDs
+  -> choose deterministic chart operation when possible
+  -> optionally use gated model/sandbox spec generation
+  -> validate Vega-Lite JSON
+  -> return chart artifact(s)
+```
+
+Input shape:
+
+```json
+{
+  "question": "Show this as a chart",
+  "tables": ["<AnalysisTable objects>"],
+  "table_ids": ["analysis.delta_table"],
+  "chart_intent": "horizontal bar chart of the biggest increases",
+  "allowed_renderers": ["vega_lite"],
+  "max_rows": 100,
+  "generation_mode": "deterministic",
+  "candidate_spec": null,
+  "sandbox_code": null,
+  "title": "Biggest increases"
+}
+```
+
+Output shape:
+
+```json
+{
+  "ok": true,
+  "artifacts": [
+    {
+      "kind": "chart",
+      "renderer": "vega_lite",
+      "title": "Biggest increases",
+      "spec": {},
+      "data": {"row_count": 30},
+      "metadata": {
+        "source_table_id": "analysis.delta_table",
+        "validated_by": "chart_generation.run"
+      }
+    }
+  ],
+  "artifact_count": 1,
+  "provenance": {
+    "tool_name": "chart_generation.run",
+    "parent_table_ids": ["analysis.delta_table"],
+    "renderer": "vega_lite",
+    "generation_mode": "deterministic",
+    "validation_status": "validated",
+    "execution_ms": 12
+  },
+  "error": null
+}
+```
+
+Validation:
+
+- Only `renderer: "vega_lite"` is currently supported.
+- Vega-Lite `field` references must match declared table columns.
+- External URLs are rejected.
+- SQL/database/DuckDB language in specs or sandbox chart code is rejected.
+- Model/sandbox chart generation is disabled unless explicit env gates are on.
+- If a gated chart spec fails validation, deterministic chart generation is the
+  fallback when possible.
+
 ### `python_analysis.run`
 
 Purpose: run controlled derived analysis over approved input tables. This is not a retrieval boundary, is not a SQL boundary, and does not receive a database handle.
@@ -226,6 +321,8 @@ Current controlled operations:
 - `correlation`: joins two tables on declared keys and computes a Pearson correlation over matched numeric columns.
 - `percent_change`: joins two approved tables and computes percentage change from the left metric to the right metric.
 - `zscore_outliers`: adds z-scores for a numeric metric and returns high/low/both-side outliers.
+- `top_contributors`: ranks declared numeric columns in one approved row by
+  contribution size.
 - chart operations remain available through the same runtime contract for artifact generation.
 - `python_code`: gated sandbox prototype for custom derived analysis over approved tables only.
 
