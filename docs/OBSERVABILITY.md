@@ -23,6 +23,8 @@ record.
 - `sandbox_rejections`
 - `chart_generation_modes`
 - `chart_validation_failures`
+- `fallback_reasons` for model/tool-loop, composer, chart, and sandbox
+  fallbacks when available
 - `has_private_debug`
 
 ## Redaction Rules

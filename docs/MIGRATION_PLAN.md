@@ -539,3 +539,77 @@ Status: implemented.
 - The branch is positioned as a reviewable production-ready architecture
   migration candidate, with model/sandbox chart generation and code execution
   still gated beta.
+
+## Slice 41: Workspace-Backed Model Tool Loop
+
+Status: implemented.
+
+- `ToolContext` now carries a per-run `RunWorkspace`.
+- The iterative model tool loop stores semantic-query tables, analysis outputs,
+  chart artifacts, renderer artifacts, and findings in the workspace.
+- Model-visible outputs expose table handles, schemas, row counts, and small
+  samples; full approved tables stay server-side.
+- `python_analysis.run`, `chart_generation.run`, and `artifact_renderer.render`
+  can resolve approved `table_ids` from the workspace and fail closed for
+  unknown IDs.
+
+## Slice 42: Evidence-Validated Model-Loop Finals
+
+Status: implemented.
+
+- The model tool loop no longer returns raw final model prose directly.
+- Final decisions route through grounded answer composition when workspace
+  evidence exists.
+- If the model tries to finalize without approved evidence, the loop returns a
+  safe grounded-evidence fallback.
+- Composer fallback reasons are recorded in debug/trace summaries.
+
+## Slice 43: Model-Visible Chart Generation Lockdown
+
+Status: implemented.
+
+- Model-visible `chart_generation.run` calls reject `sandbox_code` and
+  `generation_mode: "sandbox"`.
+- Deterministic chart generation remains available from approved workspace
+  table IDs.
+- Model-generated chart specs remain gated; sandbox chart-spec builders are
+  server-selected/internal only.
+
+## Slice 44: Operational Eval-Gate Command
+
+Status: implemented.
+
+- Added `scripts/run_architecture_gates.py`.
+- The gate checks trace evals and model-orchestration evals for expected tool
+  sequence, forbidden raw paths, private-debug redaction, claim evidence, and
+  max tool-call limits.
+- Added release-gate tests and testing docs for the command.
+
+## Slice 45: SQL Guardrail False-Positive Evals
+
+Status: implemented.
+
+- Added tests that allow natural basketball language such as “select the best
+  players,” “show players from the Celtics,” “create a ranking,” and “update me
+  on team leaders.”
+- Existing adversarial tests still reject actual SQL, DuckDB/database access,
+  warehouse inspection, and SQL repair requests.
+
+## Slice 46: Production Observability And Fallback Reasons
+
+Status: implemented.
+
+- Safe trace summaries now include generic fallback reasons in addition to
+  chart-generation modes/failures, sandbox backend/rejections, SQL metadata,
+  and tool durations.
+- Summaries remain redacted and do not include raw SQL, raw code, credentials,
+  private debug, or huge table rows.
+
+## Slice 47: Final RC Docs And Verification
+
+Status: implemented.
+
+- Updated migration, testing, tool-contract, model-beta, observability, and
+  release-candidate docs for workspace-backed tool execution, evidence-validated
+  finals, chart-generation restrictions, and architecture gates.
+- Risky model/sandbox/chart capabilities remain feature-gated and default-off.

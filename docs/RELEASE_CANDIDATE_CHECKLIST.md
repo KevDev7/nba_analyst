@@ -8,6 +8,8 @@
   analysis, chart generation, artifact rendering, and answer composition.
 - Per-run workspace resources can track approved tables, artifacts, findings,
   and provenance links between tool calls.
+- The model tool loop resolves full tables server-side from workspace handles
+  and finalizes answers through evidence validation.
 - Data tables are separated from presentation artifacts.
 - Vega-Lite chart artifacts are generated through `chart_generation.run` or the
   deterministic artifact renderer path, not arbitrary plotting code.
@@ -57,6 +59,12 @@ Compile check:
 python3 -m compileall apps/assistant services/runtime-py/runtime tests
 ```
 
+Architecture gates:
+
+```bash
+python3 scripts/run_architecture_gates.py
+```
+
 Broad suite:
 
 ```bash
@@ -79,3 +87,8 @@ This branch migrates the assistant to a bounded orchestrator with governed
 tools while preserving the ontology/Haskell retrieval boundary. It adds
 production-ready contracts, provenance, eval gates, config, rollback docs, and
 an E2B-backed sandbox path that remains disabled by default.
+
+Known live-provider note: broad-suite tests that call Gemini may fail with
+provider timeouts, high-demand 503s, or malformed JSON. Retry exact failures;
+if they pass on retry and the error was provider transport/format flakiness,
+record separately from deterministic architecture regressions.

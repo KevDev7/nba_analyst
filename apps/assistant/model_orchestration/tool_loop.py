@@ -14,9 +14,18 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+ROOT = Path(__file__).resolve().parents[3]
+RUNTIME_ROOT = ROOT / "services" / "runtime-py"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+if str(RUNTIME_ROOT) not in sys.path:
+    sys.path.insert(0, str(RUNTIME_ROOT))
 
 from apps.assistant.model_orchestration.answer_composer import compose_grounded_answer
 from apps.assistant.model_orchestration.plans import ALLOWED_TOOL_NAMES, FORBIDDEN_TOOL_NAMES
@@ -27,9 +36,10 @@ from apps.assistant.tools.artifact_renderer import ArtifactRenderRequest, render
 from apps.assistant.tools.chart_generation import ChartGenerationRequest, run as run_chart_generation
 from apps.assistant.tools.ontology_catalog import OntologyCatalogRequest, inspect as inspect_catalog
 from apps.assistant.tools.python_analysis import PythonAnalysisToolRequest, run as run_python_analysis
-from apps.assistant.tools.registry import ToolContext, ToolRegistry, ToolResult, ToolSpec
+from apps.assistant.tools.registry import MODEL_VISIBLE_TOOL_NAMES, ToolContext, ToolRegistry, ToolResult, ToolSpec
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
-from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict
+from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict, new_id
+from runtime.AnalysisTools.models import AnalysisFinding, AnalysisRequest, AnalysisTable, AnalysisTableColumn
 
 
 MODEL_TOOL_LOOP_ENABLED_ENV = "NBA_ENABLE_MODEL_TOOL_LOOP"
@@ -65,7 +75,7 @@ class LoopDecision(BaseModel):
         if self.action == "tool_call":
             if not self.tool_name:
                 raise ValueError("tool_call decisions require tool_name.")
-            if self.tool_name in FORBIDDEN_TOOL_NAMES or self.tool_name not in ALLOWED_TOOL_NAMES:
+            if self.tool_name in FORBIDDEN_TOOL_NAMES or self.tool_name not in MODEL_VISIBLE_TOOL_NAMES:
                 raise ValueError(f"Tool '{self.tool_name}' is not allowed.")
             if _payload_mentions_forbidden_capability(self.arguments):
                 raise ValueError("Tool arguments reference a forbidden raw capability.")
@@ -98,8 +108,14 @@ def run_model_tool_loop(
         decision = _parse_decision(call_model(_loop_prompt(question, registry.specs, tool_outputs)))
         model_decisions.append(model_to_dict(decision))
         if decision.action == "final":
-            debug_payload = {"trace": model_to_dict(trace), "model_decisions": model_decisions} if debug else None
-            return AssistantResult(answer=decision.answer or "", artifacts=[], debug=debug_payload)
+            return _finalize_with_workspace_evidence(
+                question,
+                decision,
+                context,
+                trace,
+                model_decisions,
+                debug=debug,
+            )
         if len(trace.tool_calls) >= MAX_LOOP_TOOL_CALLS:
             raise RuntimeError("Model tool loop exceeded max tool calls.")
         result = registry.execute(decision.tool_name or "", decision.arguments, context)
@@ -188,34 +204,102 @@ def _execute_semantic_query(payload: dict[str, Any], context: ToolContext) -> To
         }
     )
     result = plan_execute(request)
+    for table in result.tables:
+        context.workspace.add_table(
+            _analysis_table_from_semantic_table(table),
+            source_tool_call_id=result.trace.tool_calls[0].tool_call_id if result.trace.tool_calls else None,
+            source_tool_name="semantic_query.plan_execute",
+            metadata={"query_id": result.query_id},
+        )
+    for artifact in result.artifacts:
+        context.workspace.add_artifact(
+            artifact,
+            source_tool_call_id=result.trace.tool_calls[0].tool_call_id if result.trace.tool_calls else None,
+            source_tool_name="semantic_query.plan_execute",
+            parent_ids=[table.id for table in result.tables],
+        )
     return ToolResult(
         ok=result.ok,
         tool_name="semantic_query.plan_execute",
         output=_summarize_semantic_result(result),
-        provenance=model_to_dict(result.provenance),
+        provenance=_as_dict(result.provenance),
         error=model_to_dict(result.error) if result.error is not None else None,
     )
 
 
-def _execute_python_analysis(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+def _execute_python_analysis(payload: dict[str, Any], context: ToolContext) -> ToolResult:
     if _payload_mentions_python_code(payload):
         return ToolResult(
             ok=False,
             tool_name="python_analysis.run",
             error={"code": "python_code_not_allowed_in_tool_loop", "message": "Model tool loop cannot request code mode."},
         )
-    result = run_python_analysis(PythonAnalysisToolRequest(**payload))
+    result = run_python_analysis(PythonAnalysisToolRequest(analysis_request=_analysis_request_from_workspace(payload, context)))
+    for table_payload in result.outputs.get("tables", []):
+        table = _analysis_table_from_payload(table_payload)
+        context.workspace.add_table(
+            table,
+            source_tool_call_id=None,
+            source_tool_name="python_analysis.run",
+            parent_ids=result.provenance.get("parent_table_ids", []),
+            metadata={"analysis_id": result.analysis_id, "operation_kind": result.provenance.get("operation_kind")},
+        )
+    for index, finding_payload in enumerate(result.outputs.get("findings", [])):
+        try:
+            finding = AnalysisFinding(**finding_payload)
+        except Exception:
+            continue
+        context.workspace.add_finding(
+            finding,
+            finding_id=f"{result.analysis_id}.finding_{index}",
+            source_tool_name="python_analysis.run",
+            parent_ids=result.provenance.get("parent_table_ids", []),
+        )
+    for artifact in result.outputs.get("artifacts", []):
+        context.workspace.add_artifact(
+            artifact,
+            source_tool_name="python_analysis.run",
+            parent_ids=result.provenance.get("parent_table_ids", []),
+        )
     return ToolResult(
         ok=result.ok,
         tool_name="python_analysis.run",
-        output=_summarize_for_model(result.outputs),
+        output={
+            "tables": [_table_handle(context.workspace.resolve_table(table_id)) for table_id in result.provenance.get("output_table_ids", [])],
+            "artifact_count": len(result.outputs.get("artifacts", [])),
+            "finding_count": len(result.outputs.get("findings", [])),
+            "analysis_id": result.analysis_id,
+        },
         provenance=result.provenance,
         error=result.error,
     )
 
 
-def _execute_chart_generation(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+def _execute_chart_generation(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    if "sandbox_code" in payload or payload.get("generation_mode") == "sandbox":
+        return ToolResult(
+            ok=False,
+            tool_name="chart_generation.run",
+            error={"code": "sandbox_chart_generation_not_model_visible", "message": "Model-visible chart generation cannot request sandbox code mode."},
+        )
+    if payload.get("generation_mode") not in {None, "deterministic", "model"}:
+        return ToolResult(
+            ok=False,
+            tool_name="chart_generation.run",
+            error={"code": "unsupported_chart_generation_mode", "message": "Model-visible chart generation supports deterministic mode, plus gated model mode."},
+        )
+    payload = {**payload, "tables": [model_to_dict(table) for table in _resolve_payload_tables(payload, context)]}
+    if payload.get("generation_mode") is None:
+        payload["generation_mode"] = "deterministic"
     result = run_chart_generation(ChartGenerationRequest(**payload))
+    for artifact in result.artifacts:
+        context.workspace.add_artifact(
+            artifact,
+            source_tool_call_id=result.provenance.get("tool_call_id"),
+            source_tool_name="chart_generation.run",
+            parent_ids=result.provenance.get("parent_table_ids", []),
+            metadata={"generation_mode": result.provenance.get("generation_mode")},
+        )
     return ToolResult(
         ok=result.ok,
         tool_name="chart_generation.run",
@@ -225,8 +309,16 @@ def _execute_chart_generation(payload: dict[str, Any], _context: ToolContext) ->
     )
 
 
-def _execute_artifact_renderer(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+def _execute_artifact_renderer(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    if "table_ids" in payload and "tables" not in payload:
+        payload = {**payload, "tables": [model_to_dict(table) for table in context.workspace.resolve_tables(payload.get("table_ids") or [])]}
     result = render_artifacts(ArtifactRenderRequest(**payload))
+    for artifact in result.artifacts:
+        context.workspace.add_artifact(
+            artifact,
+            source_tool_name="artifact_renderer.render",
+            parent_ids=list(payload.get("table_ids") or []),
+        )
     return ToolResult(
         ok=result.ok,
         tool_name="artifact_renderer.render",
@@ -236,12 +328,21 @@ def _execute_artifact_renderer(payload: dict[str, Any], _context: ToolContext) -
     )
 
 
-def _execute_answer_composer(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+def _execute_answer_composer(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    evidence_tables = list(payload.get("evidence_tables") or [])
+    if not evidence_tables:
+        evidence_tables = [model_to_dict(table) for table in context.workspace.tables.values()]
+    findings = list(payload.get("findings") or [])
+    if not findings:
+        findings = [model_to_dict(finding) for finding in context.workspace.findings.values()]
+    artifacts = list(payload.get("artifacts") or [])
+    if not artifacts:
+        artifacts = list(context.workspace.artifacts.values())
     answer = compose_grounded_answer(
         question=str(payload.get("question") or ""),
-        evidence_tables=list(payload.get("evidence_tables") or []),
-        findings=list(payload.get("findings") or []),
-        artifacts=list(payload.get("artifacts") or []),
+        evidence_tables=evidence_tables,
+        findings=findings,
+        artifacts=artifacts,
         fallback_answer=str(payload.get("fallback_answer") or ""),
     )
     return ToolResult(
@@ -250,6 +351,63 @@ def _execute_answer_composer(payload: dict[str, Any], _context: ToolContext) -> 
         output=model_to_dict(answer),
         provenance={"claim_count": len(answer.claims), "limitation_count": len(answer.limitations)},
     )
+
+
+def _finalize_with_workspace_evidence(
+    question: str,
+    decision: LoopDecision,
+    context: ToolContext,
+    trace: AssistantTrace,
+    model_decisions: list[dict[str, Any]],
+    *,
+    debug: bool,
+) -> AssistantResult:
+    fallback_answer = _safe_final_fallback(decision.answer or "")
+    if not context.workspace.tables:
+        answer = "I need grounded evidence from a governed retrieval before giving a final answer."
+        trace.tool_calls.append(
+            ToolCallTrace(
+                tool_call_id=new_id("tc"),
+                tool_name="answer_composer.compose",
+                status="failed",
+                input={"workspace_table_count": 0},
+                output={"fallback_reason": "missing_workspace_evidence"},
+                provenance=ToolProvenance(composer_fallback_reason="missing_workspace_evidence"),
+            )
+        )
+        debug_payload = {
+            "trace": model_to_dict(trace),
+            "model_decisions": model_decisions,
+            "composer_fallback_reason": "missing_workspace_evidence",
+        } if debug else None
+        return AssistantResult(answer=answer, artifacts=list(context.workspace.artifacts.values()), debug=debug_payload)
+    composed = compose_grounded_answer(
+        question=question,
+        evidence_tables=[model_to_dict(table) for table in context.workspace.tables.values()],
+        findings=[model_to_dict(finding) for finding in context.workspace.findings.values()],
+        artifacts=list(context.workspace.artifacts.values()),
+        fallback_answer=fallback_answer,
+    )
+    fallback_reason = "no_valid_claims" if composed.answer == fallback_answer and not composed.claims else None
+    trace.tool_calls.append(
+        ToolCallTrace(
+            tool_call_id=new_id("tc"),
+            tool_name="answer_composer.compose",
+            status="ok",
+            input={"workspace_table_count": len(context.workspace.tables)},
+            output={"claim_count": len(composed.claims), "limitation_count": len(composed.limitations)},
+            provenance=ToolProvenance(composer_fallback_reason=fallback_reason),
+        )
+    )
+    trace.claims = [model_to_dict(claim) for claim in composed.claims]
+    debug_payload = {
+        "trace": model_to_dict(trace),
+        "model_decisions": model_decisions,
+        "claims": [model_to_dict(claim) for claim in composed.claims],
+        "limitations": composed.limitations,
+        "composer_fallback_reason": fallback_reason,
+    } if debug else None
+    return AssistantResult(answer=composed.answer, artifacts=list(context.workspace.artifacts.values()), debug=debug_payload)
 
 
 def _parse_decision(raw_text: str) -> LoopDecision:
@@ -306,11 +464,96 @@ def _summarize_semantic_result(result: Any) -> dict[str, Any]:
         "status": result.status,
         "result_shape": result.result_shape,
         "answer_text": result.answer_text,
-        "tables": _limit_tables([model_to_dict(table) for table in result.tables]),
+        "tables": [_semantic_table_handle(table) for table in result.tables],
         "artifact_count": len(result.artifacts),
         "assumptions": result.assumptions,
         "error": model_to_dict(result.error) if result.error is not None else None,
     }
+
+
+def _analysis_table_from_semantic_table(table: Any) -> AnalysisTable:
+    return AnalysisTable(
+        id=str(table.id),
+        title=str(table.title or ""),
+        columns=[
+            AnalysisTableColumn(
+                id=str(column.get("id")),
+                label=str(column.get("label") or column.get("id")),
+                type=column.get("type") or "text",
+            )
+            for column in table.columns
+            if isinstance(column, dict)
+        ],
+        rows=[row for row in table.rows if isinstance(row, dict)],
+        row_count=int(table.row_count or len(table.rows)),
+        metadata={"source_table_id": str(table.id), **(table.provenance if isinstance(table.provenance, dict) else {})},
+    )
+
+
+def _analysis_table_from_payload(payload: dict[str, Any]) -> AnalysisTable:
+    return AnalysisTable(
+        id=str(payload["id"]),
+        title=str(payload.get("title") or ""),
+        columns=[
+            AnalysisTableColumn(
+                id=str(column["id"]),
+                label=str(column.get("label") or column["id"]),
+                type=column.get("type") or "text",
+            )
+            for column in payload.get("columns", [])
+            if isinstance(column, dict)
+        ],
+        rows=[row for row in payload.get("rows", []) if isinstance(row, dict)],
+        row_count=int(payload.get("row_count") or len(payload.get("rows", []))),
+        metadata=payload.get("metadata", {}) if isinstance(payload.get("metadata"), dict) else {},
+    )
+
+
+def _semantic_table_handle(table: Any) -> dict[str, Any]:
+    analysis_table = _analysis_table_from_semantic_table(table)
+    return _table_handle(analysis_table)
+
+
+def _table_handle(table: AnalysisTable) -> dict[str, Any]:
+    return {
+        "table_id": table.id,
+        "title": table.title,
+        "columns": [model_to_dict(column) for column in table.columns],
+        "row_count": int(table.row_count if table.row_count is not None else len(table.rows)),
+        "sample_rows": table.rows[: min(len(table.rows), 5)],
+    }
+
+
+def _analysis_request_from_workspace(payload: dict[str, Any], context: ToolContext) -> AnalysisRequest:
+    if "analysis_request" in payload:
+        request_payload = dict(payload["analysis_request"])
+        table_ids = request_payload.pop("table_ids", None) or payload.get("table_ids")
+        if table_ids is not None:
+            request_payload["tables"] = [model_to_dict(table) for table in context.workspace.resolve_tables(table_ids)]
+        return AnalysisRequest(**request_payload)
+    table_ids = payload.get("table_ids")
+    if not table_ids:
+        raise ValueError("python_analysis.run requires analysis_request or table_ids.")
+    return AnalysisRequest(
+        runtime=payload.get("runtime", "local_trusted"),
+        tables=context.workspace.resolve_tables(table_ids),
+        operation=payload.get("operation"),
+        metadata=payload.get("metadata", {}),
+    )
+
+
+def _resolve_payload_tables(payload: dict[str, Any], context: ToolContext) -> list[AnalysisTable]:
+    table_ids = payload.get("table_ids")
+    if table_ids:
+        return context.workspace.resolve_tables(table_ids)
+    return [AnalysisTable(**table) if isinstance(table, dict) else table for table in payload.get("tables", [])]
+
+
+def _safe_final_fallback(answer_hint: str) -> str:
+    numeric_tokens = re.findall(r"(?<![A-Za-z0-9])[-+]?\d+(?:,\d{3})*(?:\.\d+)?%?(?![A-Za-z0-9])", answer_hint)
+    if numeric_tokens:
+        return "I could not validate the final numeric answer against the gathered evidence."
+    return answer_hint or "I could not validate a grounded final answer from the gathered evidence."
 
 
 def _summarize_for_model(value: Any) -> Any:
@@ -323,6 +566,18 @@ def _summarize_for_model(value: Any) -> Any:
     if isinstance(value, list):
         return [_summarize_for_model(child) for child in value[:MAX_MODEL_VISIBLE_ROWS]]
     return value
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if hasattr(value, "dict"):
+        return value.dict()
+    return {}
 
 
 def _limit_tables(tables: list[dict[str, Any]]) -> list[dict[str, Any]]:

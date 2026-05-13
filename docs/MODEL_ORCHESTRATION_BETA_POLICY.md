@@ -43,6 +43,12 @@ It remains beta and must not be the default route.
 from structured evidence only. Claims must pass evidence validation or the
 assistant falls back to deterministic table-first output.
 
+The iterative model tool loop does not return raw final model prose directly.
+When the model emits a final decision, the server finalizes through the
+grounded composer using workspace evidence. If no approved evidence tables are
+available, the loop returns a safe fallback asking for grounded retrieval rather
+than trusting unsupported prose.
+
 ## Chart Generation
 
 `chart_generation.run` is the governed chart tool. Deterministic Vega-Lite
@@ -51,6 +57,10 @@ generation can run without model gates. Model-generated chart specs require
 `NBA_ENABLE_SANDBOX_CHART_GENERATION=1` plus
 `NBA_ENABLE_PYTHON_CODE_SANDBOX=1`. Both modes must validate column references,
 renderer, URL absence, and SQL/database absence before returning artifacts.
+
+Model-visible `chart_generation.run` calls may not pass `sandbox_code` or
+request `generation_mode: "sandbox"`. Sandbox chart-spec generation is
+server-selected/internal only.
 
 ## Permanent Limits
 

@@ -26,6 +26,19 @@ python3 -m unittest \
 `tests.test_e2b_sandbox_live` is included here because it skips unless live E2B
 flags are present.
 
+## Architecture Gate Runner
+
+Use this deterministic gate before promoting model-loop, sandbox, or chart
+generation behavior:
+
+```bash
+python3 scripts/run_architecture_gates.py
+```
+
+The gate checks eval banks for governed tool sequences, forbidden-tool absence,
+raw SQL/private-debug redaction, claim evidence requirements, and model-plan
+tool limits. It has no live Gemini or E2B dependency.
+
 ## Live Gemini Smoke Tests
 
 Some legacy assistant tests call Gemini for semantic interpretation. They can

@@ -5,6 +5,7 @@ from typing import Any, Callable, Optional, Protocol
 from pydantic import BaseModel, Field
 
 from apps.assistant.trace import new_id
+from apps.assistant.workspace import RunWorkspace
 
 
 GOVERNED_TOOL_NAMES = {
@@ -46,6 +47,7 @@ class ToolSpec(BaseModel):
 class ToolContext(BaseModel):
     question: str
     debug: bool = False
+    workspace: RunWorkspace = Field(default_factory=RunWorkspace)
 
 
 class ToolResult(BaseModel):
@@ -98,7 +100,14 @@ class ToolRegistry:
                 tool_name=name,
                 error={"code": "forbidden_tool_payload", "message": "Tool payload references a forbidden raw capability."},
             )
-        return self._executors[name](payload, context)
+        try:
+            return self._executors[name](payload, context)
+        except Exception as exc:
+            return ToolResult(
+                ok=False,
+                tool_name=name,
+                error={"code": "tool_execution_failed", "message": str(exc)},
+            )
 
     @property
     def specs(self) -> list[ToolSpec]:

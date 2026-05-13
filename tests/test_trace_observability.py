@@ -71,6 +71,25 @@ class TraceObservabilityTests(unittest.TestCase):
         self.assertEqual(summary["chart_generation_modes"], ["model"])
         self.assertEqual(summary["chart_validation_failures"][0]["code"], "invalid_chart_spec")
 
+    def test_safe_trace_summary_records_fallback_reasons(self) -> None:
+        trace = {
+            "schema_version": "assistant_trace.v1",
+            "run_id": "run_fallback",
+            "route": "model_tool_loop_beta",
+            "status": "ok",
+            "tool_calls": [
+                {
+                    "tool_name": "answer_composer.compose",
+                    "status": "failed",
+                    "provenance": {"composer_fallback_reason": "missing_workspace_evidence"},
+                }
+            ],
+        }
+
+        summary = safe_trace_summary(trace)
+
+        self.assertEqual(summary["fallback_reasons"][0]["reason"], "missing_workspace_evidence")
+
     def test_eval_gate_passes_expected_trace(self) -> None:
         trace = sample_trace().model_dump()
 

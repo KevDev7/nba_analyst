@@ -116,6 +116,21 @@ class ModelOrchestrationPlanTests(unittest.TestCase):
                         tool_sequence=[{"tool_name": "semantic_query.plan_execute", "purpose": "retrieve"}],
                     )
 
+    def test_basketball_language_with_sql_words_is_allowed(self) -> None:
+        allowed_questions = [
+            "Select the best players by points this season",
+            "Show players from the Celtics by average assists",
+            "Create a ranking of teams by rebounds",
+            "Update me on team leaders in scoring",
+        ]
+        for question in allowed_questions:
+            with self.subTest(question=question):
+                plan = ModelAnalysisPlan(
+                    plan={"kind": "simple_semantic_query", "question": question},
+                    tool_sequence=[{"tool_name": "semantic_query.plan_execute", "purpose": "retrieve"}],
+                )
+                self.assertEqual(plan.plan.kind, "simple_semantic_query")
+
     def test_forbidden_raw_python_reference_is_rejected(self) -> None:
         with self.assertRaises(ValidationError):
             ModelAnalysisPlan(

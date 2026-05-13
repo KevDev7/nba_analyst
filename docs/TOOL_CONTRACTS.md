@@ -24,6 +24,12 @@ claims, and trace/provenance records. Later tools may reference prior approved
 resource IDs, but all retrieval data must enter the workspace through
 `semantic_query.plan_execute`.
 
+In the iterative model loop, `ToolContext` owns one `RunWorkspace` for the
+request. Model-visible tool results expose table handles, schemas, row counts,
+and small row samples; full rows stay server-side in the workspace. Tools that
+accept `table_ids` resolve those IDs from the workspace and fail closed if the
+ID was not produced by a prior governed tool call.
+
 ### `semantic_query.plan_execute`
 
 Purpose: wrap the current ontology-grounded assistant path as one governed tool call.
@@ -307,6 +313,9 @@ Validation:
 - External URLs are rejected.
 - SQL/database/DuckDB language in specs or sandbox chart code is rejected.
 - Model/sandbox chart generation is disabled unless explicit env gates are on.
+- In model-visible tool-loop calls, `sandbox_code` and
+  `generation_mode: "sandbox"` are rejected. Sandbox-assisted chart spec
+  generation is server-selected/internal only.
 - If a gated chart spec fails validation, deterministic chart generation is the
   fallback when possible.
 

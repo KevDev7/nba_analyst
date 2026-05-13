@@ -55,6 +55,13 @@ class ToolProvenance(BaseModel):
     parent_table_ids: list[str] = Field(default_factory=list)
     output_table_ids: list[str] = Field(default_factory=list)
     derived_from_table_ids: list[str] = Field(default_factory=list)
+    generation_mode: Optional[str] = None
+    validation_status: Optional[str] = None
+    fallback_reason: Optional[str] = None
+    sandbox_backend: Optional[str] = None
+    sandbox_status: Optional[str] = None
+    composer_fallback_reason: Optional[str] = None
+    model_fallback_reason: Optional[str] = None
 
 
 class ToolCallTrace(BaseModel):
@@ -112,8 +119,12 @@ def safe_trace_summary(trace: AssistantTrace | dict[str, Any]) -> dict[str, Any]
     tool_durations = []
     chart_validation_failures = []
     chart_generation_modes = []
+    fallback_reasons = []
     for call in tool_calls:
         provenance = call.get("provenance") if isinstance(call.get("provenance"), dict) else {}
+        for key in ("fallback_reason", "composer_fallback_reason", "model_fallback_reason"):
+            if provenance.get(key):
+                fallback_reasons.append({"tool_name": call.get("tool_name"), "reason": provenance.get(key)})
         if call.get("tool_name") == "chart_generation.run":
             if provenance.get("generation_mode"):
                 chart_generation_modes.append(provenance.get("generation_mode"))
@@ -159,5 +170,6 @@ def safe_trace_summary(trace: AssistantTrace | dict[str, Any]) -> dict[str, Any]
         "sandbox_rejections": [value for value in sandbox_rejections if value],
         "chart_generation_modes": sorted({str(value) for value in chart_generation_modes if value}),
         "chart_validation_failures": [value for value in chart_validation_failures if value],
+        "fallback_reasons": fallback_reasons,
         "has_private_debug": bool(payload.get("private_debug")),
     }
