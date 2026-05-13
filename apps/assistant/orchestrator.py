@@ -14,6 +14,7 @@ import os
 
 from apps.assistant.model_orchestration.executor import dry_run_result, execute_model_plan
 from apps.assistant.model_orchestration.planner import ModelPlanError, plan_question_with_model
+from apps.assistant.model_orchestration.tool_loop import model_tool_loop_enabled, run_model_tool_loop
 from apps.assistant.models import AssistantResult
 from apps.assistant.routes.period_delta import execute_period_delta_plan, maybe_build_period_delta_plan
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
@@ -49,6 +50,11 @@ def _run_fast_path(question: str, *, debug: bool) -> AssistantResult:
 
 
 def _run_model_orchestrator(question: str, *, debug: bool) -> AssistantResult | None:
+    if model_tool_loop_enabled():
+        try:
+            return run_model_tool_loop(question, debug=debug)
+        except Exception:
+            return None
     try:
         plan = plan_question_with_model(question)
     except ModelPlanError:

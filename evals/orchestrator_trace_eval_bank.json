@@ -145,5 +145,35 @@
       "claims": [],
       "private_debug": null
     }
+  },
+  {
+    "name": "iterative model tool loop beta trace",
+    "category": "model_loop",
+    "question": "Inspect whether net rating is supported, then answer.",
+    "expected_route": "model_tool_loop_beta",
+    "expected_tools": ["ontology_catalog.inspect"],
+    "forbidden_tools": ["raw_sql", "raw_python", "arbitrary_python", "python_code", "duckdb.execute"],
+    "expected_artifacts": [],
+    "require_claim_evidence": false,
+    "trace": {
+      "route": "model_tool_loop_beta",
+      "tool_calls": [
+        {
+          "tool_name": "ontology_catalog.inspect",
+          "status": "ok",
+          "input": {
+            "purpose": "inspect metrics",
+            "arguments_hash": "sha256:catalog"
+          },
+          "output": {
+            "ok": true,
+            "metrics": [{"label": "Net Rating"}]
+          }
+        }
+      ],
+      "artifacts": [],
+      "claims": [],
+      "private_debug": null
+    }
   }
 ]

@@ -258,3 +258,15 @@ Status: implemented.
 - Chose correlation because it adds a new reusable analysis shape without raw SQL, arbitrary code, or Haskell contract changes.
 - Correlation execution retrieves both metrics through `semantic_query.plan_execute`, computes the relationship through a controlled `python_analysis.run` `correlation` operation, then renders artifacts through `artifact_renderer.render`.
 - Added model-plan schema support, executor support, trace/provenance, operation tests, route tests, and model-orchestration eval coverage.
+
+## Slice 14: Iterative Model Tool Loop Beta
+
+Status: implemented behind a gate.
+
+- Added an SDK-independent `ToolSpec` / `ToolRegistry` abstraction for governed tools.
+- Added a gated iterative model loop requiring `NBA_ENABLE_MODEL_ORCHESTRATOR` and `NBA_ENABLE_MODEL_TOOL_LOOP`.
+- The loop allowlist is limited to `ontology_catalog.inspect`, `semantic_query.plan_execute`, `python_analysis.run`, and `artifact_renderer.render`.
+- Tool turns and tool calls are capped.
+- Tool outputs are sanitized and row-limited before becoming model-visible context.
+- Raw SQL, raw Python, `python_code`, and DuckDB execution tools remain forbidden.
+- Existing one-shot structured planner and deterministic fast path remain available; the loop is not default.

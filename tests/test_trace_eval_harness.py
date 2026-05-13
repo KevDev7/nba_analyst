@@ -23,7 +23,7 @@ class TraceEvalHarnessTests(unittest.TestCase):
         categories = {case["category"] for case in cases}
 
         self.assertTrue(
-            {"simple", "multi_step", "unsupported", "adversarial", "artifact", "sandbox"}.issubset(categories)
+            {"simple", "multi_step", "unsupported", "adversarial", "artifact", "sandbox", "model_loop"}.issubset(categories)
         )
 
     def test_trace_eval_cases_enforce_governed_tool_policy(self) -> None:

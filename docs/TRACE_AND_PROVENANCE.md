@@ -177,3 +177,5 @@ artifact_renderer.render
 There is intentionally no `raw_sql`, `duckdb.execute`, arbitrary Python, or code-execution tool in the model-visible orchestration contract.
 
 The sandbox prototype does not add a new model-visible tool. Code mode is reachable only as a gated operation inside `python_analysis.run`, and only over approved input tables.
+
+The iterative model tool loop beta uses route `model_tool_loop_beta`. Its trace records the governed tool calls the loop executed, while model decisions are kept in debug metadata. Tool call inputs store argument hashes rather than full raw payloads, and tool outputs are sanitized before they can become model-visible context.

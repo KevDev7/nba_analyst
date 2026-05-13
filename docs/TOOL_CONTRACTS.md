@@ -406,6 +406,23 @@ Forbidden tool names and references include:
 
 The model orchestrator may produce a structured plan, choose governed tools, and request artifacts. It must not author SQL, request a database handle, or claim support for unsupported surfaces such as play-by-play, lineups, on-off, clutch, or shot location. It does not get a separate raw Python/code tool; any future code-mode analysis must be routed through `python_analysis.run` and the sandbox gate.
 
+### Iterative Tool Loop Beta
+
+The iterative model/tool loop is disabled by default and additionally gated by:
+
+```text
+NBA_ENABLE_MODEL_TOOL_LOOP=1
+```
+
+It is SDK-independent and uses the same governed tool allowlist:
+
+- `ontology_catalog.inspect`
+- `semantic_query.plan_execute`
+- `python_analysis.run`
+- `artifact_renderer.render`
+
+The loop caps model turns and tool calls, stores tool-call trace records, passes only sanitized tool outputs back to the model, and rejects raw SQL, raw Python, `python_code`, `duckdb.execute`, and related raw execution capabilities. It is a beta path and is not the default orchestrator route.
+
 ## Grounded Answer Composer
 
 The model-assisted answer composer is disabled by default and can be enabled only alongside model orchestration:
