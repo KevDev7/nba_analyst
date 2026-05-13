@@ -112,7 +112,8 @@ Purpose: expose ontology-backed subjects, metrics, dimensions, filters, time gra
 
 Current implementation:
 
-- reads `fixtures/ontology/semantic-gold.yaml`;
+- prefers Haskell `inspect-ontology-json` over the validated ontology model;
+- falls back to reading `fixtures/ontology/semantic-gold.yaml`;
 - reads coverage metadata from `fixtures/duckdb/gold_slice.duckdb`;
 - returns ontology and snapshot hashes;
 - does not replace Haskell ontology validation.

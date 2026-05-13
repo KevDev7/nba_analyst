@@ -34,6 +34,25 @@ def call_validate_ontology(ontology_path: Path) -> subprocess.CompletedProcess[s
     )
 
 
+def call_inspect_ontology(ontology_path: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            "cabal",
+            "run",
+            "-v0",
+            "ontology-hs",
+            "--",
+            "inspect-ontology-json",
+            "--ontology",
+            str(ontology_path),
+        ],
+        cwd=HASKELL_SERVICE_DIR,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 def write_temp_ontology(payload: dict) -> Path:
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as handle:
         handle.write(yaml.safe_dump(payload, sort_keys=False))
@@ -51,6 +70,17 @@ class OntologyLayerTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         self.assertEqual(json.loads(result.stdout), {"status": "ok"})
+
+    def test_haskell_inspect_ontology_returns_catalog_json(self) -> None:
+        result = call_inspect_ontology(ONTOLOGY_PATH)
+
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertTrue(any(subject["key"] == "Team" for subject in payload["subjects"]))
+        self.assertTrue(any(surface["key"] == "TeamGame" for surface in payload["fact_surfaces"]))
+        metric = next(metric for metric in payload["metrics"] if metric["key"] == "average_net_rating")
+        self.assertEqual(metric["ranking_polarity"], "higher_is_better")
 
     def test_validation_rejects_metric_source_attributes_outside_object(self) -> None:
         ontology = yaml.safe_load(yaml.safe_dump(self.ontology))

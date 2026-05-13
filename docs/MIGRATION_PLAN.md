@@ -209,3 +209,12 @@ Status: implemented.
 - `semantic_query.plan_execute` now builds `SemanticQueryTable` outputs from the typed `FinalAnswer` payload instead of scraping rendered artifacts.
 - UI artifacts remain presentation outputs with the same public shape.
 - Semantic-query table provenance now marks `source: "final_answer"` and carries execution-step provenance independently from artifacts.
+
+## Slice 9: Haskell-Backed Ontology Catalog
+
+Status: implemented.
+
+- Added additive Haskell CLI mode `inspect-ontology-json --ontology <path>`.
+- Haskell inspection emits subjects, fact surfaces, metrics, dimensions, filters, time grains, aliases, ranking polarity, and visibility from the validated ontology model.
+- `ontology_catalog.inspect` now prefers Haskell inspection and keeps the Python/YAML catalog as a fallback.
+- DuckDB coverage metadata remains Python-owned for now.

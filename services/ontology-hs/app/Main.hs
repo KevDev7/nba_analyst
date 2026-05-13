@@ -19,8 +19,10 @@
 module Main where
 
 import Data.Aeson (ToJSON, encode, eitherDecodeStrict')
+import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Text (Text, pack)
+import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import GHC.Generics (Generic)
 import GroundedPlanning.Compile (compileExecutionPlan)
@@ -28,7 +30,14 @@ import GroundedPlanning.Plan (ExecutionPlan)
 import GroundedPlanning.Resolve (ResolvedQuery, resolveQuery)
 import GroundedPlanning.Validation (validateQuery)
 import OntologyLayer.Load (loadOntologyEither)
-import OntologyLayer.Types (Ontology)
+import OntologyLayer.Types
+  ( Attribute (..)
+  , AttributeKind (..)
+  , AttributeVisibility (..)
+  , MetricDef (..)
+  , Object (..)
+  , Ontology (..)
+  )
 import QueryModel.IR (Query (FindQuery, MetricQuery, ObjectQuery))
 import QueryModel.SemanticDraft (SemanticDraft, semanticDraftToQuery)
 import System.Environment (getArgs)
@@ -76,6 +85,9 @@ main = do
                 { status = "ok"
                 }
           )
+    ["inspect-ontology-json", "--ontology", ontologyPath] ->
+      -- Expose a model-facing catalog from the validated Haskell ontology.
+      withOntology ontologyPath emitOntologyCatalog
     ["plan-query-json", "--ontology", ontologyPath, "--query-json", queryJson] -> do
       -- Older/lower-level path: Python already has typed query JSON.
       withOntology ontologyPath $ \ontology ->
@@ -87,6 +99,7 @@ main = do
     _ ->
       die
         "Usage: cabal run ontology-hs -- validate-ontology-json --ontology <path>\n\
+        \   or: cabal run ontology-hs -- inspect-ontology-json --ontology <path>\n\
         \   or: cabal run ontology-hs -- plan-query-json --ontology <path> --query-json <json>\n\
         \   or: cabal run ontology-hs -- plan-semantic-draft-json --ontology <path> --draft-json <json>"
 
@@ -150,3 +163,149 @@ renderQueryKindFromQuery query =
     MetricQuery _ -> "MetricQuery"
     ObjectQuery _ -> "ObjectQuery"
     FindQuery _ -> "FindQuery"
+
+emitOntologyCatalog :: Ontology -> IO ()
+emitOntologyCatalog ontology =
+  BL8.putStrLn $
+    encode $
+      Aeson.object
+        [ "status" Aeson..= ("ok" :: Text)
+        , "subjects" Aeson..= fmap subjectItem subjectObjects
+        , "fact_surfaces" Aeson..= fmap factSurfaceItem factObjects
+        , "metrics" Aeson..= concatMap metricItems (objects ontology)
+        , "dimensions" Aeson..= concatMap dimensionItems (objects ontology)
+        , "filters" Aeson..= concatMap filterItems (objects ontology)
+        , "time_grains" Aeson..= concatMap timeGrainItems (objects ontology)
+        ]
+  where
+    subjectObjects = filter (not . isFactSurface) (objects ontology)
+    factObjects = filter isFactSurface (objects ontology)
+
+subjectItem :: Object -> Aeson.Value
+subjectItem obj =
+  Aeson.object
+    [ "key" Aeson..= objectName obj
+    , "label" Aeson..= objectName obj
+    , "backing_table" Aeson..= backing_table obj
+    , "description" Aeson..= description obj
+    , "attribute_count" Aeson..= length (attributes obj)
+    , "metric_count" Aeson..= length (metrics obj)
+    ]
+
+factSurfaceItem :: Object -> Aeson.Value
+factSurfaceItem obj =
+  Aeson.object
+    [ "key" Aeson..= objectName obj
+    , "label" Aeson..= objectName obj
+    , "subject" Aeson..= subjectForFactSurface (objectName obj)
+    , "backing_table" Aeson..= backing_table obj
+    , "grain" Aeson..= grainForFactSurface (objectName obj)
+    , "metric_count" Aeson..= length (metrics obj)
+    ]
+
+metricItems :: Object -> [Aeson.Value]
+metricItems obj =
+  fmap
+    ( \metric ->
+        Aeson.object
+          [ "key" Aeson..= metricName metric
+          , "label" Aeson..= metricName metric
+          , "fact_object" Aeson..= objectName obj
+          , "backing_table" Aeson..= backing_table obj
+          , "aggregation" Aeson..= aggregation metric
+          , "source_attributes" Aeson..= source_attributes metric
+          , "executable" Aeson..= executable metric
+          , "ranking_polarity" Aeson..= ranking_polarity metric
+          , "aliases" Aeson..= metric_aliases metric
+          ]
+    )
+    (metrics obj)
+
+dimensionItems :: Object -> [Aeson.Value]
+dimensionItems obj =
+  [ attributeItem obj attr
+  | attr <- attributes obj
+  , kind attr == Dimension || kind attr == PrimaryKey
+  ]
+
+filterItems :: Object -> [Aeson.Value]
+filterItems obj =
+  [ attributeItem obj attr
+  | attr <- attributes obj
+  , visibility attr == Public
+  ]
+
+timeGrainItems :: Object -> [Aeson.Value]
+timeGrainItems obj =
+  [ attributeItem obj attr
+  | attr <- attributes obj
+  , attributeName attr `elem` timeAttributeNames
+  ]
+
+attributeItem :: Object -> Attribute -> Aeson.Value
+attributeItem obj attr =
+  Aeson.object
+    [ "key" Aeson..= attributeName attr
+    , "label" Aeson..= attributeName attr
+    , "object" Aeson..= objectName obj
+    , "backing_table" Aeson..= backing_table obj
+    , "kind" Aeson..= renderAttributeKind (kind attr)
+    , "source_column" Aeson..= source_column attr
+    , "visibility" Aeson..= renderVisibility (visibility attr)
+    , "comparison_identity" Aeson..= comparison_identity attr
+    , "aliases" Aeson..= semantic_aliases attr
+    , "value_alias_count" Aeson..= length (value_aliases attr)
+    ]
+
+objectName :: Object -> Text
+objectName Object {name = value} = value
+
+attributeName :: Attribute -> Text
+attributeName Attribute {name = value} = value
+
+metricName :: MetricDef -> Text
+metricName MetricDef {name = value} = value
+
+isFactSurface :: Object -> Bool
+isFactSurface obj = not (null (metrics obj))
+
+subjectForFactSurface :: Text -> Text
+subjectForFactSurface factName
+  | "Team" `textPrefixOf` factName = "Team"
+  | "Player" `textPrefixOf` factName = "Player"
+  | otherwise = factName
+
+grainForFactSurface :: Text -> Text
+grainForFactSurface factName
+  | "Game" `textInfixOf` factName = "game"
+  | "Season" `textInfixOf` factName = "season"
+  | otherwise = "unknown"
+
+renderAttributeKind :: AttributeKind -> Text
+renderAttributeKind attrKind =
+  case attrKind of
+    PrimaryKey -> "primary_key"
+    Dimension -> "dimension"
+    Measure -> "measure"
+
+renderVisibility :: AttributeVisibility -> Text
+renderVisibility attrVisibility =
+  case attrVisibility of
+    Public -> "public"
+    Internal -> "internal"
+
+timeAttributeNames :: [Text]
+timeAttributeNames =
+  [ "game_date"
+  , "game_month"
+  , "game_year"
+  , "game_year_month"
+  , "season_year"
+  , "season_type"
+  ]
+
+textPrefixOf :: Text -> Text -> Bool
+textPrefixOf = Text.isPrefixOf
+
+textInfixOf :: Text -> Text -> Bool
+textInfixOf = Text.isInfixOf

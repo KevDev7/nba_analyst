@@ -11,6 +11,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -38,6 +41,8 @@ UNSUPPORTED_SURFACES = [
     "shot_location",
 ]
 DEFAULT_FACETS = ["subjects", "fact_surfaces", "metrics", "dimensions", "filters", "time_grains", "coverage"]
+PLANNER_BINARY_ENV = "NBA_ONTOLOGY_PLANNER_BIN"
+HASKELL_SERVICE_DIR = ROOT / "services" / "ontology-hs"
 
 CatalogFacet = Literal["subjects", "fact_surfaces", "metrics", "dimensions", "filters", "time_grains", "coverage"]
 
@@ -74,7 +79,8 @@ class OntologyCatalogResult(BaseModel):
 def inspect(request: Optional[OntologyCatalogRequest] = None) -> OntologyCatalogResult:
     request = request or OntologyCatalogRequest()
     try:
-        ontology = _load_ontology()
+        haskell_catalog = _load_haskell_catalog()
+        ontology = _load_ontology() if haskell_catalog is None else {}
         objects = [obj for obj in ontology.get("objects", []) if isinstance(obj, dict)]
         selected_objects = _filter_objects(objects, request.subject_hint)
         facets = set(request.facets)
@@ -84,12 +90,12 @@ def inspect(request: Optional[OntologyCatalogRequest] = None) -> OntologyCatalog
             ontology_version=f"semantic-gold:{_file_hash(ONTOLOGY_PATH)}",
             data_snapshot_id=f"gold-snapshot:{_file_hash(DB_PATH)}" if DB_PATH.exists() else None,
             coverage=coverage,
-            subjects=_subjects(selected_objects, request) if "subjects" in facets else [],
-            fact_surfaces=_fact_surfaces(selected_objects, request) if "fact_surfaces" in facets else [],
-            metrics=_metrics(selected_objects, request) if "metrics" in facets else [],
-            dimensions=_dimensions(selected_objects, request) if "dimensions" in facets else [],
-            filters=_filters(selected_objects, request) if "filters" in facets else [],
-            time_grains=_time_grains(selected_objects, request) if "time_grains" in facets else [],
+            subjects=_catalog_items(haskell_catalog, "subjects", request) if haskell_catalog is not None and "subjects" in facets else (_subjects(selected_objects, request) if "subjects" in facets else []),
+            fact_surfaces=_catalog_items(haskell_catalog, "fact_surfaces", request) if haskell_catalog is not None and "fact_surfaces" in facets else (_fact_surfaces(selected_objects, request) if "fact_surfaces" in facets else []),
+            metrics=_catalog_items(haskell_catalog, "metrics", request) if haskell_catalog is not None and "metrics" in facets else (_metrics(selected_objects, request) if "metrics" in facets else []),
+            dimensions=_catalog_items(haskell_catalog, "dimensions", request) if haskell_catalog is not None and "dimensions" in facets else (_dimensions(selected_objects, request) if "dimensions" in facets else []),
+            filters=_catalog_items(haskell_catalog, "filters", request) if haskell_catalog is not None and "filters" in facets else (_filters(selected_objects, request) if "filters" in facets else []),
+            time_grains=_catalog_items(haskell_catalog, "time_grains", request) if haskell_catalog is not None and "time_grains" in facets else (_time_grains(selected_objects, request) if "time_grains" in facets else []),
             limitations=_limitations() if request.include_limitations else [],
         )
     except Exception as exc:
@@ -104,6 +110,44 @@ def _load_ontology() -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("Ontology payload must be an object.")
     return payload
+
+
+def _load_haskell_catalog() -> dict[str, Any] | None:
+    planner_bin = os.getenv(PLANNER_BINARY_ENV, "").strip()
+    planner_args = ["inspect-ontology-json", "--ontology", str(ONTOLOGY_PATH)]
+    command = [planner_bin, *planner_args] if planner_bin else ["cabal", "run", "-v0", "ontology-hs", "--", *planner_args]
+    cwd = ROOT if planner_bin else HASKELL_SERVICE_DIR
+    try:
+        result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False, timeout=30)
+        if result.returncode != 0:
+            return None
+        payload = json.loads(result.stdout.strip())
+        return payload if isinstance(payload, dict) and payload.get("status") == "ok" else None
+    except Exception:
+        return None
+
+
+def _catalog_items(catalog: dict[str, Any], key: str, request: OntologyCatalogRequest) -> list[dict[str, Any]]:
+    raw_items = catalog.get(key, [])
+    items = [item for item in raw_items if isinstance(item, dict)]
+    if request.subject_hint:
+        hint = _normalize(request.subject_hint)
+        singular_hint = _singular(hint)
+        items = [
+            item for item in items
+            if any(
+                _contains(item.get(field), hint) or _contains(item.get(field), singular_hint)
+                for field in ["key", "label", "subject", "object", "fact_object", "backing_table"]
+            )
+        ] or items
+    return _limit(
+        _search(
+            items,
+            request.search,
+            ["key", "label", "subject", "object", "fact_object", "backing_table", "aliases", "grain"],
+        ),
+        request.max_items,
+    )
 
 
 def _filter_objects(objects: list[dict[str, Any]], subject_hint: Optional[str]) -> list[dict[str, Any]]:

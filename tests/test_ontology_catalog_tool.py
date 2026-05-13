@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from apps.assistant.tools.ontology_catalog import OntologyCatalogRequest, inspect
 
@@ -58,6 +59,14 @@ class OntologyCatalogToolTests(unittest.TestCase):
         grain_keys = {grain["key"] for grain in result.time_grains}
         self.assertIn("game_date", grain_keys)
         self.assertIn("game_year_month", grain_keys)
+
+    @patch("apps.assistant.tools.ontology_catalog._load_haskell_catalog", return_value=None)
+    def test_inspect_falls_back_to_python_yaml_catalog(self, _mock_haskell_catalog) -> None:
+        result = inspect(OntologyCatalogRequest(facets=["subjects", "metrics"], subject_hint="teams"))
+
+        self.assertTrue(result.ok)
+        self.assertTrue(any(subject["key"] == "Team" for subject in result.subjects))
+        self.assertTrue(any(metric["key"] == "average_net_rating" for metric in result.metrics))
 
 
 if __name__ == "__main__":
