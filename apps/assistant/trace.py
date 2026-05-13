@@ -97,3 +97,58 @@ def model_to_dict(model: BaseModel) -> dict[str, Any]:
     if hasattr(model, "model_dump"):
         return model.model_dump()
     return model.dict()
+
+
+def safe_trace_summary(trace: AssistantTrace | dict[str, Any]) -> dict[str, Any]:
+    payload = model_to_dict(trace) if isinstance(trace, AssistantTrace) else trace
+    tool_calls = [
+        call
+        for call in payload.get("tool_calls", [])
+        if isinstance(call, dict)
+    ]
+    sandbox_backends = []
+    sandbox_rejections = []
+    sql_steps = []
+    tool_durations = []
+    for call in tool_calls:
+        provenance = call.get("provenance") if isinstance(call.get("provenance"), dict) else {}
+        if provenance.get("sandbox_backend"):
+            sandbox_backends.append(provenance.get("sandbox_backend"))
+        if call.get("status") == "failed" and provenance.get("operation_kind") == "python_code":
+            sandbox_rejections.append(call.get("output", {}).get("error") if isinstance(call.get("output"), dict) else None)
+        for step in provenance.get("execution_steps", []) if isinstance(provenance.get("execution_steps"), list) else []:
+            if not isinstance(step, dict):
+                continue
+            sql_steps.append(
+                {
+                    "kind": step.get("kind"),
+                    "sql_hash": step.get("sql_hash"),
+                    "sql_redacted": True,
+                    "returned_row_count": step.get("returned_row_count"),
+                    "row_limit_enforced": step.get("row_limit_enforced"),
+                    "truncated": step.get("truncated"),
+                    "execution_ms": step.get("execution_ms"),
+                }
+            )
+            if step.get("execution_ms") is not None:
+                tool_durations.append({"tool_name": call.get("tool_name"), "execution_ms": step.get("execution_ms")})
+    return {
+        "schema_version": payload.get("schema_version"),
+        "run_id": payload.get("run_id"),
+        "route": payload.get("route"),
+        "status": payload.get("status"),
+        "tool_names": [call.get("tool_name") for call in tool_calls],
+        "tool_count": len(tool_calls),
+        "artifact_count": len(payload.get("artifacts", []) or []),
+        "claim_count": len(payload.get("claims", []) or []),
+        "error_codes": [
+            error.get("code")
+            for error in payload.get("errors", [])
+            if isinstance(error, dict)
+        ],
+        "sql_steps": sql_steps,
+        "tool_durations": tool_durations,
+        "sandbox_backends": sorted({str(value) for value in sandbox_backends if value}),
+        "sandbox_rejections": [value for value in sandbox_rejections if value],
+        "has_private_debug": bool(payload.get("private_debug")),
+    }

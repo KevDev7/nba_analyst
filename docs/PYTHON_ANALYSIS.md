@@ -9,6 +9,8 @@ Use controlled operations whenever they fit:
 - `join_and_delta`
 - `rank_extremes`
 - `correlation`
+- `percent_change`
+- `zscore_outliers`
 - chart operations
 
 Controlled operations remain preferred because their behavior is typed, deterministic, and easier to evaluate.

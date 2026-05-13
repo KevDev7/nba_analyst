@@ -191,6 +191,14 @@ NBA_DISABLE_SNAPSHOT_REBUILD    # set 1 in deployed environments
 NBA_ALLOWED_ORIGINS             # comma-separated browser origins for CORS
 NBA_ENABLE_PUBLIC_DEBUG         # keep 0 publicly
 NBA_MAX_QUESTION_CHARS          # beta default: 250
+NBA_ENABLE_MODEL_ORCHESTRATOR   # default 0; gated structured model planning
+NBA_MODEL_ORCHESTRATOR_DRY_RUN  # default 0; validates plans without executing tools
+NBA_ENABLE_MODEL_TOOL_LOOP      # default 0; beta iterative governed tool loop
+NBA_ENABLE_MODEL_ANSWER_COMPOSER # default 0; evidence-gated model answer composition
+NBA_ENABLE_PYTHON_CODE_SANDBOX  # default 0; enables gated python_code analysis
+NBA_PYTHON_CODE_SANDBOX_BACKEND # local_beta or e2b_cloud
+E2B_API_KEY                     # only needed for e2b_cloud code mode
+NBA_RUN_LIVE_E2B_TESTS          # default 0; optional live E2B smoke tests
 ```
 
 Frontend:
@@ -209,10 +217,32 @@ The public beta deployment is intentionally conservative:
 - `NBA_MAX_QUESTION_CHARS=250` rejects oversized prompts before LLM, planner, or runtime work.
 - `NBA_ALLOWED_ORIGINS` restricts browser CORS access to the deployed UI origin.
 - `NBA_DISABLE_SNAPSHOT_REBUILD=1` makes Render use the committed DuckDB snapshot instead of trying to rebuild from Athena.
+- Model orchestration, model answer composition, and Python code sandboxing are default-off gated beta capabilities.
+- Haskell is the only SQL author; there is no model/user/Python SQL execution path.
 
 ## Tests
 
-Run the assistant suite:
+Run the deterministic architecture suite:
+
+```bash
+python3 -m unittest \
+  tests.test_model_orchestration_plans \
+  tests.test_model_orchestration_evals \
+  tests.test_model_orchestrator_gate \
+  tests.test_model_tool_loop \
+  tests.test_trace_eval_harness \
+  tests.test_trace_observability \
+  tests.test_orchestrator_evals \
+  tests.test_python_code_sandbox \
+  tests.test_python_code_sandbox_evals \
+  tests.test_e2b_sandbox_live \
+  tests.test_python_analysis_tool \
+  tests.test_local_analysis_worker \
+  tests.test_analysis_tool_contract \
+  tests.test_sql_governance
+```
+
+Run the broader assistant suite:
 
 ```bash
 python3 -m pytest tests -q
@@ -232,6 +262,16 @@ npm --prefix apps/web-ui run build
 ```
 
 Note: repository-wide `pytest` discovery may collect optional ingestion and Athena pipeline tests that need extra packages such as `nba_api` or `pbpstats`. Use `python3 -m pytest tests -q` for the current assistant suite.
+
+Optional live E2B smoke:
+
+```bash
+NBA_ENABLE_PYTHON_CODE_SANDBOX=1 \
+NBA_PYTHON_CODE_SANDBOX_BACKEND=e2b_cloud \
+NBA_RUN_LIVE_E2B_TESTS=1 \
+E2B_API_KEY=... \
+python3 -m unittest tests.test_e2b_sandbox_live
+```
 
 ## Known Limits
 

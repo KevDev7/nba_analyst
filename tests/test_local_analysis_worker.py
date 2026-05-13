@@ -98,6 +98,36 @@ def sample_player_points_table() -> AnalysisTable:
     )
 
 
+def sample_prior_team_points_table() -> AnalysisTable:
+    return AnalysisTable(
+        id="team_points_prior",
+        title="Prior team points",
+        columns=[
+            AnalysisTableColumn(id="team", label="Team", type="text"),
+            AnalysisTableColumn(id="points", label="Points", type="number"),
+        ],
+        rows=[
+            {"team": "Magic", "points": 100},
+            {"team": "Knicks", "points": 120},
+        ],
+    )
+
+
+def sample_current_team_points_table() -> AnalysisTable:
+    return AnalysisTable(
+        id="team_points_current",
+        title="Current team points",
+        columns=[
+            AnalysisTableColumn(id="team", label="Team", type="text"),
+            AnalysisTableColumn(id="points", label="Points", type="number"),
+        ],
+        rows=[
+            {"team": "Magic", "points": 110},
+            {"team": "Knicks", "points": 114},
+        ],
+    )
+
+
 class LocalAnalysisWorkerTests(unittest.TestCase):
     def test_line_chart_operation_returns_vega_lite_artifact(self) -> None:
         result = run_analysis_request(
@@ -215,6 +245,62 @@ class LocalAnalysisWorkerTests(unittest.TestCase):
         self.assertEqual(table.rows[0]["paired_row_count"], 3)
         self.assertEqual(table.metadata["operation_kind"], "correlation")
         self.assertEqual(result.findings[0].evidence_table_id, table.id)
+
+    def test_percent_change_operation_returns_known_result_table(self) -> None:
+        result = run_analysis_request(
+            AnalysisRequest(
+                tables=[sample_prior_team_points_table(), sample_current_team_points_table()],
+                operation={
+                    "kind": "percent_change",
+                    "left_table_id": "team_points_prior",
+                    "right_table_id": "team_points_current",
+                    "join_keys": ["team"],
+                    "left_metric": "points",
+                    "right_metric": "points",
+                    "output_metric": "points_percent_change",
+                    "sort": {"by": "points_percent_change", "direction": "desc"},
+                },
+            )
+        )
+
+        self.assertTrue(result.ok)
+        table = result.tables[0]
+        self.assertEqual(table.rows[0]["team"], "Magic")
+        self.assertEqual(table.rows[0]["points_percent_change"], 10.0)
+        self.assertEqual(table.metadata["operation_kind"], "percent_change")
+
+    def test_zscore_outliers_operation_returns_expected_rows(self) -> None:
+        table = AnalysisTable(
+            id="team_scores",
+            columns=[
+                AnalysisTableColumn(id="team", label="Team", type="text"),
+                AnalysisTableColumn(id="score", label="Score", type="number"),
+            ],
+            rows=[
+                {"team": "A", "score": 100},
+                {"team": "B", "score": 101},
+                {"team": "C", "score": 102},
+                {"team": "D", "score": 150},
+            ],
+        )
+
+        result = run_analysis_request(
+            AnalysisRequest(
+                tables=[table],
+                operation={
+                    "kind": "zscore_outliers",
+                    "input_table_id": "team_scores",
+                    "metric": "score",
+                    "threshold": 1.5,
+                    "direction": "high",
+                },
+            )
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.tables[0].rows[0]["team"], "D")
+        self.assertGreater(result.tables[0].rows[0]["z_score"], 1.5)
+        self.assertEqual(result.tables[0].metadata["operation_kind"], "zscore_outliers")
 
     def test_horizontal_bar_chart_sorts_category_axis_by_rank(self) -> None:
         result = run_analysis_request(

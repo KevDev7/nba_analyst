@@ -28,6 +28,20 @@ services:
         value: "0"
       - key: NBA_MAX_QUESTION_CHARS
         value: "4000"
+      - key: NBA_ENABLE_MODEL_ORCHESTRATOR
+        value: "0"
+      - key: NBA_MODEL_ORCHESTRATOR_DRY_RUN
+        value: "0"
+      - key: NBA_ENABLE_MODEL_TOOL_LOOP
+        value: "0"
+      - key: NBA_ENABLE_MODEL_ANSWER_COMPOSER
+        value: "0"
+      - key: NBA_ENABLE_PYTHON_CODE_SANDBOX
+        value: "0"
+      - key: NBA_PYTHON_CODE_SANDBOX_BACKEND
+        value: local_beta
+      - key: NBA_RUN_LIVE_E2B_TESTS
+        value: "0"
   - type: web
     name: nba-insight-mdpl
     runtime: static

@@ -30,7 +30,9 @@ from .models import (
     ChartOperation,
     CorrelationOperation,
     JoinAndDeltaOperation,
+    PercentChangeOperation,
     RankExtremesOperation,
+    ZScoreOutliersOperation,
 )
 
 
@@ -61,6 +63,10 @@ def run_controlled_operation(tables: list[AnalysisTable], operation: AnalysisOpe
         return _run_rank_extremes_operation(tables, operation)
     if isinstance(operation, CorrelationOperation):
         return _run_correlation_operation(tables, operation)
+    if isinstance(operation, PercentChangeOperation):
+        return _run_percent_change_operation(tables, operation)
+    if isinstance(operation, ZScoreOutliersOperation):
+        return _run_zscore_outliers_operation(tables, operation)
     raise AnalysisOperationError(
         code="unsupported_operation",
         message=f"Operation '{operation.kind}' is not supported by the local trusted worker.",
@@ -253,6 +259,113 @@ def _run_correlation_operation(
     return ControlledOperationResult(
         tables=[output_table],
         findings=findings,
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _run_percent_change_operation(
+    tables: list[AnalysisTable],
+    operation: PercentChangeOperation,
+) -> ControlledOperationResult:
+    left = _table_by_id(tables, operation.left_table_id)
+    right = _table_by_id(tables, operation.right_table_id)
+    left_output = operation.left_output_column or f"left_{operation.left_metric}"
+    right_output = operation.right_output_column or f"right_{operation.right_metric}"
+
+    left_frame = _selected_frame(left, [*operation.join_keys, operation.left_metric])
+    right_frame = _selected_frame(right, [*operation.join_keys, operation.right_metric])
+    left_frame = left_frame.rename(columns={operation.left_metric: left_output})
+    right_frame = right_frame.rename(columns={operation.right_metric: right_output})
+    _coerce_numeric_series(left_frame, left_output)
+    _coerce_numeric_series(right_frame, right_output)
+
+    merged = left_frame.merge(right_frame, how=operation.join_type, on=operation.join_keys)
+    denominator = merged[left_output].abs()
+    merged[operation.output_metric] = (merged[right_output] - merged[left_output]) / denominator.where(denominator != 0) * 100
+
+    sort_by = operation.sort.by if operation.sort else operation.output_metric
+    ascending = bool(operation.sort and operation.sort.direction == "asc")
+    merged = merged.sort_values(by=sort_by, ascending=ascending, kind="mergesort", na_position="last")
+    if operation.limit is not None:
+        merged = merged.head(operation.limit)
+
+    columns = [
+        *_join_key_columns(left, operation.join_keys),
+        AnalysisTableColumn(id=left_output, label=_column_label(left, operation.left_metric, left_output), type="number"),
+        AnalysisTableColumn(id=right_output, label=_column_label(right, operation.right_metric, right_output), type="number"),
+        AnalysisTableColumn(id=operation.output_metric, label=_label(operation.output_metric), type="number"),
+    ]
+    output_table = AnalysisTable(
+        id=f"{operation.left_table_id}_{operation.right_table_id}_{operation.output_metric}",
+        title=operation.title or _label(operation.output_metric),
+        columns=columns,
+        rows=_rows_from_frame(merged, [column.id for column in columns]),
+        row_count=int(len(merged)),
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [operation.left_table_id, operation.right_table_id],
+            "calculation": "right_minus_left_divided_by_abs_left_times_100",
+            "left_metric": operation.left_metric,
+            "right_metric": operation.right_metric,
+            "output_metric": operation.output_metric,
+        },
+    )
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=_ranked_extreme_findings(output_table, operation.output_metric, "largest" if not ascending else "smallest"),
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _run_zscore_outliers_operation(
+    tables: list[AnalysisTable],
+    operation: ZScoreOutliersOperation,
+) -> ControlledOperationResult:
+    table = _table_by_id(tables, operation.input_table_id)
+    frame = _selected_frame(table, [column.id for column in table.columns])
+    _coerce_numeric_series(frame, operation.metric)
+    mean = frame[operation.metric].mean()
+    std = frame[operation.metric].std(ddof=0)
+    frame["z_score"] = 0.0 if not std else (frame[operation.metric] - mean) / std
+    if operation.direction == "high":
+        filtered = frame[frame["z_score"] >= operation.threshold]
+        ascending = False
+    elif operation.direction == "low":
+        filtered = frame[frame["z_score"] <= -operation.threshold]
+        ascending = True
+    else:
+        filtered = frame[frame["z_score"].abs() >= operation.threshold]
+        filtered = filtered.assign(__abs_z=filtered["z_score"].abs()).sort_values(by="__abs_z", ascending=False, kind="mergesort")
+        ascending = False
+    if operation.direction in {"high", "low"}:
+        filtered = filtered.sort_values(by="z_score", ascending=ascending, kind="mergesort")
+    if operation.limit is not None:
+        filtered = filtered.head(operation.limit)
+    columns = [
+        *table.columns,
+        AnalysisTableColumn(id="z_score", label="Z-Score", type="number"),
+    ]
+    output_table = AnalysisTable(
+        id=f"{table.id}_{operation.metric}_zscore_outliers",
+        title=operation.title or f"{_label(operation.metric)} Outliers",
+        columns=columns,
+        rows=_rows_from_frame(filtered, [column.id for column in columns]),
+        row_count=int(len(filtered)),
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [table.id],
+            "metric": operation.metric,
+            "threshold": operation.threshold,
+            "direction": operation.direction,
+            "mean": _json_value(mean),
+            "stddev": _json_value(std),
+        },
+    )
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=_ranked_extreme_findings(output_table, "z_score", "largest absolute"),
         metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
     )
 

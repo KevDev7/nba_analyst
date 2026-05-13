@@ -224,6 +224,8 @@ Current controlled operations:
 - `join_and_delta`: joins two tables on declared keys and computes `right_metric - left_metric`.
 - `rank_extremes`: sorts one table by a numeric metric and adds a deterministic rank column.
 - `correlation`: joins two tables on declared keys and computes a Pearson correlation over matched numeric columns.
+- `percent_change`: joins two approved tables and computes percentage change from the left metric to the right metric.
+- `zscore_outliers`: adds z-scores for a numeric metric and returns high/low/both-side outliers.
 - chart operations remain available through the same runtime contract for artifact generation.
 - `python_code`: gated sandbox prototype for custom derived analysis over approved tables only.
 

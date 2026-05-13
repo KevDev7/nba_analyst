@@ -82,3 +82,13 @@ def _model_orchestrator_dry_run() -> bool:
 
 def _model_answer_composer_enabled() -> bool:
     return os.getenv(MODEL_ANSWER_COMPOSER_ENABLED_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def model_orchestration_state() -> str:
+    if not _model_orchestrator_enabled():
+        return "off"
+    if _model_orchestrator_dry_run():
+        return "dry_run"
+    if model_tool_loop_enabled():
+        return "tool_loop_beta"
+    return "structured_plan_beta"

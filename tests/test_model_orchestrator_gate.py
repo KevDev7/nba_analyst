@@ -7,7 +7,7 @@ from apps.assistant.model_orchestration.answer_composer import ComposedAnswer, E
 from apps.assistant.model_orchestration.executor import execute_model_plan
 from apps.assistant.model_orchestration.plans import ModelAnalysisPlan
 from apps.assistant.models import AssistantResult
-from apps.assistant.orchestrator import run_assistant
+from apps.assistant.orchestrator import model_orchestration_state, run_assistant
 from apps.assistant.semantic.llm_transport import LlmTransportError
 from apps.assistant.trace import AssistantTrace, ToolCallTrace
 
@@ -37,6 +37,18 @@ UNSUPPORTED_PLAN_JSON = """
 
 
 class ModelOrchestratorGateTests(unittest.TestCase):
+    @patch.dict("os.environ", {"NBA_ENABLE_MODEL_ORCHESTRATOR": "", "NBA_MODEL_ORCHESTRATOR_DRY_RUN": "", "NBA_ENABLE_MODEL_TOOL_LOOP": ""})
+    def test_model_orchestration_state_defaults_off(self) -> None:
+        self.assertEqual(model_orchestration_state(), "off")
+
+    @patch.dict("os.environ", {"NBA_ENABLE_MODEL_ORCHESTRATOR": "1", "NBA_MODEL_ORCHESTRATOR_DRY_RUN": "1", "NBA_ENABLE_MODEL_TOOL_LOOP": ""})
+    def test_model_orchestration_state_reports_dry_run(self) -> None:
+        self.assertEqual(model_orchestration_state(), "dry_run")
+
+    @patch.dict("os.environ", {"NBA_ENABLE_MODEL_ORCHESTRATOR": "1", "NBA_MODEL_ORCHESTRATOR_DRY_RUN": "", "NBA_ENABLE_MODEL_TOOL_LOOP": "1"})
+    def test_model_orchestration_state_reports_tool_loop_beta(self) -> None:
+        self.assertEqual(model_orchestration_state(), "tool_loop_beta")
+
     @patch.dict("os.environ", {"NBA_ENABLE_MODEL_ORCHESTRATOR": "1", "NBA_MODEL_ORCHESTRATOR_DRY_RUN": "1"})
     @patch("apps.assistant.model_orchestration.planner.call_gemini", return_value=PLAN_JSON)
     @patch("apps.assistant.orchestrator.plan_execute")

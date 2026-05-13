@@ -343,3 +343,76 @@ Status: implemented.
 - Existing tests continue to cover env, network, file, timeout, row limit,
   schema validation, stdout/stderr, and code-hash provenance.
 - Code mode remains reachable only through `python_analysis.run`.
+
+## Slice 21: CI And Test Split
+
+Status: implemented.
+
+- Added `docs/TESTING.md` with deterministic architecture, live Gemini, and
+  live E2B smoke commands.
+- Live E2B tests are skipped unless explicit env flags and credentials are
+  present.
+- New architecture tests avoid live provider dependencies by default.
+
+## Slice 22: Trace/Eval Acceptance Gates
+
+Status: implemented.
+
+- Added `docs/EVAL_ACCEPTANCE_GATES.md`.
+- Added `apps.assistant.eval_gates.evaluate_trace_gates`.
+- Added tests covering passing and failing gate behavior.
+
+## Slice 23: Observability And Run Logs
+
+Status: implemented.
+
+- Added `apps.assistant.trace.safe_trace_summary` for production-safe trace
+  summaries.
+- Added `docs/OBSERVABILITY.md`.
+- Safe summaries include routes, tool names/counts, artifact/claim counts, SQL
+  execution metadata, sandbox backends, and error codes without raw SQL/private
+  debug.
+
+## Slice 24: Model Orchestration Beta Policy
+
+Status: implemented.
+
+- Added `docs/MODEL_ORCHESTRATION_BETA_POLICY.md`.
+- Added `model_orchestration_state()` to expose off/dry-run/structured-plan beta
+  and tool-loop beta states.
+- Default environment remains deterministic/off.
+
+## Slice 25: Generic Analysis Coverage Pack
+
+Status: implemented.
+
+- Added exactly two controlled operations:
+  - `percent_change`
+  - `zscore_outliers`
+- Both operate only over approved input tables and require no raw SQL or
+  arbitrary code.
+- Added contract and worker tests.
+
+## Slice 26: Production Config And Rollback
+
+Status: implemented.
+
+- Added `docs/PRODUCTION_CONFIG.md`.
+- Updated `.env.example`, README, and Render defaults with model/sandbox gates.
+- Documented kill switches, live E2B test flags, rollback posture, and budget
+  cautions.
+
+## Slice 27: Final Security/Product Review
+
+Status: implemented.
+
+- Added `docs/SECURITY_PRODUCT_REVIEW.md`.
+- Recorded what is production-ready, what remains gated beta, and what is
+  explicitly out of scope.
+
+## Slice 28: Release Candidate Prep
+
+Status: implemented.
+
+- Added `docs/RELEASE_CANDIDATE_CHECKLIST.md`.
+- Documented verification commands and PR-ready branch summary.

@@ -159,6 +159,34 @@ class AnalysisToolContractTests(unittest.TestCase):
         self.assertEqual(request.operation.kind, "correlation")
         self.assertEqual(request.operation.method, "pearson")
 
+    def test_percent_change_analysis_request_parses(self) -> None:
+        request = AnalysisRequest(
+            tables=[sample_table(), sample_table().model_copy(update={"id": "monthly_team_points_next"})],
+            operation={
+                "kind": "percent_change",
+                "left_table_id": "monthly_team_points",
+                "right_table_id": "monthly_team_points_next",
+                "join_keys": ["team"],
+                "left_metric": "average_points",
+                "right_metric": "average_points",
+            },
+        )
+
+        self.assertEqual(request.operation.kind, "percent_change")
+
+    def test_zscore_outliers_analysis_request_parses(self) -> None:
+        request = AnalysisRequest(
+            tables=[sample_table()],
+            operation={
+                "kind": "zscore_outliers",
+                "input_table_id": "monthly_team_points",
+                "metric": "average_points",
+                "threshold": 1.5,
+            },
+        )
+
+        self.assertEqual(request.operation.kind, "zscore_outliers")
+
     def test_request_rejects_unknown_operation_kind(self) -> None:
         with self.assertRaises(ValidationError) as context:
             AnalysisRequest(
