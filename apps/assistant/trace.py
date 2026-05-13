@@ -33,6 +33,10 @@ class ExecutionStepProvenance(BaseModel):
     sql_hash: Optional[str] = None
     sql_redacted: bool = True
     row_count: Optional[int] = None
+    returned_row_count: Optional[int] = None
+    row_limit_requested: Optional[int] = None
+    row_limit_enforced: Optional[bool] = None
+    truncated: Optional[bool] = None
     execution_ms: Optional[int] = None
 
 

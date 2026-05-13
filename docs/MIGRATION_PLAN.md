@@ -190,3 +190,13 @@ Still out of scope:
 - adding a separate model-visible raw Python tool;
 - giving sandbox code database access;
 - using sandbox output as final answer prose.
+
+## Slice 7: Runtime SQL Governance V1
+
+Status: implemented.
+
+- Added a runtime `QueryExecutionResult` with SQL hash, execution duration, returned row count, requested row limit, enforced flag, and truncated flag.
+- Added a defensive single-statement guard before DuckDB execution.
+- Preserved read-only DuckDB execution and Haskell-only SQL authoring.
+- Kept `run_sql(sql)` backward-compatible for direct tests/debug helpers while adding `run_sql_result(...)` for governed execution metadata.
+- Threaded runtime-owned execution metadata into semantic-query trace/provenance without exposing raw SQL.

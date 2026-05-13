@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from .analysis import run_analysis
 from .models import (
@@ -26,7 +26,7 @@ from .models import (
     TimeSeriesRow,
     runtime_context_from_plan,
 )
-from .query_engine import run_sql
+from .query_engine import run_sql_result
 from .state import RuntimeState
 
 
@@ -75,11 +75,12 @@ def _time_series_row_values(row: dict[str, object], plan: ExecutionPlan) -> dict
     return {**_row_with_display_values(row, plan), "group_values": group_values}
 
 
-def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
+def execute_plan(plan: ExecutionPlan, *, row_limit: Optional[int] = None) -> RuntimeResult:
     # Create a scratchpad for multi-step execution and placeholders for outputs.
     runtime_state = RuntimeState()
     raw_rows = []
     comparison_result = None
+    execution_metadata = []
 
     # Walk through the steps Haskell compiled and execute them in order.
     for step in plan.steps:
@@ -87,7 +88,19 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
             if not step.sql:
                 raise ValueError("SQL step missing sql text.")
             # Run the SQL and remember its rows in runtime state for later steps.
-            raw_rows = run_sql(step.sql)
+            query_result = run_sql_result(step.sql, row_limit=row_limit)
+            raw_rows = query_result.rows
+            execution_metadata.append(
+                {
+                    "kind": "run_sql",
+                    "sql_hash": query_result.sql_hash,
+                    "returned_row_count": query_result.returned_row_count,
+                    "row_limit_requested": query_result.row_limit_requested,
+                    "row_limit_enforced": query_result.row_limit_enforced,
+                    "truncated": query_result.truncated,
+                    "execution_ms": query_result.execution_ms,
+                }
+            )
             runtime_state.latest_result = raw_rows
         elif step.kind == "run_python":
             if not step.analysis_spec:
@@ -123,5 +136,6 @@ def execute_plan(plan: ExecutionPlan) -> RuntimeResult:
         time_series_rows=time_series_rows,
         find_rows=find_rows,
         raw_rows=raw_rows,
+        execution_metadata=execution_metadata,
         comparison=comparison_result,
     )

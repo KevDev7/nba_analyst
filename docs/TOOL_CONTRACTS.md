@@ -45,7 +45,7 @@ Validation:
 - Direct `semantic_draft` inputs default to `semantic_draft_state: "raw"` and are prepared through deterministic assumptions/entity resolution before Haskell planning.
 - Internally generated drafts that already include deterministic defaults can use `semantic_draft_state: "prepared"`.
 - `mode` is currently only `plan_and_execute`.
-- `row_limit` is recorded in provenance; current execution reports `row_limit_enforced: false`.
+- `row_limit` is enforced at the runtime result boundary and recorded in provenance.
 - `include_private_sql` is honored only when `include_debug` is true, `NBA_ALLOW_PRIVATE_SQL_TRACE` is enabled, and the caller is trusted.
 
 Output shape:
@@ -73,11 +73,15 @@ Output shape:
         "sql_hash": "sha256:...",
         "sql_redacted": true,
         "row_count": 10,
+        "returned_row_count": 10,
+        "row_limit_requested": 500,
+        "row_limit_enforced": true,
+        "truncated": false,
         "execution_ms": 83
       }
     ],
     "row_limit_requested": 500,
-    "row_limit_enforced": false
+    "row_limit_enforced": true
   },
   "trace": {},
   "debug": null,

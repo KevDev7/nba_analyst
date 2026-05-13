@@ -29,6 +29,17 @@ class SemanticQueryToolTests(unittest.TestCase):
         from tests.answer_context_helpers import build_final_answer
 
         mock_execute_plan.return_value.raw_rows = [{"entity_name": "Jalen Brunson"}]
+        mock_execute_plan.return_value.execution_metadata = [
+            {
+                "kind": "run_sql",
+                "sql_hash": "sha256:runtime",
+                "returned_row_count": 1,
+                "row_limit_requested": 500,
+                "row_limit_enforced": True,
+                "truncated": False,
+                "execution_ms": 12,
+            }
+        ]
         mock_synthesize_answer.return_value = build_final_answer(
             summary="Rows are shown below.",
             interpretation="Players ranked by total points.",
@@ -60,7 +71,13 @@ class SemanticQueryToolTests(unittest.TestCase):
         self.assertEqual(result.trace.tool_calls[0].provenance.execution_steps[0].kind, "run_sql")
         self.assertTrue(result.trace.tool_calls[0].provenance.execution_steps[0].sql_redacted)
         self.assertEqual(result.provenance.row_limit_requested, 500)
-        self.assertFalse(result.provenance.row_limit_enforced)
+        self.assertTrue(result.provenance.row_limit_enforced)
+        step = result.trace.tool_calls[0].provenance.execution_steps[0]
+        self.assertEqual(step.sql_hash, "sha256:runtime")
+        self.assertEqual(step.returned_row_count, 1)
+        self.assertEqual(step.row_limit_requested, 500)
+        self.assertTrue(step.row_limit_enforced)
+        self.assertFalse(step.truncated)
         self.assertIsNotNone(result.debug)
         self.assertIsNone(result.debug["execution_plan"])
         self.assertTrue(result.debug["execution_plan_redacted"])

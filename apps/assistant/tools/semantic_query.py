@@ -14,7 +14,6 @@ from __future__ import annotations
 import hashlib
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -195,9 +194,7 @@ def _plan_execute_success(
     else:
         execution_plan = ExecutionPlan.parse_obj(planner_output["execution_plan"])
 
-    execution_started = time.perf_counter()
-    runtime_result = execute_plan(execution_plan)
-    execution_ms = int((time.perf_counter() - execution_started) * 1000)
+    runtime_result = execute_plan(execution_plan, row_limit=request.row_limit)
     packaged = package_results(runtime_result)
     answer = synthesize_answer(packaged)
     formatted = format_response(answer)
@@ -214,8 +211,8 @@ def _plan_execute_success(
         ontology_path=str(pipeline.ONTOLOGY_PATH),
         snapshot_path=str(DB_PATH),
         row_limit_requested=request.row_limit,
-        row_limit_enforced=False,
-        execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result.raw_rows, execution_ms),
+        row_limit_enforced=_row_limit_enforced(runtime_result),
+        execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result),
     )
     tables = _tables_from_artifacts(query_id, tool_call_id, artifacts)
     debug = _debug_payload(
@@ -241,7 +238,7 @@ def _plan_execute_success(
                     "row_count": len(runtime_result.raw_rows),
                     "artifact_count": len(artifacts),
                     "row_limit_requested": request.row_limit,
-                    "row_limit_enforced": False,
+                    "row_limit_enforced": provenance.row_limit_enforced,
                 },
                 provenance=ToolProvenance(**model_to_dict(provenance)),
             )
@@ -327,29 +324,47 @@ def _private_sql_allowed(request: SemanticQueryRequest) -> bool:
 def _execution_step_provenance(
     query_id: str,
     planner_output: dict[str, Any],
-    raw_rows: list[dict[str, Any]],
-    execution_ms: int,
+    runtime_result: Any,
 ) -> list[ExecutionStepProvenance]:
     execution = planner_output.get("execution_plan", {}).get("execution", {})
     steps = execution.get("steps", []) if isinstance(execution, dict) else []
-    sql_step_count = sum(1 for step in steps if isinstance(step, dict) and step.get("kind") == "run_sql")
+    runtime_metadata = [
+        metadata
+        for metadata in getattr(runtime_result, "execution_metadata", [])
+        if isinstance(metadata, dict) and metadata.get("kind") == "run_sql"
+    ]
+    sql_metadata_index = 0
     step_provenance: list[ExecutionStepProvenance] = []
     for index, step in enumerate(steps, start=1):
         if not isinstance(step, dict):
             continue
-        sql = step.get("sql")
         is_sql = step.get("kind") == "run_sql"
+        metadata = runtime_metadata[sql_metadata_index] if is_sql and sql_metadata_index < len(runtime_metadata) else {}
+        if is_sql:
+            sql_metadata_index += 1
         step_provenance.append(
             ExecutionStepProvenance(
                 step_id=f"{query_id}.step_{index}",
                 kind=str(step.get("kind", "")),
-                sql_hash=_stable_hash(sql) if isinstance(sql, str) else None,
+                sql_hash=str(metadata.get("sql_hash")) if metadata.get("sql_hash") is not None else None,
                 sql_redacted=True,
-                row_count=len(raw_rows) if is_sql and sql_step_count == 1 else None,
-                execution_ms=execution_ms if is_sql and sql_step_count == 1 else None,
+                row_count=int(metadata.get("returned_row_count")) if metadata.get("returned_row_count") is not None else None,
+                returned_row_count=int(metadata.get("returned_row_count")) if metadata.get("returned_row_count") is not None else None,
+                row_limit_requested=int(metadata.get("row_limit_requested")) if metadata.get("row_limit_requested") is not None else None,
+                row_limit_enforced=bool(metadata.get("row_limit_enforced")) if metadata.get("row_limit_enforced") is not None else None,
+                truncated=bool(metadata.get("truncated")) if metadata.get("truncated") is not None else None,
+                execution_ms=int(metadata.get("execution_ms")) if metadata.get("execution_ms") is not None else None,
             )
         )
     return step_provenance
+
+
+def _row_limit_enforced(runtime_result: Any) -> bool:
+    return any(
+        bool(metadata.get("row_limit_enforced"))
+        for metadata in getattr(runtime_result, "execution_metadata", [])
+        if isinstance(metadata, dict)
+    )
 
 
 def _tables_from_artifacts(

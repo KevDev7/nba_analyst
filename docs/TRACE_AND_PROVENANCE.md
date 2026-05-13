@@ -59,14 +59,18 @@ Shape:
             "kind": "run_sql",
             "sql_hash": "sha256:...",
             "sql_redacted": true,
-            "row_count": 10,
-            "execution_ms": 83
-          }
-        ],
+        "row_count": 10,
+        "returned_row_count": 10,
         "row_limit_requested": 500,
-        "row_limit_enforced": false
+        "row_limit_enforced": true,
+        "truncated": false,
+        "execution_ms": 83
       }
-    }
+    ],
+    "row_limit_requested": 500,
+    "row_limit_enforced": true
+  }
+}
   ],
   "artifacts": [
     {
@@ -97,6 +101,8 @@ Raw SQL must not be included in:
 - normal trace records.
 
 Normal trace records use `sql_hash` and `sql_redacted: true`.
+
+SQL execution metadata is now owned by the runtime execution boundary. The runtime records the SQL hash, execution duration, returned row count, requested row limit, whether the limit was enforced, and whether the returned rows were truncated. Planner SQL text remains redacted from normal traces.
 
 Private execution-plan debug is only available when all of these are true:
 

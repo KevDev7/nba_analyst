@@ -361,6 +361,7 @@ class RuntimeResult(AnswerContextProperties, StrictContractModel):
     time_series_rows: List[TimeSeriesRow] = Field(default_factory=list)
     find_rows: List[Dict[str, object]] = Field(default_factory=list)
     raw_rows: List[Dict[str, object]] = Field(default_factory=list)
+    execution_metadata: List[Dict[str, object]] = Field(default_factory=list)
     comparison: Optional[ComparisonResult] = None
 
 
