@@ -228,3 +228,14 @@ Status: implemented.
 - The existing `2025-26` / `regular_season` constants remain as fallbacks and compatibility exports.
 - The current snapshot-derived defaults match previous product behavior, so user-facing assumption text is unchanged.
 - Semantic-query trace/provenance records the default scope source and values.
+
+## Slice 11: Answer Faithfulness Validator V1
+
+Status: implemented.
+
+- The grounded answer composer now validates more than evidence-ref existence.
+- Numeric claim text must match referenced numeric evidence where feasible.
+- Entity/name claim text must match referenced text evidence where feasible.
+- Unsupported causal wording is rejected unless a future causal evidence contract exists.
+- Invalid composed output is retried once, then falls back to the deterministic table-first answer.
+- Simple deterministic synthesis remains unchanged.

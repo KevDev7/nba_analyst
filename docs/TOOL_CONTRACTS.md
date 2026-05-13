@@ -446,6 +446,10 @@ Validation:
 - each evidence table id must exist;
 - each row index must be in range;
 - each referenced column must exist on the row;
+- numeric claim text must match a numeric referenced value where feasible;
+- entity/name claim text must match referenced text evidence where feasible;
+- unsupported causal wording such as "caused by", "because of", or "drove" is rejected unless a future causal evidence contract exists;
+- invalid composed output is retried once;
 - invalid model output falls back to the deterministic answer.
 
 ## Future Tools
