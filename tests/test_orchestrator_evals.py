@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -10,6 +9,13 @@ from apps.assistant.orchestrator import run_assistant
 from apps.assistant.tools.python_analysis import PythonAnalysisToolResult
 from apps.assistant.tools.semantic_query import SemanticQueryTable
 from apps.assistant.trace import AssistantTrace, ToolCallTrace
+from tests.orchestrator_eval_helpers import (
+    assert_artifact_kinds,
+    assert_expected_tool_sequence,
+    assert_forbidden_tools_absent,
+    assert_no_raw_sql_or_private_debug,
+    load_eval_cases,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,7 +60,7 @@ class OrchestratorEvalTests(unittest.TestCase):
     @patch("apps.assistant.routes.period_delta.run_python_analysis")
     @patch("apps.assistant.routes.period_delta.plan_execute")
     def test_orchestrator_eval_expected_tool_sequence(self, mock_plan_execute, mock_run_python_analysis) -> None:
-        cases = json.loads(EVAL_PATH.read_text(encoding="utf-8"))
+        cases = load_eval_cases(EVAL_PATH)
         case = cases[0]
         mock_plan_execute.side_effect = [
             semantic_result("sq_left", [{"entity_name": "Magic", "metric_value": 110.5}]),
@@ -92,15 +98,10 @@ class OrchestratorEvalTests(unittest.TestCase):
         self.assertIsNotNone(result.debug)
         trace = result.debug["trace"]
         self.assertEqual(trace["route"], case["expected_route"])
-        self.assertEqual(
-            [tool_call["tool_name"] for tool_call in trace["tool_calls"]],
-            case["expected_tools"],
-        )
-        tool_names = {tool_call["tool_name"] for tool_call in trace["tool_calls"]}
-        self.assertTrue(tool_names.isdisjoint(case["forbidden_tools"]))
-        artifact_kinds = {artifact["kind"] for artifact in result.artifacts}
-        for expected_artifact in case["expected_artifacts"]:
-            self.assertIn(expected_artifact, artifact_kinds)
+        assert_expected_tool_sequence(self, trace, case["expected_tools"])
+        assert_forbidden_tools_absent(self, trace, case["forbidden_tools"])
+        assert_no_raw_sql_or_private_debug(self, trace)
+        assert_artifact_kinds(self, result.artifacts, case["expected_artifacts"])
 
 
 if __name__ == "__main__":

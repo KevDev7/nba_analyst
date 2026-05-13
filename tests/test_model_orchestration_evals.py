@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import unittest
 
 from apps.assistant.model_orchestration.executor import MAX_MODEL_TOOL_CALLS
 from apps.assistant.model_orchestration.plans import ModelAnalysisPlan, planned_tool_names
+from tests.orchestrator_eval_helpers import load_eval_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +14,7 @@ EVAL_PATH = ROOT / "evals" / "model_orchestration_question_bank.json"
 
 class ModelOrchestrationEvalTests(unittest.TestCase):
     def test_model_orchestration_eval_tool_sequences_are_governed(self) -> None:
-        cases = json.loads(EVAL_PATH.read_text(encoding="utf-8"))
+        cases = load_eval_cases(EVAL_PATH)
 
         for case in cases:
             with self.subTest(case=case["name"]):

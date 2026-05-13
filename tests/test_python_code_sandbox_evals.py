@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import unittest
+from tests.orchestrator_eval_helpers import load_eval_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,7 +11,7 @@ EVAL_PATH = ROOT / "evals" / "python_code_sandbox_question_bank.json"
 
 class PythonCodeSandboxEvalTests(unittest.TestCase):
     def test_python_code_sandbox_eval_policy(self) -> None:
-        cases = json.loads(EVAL_PATH.read_text(encoding="utf-8"))
+        cases = load_eval_cases(EVAL_PATH)
 
         for case in cases:
             with self.subTest(case=case["name"]):

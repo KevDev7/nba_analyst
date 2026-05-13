@@ -239,3 +239,13 @@ Status: implemented.
 - Unsupported causal wording is rejected unless a future causal evidence contract exists.
 - Invalid composed output is retried once, then falls back to the deterministic table-first answer.
 - Simple deterministic synthesis remains unchanged.
+
+## Slice 12: Trace-Based Eval Harness Expansion
+
+Status: implemented.
+
+- Added shared eval helpers for loading eval banks and asserting orchestrator trace behavior.
+- Added deterministic trace eval coverage for simple, multi-step, unsupported, adversarial, artifact, and sandbox-policy cases.
+- Trace evals assert expected tool sequence, forbidden tool absence, raw SQL/private-debug redaction, artifact shape, and claim/evidence coverage where applicable.
+- Existing model-orchestration and sandbox eval tests now share the eval loader.
+- New architecture evals avoid live provider dependence.
