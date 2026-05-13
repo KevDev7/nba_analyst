@@ -200,3 +200,12 @@ Status: implemented.
 - Preserved read-only DuckDB execution and Haskell-only SQL authoring.
 - Kept `run_sql(sql)` backward-compatible for direct tests/debug helpers while adding `run_sql_result(...)` for governed execution metadata.
 - Threaded runtime-owned execution metadata into semantic-query trace/provenance without exposing raw SQL.
+
+## Slice 8: Semantic Query Data Tables
+
+Status: implemented.
+
+- Split primary table projection into typed table data and UI artifact wrappers.
+- `semantic_query.plan_execute` now builds `SemanticQueryTable` outputs from the typed `FinalAnswer` payload instead of scraping rendered artifacts.
+- UI artifacts remain presentation outputs with the same public shape.
+- Semantic-query table provenance now marks `source: "final_answer"` and carries execution-step provenance independently from artifacts.

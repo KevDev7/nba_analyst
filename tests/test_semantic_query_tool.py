@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
+from runtime.AnalysisRuntime.models import RankingRow
 from tests.test_cli_pipeline import SAMPLE_DRAFT, SAMPLE_EXECUTION_PLAN
 
 
@@ -88,6 +90,69 @@ class SemanticQueryToolTests(unittest.TestCase):
             SemanticQueryRequest(question="Show players", semantic_draft={"task": "rank"})
         with self.assertRaises(ValueError):
             SemanticQueryRequest()
+
+    @patch("apps.assistant.tools.semantic_query.render_artifacts")
+    @patch("apps.assistant.tools.semantic_query.format_response", return_value="Formatted answer")
+    @patch("apps.assistant.tools.semantic_query.synthesize_answer")
+    @patch("apps.assistant.tools.semantic_query.package_results", return_value=object())
+    @patch("apps.assistant.tools.semantic_query.execute_plan")
+    @patch(
+        "apps.assistant.pipeline.plan_question",
+        return_value=(SAMPLE_DRAFT, {"execution_plan": SAMPLE_EXECUTION_PLAN}),
+    )
+    @patch("apps.assistant.tools.semantic_query.load_database")
+    def test_tables_are_built_from_final_answer_not_artifacts(
+        self,
+        _mock_load_database,
+        _mock_plan_question,
+        mock_execute_plan,
+        _mock_package_results,
+        mock_synthesize_answer,
+        _mock_format_response,
+        mock_render_artifacts,
+    ) -> None:
+        from tests.answer_context_helpers import build_final_answer
+
+        mock_execute_plan.return_value.raw_rows = [{"entity_name": "Jalen Brunson", "metric_value": 312}]
+        mock_execute_plan.return_value.execution_metadata = [
+            {
+                "kind": "run_sql",
+                "sql_hash": "sha256:runtime",
+                "returned_row_count": 1,
+                "row_limit_requested": 500,
+                "row_limit_enforced": True,
+                "truncated": False,
+                "execution_ms": 12,
+            }
+        ]
+        mock_synthesize_answer.return_value = build_final_answer(
+            summary="Rows are shown below.",
+            interpretation="Players ranked by total points.",
+            query_kind="metric_query",
+            result_shape="ranking",
+            entity_label_singular="Player",
+            entity_label_plural="Players",
+            context_label="Team",
+            metric="total_points",
+            window_games=10,
+            limit=10,
+            rows=[
+                RankingRow(rank=1, entity_name="Jalen Brunson", context_value="NYK", metric_value=312),
+            ],
+        )
+        mock_render_artifacts.return_value = SimpleNamespace(
+            ok=True,
+            artifacts=[{"kind": "text", "role": "summary", "text": "No table artifact here."}],
+            error=None,
+        )
+
+        result = plan_execute(SemanticQueryRequest(question="Show players", request_id="sq_table"))
+
+        self.assertEqual([artifact["kind"] for artifact in result.artifacts], ["text"])
+        self.assertEqual(len(result.tables), 1)
+        self.assertEqual(result.tables[0].id, "sq_table.primary")
+        self.assertEqual(result.tables[0].rows[0]["entity_name"], "Jalen Brunson")
+        self.assertEqual(result.tables[0].provenance["source"], "final_answer")
 
     @patch("apps.assistant.tools.semantic_query.format_response", return_value="Formatted answer")
     @patch("apps.assistant.tools.semantic_query.synthesize_answer")

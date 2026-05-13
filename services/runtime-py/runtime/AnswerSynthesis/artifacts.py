@@ -80,6 +80,17 @@ def build_primary_table_artifact(
     *,
     row_limit: int | None = None,
 ) -> JsonDict | None:
+    table = build_primary_table_data(answer, row_limit=row_limit)
+    if table is None:
+        return None
+    return {"kind": "table", **table}
+
+
+def build_primary_table_data(
+    answer: FinalAnswer,
+    *,
+    row_limit: int | None = None,
+) -> JsonDict | None:
     projection = _primary_table_projection(answer)
     if projection is None:
         return None
@@ -150,7 +161,6 @@ def _build_table_artifact(
 ) -> JsonDict:
     display_rows = list(rows if row_limit is None else rows[:row_limit])
     return {
-        "kind": "table",
         "title": title,
         "columns": [
             {

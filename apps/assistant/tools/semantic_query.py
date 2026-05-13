@@ -28,6 +28,7 @@ if str(RUNTIME_ROOT) not in sys.path:
 
 from runtime.AnalysisRuntime.models import ExecutionPlan
 from runtime.AnalysisRuntime.runner import execute_plan
+from runtime.AnswerSynthesis.artifacts import build_primary_table_data
 from runtime.AnswerSynthesis.format_response import format_response
 from runtime.AnswerSynthesis.package_results import package_results
 from runtime.AnswerSynthesis.synthesize import synthesize_answer
@@ -214,7 +215,7 @@ def _plan_execute_success(
         row_limit_enforced=_row_limit_enforced(runtime_result),
         execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result),
     )
-    tables = _tables_from_artifacts(query_id, tool_call_id, artifacts)
+    tables = _tables_from_answer(query_id, tool_call_id, answer, provenance)
     debug = _debug_payload(
         request=request,
         formatted=formatted,
@@ -367,31 +368,32 @@ def _row_limit_enforced(runtime_result: Any) -> bool:
     )
 
 
-def _tables_from_artifacts(
+def _tables_from_answer(
     query_id: str,
     tool_call_id: str,
-    artifacts: list[dict[str, Any]],
+    answer: Any,
+    provenance: SemanticQueryProvenance,
 ) -> list[SemanticQueryTable]:
-    tables: list[SemanticQueryTable] = []
-    for index, artifact in enumerate(artifacts):
-        if artifact.get("kind") != "table":
-            continue
-        rows = [row for row in artifact.get("rows", []) if isinstance(row, dict)]
-        tables.append(
-            SemanticQueryTable(
-                id=f"{query_id}.table_{index}",
-                title=str(artifact.get("title") or ""),
-                columns=[column for column in artifact.get("columns", []) if isinstance(column, dict)],
-                rows=rows,
-                row_count=int(artifact.get("row_count") or len(rows)),
-                displayed_row_count=int(artifact.get("displayed_row_count") or len(rows)),
-                provenance={
-                    "query_id": query_id,
-                    "source_tool_call_id": tool_call_id,
-                },
-            )
+    table = build_primary_table_data(answer)
+    if table is None:
+        return []
+    rows = [row for row in table.get("rows", []) if isinstance(row, dict)]
+    return [
+        SemanticQueryTable(
+            id=f"{query_id}.primary",
+            title=str(table.get("title") or ""),
+            columns=[column for column in table.get("columns", []) if isinstance(column, dict)],
+            rows=rows,
+            row_count=int(table.get("row_count") or len(rows)),
+            displayed_row_count=int(table.get("displayed_row_count") or len(rows)),
+            provenance={
+                "query_id": query_id,
+                "source_tool_call_id": tool_call_id,
+                "source": "final_answer",
+                "execution_steps": [model_to_dict(step) for step in provenance.execution_steps],
+            },
         )
-    return tables
+    ]
 
 
 def _answer_assumptions(answer_context: object) -> list[str]:

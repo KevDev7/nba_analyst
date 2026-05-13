@@ -89,6 +89,8 @@ Output shape:
 }
 ```
 
+`tables` are built from the typed `FinalAnswer`/runtime payload, not scraped from UI artifacts. Artifacts remain presentation outputs; downstream analysis should consume `tables`.
+
 Failure shape:
 
 ```json
