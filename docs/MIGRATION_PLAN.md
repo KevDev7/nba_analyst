@@ -218,3 +218,13 @@ Status: implemented.
 - Haskell inspection emits subjects, fact surfaces, metrics, dimensions, filters, time grains, aliases, ranking polarity, and visibility from the validated ontology model.
 - `ontology_catalog.inspect` now prefers Haskell inspection and keeps the Python/YAML catalog as a fallback.
 - DuckDB coverage metadata remains Python-owned for now.
+
+## Slice 10: Catalog/Snapshot Default Scope Provider
+
+Status: implemented.
+
+- Added a cached `DefaultScopeProvider` for season defaults.
+- Current runtime defaults now come from DuckDB snapshot metadata when available.
+- The existing `2025-26` / `regular_season` constants remain as fallbacks and compatibility exports.
+- The current snapshot-derived defaults match previous product behavior, so user-facing assumption text is unchanged.
+- Semantic-query trace/provenance records the default scope source and values.

@@ -35,6 +35,7 @@ from runtime.AnswerSynthesis.synthesize import synthesize_answer
 
 from apps.assistant.models import AssistantResult
 from apps.assistant.predicate_observability import build_predicate_trace
+from apps.assistant.semantic.default_scope import get_default_time_scope
 from apps.assistant.trace import (
     AssistantTrace,
     ArtifactTrace,
@@ -98,6 +99,9 @@ class SemanticQueryProvenance(BaseModel):
     execution_steps: list[ExecutionStepProvenance] = Field(default_factory=list)
     row_limit_requested: int = 500
     row_limit_enforced: bool = False
+    default_scope_source: Optional[str] = None
+    default_season_year: Optional[str] = None
+    default_season_type: Optional[str] = None
 
 
 class SemanticQueryResult(BaseModel):
@@ -208,11 +212,15 @@ def _plan_execute_success(
     answer_context = planner_output.get("execution_plan", {}).get("answer_context")
     result_shape = answer_context.get("result_shape") if isinstance(answer_context, dict) else None
     assumptions = _answer_assumptions(answer_context)
+    default_scope = get_default_time_scope()
     provenance = SemanticQueryProvenance(
         ontology_path=str(pipeline.ONTOLOGY_PATH),
         snapshot_path=str(DB_PATH),
         row_limit_requested=request.row_limit,
         row_limit_enforced=_row_limit_enforced(runtime_result),
+        default_scope_source=default_scope.source,
+        default_season_year=default_scope.season_year,
+        default_season_type=default_scope.season_type,
         execution_steps=_execution_step_provenance(query_id, planner_output, runtime_result),
     )
     tables = _tables_from_answer(query_id, tool_call_id, answer, provenance)
@@ -240,6 +248,7 @@ def _plan_execute_success(
                     "artifact_count": len(artifacts),
                     "row_limit_requested": request.row_limit,
                     "row_limit_enforced": provenance.row_limit_enforced,
+                    "default_scope_source": provenance.default_scope_source,
                 },
                 provenance=ToolProvenance(**model_to_dict(provenance)),
             )

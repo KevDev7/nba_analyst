@@ -74,6 +74,9 @@ class SemanticQueryToolTests(unittest.TestCase):
         self.assertTrue(result.trace.tool_calls[0].provenance.execution_steps[0].sql_redacted)
         self.assertEqual(result.provenance.row_limit_requested, 500)
         self.assertTrue(result.provenance.row_limit_enforced)
+        self.assertEqual(result.provenance.default_scope_source, "snapshot_metadata")
+        self.assertEqual(result.trace.tool_calls[0].output["default_scope_source"], "snapshot_metadata")
+        self.assertEqual(result.trace.tool_calls[0].provenance.default_scope_source, "snapshot_metadata")
         step = result.trace.tool_calls[0].provenance.execution_steps[0]
         self.assertEqual(step.sql_hash, "sha256:runtime")
         self.assertEqual(step.returned_row_count, 1)

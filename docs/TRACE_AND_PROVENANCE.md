@@ -68,7 +68,10 @@ Shape:
       }
     ],
     "row_limit_requested": 500,
-    "row_limit_enforced": true
+    "row_limit_enforced": true,
+    "default_scope_source": "snapshot_metadata",
+    "default_season_year": "2025-26",
+    "default_season_type": "regular_season"
   }
 }
   ],
@@ -103,6 +106,8 @@ Raw SQL must not be included in:
 Normal trace records use `sql_hash` and `sql_redacted: true`.
 
 SQL execution metadata is now owned by the runtime execution boundary. The runtime records the SQL hash, execution duration, returned row count, requested row limit, whether the limit was enforced, and whether the returned rows were truncated. Planner SQL text remains redacted from normal traces.
+
+Default season policy is recorded as provenance on semantic-query tool calls. The assistant currently derives the default season and season type from the DuckDB snapshot metadata when available, falling back to compatibility constants only if metadata cannot be read.
 
 Private execution-plan debug is only available when all of these are true:
 

@@ -8,11 +8,16 @@ from typing import Any, Optional
 import duckdb
 
 from apps.assistant.semantic.time_scope_normalizer import normalize_question_time_window
+from apps.assistant.semantic.default_scope import (
+    FALLBACK_DEFAULT_SEASON_TYPE,
+    FALLBACK_DEFAULT_SEASON_YEAR,
+    get_default_time_scope,
+)
 from scripts.load_gold_snapshot import load_database
 
 
-DEFAULT_SEASON_YEAR = "2025-26"
-DEFAULT_SEASON_TYPE = "regular_season"
+DEFAULT_SEASON_YEAR = FALLBACK_DEFAULT_SEASON_YEAR
+DEFAULT_SEASON_TYPE = FALLBACK_DEFAULT_SEASON_TYPE
 ALL_AVAILABLE_DATA_KIND = "all"
 
 
@@ -55,8 +60,16 @@ def _snapshot_season_range() -> Optional[str]:
 
 def _explicit_season_year(question: str) -> Optional[str]:
     if _mentions_last_season(question):
-        return _previous_season_year(DEFAULT_SEASON_YEAR)
+        return _previous_season_year(_default_season_year())
     return _season_year_from_text(question)
+
+
+def _default_season_year() -> str:
+    return get_default_time_scope().season_year
+
+
+def _default_season_type() -> str:
+    return get_default_time_scope().season_type
 
 
 def _mentions_last_season(question: str) -> bool:
@@ -374,7 +387,7 @@ def _apply_recent_season_constraints(question: str, draft: dict[str, Any]) -> di
         return draft
 
     explicit_type = _explicit_season_type(question)
-    season_type = explicit_type or DEFAULT_SEASON_TYPE
+    season_type = explicit_type or _default_season_type()
     _upsert_season_year_filter(draft, explicit_year)
     _upsert_season_type_filter(draft, season_type)
     if explicit_type is None:
@@ -386,9 +399,11 @@ def _apply_default_compare_time_scope(question: str, draft: dict[str, Any]) -> d
     if not _is_compare_draft(draft) or _question_mentions_time_scope(question):
         return draft
 
-    draft["time_window"] = {"kind": "season", "value": DEFAULT_SEASON_YEAR}
-    _upsert_season_type_filter(draft, DEFAULT_SEASON_TYPE)
-    _append_assumption(draft, f"Assumed season year is {DEFAULT_SEASON_YEAR}.")
+    season_year = _default_season_year()
+    season_type = _default_season_type()
+    draft["time_window"] = {"kind": "season", "value": season_year}
+    _upsert_season_type_filter(draft, season_type)
+    _append_assumption(draft, f"Assumed season year is {season_year}.")
     _append_assumption(draft, "Assumed season type is regular season.")
     return draft
 
@@ -408,8 +423,9 @@ def apply_semantic_assumptions(question: str, draft: dict[str, Any]) -> dict[str
     explicit_year = _explicit_season_year(question)
     explicit_type = _explicit_season_type(question)
 
-    season_year = explicit_year or DEFAULT_SEASON_YEAR
-    season_type = explicit_type or DEFAULT_SEASON_TYPE
+    default_scope = get_default_time_scope()
+    season_year = explicit_year or default_scope.season_year
+    season_type = explicit_type or default_scope.season_type
 
     time_window = dict(enriched.get("time_window") or {})
     time_window["kind"] = "season"
@@ -418,7 +434,7 @@ def apply_semantic_assumptions(question: str, draft: dict[str, Any]) -> dict[str
     _upsert_season_type_filter(enriched, season_type)
 
     if explicit_year is None:
-        _append_assumption(enriched, f"Assumed season year is {DEFAULT_SEASON_YEAR}.")
+        _append_assumption(enriched, f"Assumed season year is {season_year}.")
     if explicit_type is None:
         _append_assumption(enriched, "Assumed season type is regular season.")
 

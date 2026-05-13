@@ -81,7 +81,10 @@ Output shape:
       }
     ],
     "row_limit_requested": 500,
-    "row_limit_enforced": true
+    "row_limit_enforced": true,
+    "default_scope_source": "snapshot_metadata",
+    "default_season_year": "2025-26",
+    "default_season_type": "regular_season"
   },
   "trace": {},
   "debug": null,
@@ -90,6 +93,8 @@ Output shape:
 ```
 
 `tables` are built from the typed `FinalAnswer`/runtime payload, not scraped from UI artifacts. Artifacts remain presentation outputs; downstream analysis should consume `tables`.
+
+Default season and season-type policy is now read from the local snapshot metadata when available, with the previous constants retained as fallbacks. Normal traces record the default-scope source and values so future default changes are auditable without changing answer wording.
 
 Failure shape:
 

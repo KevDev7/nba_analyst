@@ -48,6 +48,9 @@ class ToolProvenance(BaseModel):
     execution_steps: list[ExecutionStepProvenance] = Field(default_factory=list)
     row_limit_requested: Optional[int] = None
     row_limit_enforced: Optional[bool] = None
+    default_scope_source: Optional[str] = None
+    default_season_year: Optional[str] = None
+    default_season_type: Optional[str] = None
     operation_kind: Optional[str] = None
     parent_table_ids: list[str] = Field(default_factory=list)
     output_table_ids: list[str] = Field(default_factory=list)
