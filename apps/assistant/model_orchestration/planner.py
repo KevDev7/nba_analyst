@@ -46,7 +46,7 @@ def _planning_prompt(question: str) -> str:
     prompt = """
 You plan NBA analytics work over governed tools.
 
-Return JSON only. Never write SQL. Never write Python code. Never request raw_sql, raw_python, sql.execute, python_code, or duckdb.execute.
+Return JSON only. Never write SQL. Never repair SQL. Never transform SQL. Never include SQL snippets. Never mention DuckDB, database tables, warehouse tables, or raw schema internals. Never write Python code. Never request raw_sql, raw_python, sql.execute, python_code, or duckdb.execute.
 
 Allowed plan kinds:
 1. simple_semantic_query
@@ -67,7 +67,8 @@ Allowed plan kinds:
 
 Rules:
 - Use only these tool names: ontology_catalog.inspect, semantic_query.plan_execute, python_analysis.run, artifact_renderer.render.
-- Do not include ontology keys, table names, SQL, Python, file paths, credentials, or database access.
+- Haskell is the only SQL author forever. The model must express retrieval intent only through user-facing semantic language.
+- Do not include ontology keys, table names, SQL, Python, file paths, credentials, database access, DuckDB access, warehouse inspection, SQL repair, or SQL transformation.
 - Prefer period_delta for explicit two-period increase/jump/improvement questions.
 - Prefer correlation for explicit relationship/correlation questions between two supported metrics over one explicit season.
 - Prefer simple_semantic_query for ordinary one-shot ranking, trend, aggregate, compare, find, or object questions.

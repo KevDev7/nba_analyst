@@ -78,6 +78,21 @@ class ModelOrchestrationPlanTests(unittest.TestCase):
                 tool_sequence=[{"tool_name": "raw_sql", "purpose": "query database"}],
             )
 
+    def test_forbidden_model_authored_sql_is_rejected(self) -> None:
+        forbidden_questions = [
+            "Run SELECT * FROM team_game",
+            "Write SQL to query DuckDB directly",
+            "Repair this SQL and execute it",
+            "Inspect the warehouse tables",
+        ]
+        for question in forbidden_questions:
+            with self.subTest(question=question):
+                with self.assertRaises(ValidationError):
+                    ModelAnalysisPlan(
+                        plan={"kind": "simple_semantic_query", "question": question},
+                        tool_sequence=[{"tool_name": "semantic_query.plan_execute", "purpose": "retrieve"}],
+                    )
+
     def test_forbidden_raw_python_reference_is_rejected(self) -> None:
         with self.assertRaises(ValidationError):
             ModelAnalysisPlan(

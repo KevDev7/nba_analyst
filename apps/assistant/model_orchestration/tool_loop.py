@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Callable, Optional, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -32,6 +33,19 @@ MODEL_TOOL_LOOP_ENABLED_ENV = "NBA_ENABLE_MODEL_TOOL_LOOP"
 MAX_LOOP_TURNS = 4
 MAX_LOOP_TOOL_CALLS = 6
 MAX_MODEL_VISIBLE_ROWS = 20
+FORBIDDEN_SQL_AUTHORING_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bselect\b[\s\S]{0,120}\bfrom\b",
+        r"\bwith\b[\s\S]{0,120}\bas\b",
+        r"\b(insert|update|delete|drop|alter|create|copy|attach|pragma|load|install)\b",
+        r"\b(raw\s+sql|write\s+sql|generate\s+sql|author\s+sql|repair\s+sql|transform\s+sql)\b",
+        r"\b(repair|fix|transform|rewrite)\b[\s\S]{0,40}\bsql\b",
+        r"\b(inspect|list|show)\b[\s\S]{0,40}\b(warehouse|database)\b",
+        r"\b(query|inspect|connect\s+to|access)\s+(duckdb|sqlite|database|warehouse)\b",
+        r"\b(duckdb|sqlite_master|sqlite|sqlalchemy)\b",
+    ]
+]
 
 
 class ToolSpec(BaseModel):
@@ -267,7 +281,9 @@ Return JSON only in one of these shapes:
 
 Rules:
 - Use only allowed_tools.
-- Never write SQL or Python code.
+- Haskell is the only SQL author forever; express retrieval only as semantic tool requests.
+- Never write SQL, repair SQL, transform SQL, include SQL snippets, inspect warehouse tables, or ask for DuckDB/database access.
+- Never write Python code.
 - Never request raw_sql, raw_python, arbitrary_python, sql.execute, python_code, or duckdb.execute.
 - Keep tool arguments small and grounded in the question or prior tool outputs.
 
@@ -342,7 +358,9 @@ def _artifact_summaries(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 def _payload_mentions_forbidden_capability(payload: Any) -> bool:
     text = json.dumps(payload, sort_keys=True).lower()
-    return any(token in text for token in FORBIDDEN_TOOL_NAMES)
+    return any(token in text for token in FORBIDDEN_TOOL_NAMES) or any(
+        pattern.search(text) for pattern in FORBIDDEN_SQL_AUTHORING_PATTERNS
+    )
 
 
 def _payload_mentions_python_code(payload: Any) -> bool:

@@ -20,7 +20,10 @@ semantic_query.plan_execute
   -> text/table/chart artifacts
 ```
 
-This tool is not a raw SQL tool. Haskell remains the SQL author.
+This tool is not a raw SQL tool. Haskell is the only SQL author forever.
+The model, user input, Python analysis, and sandbox code may request retrieval
+only through semantic/ontology terms; they must not write, repair, transform,
+inspect, or receive SQL.
 
 Input shape:
 
@@ -165,7 +168,7 @@ Output shape:
 }
 ```
 
-This is a read-only catalog tool. Its job is to make the schema contract inspectable by the orchestrator, not to infer new concepts that are absent from the ontology.
+This is a read-only catalog tool. Its job is to make the schema contract inspectable by the orchestrator, not to infer new concepts that are absent from the ontology or expose raw database/schema inspection.
 
 ### `artifact_renderer.render`
 
@@ -214,7 +217,7 @@ It can now render either grounded `FinalAnswer` payloads or derived `AnalysisTab
 
 ### `python_analysis.run`
 
-Purpose: run controlled derived analysis over approved input tables. This is not arbitrary Python execution and does not receive a database handle.
+Purpose: run controlled derived analysis over approved input tables. This is not a retrieval boundary, is not a SQL boundary, and does not receive a database handle.
 
 Current controlled operations:
 
@@ -223,6 +226,13 @@ Current controlled operations:
 - `correlation`: joins two tables on declared keys and computes a Pearson correlation over matched numeric columns.
 - chart operations remain available through the same runtime contract for artifact generation.
 - `python_code`: gated sandbox prototype for custom derived analysis over approved tables only.
+
+Permanent SQL invariant:
+
+- `python_analysis.run` must never receive raw SQL, a DuckDB/database handle, table names for direct warehouse access, or credentials.
+- Controlled operations and code mode may only analyze approved result tables produced by governed semantic retrieval.
+- `python_code` must not import database clients, author SQL strings for execution, repair SQL, transform SQL, or inspect warehouse/schema internals.
+- There is intentionally no public/model-visible `governed_sql`, `raw_sql`, `duckdb.execute`, or SQL-repair tool.
 
 Input shape:
 

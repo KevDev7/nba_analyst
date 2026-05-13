@@ -3,10 +3,15 @@
 ## Product Invariant
 
 The ontology/schema contract is the primary grounding boundary for basketball answers.
+Haskell is the only SQL author for product data retrieval. Runtime SQL governance
+exists to safely execute Haskell-generated SQL; it is not a future opening for
+model-authored, user-authored, Python-authored, or sandbox-authored SQL.
 
 ## Do Not
 
 - Do not bypass the ontology/Haskell planner for product data retrieval.
+- Do not add model-authored, user-authored, Python-authored, or sandbox-authored SQL paths.
+- Do not add SQL repair, SQL transformation, SQL snippets, or DuckDB/warehouse inspection to model-visible orchestration.
 - Do not expose raw SQL to model-visible orchestration or public response payloads.
 - Do not add a raw Python/code execution tool; sandboxed code, when enabled, must stay inside `python_analysis.run`.
 - Do not invent metrics, dimensions, filters, joins, entities, or data coverage.
@@ -26,6 +31,7 @@ The ontology/schema contract is the primary grounding boundary for basketball an
 Arbitrary code analysis is disabled by default and must remain gated by `NBA_ENABLE_PYTHON_CODE_SANDBOX`.
 
 Code mode may analyze only approved input tables. It must not receive raw SQL, DuckDB/database handles, credentials, environment variables, network access, or arbitrary filesystem access.
+It must not import or use database clients, author SQL strings, or inspect warehouse/schema internals.
 
 ## Slice 1 Boundary
 

@@ -76,6 +76,21 @@ class ModelToolLoopTests(unittest.TestCase):
                 registry=fake_registry(),
             )
 
+    def test_tool_loop_rejects_sql_authoring_payload(self) -> None:
+        with self.assertRaises(ValueError):
+            run_model_tool_loop(
+                "Run SQL through a governed tool",
+                call_model=lambda _prompt: """
+                {
+                  "action": "tool_call",
+                  "tool_name": "semantic_query.plan_execute",
+                  "purpose": "forbidden SQL",
+                  "arguments": {"question": "Run SELECT * FROM team_game"}
+                }
+                """,
+                registry=fake_registry(),
+            )
+
     def test_tool_loop_enforces_max_turns(self) -> None:
         with self.assertRaises(RuntimeError):
             run_model_tool_loop(

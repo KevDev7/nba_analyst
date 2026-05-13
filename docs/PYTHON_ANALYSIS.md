@@ -1,6 +1,6 @@
 # Python Analysis
 
-`python_analysis.run` is a derived-analysis tool. It is not allowed to retrieve product data directly.
+`python_analysis.run` is a derived-analysis tool. It is not allowed to retrieve product data directly, and it is never a SQL authoring boundary.
 
 ## Default Path
 
@@ -35,6 +35,8 @@ The sandbox receives serialized table data only. It does not receive:
 
 - raw SQL;
 - a DuckDB connection;
+- database clients;
+- direct warehouse/table access;
 - ontology internals;
 - credentials;
 - environment variables;
@@ -42,7 +44,9 @@ The sandbox receives serialized table data only. It does not receive:
 
 The local runner uses a subprocess plus macOS `sandbox-exec` when available. Provenance records `sandbox_backend: "macos_sandbox_exec"`, `sandbox_status: "local_beta_only"`, and `production_ready: false`.
 
-The Python layer also rejects forbidden imports and calls, including `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, and `compile`.
+The Python layer also rejects forbidden imports and calls, including `duckdb`, `sqlite3`, `sqlalchemy`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, and `compile`.
+
+Code mode must not write SQL strings, repair SQL, transform SQL, or inspect database schemas. Haskell remains the only SQL author; code mode may only compute over approved tables that were already retrieved through `semantic_query.plan_execute`.
 
 Code-mode outputs are evidence tables/findings, not final answer prose. Final user-facing synthesis must still use deterministic synthesis or the grounded answer composer with evidence references.
 
@@ -58,3 +62,7 @@ Do not treat the local `python_code` runner as a production sandbox. A productio
 - clean environment without secrets;
 - dependency allowlist and runtime image/hash provenance;
 - backend-specific adversarial tests in CI.
+
+## Production Backend Decision
+
+See [SANDBOX_VENDOR_DECISION.md](SANDBOX_VENDOR_DECISION.md) for the Slice 17 production sandbox recommendation and the requirements for a future `SandboxBackend` implementation.

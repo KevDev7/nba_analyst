@@ -5,6 +5,7 @@ import contextlib
 import copy
 import io
 import json
+import re
 import sys
 import traceback
 from typing import Any
@@ -20,6 +21,7 @@ FORBIDDEN_IMPORTS = {
     "requests",
     "shutil",
     "socket",
+    "sqlalchemy",
     "sqlite3",
     "subprocess",
     "sys",
@@ -54,10 +56,20 @@ FORBIDDEN_NAMES = {
     "shutil",
     "socket",
     "sqlite3",
+    "sql",
+    "sqlalchemy",
     "subprocess",
     "sys",
     "urllib",
 }
+SQL_AUTHORING_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bselect\b[\s\S]{0,120}\bfrom\b",
+        r"\bwith\b[\s\S]{0,120}\bas\b",
+        r"\b(insert|update|delete|drop|alter|create|copy|attach|pragma|load|install)\b",
+    ]
+]
 
 
 class SandboxValidationError(Exception):
@@ -90,8 +102,13 @@ class CodeValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        if node.attr.startswith("__") or node.attr in {"environ", "system", "popen"}:
+        if node.attr.startswith("__") or node.attr in {"environ", "execute", "executemany", "cursor", "connect", "system", "popen", "read_sql"}:
             raise SandboxValidationError(f"Attribute '{node.attr}' is not allowed.")
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, str) and _looks_like_sql_authoring(node.value):
+            raise SandboxValidationError("SQL authoring is not allowed in sandbox code.")
         self.generic_visit(node)
 
     def _validate_import(self, module_name: str) -> None:
@@ -176,6 +193,10 @@ def _safe_builtins(allowed_imports: set[str]) -> dict[str, Any]:
 
     safe["__import__"] = safe_import
     return safe
+
+
+def _looks_like_sql_authoring(value: str) -> bool:
+    return any(pattern.search(value) for pattern in SQL_AUTHORING_PATTERNS)
 
 
 if __name__ == "__main__":

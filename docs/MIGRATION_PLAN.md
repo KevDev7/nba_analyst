@@ -168,7 +168,7 @@ Next improvements before model tool-calling:
 
 - add more deterministic plan types only if they share the same structured-plan executor pattern;
 - continue adding trace-based evals for each governed route;
-- consider runtime-owned SQL execution metrics/caps before allowing any non-Haskell SQL author.
+- keep runtime-owned SQL execution metrics/caps as defense-in-depth for Haskell-generated SQL only.
 
 ## Slice 6: Gated Arbitrary-Code Sandbox Prototype
 
@@ -280,3 +280,31 @@ Status: implemented as local/beta-only.
 - Added backend/status provenance to sandbox operation metadata and assistant `python_analysis.run` provenance.
 - Documented production requirements instead of pretending local `sandbox-exec` is production-grade isolation.
 - Did not add new infrastructure or make sandboxed code the default path.
+
+## Slice 16: Haskell-Only SQL Product Invariant
+
+Status: implemented.
+
+- Codified Haskell-only SQL as a permanent product invariant.
+- Clarified that runtime SQL governance safely executes Haskell-generated SQL;
+  it does not enable model-authored, user-authored, Python-authored, or
+  sandbox-authored SQL.
+- Updated model planning/tool-loop prompts and validators to reject SQL
+  authoring, SQL repair/transformation, DuckDB/database access, warehouse
+  inspection, and raw SQL tool paths.
+- Tightened sandbox static validation around database imports, SQL strings, and
+  database-execution style attributes.
+- Added `docs/SQL_GOVERNANCE.md` as the canonical SQL policy.
+
+## Slice 17: Sandbox Vendor Decision
+
+Status: implemented as a decision document.
+
+- Added `docs/SANDBOX_VENDOR_DECISION.md`.
+- Compared Vercel Sandbox and E2B against this repo's python-analysis
+  requirements.
+- Recommended E2B as the primary production backend candidate for the current
+  Python/FastAPI/Render runtime, with Vercel Sandbox as the strongest
+  alternative if a TypeScript/Vercel sandbox broker is introduced.
+- Kept the current local sandbox as disabled-by-default beta infrastructure.
+- Did not add vendor SDKs, credentials, or external runtime behavior.

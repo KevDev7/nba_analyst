@@ -19,6 +19,7 @@ from runtime.AnalysisTools.code_sandbox import (
     SANDBOX_PRODUCTION_READY,
     SANDBOX_STATUS,
 )
+from runtime.AnalysisTools.sandbox_child import CodeValidator, SandboxValidationError
 from runtime.AnalysisTools.local_worker import run_analysis_request
 from runtime.AnalysisTools.models import AnalysisRequest, AnalysisTable, AnalysisTableColumn
 
@@ -86,6 +87,26 @@ class PythonCodeSandboxStatusTests(unittest.TestCase):
         self.assertEqual(SANDBOX_BACKEND, "macos_sandbox_exec")
         self.assertEqual(SANDBOX_STATUS, "local_beta_only")
         self.assertFalse(SANDBOX_PRODUCTION_READY)
+
+
+class PythonCodeSandboxStaticPolicyTests(unittest.TestCase):
+    def assert_rejected_by_static_validator(self, code: str, expected: str) -> None:
+        import ast
+
+        with self.assertRaises(SandboxValidationError) as cm:
+            CodeValidator({"math", "statistics", "json"}).visit(ast.parse(code, mode="exec"))
+        self.assertIn(expected, str(cm.exception))
+
+    def test_static_validator_rejects_database_imports(self) -> None:
+        for module in ["duckdb", "sqlite3", "sqlalchemy"]:
+            with self.subTest(module=module):
+                self.assert_rejected_by_static_validator(f"import {module}\noutputs['tables'] = []", f"Import '{module}' is not allowed")
+
+    def test_static_validator_rejects_sql_authoring_strings(self) -> None:
+        self.assert_rejected_by_static_validator("query = 'SELECT * FROM team_game'\noutputs['tables'] = []", "SQL authoring is not allowed")
+
+    def test_static_validator_rejects_database_execute_attributes(self) -> None:
+        self.assert_rejected_by_static_validator("client.execute('anything')\noutputs['tables'] = []", "Attribute 'execute' is not allowed")
 
 
 @unittest.skipUnless(Path("/usr/bin/sandbox-exec").exists(), "python_code sandbox requires macOS sandbox-exec")

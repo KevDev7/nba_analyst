@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -25,6 +26,19 @@ ALLOWED_TOOL_NAMES = {
     "artifact_renderer.render",
 }
 FORBIDDEN_TOOL_NAMES = {"raw_sql", "raw_python", "arbitrary_python", "sql.execute", "python_code", "duckdb.execute"}
+FORBIDDEN_SQL_AUTHORING_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bselect\b[\s\S]{0,120}\bfrom\b",
+        r"\bwith\b[\s\S]{0,120}\bas\b",
+        r"\b(insert|update|delete|drop|alter|create|copy|attach|pragma|load|install)\b",
+        r"\b(raw\s+sql|write\s+sql|generate\s+sql|author\s+sql|repair\s+sql|transform\s+sql)\b",
+        r"\b(repair|fix|transform|rewrite)\b[\s\S]{0,40}\bsql\b",
+        r"\b(inspect|list|show)\b[\s\S]{0,40}\b(warehouse|database)\b",
+        r"\b(query|inspect|connect\s+to|access)\s+(duckdb|sqlite|database|warehouse)\b",
+        r"\b(duckdb|sqlite_master|sqlite|sqlalchemy)\b",
+    ]
+]
 UNSUPPORTED_SURFACES = {"play_by_play", "play-by-play", "lineups", "on_off", "on-off", "clutch", "shot_location", "shot-location"}
 
 
@@ -74,6 +88,8 @@ class ModelAnalysisPlan(StrictPlanModel):
         payload = _string_payload(self)
         if any(token in payload for token in FORBIDDEN_TOOL_NAMES):
             raise ValueError("Model plan includes a forbidden raw SQL or Python tool reference.")
+        if _mentions_sql_authoring(payload):
+            raise ValueError("Model plan includes forbidden SQL authoring or database-access language.")
         if isinstance(self.plan, UnsupportedPlan):
             return self
         if any(surface in payload for surface in UNSUPPORTED_SURFACES):
@@ -109,3 +125,7 @@ def _string_payload(model: BaseModel) -> str:
     if hasattr(model, "model_dump_json"):
         return model.model_dump_json().lower()
     return model.json().lower()
+
+
+def _mentions_sql_authoring(payload: str) -> bool:
+    return any(pattern.search(payload) for pattern in FORBIDDEN_SQL_AUTHORING_PATTERNS)
