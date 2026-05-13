@@ -270,3 +270,13 @@ Status: implemented behind a gate.
 - Tool outputs are sanitized and row-limited before becoming model-visible context.
 - Raw SQL, raw Python, `python_code`, and DuckDB execution tools remain forbidden.
 - Existing one-shot structured planner and deterministic fast path remain available; the loop is not default.
+
+## Slice 15: Sandbox Production Status
+
+Status: implemented as local/beta-only.
+
+- Kept `python_code` disabled by default behind `NBA_ENABLE_PYTHON_CODE_SANDBOX`.
+- Explicitly marked the current sandbox backend as `macos_sandbox_exec`, `local_beta_only`, and `production_ready: false`.
+- Added backend/status provenance to sandbox operation metadata and assistant `python_analysis.run` provenance.
+- Documented production requirements instead of pretending local `sandbox-exec` is production-grade isolation.
+- Did not add new infrastructure or make sandboxed code the default path.

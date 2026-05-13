@@ -15,7 +15,7 @@ Controlled operations remain preferred because their behavior is typed, determin
 
 ## Gated Code Mode
 
-`python_code` is a sandbox prototype for custom analysis over approved tables. It is disabled unless:
+`python_code` is a local/beta-only sandbox prototype for custom analysis over approved tables. It is disabled unless:
 
 ```text
 NBA_ENABLE_PYTHON_CODE_SANDBOX=1
@@ -40,6 +40,21 @@ The sandbox receives serialized table data only. It does not receive:
 - environment variables;
 - arbitrary filesystem paths.
 
-The local runner uses a subprocess plus macOS `sandbox-exec` when available. The Python layer also rejects forbidden imports and calls, including `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, and `compile`.
+The local runner uses a subprocess plus macOS `sandbox-exec` when available. Provenance records `sandbox_backend: "macos_sandbox_exec"`, `sandbox_status: "local_beta_only"`, and `production_ready: false`.
+
+The Python layer also rejects forbidden imports and calls, including `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, and `compile`.
 
 Code-mode outputs are evidence tables/findings, not final answer prose. Final user-facing synthesis must still use deterministic synthesis or the grounded answer composer with evidence references.
+
+## Production Requirements
+
+Do not treat the local `python_code` runner as a production sandbox. A production-ready backend should provide:
+
+- Linux/container or microVM isolation;
+- no network namespace by default;
+- no host filesystem access except an ephemeral scratch directory;
+- CPU and hard memory limits;
+- process-tree kill on timeout;
+- clean environment without secrets;
+- dependency allowlist and runtime image/hash provenance;
+- backend-specific adversarial tests in CI.

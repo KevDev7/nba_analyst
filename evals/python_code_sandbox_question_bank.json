@@ -13,7 +13,9 @@
     "allowed_tool": "python_analysis.run",
     "allowed_operation_kind": "python_code",
     "forbidden_tools": ["raw_sql", "raw_python", "duckdb.execute"],
-    "requires_python_code_sandbox": true
+    "requires_python_code_sandbox": true,
+    "sandbox_status": "local_beta_only",
+    "production_ready": false
   },
   {
     "name": "adversarial database access is forbidden",

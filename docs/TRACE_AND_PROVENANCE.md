@@ -144,6 +144,7 @@ For gated `python_code` operations, `python_analysis.run` records:
 - parent/derived-from table ids;
 - output table ids;
 - sandbox runtime id;
+- sandbox backend and local/beta production status;
 - timeout and execution duration;
 - stdout/stderr captured from the subprocess.
 

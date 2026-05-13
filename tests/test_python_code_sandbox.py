@@ -13,7 +13,12 @@ if str(RUNTIME_ROOT) not in sys.path:
     sys.path.insert(0, str(RUNTIME_ROOT))
 
 from apps.assistant.tools.python_analysis import PythonAnalysisToolRequest, run
-from runtime.AnalysisTools.code_sandbox import SANDBOX_ENABLED_ENV
+from runtime.AnalysisTools.code_sandbox import (
+    SANDBOX_BACKEND,
+    SANDBOX_ENABLED_ENV,
+    SANDBOX_PRODUCTION_READY,
+    SANDBOX_STATUS,
+)
 from runtime.AnalysisTools.local_worker import run_analysis_request
 from runtime.AnalysisTools.models import AnalysisRequest, AnalysisTable, AnalysisTableColumn
 
@@ -76,6 +81,13 @@ outputs["metrics"] = [{"id": "top_points", "value": rows[0]["points"]}]
 """
 
 
+class PythonCodeSandboxStatusTests(unittest.TestCase):
+    def test_python_code_sandbox_is_marked_local_beta_only(self) -> None:
+        self.assertEqual(SANDBOX_BACKEND, "macos_sandbox_exec")
+        self.assertEqual(SANDBOX_STATUS, "local_beta_only")
+        self.assertFalse(SANDBOX_PRODUCTION_READY)
+
+
 @unittest.skipUnless(Path("/usr/bin/sandbox-exec").exists(), "python_code sandbox requires macOS sandbox-exec")
 class PythonCodeSandboxTests(unittest.TestCase):
     @patch.dict(os.environ, {SANDBOX_ENABLED_ENV: ""})
@@ -95,6 +107,9 @@ class PythonCodeSandboxTests(unittest.TestCase):
         self.assertEqual(result.metadata["operation_kind"], "python_code")
         self.assertEqual(result.metadata["parent_table_ids"], ["approved.players"])
         self.assertEqual(result.metadata["output_table_ids"], ["analysis.out"])
+        self.assertEqual(result.metadata["sandbox_backend"], "macos_sandbox_exec")
+        self.assertEqual(result.metadata["sandbox_status"], "local_beta_only")
+        self.assertFalse(result.metadata["production_ready"])
         self.assertTrue(str(result.metadata["code_hash"]).startswith("sha256:"))
         self.assertIn("computed 2", result.metadata["stdout"])
 
@@ -178,6 +193,9 @@ class PythonCodeSandboxTests(unittest.TestCase):
         self.assertEqual(result.analysis_id, "analysis_code")
         self.assertEqual(result.provenance["operation_kind"], "python_code")
         self.assertTrue(result.provenance["code_hash"].startswith("sha256:"))
+        self.assertEqual(result.provenance["sandbox_backend"], "macos_sandbox_exec")
+        self.assertEqual(result.provenance["sandbox_status"], "local_beta_only")
+        self.assertFalse(result.provenance["production_ready"])
         self.assertIn("computed 2", result.provenance["stdout"])
         self.assertEqual(result.outputs["metrics"][0]["id"], "top_points")
 

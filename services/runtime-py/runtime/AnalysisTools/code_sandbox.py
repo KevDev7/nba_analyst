@@ -21,6 +21,9 @@ from .operations import AnalysisOperationError, ControlledOperationResult
 
 SANDBOX_ENABLED_ENV = "NBA_ENABLE_PYTHON_CODE_SANDBOX"
 SANDBOX_RUNTIME_ID = "local_python_code_sandbox:v1"
+SANDBOX_BACKEND = "macos_sandbox_exec"
+SANDBOX_STATUS = "local_beta_only"
+SANDBOX_PRODUCTION_READY = False
 
 
 def run_python_code_operation(tables: list[AnalysisTable], operation: PythonCodeOperation) -> ControlledOperationResult:
@@ -29,14 +32,14 @@ def run_python_code_operation(tables: list[AnalysisTable], operation: PythonCode
         raise AnalysisOperationError(
             code="sandbox_disabled",
             message=f"python_code operations require {SANDBOX_ENABLED_ENV}=1.",
-            metadata={"operation_kind": operation.kind, "code_hash": code_hash, "runtime": SANDBOX_RUNTIME_ID},
+            metadata=_base_metadata(operation, code_hash),
         )
     sandbox_exec = shutil.which("sandbox-exec")
     if sandbox_exec is None:
         raise AnalysisOperationError(
             code="sandbox_unavailable",
             message="python_code operations require /usr/bin/sandbox-exec on this local runtime.",
-            metadata={"operation_kind": operation.kind, "code_hash": code_hash, "runtime": SANDBOX_RUNTIME_ID},
+            metadata=_base_metadata(operation, code_hash),
         )
 
     input_tables = [_table_payload(table) for table in tables if table.id in set(operation.input_table_ids)]
@@ -157,6 +160,9 @@ def _validate_output_tables(raw_tables: Any, operation: PythonCodeOperation) -> 
                     "operation_kind": operation.kind,
                     "parent_table_ids": operation.input_table_ids,
                     "code_hash": _code_hash(operation.code),
+                    "sandbox_backend": SANDBOX_BACKEND,
+                    "sandbox_status": SANDBOX_STATUS,
+                    "production_ready": SANDBOX_PRODUCTION_READY,
                     **operation.metadata,
                 },
             )
@@ -207,16 +213,25 @@ def _metadata(
     timed_out: bool = False,
 ) -> dict[str, Any]:
     return {
-        "runtime": SANDBOX_RUNTIME_ID,
-        "operation_kind": operation.kind,
-        "code_hash": code_hash,
-        "parent_table_ids": operation.input_table_ids,
-        "derived_from_table_ids": operation.input_table_ids,
+        **_base_metadata(operation, code_hash),
         "timeout_ms": operation.policy.timeout_ms,
         "execution_ms": execution_ms,
         "timed_out": timed_out,
         "stdout": stdout or "",
         "stderr": stderr or "",
+    }
+
+
+def _base_metadata(operation: PythonCodeOperation, code_hash: str) -> dict[str, Any]:
+    return {
+        "runtime": SANDBOX_RUNTIME_ID,
+        "sandbox_backend": SANDBOX_BACKEND,
+        "sandbox_status": SANDBOX_STATUS,
+        "production_ready": SANDBOX_PRODUCTION_READY,
+        "operation_kind": operation.kind,
+        "code_hash": code_hash,
+        "parent_table_ids": operation.input_table_ids,
+        "derived_from_table_ids": operation.input_table_ids,
     }
 
 

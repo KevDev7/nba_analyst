@@ -156,6 +156,30 @@ class SemanticAssumptionTests(unittest.TestCase):
 
         self.assertIn("Interpreted 'average scoring' as average points.", enriched["assumptions"])
 
+    def test_avg_points_alias_adds_grounded_user_facing_assumption(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Show me players by avg points over the last 10 games",
+            season_rank_draft(
+                measure="average points",
+                measures=["average points"],
+                time_window={"kind": "last_n_games", "value": 10},
+            ),
+        )
+
+        self.assertIn("Interpreted 'avg points' as average points.", enriched["assumptions"])
+
+    def test_avg_points_alias_assumption_survives_raw_alias_measure(self) -> None:
+        enriched = apply_semantic_assumptions(
+            "Show me players by avg points over the last 10 games",
+            season_rank_draft(
+                measure="avg points",
+                measures=["avg points"],
+                time_window={"kind": "last_n_games", "value": 10},
+            ),
+        )
+
+        self.assertIn("Interpreted 'avg points' as average points.", enriched["assumptions"])
+
     def test_explicit_year_and_explicit_type_are_preserved_without_assumptions(self) -> None:
         draft = season_rank_draft(
             time_window={"kind": "season", "value": "2025-26"},

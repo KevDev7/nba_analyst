@@ -347,9 +347,11 @@ Input shape:
 }
 ```
 
-Normal provenance exposes `code_hash`, parent table ids, output table ids, runtime id, timeout state, stdout, and stderr. Raw SQL is never supplied to the sandbox.
+Normal provenance exposes `code_hash`, parent table ids, output table ids, runtime id, sandbox backend/status, timeout state, stdout, and stderr. Raw SQL is never supplied to the sandbox.
 
-The local prototype uses a subprocess plus macOS `sandbox-exec` when available. The Python layer also rejects forbidden imports and calls such as `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, `compile`, and environment access.
+The local prototype uses a subprocess plus macOS `sandbox-exec` when available and is explicitly marked `local_beta_only` / `production_ready: false`. The Python layer also rejects forbidden imports and calls such as `duckdb`, `sqlite3`, `socket`, `requests`, `urllib`, `os`, `subprocess`, `pathlib`, `open`, `eval`, `exec`, `compile`, and environment access.
+
+Production code execution requires a stronger backend such as container or microVM isolation, no network namespace, no host filesystem access except scratch, CPU/memory limits, process-tree kill on timeout, clean environment, dependency allowlist, runtime image/hash provenance, and adversarial CI coverage.
 
 ## Current Multi-Call Route
 

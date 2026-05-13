@@ -22,6 +22,8 @@ class PythonCodeSandboxEvalTests(unittest.TestCase):
                 if case.get("allowed_operation_kind") == "python_code":
                     self.assertEqual(case["allowed_tool"], "python_analysis.run")
                     self.assertTrue(case["requires_python_code_sandbox"])
+                    self.assertEqual(case["sandbox_status"], "local_beta_only")
+                    self.assertFalse(case["production_ready"])
                 if case.get("preferred_operation_kind") == "join_and_delta":
                     self.assertFalse(case["requires_python_code_sandbox"])
                 if case.get("forbidden_operation_kind") == "python_code":

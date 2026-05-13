@@ -138,6 +138,12 @@ def _mentions_average_scoring(question: str, draft: dict[str, Any]) -> bool:
     return "averagescoring" in question_key and "averagescoring" in draft_measure_key
 
 
+def _mentions_average_points_alias(question: str, draft: dict[str, Any]) -> bool:
+    question_key = _normalized(question)
+    draft_measure_key = _normalized(draft.get("measure", ""))
+    return "avgpoints" in question_key and draft_measure_key in {"avgpoints", "averagepoints"}
+
+
 def _reconcile_family_shape(question: str, draft: dict[str, Any]) -> dict[str, Any]:
     # Object-row wording owns entity rows even when the user also asks for a
     # limit/order, like "top 5 players and their total points".
@@ -147,6 +153,8 @@ def _reconcile_family_shape(question: str, draft: dict[str, Any]) -> dict[str, A
         _append_assumption(draft, "Interpreted 'scoring' as total points.")
     if _mentions_average_scoring(question, draft):
         _append_assumption(draft, "Interpreted 'average scoring' as average points.")
+    if _mentions_average_points_alias(question, draft):
+        _append_assumption(draft, "Interpreted 'avg points' as average points.")
     return draft
 
 
