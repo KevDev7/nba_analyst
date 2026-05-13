@@ -7,4 +7,4 @@
 # Produces:
 # - importable governed route modules
 
-__all__ = ["period_delta"]
+__all__ = ["period_delta", "correlation"]

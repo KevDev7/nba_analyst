@@ -220,6 +220,7 @@ Current controlled operations:
 
 - `join_and_delta`: joins two tables on declared keys and computes `right_metric - left_metric`.
 - `rank_extremes`: sorts one table by a numeric metric and adds a deterministic rank column.
+- `correlation`: joins two tables on declared keys and computes a Pearson correlation over matched numeric columns.
 - chart operations remain available through the same runtime contract for artifact generation.
 - `python_code`: gated sandbox prototype for custom derived analysis over approved tables only.
 
@@ -290,6 +291,8 @@ Output shape:
 ```
 
 The wrapper is designed for future orchestrator use: retrieval tables come from `semantic_query.plan_execute`, derived tables come from `python_analysis.run`, and charts/tables are rendered afterward by `artifact_renderer.render`.
+
+Correlation plans use the same governed path: retrieve each metric through `semantic_query.plan_execute`, compute the relationship through the controlled `correlation` operation, then render the derived result through `artifact_renderer.render`.
 
 #### Gated `python_code` Operation
 

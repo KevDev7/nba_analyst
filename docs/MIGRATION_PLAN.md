@@ -249,3 +249,12 @@ Status: implemented.
 - Trace evals assert expected tool sequence, forbidden tool absence, raw SQL/private-debug redaction, artifact shape, and claim/evidence coverage where applicable.
 - Existing model-orchestration and sandbox eval tests now share the eval loader.
 - New architecture evals avoid live provider dependence.
+
+## Slice 13: Additional Generic Analysis Plan
+
+Status: implemented.
+
+- Added exactly one new generic plan type: `CorrelationPlan`.
+- Chose correlation because it adds a new reusable analysis shape without raw SQL, arbitrary code, or Haskell contract changes.
+- Correlation execution retrieves both metrics through `semantic_query.plan_execute`, computes the relationship through a controlled `python_analysis.run` `correlation` operation, then renders artifacts through `artifact_renderer.render`.
+- Added model-plan schema support, executor support, trace/provenance, operation tests, route tests, and model-orchestration eval coverage.

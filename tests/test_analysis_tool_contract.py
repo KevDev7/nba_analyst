@@ -124,6 +124,41 @@ class AnalysisToolContractTests(unittest.TestCase):
         self.assertEqual(request.operation.x, "points")
         self.assertEqual(request.operation.y, "assists")
 
+    def test_correlation_analysis_request_parses(self) -> None:
+        points = AnalysisTable(
+            id="player_points",
+            columns=[
+                AnalysisTableColumn(id="entity", label="Player", type="text"),
+                AnalysisTableColumn(id="metric_value", label="Points", type="number"),
+            ],
+            rows=[{"entity": "A", "metric_value": 10}],
+        )
+        assists = AnalysisTable(
+            id="player_assists",
+            columns=[
+                AnalysisTableColumn(id="entity", label="Player", type="text"),
+                AnalysisTableColumn(id="metric_value", label="Assists", type="number"),
+            ],
+            rows=[{"entity": "A", "metric_value": 5}],
+        )
+
+        request = AnalysisRequest(
+            tables=[points, assists],
+            operation={
+                "kind": "correlation",
+                "left_table_id": "player_points",
+                "right_table_id": "player_assists",
+                "join_keys": ["entity"],
+                "left_metric": "metric_value",
+                "right_metric": "metric_value",
+                "left_output_column": "points",
+                "right_output_column": "assists",
+            },
+        )
+
+        self.assertEqual(request.operation.kind, "correlation")
+        self.assertEqual(request.operation.method, "pearson")
+
     def test_request_rejects_unknown_operation_kind(self) -> None:
         with self.assertRaises(ValidationError) as context:
             AnalysisRequest(

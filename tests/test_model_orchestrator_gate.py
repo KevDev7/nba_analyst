@@ -149,6 +149,30 @@ class ModelOrchestratorGateTests(unittest.TestCase):
         evidence_tables = mock_compose.call_args.kwargs["evidence_tables"]
         self.assertEqual(evidence_tables[0]["id"], "analysis.delta")
 
+    @patch("apps.assistant.model_orchestration.executor.execute_correlation_plan")
+    def test_enabled_model_orchestrator_can_execute_correlation_plan(self, mock_execute_correlation) -> None:
+        plan = ModelAnalysisPlan(
+            plan={
+                "kind": "correlation",
+                "subject": "players",
+                "x_measure": "average points",
+                "y_measure": "average assists",
+                "period": {"season": "2024-25", "season_type": "regular_season"},
+                "join_key": "entity",
+                "method": "pearson",
+            }
+        )
+        mock_execute_correlation.return_value = AssistantResult(
+            answer="Correlation answer",
+            artifacts=[{"kind": "table"}],
+            debug={},
+        )
+
+        result = execute_model_plan("Are points and assists related?", plan, debug=True)
+
+        self.assertEqual(result.answer, "Correlation answer")
+        mock_execute_correlation.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

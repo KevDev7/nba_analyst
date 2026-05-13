@@ -66,6 +66,38 @@ def sample_player_metric_table() -> AnalysisTable:
     )
 
 
+def sample_player_assist_table() -> AnalysisTable:
+    return AnalysisTable(
+        id="player_assists",
+        title="Player assists",
+        columns=[
+            AnalysisTableColumn(id="player", label="Player", type="text"),
+            AnalysisTableColumn(id="assists", label="Assists", type="number"),
+        ],
+        rows=[
+            {"player": "A", "assists": 10},
+            {"player": "B", "assists": 20},
+            {"player": "C", "assists": 30},
+        ],
+    )
+
+
+def sample_player_points_table() -> AnalysisTable:
+    return AnalysisTable(
+        id="player_points",
+        title="Player points",
+        columns=[
+            AnalysisTableColumn(id="player", label="Player", type="text"),
+            AnalysisTableColumn(id="points", label="Points", type="number"),
+        ],
+        rows=[
+            {"player": "A", "points": 1},
+            {"player": "B", "points": 2},
+            {"player": "C", "points": 3},
+        ],
+    )
+
+
 class LocalAnalysisWorkerTests(unittest.TestCase):
     def test_line_chart_operation_returns_vega_lite_artifact(self) -> None:
         result = run_analysis_request(
@@ -159,6 +191,30 @@ class LocalAnalysisWorkerTests(unittest.TestCase):
         self.assertEqual(artifact.metadata["operation_kind"], "point_chart")
         tooltip_fields = [tooltip["field"] for tooltip in artifact.spec["encoding"]["tooltip"]]
         self.assertEqual(tooltip_fields, ["player", "team", "points", "assists"])
+
+    def test_correlation_operation_returns_known_result_table(self) -> None:
+        result = run_analysis_request(
+            AnalysisRequest(
+                tables=[sample_player_points_table(), sample_player_assist_table()],
+                operation={
+                    "kind": "correlation",
+                    "left_table_id": "player_points",
+                    "right_table_id": "player_assists",
+                    "join_keys": ["player"],
+                    "left_metric": "points",
+                    "right_metric": "assists",
+                    "method": "pearson",
+                },
+            )
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(len(result.tables), 1)
+        table = result.tables[0]
+        self.assertEqual(table.rows[0]["correlation"], 1.0)
+        self.assertEqual(table.rows[0]["paired_row_count"], 3)
+        self.assertEqual(table.metadata["operation_kind"], "correlation")
+        self.assertEqual(result.findings[0].evidence_table_id, table.id)
 
     def test_horizontal_bar_chart_sorts_category_axis_by_rank(self) -> None:
         result = run_analysis_request(

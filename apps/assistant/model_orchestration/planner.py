@@ -55,10 +55,13 @@ Allowed plan kinds:
 2. period_delta
    {"plan":{"kind":"period_delta","subject":"teams|players","measure":"<user-facing measure>","periods":[{"season":"2023-24","season_type":"regular_season"},{"season":"2024-25","season_type":"regular_season"}],"join_key":"entity","delta":"right_minus_left"},"tool_sequence":[{"tool_name":"semantic_query.plan_execute","purpose":"left period retrieval"},{"tool_name":"semantic_query.plan_execute","purpose":"right period retrieval"},{"tool_name":"python_analysis.run","purpose":"compute delta"},{"tool_name":"artifact_renderer.render","purpose":"render table/chart"}]}
 
-3. artifact_request
+3. correlation
+   {"plan":{"kind":"correlation","subject":"teams|players","x_measure":"<user-facing metric>","y_measure":"<user-facing metric>","period":{"season":"2024-25","season_type":"regular_season"},"join_key":"entity","method":"pearson"},"tool_sequence":[{"tool_name":"semantic_query.plan_execute","purpose":"x metric retrieval"},{"tool_name":"semantic_query.plan_execute","purpose":"y metric retrieval"},{"tool_name":"python_analysis.run","purpose":"compute correlation"},{"tool_name":"artifact_renderer.render","purpose":"render table"}]}
+
+4. artifact_request
    {"plan":{"kind":"artifact_request","question":"<question>","artifact_intent":"table|chart|table_and_chart"},"tool_sequence":[{"tool_name":"semantic_query.plan_execute","purpose":"retrieve grounded answer"},{"tool_name":"artifact_renderer.render","purpose":"render requested artifact"}]}
 
-4. unsupported
+5. unsupported
    Use for unsupported surfaces: play-by-play, lineups, on-off, clutch, shot-location.
    {"plan":{"kind":"unsupported","reason":"<short reason>","unsupported_surface":"<surface>"},"tool_sequence":[]}
 
@@ -66,6 +69,7 @@ Rules:
 - Use only these tool names: ontology_catalog.inspect, semantic_query.plan_execute, python_analysis.run, artifact_renderer.render.
 - Do not include ontology keys, table names, SQL, Python, file paths, credentials, or database access.
 - Prefer period_delta for explicit two-period increase/jump/improvement questions.
+- Prefer correlation for explicit relationship/correlation questions between two supported metrics over one explicit season.
 - Prefer simple_semantic_query for ordinary one-shot ranking, trend, aggregate, compare, find, or object questions.
 """.strip()
     return f"{prompt}\n\nQuestion: {question}"

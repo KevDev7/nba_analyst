@@ -41,6 +41,36 @@ class ModelOrchestrationPlanTests(unittest.TestCase):
             ],
         )
 
+    def test_valid_correlation_plan_parses_with_governed_tools(self) -> None:
+        plan = ModelAnalysisPlan(
+            plan={
+                "kind": "correlation",
+                "subject": "players",
+                "x_measure": "average points",
+                "y_measure": "average assists",
+                "period": {"season": "2024-25", "season_type": "regular_season"},
+                "join_key": "entity",
+                "method": "pearson",
+            },
+            tool_sequence=[
+                {"tool_name": "semantic_query.plan_execute", "purpose": "x metric retrieval"},
+                {"tool_name": "semantic_query.plan_execute", "purpose": "y metric retrieval"},
+                {"tool_name": "python_analysis.run", "purpose": "compute correlation"},
+                {"tool_name": "artifact_renderer.render", "purpose": "render artifacts"},
+            ],
+        )
+
+        self.assertEqual(plan.plan.kind, "correlation")
+        self.assertEqual(
+            planned_tool_names(plan),
+            [
+                "semantic_query.plan_execute",
+                "semantic_query.plan_execute",
+                "python_analysis.run",
+                "artifact_renderer.render",
+            ],
+        )
+
     def test_forbidden_raw_sql_tool_is_rejected(self) -> None:
         with self.assertRaises(ValidationError):
             ModelAnalysisPlan(

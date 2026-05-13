@@ -28,6 +28,7 @@ from .models import (
     AnalysisTableColumn,
     ChartArtifact,
     ChartOperation,
+    CorrelationOperation,
     JoinAndDeltaOperation,
     RankExtremesOperation,
 )
@@ -58,6 +59,8 @@ def run_controlled_operation(tables: list[AnalysisTable], operation: AnalysisOpe
         return _run_join_and_delta_operation(tables, operation)
     if isinstance(operation, RankExtremesOperation):
         return _run_rank_extremes_operation(tables, operation)
+    if isinstance(operation, CorrelationOperation):
+        return _run_correlation_operation(tables, operation)
     raise AnalysisOperationError(
         code="unsupported_operation",
         message=f"Operation '{operation.kind}' is not supported by the local trusted worker.",
@@ -175,6 +178,81 @@ def _run_rank_extremes_operation(
     return ControlledOperationResult(
         tables=[output_table],
         findings=_ranked_extreme_findings(output_table, operation.metric, "largest" if not ascending else "smallest"),
+        metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
+    )
+
+
+def _run_correlation_operation(
+    tables: list[AnalysisTable],
+    operation: CorrelationOperation,
+) -> ControlledOperationResult:
+    left = _table_by_id(tables, operation.left_table_id)
+    right = _table_by_id(tables, operation.right_table_id)
+    left_output = operation.left_output_column or f"left_{operation.left_metric}"
+    right_output = operation.right_output_column or f"right_{operation.right_metric}"
+
+    left_frame = _selected_frame(left, [*operation.join_keys, operation.left_metric])
+    right_frame = _selected_frame(right, [*operation.join_keys, operation.right_metric])
+    left_frame = left_frame.rename(columns={operation.left_metric: left_output})
+    right_frame = right_frame.rename(columns={operation.right_metric: right_output})
+    _coerce_numeric_series(left_frame, left_output)
+    _coerce_numeric_series(right_frame, right_output)
+
+    merged = left_frame.merge(right_frame, how="inner", on=operation.join_keys)
+    paired_row_count = int(len(merged))
+    correlation = None
+    if paired_row_count >= 2:
+        correlation = _json_value(merged[left_output].corr(merged[right_output], method=operation.method))
+
+    output_table = AnalysisTable(
+        id=f"{operation.left_table_id}_{operation.right_table_id}_correlation",
+        title=operation.title or f"Correlation: {_label(left_output)} vs {_label(right_output)}",
+        columns=[
+            AnalysisTableColumn(id="left_metric", label="Left Metric", type="text"),
+            AnalysisTableColumn(id="right_metric", label="Right Metric", type="text"),
+            AnalysisTableColumn(id="method", label="Method", type="text"),
+            AnalysisTableColumn(id="correlation", label="Correlation", type="number"),
+            AnalysisTableColumn(id="paired_row_count", label="Matched Rows", type="integer"),
+        ],
+        rows=[
+            {
+                "left_metric": left_output,
+                "right_metric": right_output,
+                "method": operation.method,
+                "correlation": correlation,
+                "paired_row_count": paired_row_count,
+            }
+        ],
+        row_count=1,
+        metadata={
+            **operation.metadata,
+            "operation_kind": operation.kind,
+            "parent_table_ids": [operation.left_table_id, operation.right_table_id],
+            "left_metric": operation.left_metric,
+            "right_metric": operation.right_metric,
+            "method": operation.method,
+        },
+    )
+    findings: list[AnalysisFinding] = []
+    if correlation is not None:
+        findings.append(
+            AnalysisFinding(
+                kind="correlation",
+                text=f"Correlation between {left_output} and {right_output} was {correlation}.",
+                evidence_table_id=output_table.id,
+                row_refs=[0],
+                metadata={
+                    "left_metric": left_output,
+                    "right_metric": right_output,
+                    "method": operation.method,
+                    "correlation": correlation,
+                    "paired_row_count": paired_row_count,
+                },
+            )
+        )
+    return ControlledOperationResult(
+        tables=[output_table],
+        findings=findings,
         metadata={"operation_kind": operation.kind, "output_table_id": output_table.id},
     )
 

@@ -23,6 +23,7 @@ from apps.assistant.model_orchestration.plans import (
     planned_tool_names,
 )
 from apps.assistant.models import AssistantResult
+from apps.assistant.routes.correlation import CorrelationPlan, execute_correlation_plan
 from apps.assistant.routes.period_delta import PeriodDeltaPlan, execute_period_delta_plan
 from apps.assistant.tools.semantic_query import SemanticQueryRequest, plan_execute
 from apps.assistant.trace import AssistantTrace, ToolCallTrace, ToolProvenance, model_to_dict, new_id
@@ -59,6 +60,11 @@ def execute_model_plan(question: str, plan: ModelAnalysisPlan, *, debug: bool = 
         return _execute_artifact_request(question, plan, debug=debug)
     if isinstance(plan.plan, PeriodDeltaPlan):
         result = execute_period_delta_plan(question, plan.plan, debug=debug)
+        if compose_answer:
+            result = _compose_from_result(question, plan, result)
+        return result
+    if isinstance(plan.plan, CorrelationPlan):
+        result = execute_correlation_plan(question, plan.plan, debug=debug)
         if compose_answer:
             result = _compose_from_result(question, plan, result)
         return result

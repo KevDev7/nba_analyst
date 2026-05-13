@@ -8,6 +8,7 @@ Use controlled operations whenever they fit:
 
 - `join_and_delta`
 - `rank_extremes`
+- `correlation`
 - chart operations
 
 Controlled operations remain preferred because their behavior is typed, deterministic, and easier to evaluate.

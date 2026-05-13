@@ -122,6 +122,28 @@ class RankExtremesOperation(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class CorrelationOperation(BaseModel):
+    # Controlled derived-analysis operation. Joins two approved metric tables
+    # and computes a Pearson correlation over matched rows.
+    kind: Literal["correlation"]
+    left_table_id: str
+    right_table_id: str
+    join_keys: List[str]
+    left_metric: str
+    right_metric: str
+    left_output_column: Optional[str] = None
+    right_output_column: Optional[str] = None
+    method: Literal["pearson"] = "pearson"
+    title: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_join_keys(self) -> "CorrelationOperation":
+        if not self.join_keys:
+            raise ValueError("correlation requires at least one join key.")
+        return self
+
+
 class PythonCodeSandboxPolicy(BaseModel):
     max_input_rows: int = Field(default=5000, ge=1, le=50000)
     max_output_rows: int = Field(default=500, ge=1, le=5000)
@@ -180,7 +202,7 @@ class PythonCodeOperation(BaseModel):
         return self
 
 
-AnalysisOperation = Union[ChartOperation, JoinAndDeltaOperation, RankExtremesOperation, PythonCodeOperation]
+AnalysisOperation = Union[ChartOperation, JoinAndDeltaOperation, RankExtremesOperation, CorrelationOperation, PythonCodeOperation]
 
 
 class AnalysisRequest(BaseModel):
@@ -200,6 +222,8 @@ class AnalysisRequest(BaseModel):
             self._validate_join_and_delta_operation(tables_by_id)
         elif isinstance(self.operation, RankExtremesOperation):
             self._validate_rank_extremes_operation(tables_by_id)
+        elif isinstance(self.operation, CorrelationOperation):
+            self._validate_correlation_operation(tables_by_id)
         elif isinstance(self.operation, PythonCodeOperation):
             self._validate_python_code_operation(tables_by_id)
         return self
@@ -250,6 +274,30 @@ class AnalysisRequest(BaseModel):
         column_ids = {column.id for column in table.columns}
         if self.operation.metric not in column_ids:
             raise ValueError(f"Operation references unknown columns: {self.operation.metric}")
+
+    def _validate_correlation_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
+        left = tables_by_id.get(self.operation.left_table_id)
+        right = tables_by_id.get(self.operation.right_table_id)
+        if left is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.left_table_id}")
+        if right is None:
+            raise ValueError(f"Operation references unknown table: {self.operation.right_table_id}")
+        left_columns = {column.id for column in left.columns}
+        right_columns = {column.id for column in right.columns}
+        missing_left = [
+            column
+            for column in [*self.operation.join_keys, self.operation.left_metric]
+            if column not in left_columns
+        ]
+        missing_right = [
+            column
+            for column in [*self.operation.join_keys, self.operation.right_metric]
+            if column not in right_columns
+        ]
+        if missing_left:
+            raise ValueError(f"Operation references unknown left columns: {', '.join(missing_left)}")
+        if missing_right:
+            raise ValueError(f"Operation references unknown right columns: {', '.join(missing_right)}")
 
     def _validate_python_code_operation(self, tables_by_id: Dict[str, AnalysisTable]) -> None:
         if self.runtime != "local_sandbox":

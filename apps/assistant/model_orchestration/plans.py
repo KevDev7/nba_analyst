@@ -14,6 +14,7 @@ from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from apps.assistant.routes.correlation import CorrelationPlan
 from apps.assistant.routes.period_delta import PeriodDeltaPlan
 
 
@@ -49,7 +50,7 @@ class UnsupportedPlan(StrictPlanModel):
     unsupported_surface: Optional[str] = None
 
 
-AnalysisPlan = Union[SimpleSemanticQueryPlan, PeriodDeltaPlan, ArtifactRequestPlan, UnsupportedPlan]
+AnalysisPlan = Union[SimpleSemanticQueryPlan, PeriodDeltaPlan, CorrelationPlan, ArtifactRequestPlan, UnsupportedPlan]
 
 
 class ToolPlanStep(StrictPlanModel):
@@ -86,6 +87,13 @@ def planned_tool_names(plan: ModelAnalysisPlan) -> list[str]:
     if isinstance(plan.plan, SimpleSemanticQueryPlan):
         return ["semantic_query.plan_execute"]
     if isinstance(plan.plan, PeriodDeltaPlan):
+        return [
+            "semantic_query.plan_execute",
+            "semantic_query.plan_execute",
+            "python_analysis.run",
+            "artifact_renderer.render",
+        ]
+    if isinstance(plan.plan, CorrelationPlan):
         return [
             "semantic_query.plan_execute",
             "semantic_query.plan_execute",
