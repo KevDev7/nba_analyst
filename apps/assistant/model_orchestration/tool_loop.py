@@ -209,7 +209,7 @@ def _execute_semantic_query(payload: dict[str, Any], context: ToolContext) -> To
             _analysis_table_from_semantic_table(table),
             source_tool_call_id=result.trace.tool_calls[0].tool_call_id if result.trace.tool_calls else None,
             source_tool_name="semantic_query.plan_execute",
-            metadata={"query_id": result.query_id},
+            metadata={"query_id": result.query_id, "answer_text": result.answer_text},
         )
     for artifact in result.artifacts:
         context.workspace.add_artifact(
@@ -276,6 +276,15 @@ def _execute_python_analysis(payload: dict[str, Any], context: ToolContext) -> T
 
 
 def _execute_chart_generation(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    if "tables" in payload:
+        return ToolResult(
+            ok=False,
+            tool_name="chart_generation.run",
+            error={
+                "code": "inline_tables_not_allowed_in_tool_loop",
+                "message": "Model-visible chart generation must reference approved workspace table_ids.",
+            },
+        )
     if "sandbox_code" in payload or payload.get("generation_mode") == "sandbox":
         return ToolResult(
             ok=False,
@@ -310,8 +319,28 @@ def _execute_chart_generation(payload: dict[str, Any], context: ToolContext) -> 
 
 
 def _execute_artifact_renderer(payload: dict[str, Any], context: ToolContext) -> ToolResult:
-    if "table_ids" in payload and "tables" not in payload:
+    if "tables" in payload:
+        return ToolResult(
+            ok=False,
+            tool_name="artifact_renderer.render",
+            error={
+                "code": "inline_tables_not_allowed_in_tool_loop",
+                "message": "Model-visible artifact rendering must reference approved workspace table_ids.",
+            },
+        )
+    if "artifacts" in payload:
+        return ToolResult(
+            ok=False,
+            tool_name="artifact_renderer.render",
+            error={
+                "code": "inline_artifacts_not_allowed_in_tool_loop",
+                "message": "Model-visible artifact rendering must reference approved workspace artifact_ids.",
+            },
+        )
+    if "table_ids" in payload:
         payload = {**payload, "tables": [model_to_dict(table) for table in context.workspace.resolve_tables(payload.get("table_ids") or [])]}
+    if "artifact_ids" in payload:
+        payload = {**payload, "artifacts": context.workspace.resolve_artifacts(payload.get("artifact_ids") or [])}
     result = render_artifacts(ArtifactRenderRequest(**payload))
     for artifact in result.artifacts:
         context.workspace.add_artifact(
@@ -362,7 +391,6 @@ def _finalize_with_workspace_evidence(
     *,
     debug: bool,
 ) -> AssistantResult:
-    fallback_answer = _safe_final_fallback(decision.answer or "")
     if not context.workspace.tables:
         answer = "I need grounded evidence from a governed retrieval before giving a final answer."
         trace.tool_calls.append(
@@ -371,16 +399,17 @@ def _finalize_with_workspace_evidence(
                 tool_name="answer_composer.compose",
                 status="failed",
                 input={"workspace_table_count": 0},
-                output={"fallback_reason": "missing_workspace_evidence"},
-                provenance=ToolProvenance(composer_fallback_reason="missing_workspace_evidence"),
+                output={"fallback_reason": "no_workspace_evidence"},
+                provenance=ToolProvenance(composer_fallback_reason="no_workspace_evidence"),
             )
         )
         debug_payload = {
             "trace": model_to_dict(trace),
             "model_decisions": model_decisions,
-            "composer_fallback_reason": "missing_workspace_evidence",
+            "composer_fallback_reason": "no_workspace_evidence",
         } if debug else None
         return AssistantResult(answer=answer, artifacts=list(context.workspace.artifacts.values()), debug=debug_payload)
+    fallback_answer, fallback_reason = _workspace_deterministic_fallback(context)
     composed = compose_grounded_answer(
         question=question,
         evidence_tables=[model_to_dict(table) for table in context.workspace.tables.values()],
@@ -388,7 +417,7 @@ def _finalize_with_workspace_evidence(
         artifacts=list(context.workspace.artifacts.values()),
         fallback_answer=fallback_answer,
     )
-    fallback_reason = "no_valid_claims" if composed.answer == fallback_answer and not composed.claims else None
+    composer_fallback_reason = fallback_reason if composed.answer == fallback_answer and not composed.claims else None
     trace.tool_calls.append(
         ToolCallTrace(
             tool_call_id=new_id("tc"),
@@ -396,7 +425,7 @@ def _finalize_with_workspace_evidence(
             status="ok",
             input={"workspace_table_count": len(context.workspace.tables)},
             output={"claim_count": len(composed.claims), "limitation_count": len(composed.limitations)},
-            provenance=ToolProvenance(composer_fallback_reason=fallback_reason),
+            provenance=ToolProvenance(composer_fallback_reason=composer_fallback_reason),
         )
     )
     trace.claims = [model_to_dict(claim) for claim in composed.claims]
@@ -405,7 +434,7 @@ def _finalize_with_workspace_evidence(
         "model_decisions": model_decisions,
         "claims": [model_to_dict(claim) for claim in composed.claims],
         "limitations": composed.limitations,
-        "composer_fallback_reason": fallback_reason,
+        "composer_fallback_reason": composer_fallback_reason,
     } if debug else None
     return AssistantResult(answer=composed.answer, artifacts=list(context.workspace.artifacts.values()), debug=debug_payload)
 
@@ -525,15 +554,20 @@ def _table_handle(table: AnalysisTable) -> dict[str, Any]:
 
 
 def _analysis_request_from_workspace(payload: dict[str, Any], context: ToolContext) -> AnalysisRequest:
+    if "tables" in payload:
+        raise ValueError("python_analysis.run model-loop calls must reference approved workspace table_ids, not inline tables.")
     if "analysis_request" in payload:
         request_payload = dict(payload["analysis_request"])
+        if request_payload.get("tables"):
+            raise ValueError("python_analysis.run model-loop calls must reference approved workspace table_ids, not inline analysis_request.tables.")
         table_ids = request_payload.pop("table_ids", None) or payload.get("table_ids")
-        if table_ids is not None:
-            request_payload["tables"] = [model_to_dict(table) for table in context.workspace.resolve_tables(table_ids)]
+        if not table_ids:
+            raise ValueError("python_analysis.run model-loop calls require approved workspace table_ids.")
+        request_payload["tables"] = [model_to_dict(table) for table in context.workspace.resolve_tables(table_ids)]
         return AnalysisRequest(**request_payload)
     table_ids = payload.get("table_ids")
     if not table_ids:
-        raise ValueError("python_analysis.run requires analysis_request or table_ids.")
+        raise ValueError("python_analysis.run model-loop calls require approved workspace table_ids.")
     return AnalysisRequest(
         runtime=payload.get("runtime", "local_trusted"),
         tables=context.workspace.resolve_tables(table_ids),
@@ -543,17 +577,27 @@ def _analysis_request_from_workspace(payload: dict[str, Any], context: ToolConte
 
 
 def _resolve_payload_tables(payload: dict[str, Any], context: ToolContext) -> list[AnalysisTable]:
+    if "tables" in payload:
+        raise ValueError("Model-visible tools must reference approved workspace table_ids, not inline tables.")
     table_ids = payload.get("table_ids")
-    if table_ids:
-        return context.workspace.resolve_tables(table_ids)
-    return [AnalysisTable(**table) if isinstance(table, dict) else table for table in payload.get("tables", [])]
+    if not table_ids:
+        raise ValueError("Model-visible tools require approved workspace table_ids.")
+    return context.workspace.resolve_tables(table_ids)
 
 
-def _safe_final_fallback(answer_hint: str) -> str:
-    numeric_tokens = re.findall(r"(?<![A-Za-z0-9])[-+]?\d+(?:,\d{3})*(?:\.\d+)?%?(?![A-Za-z0-9])", answer_hint)
-    if numeric_tokens:
-        return "I could not validate the final numeric answer against the gathered evidence."
-    return answer_hint or "I could not validate a grounded final answer from the gathered evidence."
+def _workspace_deterministic_fallback(context: ToolContext) -> tuple[str, str]:
+    for resource_id, provenance in context.workspace.provenance.items():
+        if provenance.source_tool_name != "semantic_query.plan_execute":
+            continue
+        answer_text = provenance.metadata.get("answer_text")
+        if isinstance(answer_text, str) and answer_text.strip():
+            return answer_text.strip(), "deterministic_tool_answer_fallback"
+        table = context.workspace.tables.get(resource_id)
+        if table is not None and table.title:
+            return table.title, "deterministic_tool_answer_fallback"
+    if context.workspace.tables or context.workspace.artifacts:
+        return "I gathered grounded results, but could not validate a final narrative. See the table and artifacts below.", "validated_narrative_unavailable"
+    return "I need grounded evidence from a governed retrieval before giving a final answer.", "no_workspace_evidence"
 
 
 def _summarize_for_model(value: Any) -> Any:

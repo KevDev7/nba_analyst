@@ -10,6 +10,10 @@
   and provenance links between tool calls.
 - The model tool loop resolves full tables server-side from workspace handles
   and finalizes answers through evidence validation.
+- Model-visible downstream tools reject inline table rows and consume approved
+  workspace handles only.
+- Model-loop final fallback never reuses raw model prose; it uses deterministic
+  tool evidence or a safe validation-failure message.
 - Data tables are separated from presentation artifacts.
 - Vega-Lite chart artifacts are generated through `chart_generation.run` or the
   deterministic artifact renderer path, not arbitrary plotting code.

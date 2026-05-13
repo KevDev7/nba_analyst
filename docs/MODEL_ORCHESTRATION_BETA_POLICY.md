@@ -49,6 +49,16 @@ grounded composer using workspace evidence. If no approved evidence tables are
 available, the loop returns a safe fallback asking for grounded retrieval rather
 than trusting unsupported prose.
 
+The model's final text is treated only as style or intent context, never as a
+trusted fallback. If composition or evidence validation fails, the loop falls
+back to a deterministic answer from a prior `semantic_query.plan_execute` call
+when available; otherwise it returns a safe validation-failure message and keeps
+the table/artifact outputs.
+
+Model-visible analysis, chart, and artifact tools must reference approved
+workspace resource IDs. They reject inline table rows so the model can use data
+handles produced by governed tools, but cannot invent data.
+
 ## Chart Generation
 
 `chart_generation.run` is the governed chart tool. Deterministic Vega-Lite

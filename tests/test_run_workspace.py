@@ -56,7 +56,15 @@ class RunWorkspaceTests(unittest.TestCase):
 
         self.assertEqual(artifact_id, "chart_1")
         self.assertEqual(finding_id, "finding_1")
+        self.assertEqual(workspace.resolve_artifact("chart_1")["title"], "Chart")
+        self.assertEqual(workspace.resolve_artifacts(["chart_1"])[0]["kind"], "chart")
         self.assertEqual(workspace.provenance["chart_1"].parent_ids, ["sq.primary"])
+
+    def test_workspace_rejects_unknown_artifact_ids(self) -> None:
+        workspace = RunWorkspace()
+
+        with self.assertRaisesRegex(ValueError, "Unknown or unapproved artifact id"):
+            workspace.resolve_artifact("missing")
 
 
 if __name__ == "__main__":

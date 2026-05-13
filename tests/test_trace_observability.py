@@ -81,14 +81,14 @@ class TraceObservabilityTests(unittest.TestCase):
                 {
                     "tool_name": "answer_composer.compose",
                     "status": "failed",
-                    "provenance": {"composer_fallback_reason": "missing_workspace_evidence"},
+                    "provenance": {"composer_fallback_reason": "no_workspace_evidence"},
                 }
             ],
         }
 
         summary = safe_trace_summary(trace)
 
-        self.assertEqual(summary["fallback_reasons"][0]["reason"], "missing_workspace_evidence")
+        self.assertEqual(summary["fallback_reasons"][0]["reason"], "no_workspace_evidence")
 
     def test_eval_gate_passes_expected_trace(self) -> None:
         trace = sample_trace().model_dump()

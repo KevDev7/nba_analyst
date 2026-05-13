@@ -30,6 +30,16 @@ and small row samples; full rows stay server-side in the workspace. Tools that
 accept `table_ids` resolve those IDs from the workspace and fail closed if the
 ID was not produced by a prior governed tool call.
 
+Model-visible downstream tools are handle-only:
+
+- `semantic_query.plan_execute` is the only model-visible tool that may create
+  new data tables in the workspace.
+- `python_analysis.run`, `chart_generation.run`, and
+  `artifact_renderer.render` must consume approved workspace `table_ids` or
+  `artifact_ids`; they reject inline table rows from model-loop payloads.
+- The model may choose tools and reference approved resource IDs, but it cannot
+  invent data tables.
+
 ### `semantic_query.plan_execute`
 
 Purpose: wrap the current ontology-grounded assistant path as one governed tool call.
@@ -258,6 +268,10 @@ chart_generation.run
   -> return chart artifact(s)
 ```
 
+In direct server-side usage, `tables` may be supplied as typed
+`AnalysisTable` objects. In the iterative model loop, model-visible calls must
+use approved workspace `table_ids`; inline table rows are rejected.
+
 Input shape:
 
 ```json
@@ -274,6 +288,11 @@ Input shape:
   "title": "Biggest increases"
 }
 ```
+
+In the iterative model loop, model-visible calls must provide workspace
+`table_ids`; inline `analysis_request.tables` and ad hoc table rows are
+rejected. Direct internal deterministic routes may still call the tool wrapper
+with typed table objects when those tables came from governed retrieval.
 
 Output shape:
 

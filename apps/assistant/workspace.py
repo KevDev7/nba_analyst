@@ -98,6 +98,15 @@ class RunWorkspace(BaseModel):
     def resolve_tables(self, table_ids: Iterable[str]) -> list[AnalysisTable]:
         return [self.resolve_table(table_id) for table_id in table_ids]
 
+    def resolve_artifact(self, artifact_id: str) -> dict[str, Any]:
+        try:
+            return self.artifacts[artifact_id]
+        except KeyError as exc:
+            raise ValueError(f"Unknown or unapproved artifact id: {artifact_id}") from exc
+
+    def resolve_artifacts(self, artifact_ids: Iterable[str]) -> list[dict[str, Any]]:
+        return [self.resolve_artifact(artifact_id) for artifact_id in artifact_ids]
+
     def resource_trace_links(self) -> list[dict[str, Any]]:
         return [
             {

@@ -103,6 +103,30 @@ class ModelToolLoopTests(unittest.TestCase):
         self.assertEqual(result.output["tables"][0]["table_id"], "sq.primary_metric_value_ranked")
         self.assertIn("sq.primary_metric_value_ranked", context.workspace.tables)
 
+    def test_python_analysis_rejects_inline_analysis_request_tables(self) -> None:
+        registry = build_default_registry()
+        context = ToolContext(question="Rank inline table")
+
+        result = registry.execute(
+            "python_analysis.run",
+            {
+                "analysis_request": {
+                    "runtime": "local_trusted",
+                    "tables": [_analysis_table().model_dump()],
+                    "operation": {
+                        "kind": "rank_extremes",
+                        "input_table_id": "sq.primary",
+                        "metric": "metric_value",
+                    },
+                }
+            },
+            context,
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error["code"], "tool_execution_failed")
+        self.assertIn("table_ids", result.error["message"])
+
     def test_chart_generation_consumes_workspace_table_id(self) -> None:
         registry = build_default_registry()
         context = ToolContext(question="Chart it")
@@ -117,6 +141,46 @@ class ModelToolLoopTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.output["artifact_count"], 1)
         self.assertTrue(context.workspace.artifacts)
+
+    def test_chart_generation_rejects_inline_table_payloads(self) -> None:
+        registry = build_default_registry()
+        context = ToolContext(question="Chart inline table")
+
+        result = registry.execute(
+            "chart_generation.run",
+            {"tables": [_analysis_table().model_dump()], "chart_intent": "bar chart"},
+            context,
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error["code"], "inline_tables_not_allowed_in_tool_loop")
+
+    def test_artifact_renderer_rejects_inline_table_payloads(self) -> None:
+        registry = build_default_registry()
+        context = ToolContext(question="Render inline table")
+
+        result = registry.execute(
+            "artifact_renderer.render",
+            {"tables": [_analysis_table().model_dump()], "allowed_artifact_kinds": ["table"]},
+            context,
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error["code"], "inline_tables_not_allowed_in_tool_loop")
+
+    def test_artifact_renderer_consumes_workspace_table_id(self) -> None:
+        registry = build_default_registry()
+        context = ToolContext(question="Render table")
+        context.workspace.add_table(_analysis_table())
+
+        result = registry.execute(
+            "artifact_renderer.render",
+            {"table_ids": ["sq.primary"], "allowed_artifact_kinds": ["table"]},
+            context,
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["artifact_count"], 1)
 
     def test_unknown_workspace_table_id_fails_closed(self) -> None:
         registry = build_default_registry()
@@ -169,6 +233,21 @@ class ModelToolLoopTests(unittest.TestCase):
         self.assertNotEqual(result.answer, "The Thunder scored 120.")
         self.assertIn("grounded evidence", result.answer)
 
+    def test_final_nonnumeric_answer_without_evidence_does_not_pass_through(self) -> None:
+        result = run_model_tool_loop(
+            "Who was the most balanced team?",
+            call_model=lambda _prompt: """
+            {
+              "action": "final",
+              "answer": "The Celtics were the most balanced team."
+            }
+            """,
+            registry=fake_registry(),
+        )
+
+        self.assertNotEqual(result.answer, "The Celtics were the most balanced team.")
+        self.assertIn("grounded evidence", result.answer)
+
     @patch("apps.assistant.model_orchestration.tool_loop.compose_grounded_answer")
     def test_final_answer_after_workspace_evidence_uses_composer(self, mock_compose) -> None:
         responses = iter(
@@ -203,6 +282,80 @@ class ModelToolLoopTests(unittest.TestCase):
         mock_compose.assert_called_once()
         trace_tool_names = [call["tool_name"] for call in result.debug["trace"]["tool_calls"]] if result.debug else []
         self.assertIn("answer_composer.compose", trace_tool_names)
+
+    @patch("apps.assistant.model_orchestration.tool_loop.compose_grounded_answer")
+    def test_composer_failure_falls_back_to_deterministic_semantic_answer(self, mock_compose) -> None:
+        responses = iter(
+            [
+                """
+                {
+                  "action": "tool_call",
+                  "tool_name": "semantic_query.plan_execute",
+                  "purpose": "retrieve teams",
+                  "arguments": {"question": "Show teams by points"}
+                }
+                """,
+                """
+                {
+                  "action": "final",
+                  "answer": "The Celtics were the most balanced team."
+                }
+                """,
+            ]
+        )
+        mock_compose.return_value = ComposedAnswer(answer="Teams by points", claims=[], limitations=[])
+
+        with patch("apps.assistant.model_orchestration.tool_loop.plan_execute", return_value=_semantic_result()):
+            result = run_model_tool_loop(
+                "Who was best?",
+                debug=True,
+                call_model=lambda _prompt: next(responses),
+                registry=build_default_registry(),
+            )
+
+        self.assertEqual(result.answer, "Teams by points")
+        self.assertEqual(result.debug["composer_fallback_reason"], "deterministic_tool_answer_fallback")
+
+    @patch("apps.assistant.model_orchestration.tool_loop.compose_grounded_answer")
+    def test_composer_failure_with_table_only_returns_safe_message(self, mock_compose) -> None:
+        responses = iter(
+            [
+                """
+                {
+                  "action": "tool_call",
+                  "tool_name": "ontology_catalog.inspect",
+                  "purpose": "store a non-semantic table in test workspace",
+                  "arguments": {"facets": ["coverage"]}
+                }
+                """,
+                """
+                {
+                  "action": "final",
+                  "answer": "The Celtics were the most balanced team."
+                }
+                """,
+            ]
+        )
+        mock_compose.return_value = ComposedAnswer(
+            answer="I gathered grounded results, but could not validate a final narrative. See the table and artifacts below.",
+            claims=[],
+            limitations=[],
+        )
+        registry = ToolRegistry()
+
+        def store_table(_payload, context):
+            context.workspace.add_table(_analysis_table(), source_tool_name="test.synthetic")
+            return ToolResult(ok=True, tool_name="ontology_catalog.inspect", output={"tables": [{"table_id": "sq.primary"}]})
+
+        registry.register(ToolSpec(name="ontology_catalog.inspect", description="store test table"), store_table)
+
+        def call_model(prompt: str) -> str:
+            return next(responses)
+
+        result = run_model_tool_loop("Rank this table", debug=True, call_model=call_model, registry=registry)
+
+        self.assertIn("could not validate a final narrative", result.answer)
+        self.assertEqual(result.debug["composer_fallback_reason"], "validated_narrative_unavailable")
 
     def test_tool_loop_rejects_forbidden_tool(self) -> None:
         with self.assertRaises(ValueError):
